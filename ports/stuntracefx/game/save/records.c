@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "hud_calls.h"
 
 /* Sum five bytes from `base` + X with 8-bit adds; X steps past them. */
 static uint8_t sum5(uint32_t base, uint8_t *x, uint8_t *p)
@@ -75,22 +76,36 @@ void abi_SaveRecordSumB(void)
  * HOW: SEP #$30; three JSRs, then SaveRecordSumB's code, which follows.
  * Entry: D = $0000. Exit: as SaveRecordSumB, X = $14.
  */
-void abi_SaveSumsRecordsB(void)
+static uint8_t sums_p;                  /* the adapter's: the flags the last sum leaves */
+
+uint8_t SaveSumsRecordsB(void)
 {
+    uint8_t x, a;
     unsigned i;
 
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
     cyc(62);
     wr8(0x0000F1, 0x00);
+    sums_p = 0;
     for (i = 0; i < 3; i++) {
         cyc(62);
-        cpu.x = (uint16_t)(i * 5);
-        cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-        abi_SaveRecordSumB();
+        x = (uint8_t)(i * 5);
+        a = SaveRecordSumB(&x, &sums_p);
         cyc(72);
-        wr8((uint32_t)(0x70FC43 + i), (uint8_t)cpu.a);
+        wr8((uint32_t)(0x70FC43 + i), a);
     }
-    abi_SaveRecordSumB();
+    x = 15;
+    return SaveRecordSumB(&x, &sums_p);
+}
+
+void abi_SaveSumsRecordsB(void)
+{
+    uint8_t a = SaveSumsRecordsB();
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.x = 20;
+    cpu.y = 0;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X);
 }
 
 /* Check `count` records from `base` against their sum bytes at `sums`; a
@@ -561,12 +576,17 @@ void abi_SaveBlocksValidate(void)
  * offset; the entry byte on the stack above the return address. Exit: as
  * SaveBlocksValidate.
  */
+void SaveBlocksFourthBad(uint8_t bank, uint8_t *p)
+{
+    cpu.s++;                            /* the entry byte the test pushed */
+    save_blocks_validate(bank, p, 1);
+}
+
 void abi_SaveBlocksFourthBad(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.s++;
-    save_blocks_validate(cpu.db, &p, 1);
+    SaveBlocksFourthBad(cpu.db, &p);
     cpu.a = 0x020C;
     cpu.x = 0x000B;
     cpu.y = 0x0000;
@@ -582,28 +602,25 @@ void abi_SaveBlocksFourthBad(void)
  * Entry: any widths, D = $0000; DB = $70. Exit: A = $02 and the low byte
  * SaveRecordsCheckA leaves; X = 20, Y = 4; P unchanged.
  */
-void SaveValidate(uint8_t bank)
+uint8_t SaveValidate(uint8_t bank)
 {
-    uint8_t p = 0;
+    uint8_t p = 0, a;
 
     SaveTablesCheck(bank, &p);
-    SaveBlocksValidate(bank, &p);
-    SaveBlocksCheck(bank, &p);
-    SaveRecordsCheckB(bank, &p);
-    SaveRecordsCheckA(bank, &p);
+    cyc(36);
+    (cyc(46), SaveBlocksValidate(bank, &p));
+    (cyc(46), SaveBlocksCheck(bank, &p));
+    (cyc(46), SaveRecordsCheckB(bank, &p));
+    a = (cyc(46), SaveRecordsCheckA(bank, &p));
+    cyc(72);
+    return a;
 }
 
 void abi_SaveValidate(void)
 {
-    uint8_t p = cpu.p;
-
-    abi_SaveTablesCheck();
-    (cyc(46), abi_SaveBlocksValidate());
-    (cyc(46), abi_SaveBlocksCheck());
-    (cyc(46), abi_SaveRecordsCheckB());
-    (cyc(46), abi_SaveRecordsCheckA());
-    cpu.p = p;
-    cyc(72);
+    cpu.a = (uint16_t)(0x0200 | SaveValidate(cpu.db));
+    cpu.x = 20;
+    cpu.y = 4;
 }
 
 /* The unlock bytes of the save in the order their checksum adds them. */
@@ -639,25 +656,11 @@ static uint8_t unlock_sum(void)
  * low byte SaveRecordsCheckA leaves; X = 20, Y = 4); P and the data bank
  * unchanged.
  */
-void SaveUnlocksCheck(void)
+uint8_t SaveUnlocksCheck(void)
 {
+    uint8_t s = unlock_sum(), a;
     unsigned i;
 
-    if (unlock_sum() != rd8(0x70FC14)) {
-        for (i = 0; i < 10; i++)
-            wr8(0x700000 | unlock_bytes[i], 0x00);
-        wr8(0x70FC14, 0x00);
-        wr8(0x70FC15, 0x00);
-    }
-    SaveValidate(0x70);
-}
-
-void abi_SaveUnlocksCheck(void)
-{
-    uint8_t p = cpu.p, db = cpu.db, s = unlock_sum();
-    unsigned i;
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | s);
     cyc(24);
     if (s != rd8(0x70FC14)) {
         cyc(16);
@@ -668,14 +671,16 @@ void abi_SaveUnlocksCheck(void)
         cyc(24);
         wr8(0x70FC15, 0x00);
     } else { cyc(22); }
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p |= P_M | P_X;
-    cpu.db = 0x70;
-    abi_SaveValidate();
-    cpu.db = db;
-    cpu.p = p;
+    a = SaveValidate(0x70);
     cyc(100);
+    return a;
+}
+
+void abi_SaveUnlocksCheck(void)
+{
+    cpu.a = (uint16_t)(0x0200 | SaveUnlocksCheck());
+    cpu.x = 20;
+    cpu.y = 4;
 }
 
 void abi_TimeUnpackBcd(void);
@@ -694,14 +699,15 @@ void abi_TimeRunningTotals(void);
  * the last name byte; X = course * 9 (8-bit); Y as the last TimeUnpackBcd
  * left it, truncated; P unchanged.
  */
-void abi_RecordsUnpackCourse(void)
+static uint8_t unpack_high, unpack_y, unpack_x;   /* the adapter's: A's high byte, Y and X as left */
+
+uint8_t RecordsUnpackCourse(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, c;
-    uint16_t x, a;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x, a, min = 0, sec, hund = 0;
+    uint8_t c, p;
     unsigned i;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(68);
     a = rd16(b | 0x0D4A);
     cyc(52);
@@ -710,28 +716,23 @@ void abi_RecordsUnpackCourse(void)
     cyc(96);
     wr16(0x0000F5, x);
     for (i = 0; i < 12; i++) {
-        cpu.p &= (uint8_t)~(P_M | P_X);
         if (i)
             { cyc(38); x = rd16(0x0000F5); }
-        cpu.x = x;
         cyc(32);
-        cpu.a = rd16(0x70FC88 + (uint16_t)(x + 2 * i));
-        (cyc(46), abi_TimeUnpackBcd());
-        cpu.p |= P_M | P_X;
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        a = rd16(0x70FC88 + (uint16_t)(x + 2 * i));
+        p = 0;                          /* M and X 16-bit, binary */
+        (cyc(46), TimeUnpackBcd(a, &min, &sec, &hund, &p));
         cyc(46);
-        wr8(b | (uint16_t)(0x0F76 + 3 * i), (uint8_t)cpu.y);
+        wr8(b | (uint16_t)(0x0F76 + 3 * i), (uint8_t)hund);
         cyc(24);
-        wr8(b | (uint16_t)(0x0F77 + 3 * i), (uint8_t)cpu.x);
+        wr8(b | (uint16_t)(0x0F77 + 3 * i), (uint8_t)sec);
         cyc(24);
-        wr8(b | (uint16_t)(0x0F78 + 3 * i), (uint8_t)cpu.a);
+        wr8(b | (uint16_t)(0x0F78 + 3 * i), (uint8_t)min);
     }
     cyc(46);
     c = rd8(b | 0x0D4A);
     cyc(80);
     c = (uint8_t)((uint8_t)(c << 3) + rd8(b | 0x0D4A));
-    cpu.x = c;
     cyc(14);
     for (i = 0; i < 9; i++) {
         cyc(32);
@@ -740,8 +741,19 @@ void abi_RecordsUnpackCourse(void)
         wr8(b | (uint16_t)(0x10CF + i), (uint8_t)a);
     }
     cyc(70);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
-    cpu.p = p;
+    unpack_high = (uint8_t)(min >> 8);
+    unpack_y = (uint8_t)hund;
+    unpack_x = c;
+    return (uint8_t)a;
+}
+
+void abi_RecordsUnpackCourse(void)
+{
+    uint8_t a = RecordsUnpackCourse(cpu.db);
+
+    cpu.a = (uint16_t)(unpack_high << 8 | a);
+    cpu.x = unpack_x;
+    cpu.y = unpack_y;
 }
 
 /*
@@ -791,12 +803,34 @@ void abi_RecordsUnpackCourseRunningB(void)
 /* The records screen's rows: direct page $F2 = the time's offset in the
    record times, $F3-$F5 = the row's name entry (two bytes of three 5-bit
    letters, then the car), $F7 = the page's offset. */
-static uint32_t dp(uint8_t a)
+static uint32_t dp(uint16_t d, uint8_t a)
 {
-    return (uint16_t)(cpu.d + a);
+    return (uint16_t)(d + a);
 }
 
-void abi_SpritePieces3(void);
+/* The flags TimeUnpackBcdLong leaves, for the adapters: N, Z, C always,
+   V when it computed one (not for $FFFF, no time). */
+static uint8_t unpack_flags;
+static int unpack_v_set;
+
+static void time_unpack(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund)
+{
+    uint8_t p = 0;                      /* binary: D is clear here */
+
+    TimeUnpackBcdLong(packed, min, sec, hund, &p);
+    unpack_flags = (uint8_t)(p & (P_N | P_Z | P_C | P_V));
+    unpack_v_set = packed != 0xFFFF;
+}
+
+/* The unpack's flags over p. */
+static uint8_t unpack_p(uint8_t p)
+{
+    uint8_t m = (uint8_t)(P_N | P_Z | P_C | (unpack_v_set ? P_V : 0));
+
+    return (uint8_t)((p & ~m) | (unpack_flags & m));
+}
+
+uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *set);
 
 /*
  * @routine 02:FF01 RecordNameLetters
@@ -807,20 +841,31 @@ void abi_SpritePieces3(void);
  * Entry: M 16-bit, X 16-bit; A = the letters, Y = sprite buffer offset.
  * Exit: A = the third tile; M 16-bit; N, Z, C, V clear (the last add).
  */
-void abi_RecordNameLetters(void)
+static uint16_t name_letters(uint8_t bank, uint16_t at, const uint16_t *clk, uint16_t v, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t v = cpu.a;
-    unsigned i;
     static const uint8_t shift[3] = {0, 5, 10};
-    static const uint16_t clk[3] = {190, 264, 220};
+    uint16_t a = 0;
+    unsigned i;
 
     for (i = 0; i < 3; i++) {
-        cpu.a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
+        a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
         cyc(clk[i]);
-        wr8(b | (uint16_t)(0x039F + i * 4 + cpu.y), (uint8_t)cpu.a);
+        wr8((uint32_t)bank << 16 | (uint16_t)(at + i * 4 + y), (uint8_t)a);
     }
     cyc(64);
+    return a;
+}
+
+uint16_t RecordNameLetters(uint8_t bank, uint16_t letters, uint16_t y)
+{
+    static const uint16_t clk[3] = {190, 264, 220};
+
+    return name_letters(bank, 0x039F, clk, letters, y);
+}
+
+void abi_RecordNameLetters(void)
+{
+    cpu.a = RecordNameLetters(cpu.db, cpu.a, cpu.y);
     cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
 }
 
@@ -836,55 +881,56 @@ void abi_TimeUnpackBcdLong(void);
  * high byte kept; M 16-bit; N clear, Z set for set 0; C set unless the tag
  * is below $0C.
  */
-void abi_RecordTagCarSet(void)
+uint8_t RecordTagCarSet(uint8_t tag)
 {
-    uint8_t t = (uint8_t)cpu.a, v;
+    uint8_t v;
 
-    op_sep(P_M);
-    if (t >= 0x24)
+    if (tag >= 0x24)
         v = 0x09;
-    else if (t >= 0x18)
+    else if (tag >= 0x18)
         { cyc(54); v = 0x06; }
-    else if (t >= 0x0C)
+    else if (tag >= 0x0C)
         { cyc(86); v = 0x03; }
     else
         { cyc(80); v = 0x00; }
     cyc(118);
-    cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | (t >= 0x0C ? P_C : 0));
+    cyc(22);                            /* REP #$20 */
+    return v;
+}
+
+void abi_RecordTagCarSet(void)
+{
+    uint8_t t = (uint8_t)cpu.a, v = RecordTagCarSet(t);
+
+    cpu.p = (uint8_t)((nz8(cpu.p, v) & ~(P_C | P_M)) | (t >= 0x0C ? P_C : 0));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    op_rep(P_M);
 }
 
 /* The time in A unpacked (TimeUnpackBcdLong) with Y kept: the hundredths
    to direct page $F1 and the seconds to $F3 (words, X 16-bit), then
    SEP #$20 with A = the minutes. */
-static void record_time_unpack(void)
+static void record_time_unpack(uint16_t d, uint16_t packed, uint16_t *min, uint16_t *sec)
 {
-    uint16_t y = cpu.y;
+    uint16_t hund;
 
-    abi_TimeUnpackBcdLong();
-    wr16(dp(0xF1), cyc_then(16, cpu.y));
-    wr16(dp(0xF3), cyc_then(16, cpu.x));
-    cpu.y = y;
-    cpu.p = nz16(cpu.p, y);
-    op_sep(P_M);
+    time_unpack(packed, min, sec, &hund);
+    wr16(dp(d, 0xF1), cyc_then(16, hund));
+    wr16(dp(d, 0xF3), cyc_then(16, *sec));
 }
 
 /* Large digit d (0-9) at sprite buffer offset `at` + Y: its top tile $50 +
    d and its bottom tile $60 + d four bytes on, as CLC / ADC #$50 then ADC
    #$10 leave them. */
-static void large_digit(uint32_t b, uint16_t at, uint8_t d)
+static uint8_t large_digit(uint32_t b, uint16_t y, uint16_t at, uint8_t d)
 {
-    uint8_t p = (uint8_t)(cpu.p & ~P_C), v;
+    uint8_t v = (uint8_t)(d + 0x50);
 
-    v = op_adc8(d, 0x50, &p);
     cyc(76);
-    wr8(b | (uint16_t)(at + cpu.y), v);
-    v = op_adc8(v, 0x10, &p);
+    wr8(b | (uint16_t)(at + y), v);
+    v = (uint8_t)(v + 0x10);            /* no carry: d is a digit */
     cyc(46);
-    wr8(b | (uint16_t)(at + 4 + cpu.y), v);
-    cpu.p = p;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | (uint16_t)(at + 4 + y), v);
+    return v;
 }
 
 /*
@@ -899,42 +945,54 @@ static void large_digit(uint32_t b, uint16_t at, uint8_t d)
  * tile, high byte the minutes'; X = the seconds (BCD); Y kept; $F1 = the
  * hundredths, $F3 = the seconds.
  */
+static uint8_t digits_high;             /* the adapters': A's high byte (the minutes') */
+static uint16_t digits_x;               /* X: the seconds */
+
+uint8_t RecordTimeDigitsLarge(uint8_t bank, uint16_t d, uint16_t packed, uint16_t y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t min, sec;
+    uint8_t v, t;
+
+    (cyc(114), record_time_unpack(d, packed, &min, &sec));     /* PHP, PHY, JSL */
+    digits_high = (uint8_t)(min >> 8);
+    digits_x = sec;
+    cyc(58);
+    large_digit(b, y, 0x0387, (uint8_t)(min & 0x0F));
+    v = rd8(cyc_then(16, dp(d, 0xF3)));
+    cyc(40);
+    large_digit(b, y, 0x0397, (uint8_t)(v >> 4));
+    v = rd8(cyc_then(16, dp(d, 0xF3)));
+    large_digit(b, y, 0x039F, (uint8_t)(v & 0x0F));
+    v = rd8(cyc_then(16, dp(d, 0xF1)));
+    cyc(40);
+    large_digit(b, y, 0x03AF, (uint8_t)(v >> 4));
+    v = rd8(cyc_then(16, dp(d, 0xF1)));
+    t = large_digit(b, y, 0x03B7, (uint8_t)(v & 0x0F));
+    cyc(28);
+    cyc(42);                            /* PLP */
+    return t;
+}
+
 void abi_RecordTimeDigitsLarge(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, v;
+    uint8_t t = RecordTimeDigitsLarge(cpu.db, cpu.d, cpu.a, cpu.y);
 
-    (cyc(114), record_time_unpack());           /* PHP, PHY, JSL */
-    cyc(58);
-    large_digit(b, 0x0387, (uint8_t)(cpu.a & 0x0F));
-    v = rd8(cyc_then(16, dp(0xF3)));
-    cyc(40);
-    large_digit(b, 0x0397, (uint8_t)(v >> 4));
-    v = rd8(cyc_then(16, dp(0xF3)));
-    large_digit(b, 0x039F, (uint8_t)(v & 0x0F));
-    v = rd8(cyc_then(16, dp(0xF1)));
-    cyc(40);
-    large_digit(b, 0x03AF, (uint8_t)(v >> 4));
-    v = rd8(cyc_then(16, dp(0xF1)));
-    large_digit(b, 0x03B7, (uint8_t)(v & 0x0F));
-    cyc(28);
-    op_plp(p);
+    cpu.a = (uint16_t)(digits_high << 8 | t);
+    cpu.x = digits_x;
 }
 
 /* SEP'd A low byte to `v`, N and Z from it (an 8-bit LDA, AND or LSR). */
-static void set_a8(uint8_t v)
-{
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-}
+
 
 /* LDA dp, LSR x 4: the high nibble, C = bit 3. */
-static uint8_t dp_high_nibble(uint8_t a)
-{
-    uint8_t v = rd8(cyc_then(16, dp(a)));
+static uint8_t nibble_c;                /* C as the last LSR x 4 left it: bit 3 */
 
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v >> 3) & 1));
-    set_a8((uint8_t)(v >> 4));
+static uint8_t dp_high_nibble(uint16_t d, uint8_t a)
+{
+    uint8_t v = rd8(cyc_then(16, dp(d, a)));
+
+    nibble_c = (uint8_t)((v >> 3) & 1);
     return (uint8_t)(v >> 4);
 }
 
@@ -950,28 +1008,38 @@ static uint8_t dp_high_nibble(uint8_t a)
  * the minutes'; X = the seconds (BCD); Y kept; M 16-bit; N clear, Z from
  * the digit, C = bit 3 of the hundredths; $F1, $F3 as RecordTimeDigitsLarge.
  */
-void abi_RecordTimeDigitsSmall(void)
+uint8_t RecordTimeDigitsSmall(uint8_t bank, uint16_t d, uint16_t packed, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t min, sec;
     uint8_t v;
 
-    (cyc(92), record_time_unpack());            /* PHY, JSL */
-    v = (uint8_t)(cpu.a & 0x0F);
-    set_a8(v);
+    (cyc(92), record_time_unpack(d, packed, &min, &sec));      /* PHY, JSL */
+    digits_high = (uint8_t)(min >> 8);
+    digits_x = sec;
+    v = (uint8_t)(min & 0x0F);
     cyc(104);
-    wr8(b | (uint16_t)(0x0383 + cpu.y), v);
-    wr8(b | (uint16_t)(0x038B + cpu.y), cyc_then(86, dp_high_nibble(0xF3)));
-    v = (uint8_t)(rd8(cyc_then(16, dp(0xF3))) & 0x0F);
-    set_a8(v);
+    wr8(b | (uint16_t)(0x0383 + y), v);
+    wr8(b | (uint16_t)(0x038B + y), cyc_then(86, dp_high_nibble(d, 0xF3)));
+    v = (uint8_t)(rd8(cyc_then(16, dp(d, 0xF3))) & 0x0F);
     cyc(46);
-    wr8(b | (uint16_t)(0x038F + cpu.y), v);
-    wr8(b | (uint16_t)(0x0397 + cpu.y), cyc_then(86, dp_high_nibble(0xF1)));
-    v = (uint8_t)(rd8(cyc_then(16, dp(0xF1))) & 0x0F);
-    set_a8(v);
+    wr8(b | (uint16_t)(0x038F + y), v);
+    wr8(b | (uint16_t)(0x0397 + y), cyc_then(86, dp_high_nibble(d, 0xF1)));
+    v = (uint8_t)(rd8(cyc_then(16, dp(d, 0xF1))) & 0x0F);
     cyc(46);
-    wr8(b | (uint16_t)(0x039B + cpu.y), v);
-    op_rep(P_M);
+    wr8(b | (uint16_t)(0x039B + y), v);
+    cyc(22);
     cyc(42);                            /* RTS */
+    return v;
+}
+
+void abi_RecordTimeDigitsSmall(void)
+{
+    uint8_t v = RecordTimeDigitsSmall(cpu.db, cpu.d, cpu.a, cpu.y);
+
+    cpu.a = (uint16_t)(digits_high << 8 | v);
+    cpu.x = digits_x;
+    cpu.p = nz8((uint8_t)((unpack_p(cpu.p) & ~(P_C | P_M)) | nibble_c), v);
 }
 
 /*
@@ -988,48 +1056,51 @@ void abi_RecordTimeDigitsSmall(void)
  * = bit 11 of the score; from $4000: A = $361D, N and Z clear, C = bit 3
  * of the score.
  */
-void abi_RecordScoreDigits(void)
+uint8_t RecordScoreDigits(uint8_t bank, uint16_t d, uint16_t s, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t s = cpu.a;
+    static const uint16_t perfect[7] = {0x3619, 0x360E, 0x361B, 0x360F, 0x360E, 0x360C, 0x361D};
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
     unsigned i;
-    static const uint16_t perfect[7] = {0x3619, 0x360E, 0x361B, 0x360F, 0x360E, 0x360C, 0x361D};
 
-    wr16(dp(0xF1), cyc_then(16, s));
-    op_cmp16(0x4000);
-    op_sep(P_M);
+    wr16(dp(d, 0xF1), cyc_then(16, s));
     v = (uint8_t)(s & 0x0F);
-    set_a8(v);
     cyc(s >= 0x4000 ? 136 : 108);       /* BCS taken: + PHA */
-    wr8(b | (uint16_t)(0x03A3 + cpu.y), v);
+    wr8(b | (uint16_t)(0x03A3 + y), v);
     if (s >= 0x4000) {
         v = (uint8_t)s;
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v >> 3) & 1));
-        set_a8((uint8_t)(v >> 4));
+        nibble_c = (uint8_t)((v >> 3) & 1);
         cyc(114);
-        wr8(b | (uint16_t)(0x039F + cpu.y), (uint8_t)(v >> 4));
-        op_rep(P_M);
+        wr8(b | (uint16_t)(0x039F + y), (uint8_t)(v >> 4));
+        cyc(22);
         for (i = 0; i < 7; i++)
-            { cyc(54); wr16(b | (uint16_t)(0x0383 + i * 4 + cpu.y), perfect[i]); }
-        cpu.a = perfect[6];
-        cpu.p = nz16(cpu.p, cpu.a);
+            { cyc(54); wr16(b | (uint16_t)(0x0383 + i * 4 + y), perfect[i]); }
         cyc(42);                        /* RTS */
-        return;
+        return 1;
     }
-    wr8(b | (uint16_t)(0x039F + cpu.y), cyc_then(86, dp_high_nibble(0xF1)));
-    v = (uint8_t)(rd8(cyc_then(16, dp(0xF2))) & 0x0F);
-    set_a8(v);
+    wr8(b | (uint16_t)(0x039F + y), cyc_then(86, dp_high_nibble(d, 0xF1)));
+    v = (uint8_t)(rd8(cyc_then(16, dp(d, 0xF2))) & 0x0F);
     cyc(46);
-    wr8(b | (uint16_t)(0x038B + cpu.y), v);
-    wr8(b | (uint16_t)(0x0387 + cpu.y), cyc_then(86, dp_high_nibble(0xF2)));
-    set_a8(0xF0);
+    wr8(b | (uint16_t)(0x038B + y), v);
+    wr8(b | (uint16_t)(0x0387 + y), cyc_then(86, dp_high_nibble(d, 0xF2)));
     cyc(46);
-    wr8(b | (uint16_t)(0x0382 + cpu.y), 0xF0);
+    wr8(b | (uint16_t)(0x0382 + y), 0xF0);
     cyc(30);
-    wr8(b | (uint16_t)(0x039A + cpu.y), 0xF0);
-    op_rep(P_M);
+    wr8(b | (uint16_t)(0x039A + y), 0xF0);
+    cyc(22);
     cyc(42);                            /* RTS */
+    return 0;
+}
+
+void abi_RecordScoreDigits(void)
+{
+    if (RecordScoreDigits(cpu.db, cpu.d, cpu.a, cpu.y)) {
+        cpu.a = 0x361D;
+        cpu.p = (uint8_t)(cpu.p & ~(P_N | P_Z | P_C | P_M)) | nibble_c;
+    } else {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+        cpu.p = (uint8_t)(((cpu.p & ~(P_Z | P_C | P_M)) | P_N) | nibble_c);
+    }
 }
 
 /*
@@ -1042,43 +1113,60 @@ void abi_RecordScoreDigits(void)
  * Entry: M 16-bit, D = $0000; A = the letter. Exit: A = the tile; N, Z, C,
  * V from the last add (C and V clear).
  */
+static uint8_t tile_flags;              /* the adapter's: N, Z, C, V of the last add */
+
+/* CLC / ADC (16-bit), binary; the flags to tile_flags. */
+static uint16_t tile_add(uint16_t a, uint16_t m)
+{
+    uint16_t r = (uint16_t)(a + m);
+
+    tile_flags = (uint8_t)(nz16(0, r) | ((unsigned)a + m > 0xFFFF ? P_C : 0)
+                           | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
+    return r;
+}
+
+uint16_t RecordLetterTile(uint16_t d, uint16_t letter)
+{
+    uint16_t a;
+
+    a = tile_add(letter, 0x000A);
+    wr16(dp(d, 0xF1), cyc_then(54, a));
+    cyc(2);
+    a = (uint16_t)((a & 0x0030) << 1);
+    wr16(dp(d, 0xF3), cyc_then(52, a));
+    a = rd16(cyc_then(16, dp(d, 0xF1)));
+    cyc(2);
+    a &= 0x000F;
+    a |= rd16(cyc_then(38, dp(d, 0xF3)));
+    a = tile_add(a, 0x0050);
+    cyc(80);                            /* CLC, ADC #imm16, RTS */
+    return a;
+}
+
 void abi_RecordLetterTile(void)
 {
-    uint16_t v;
-
-    op_add16(0x000A);
-    wr16(dp(0xF1), cyc_then(54, cpu.a));
-    op_and16(0x0030);
-    op_asl16();
-    wr16(dp(0xF3), cyc_then(52, cpu.a));
-    op_lda16(cyc_then(16, dp(0xF1)));
-    op_and16(0x000F);
-    v = rd16(cyc_then(38, dp(0xF3)));
-    cpu.a |= v;
-    op_add16(0x0050);
-    cyc(80);                            /* CLC, ADC #imm16, RTS */
+    cpu.a = RecordLetterTile(cpu.d, cpu.a);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | tile_flags);
 }
 
 /* RecordLetterTile for letter `n`, then its top tile at `at` + Y and its
    bottom tile (+ $10, with the add's carry) four bytes on. */
-static void large_letter(uint32_t b, uint16_t at, uint16_t n)
+static uint8_t large_letter(uint32_t b, uint16_t d, uint16_t y, uint16_t at, uint16_t n)
 {
-    uint8_t p, v;
+    unsigned s;
+    uint8_t v;
 
-    cpu.a = n;
-    cpu.p = nz16(cpu.p, n);
-    (cyc(100), abi_RecordLetterTile());
-    op_sep(P_M);
-    v = (uint8_t)cpu.a;
+    v = (uint8_t)(cyc(100), RecordLetterTile(d, n));
     cyc(52);
-    wr8(b | (uint16_t)(at + cpu.y), v);
-    p = cpu.p;
-    v = op_adc8(v, 0x10, &p);
-    cpu.p = p;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | (uint16_t)(at + y), v);
+    s = (unsigned)v + 0x10 + (tile_flags & P_C);
+    tile_flags = (uint8_t)(nz8(0, (uint8_t)s) | (s > 0xFF ? P_C : 0)
+                           | ((~(v ^ 0x10) & (v ^ s) & 0x80) ? P_V : 0));
+    v = (uint8_t)s;
     cyc(46);
-    wr8(b | (uint16_t)(at + 4 + cpu.y), v);
-    op_rep(P_M);
+    wr8(b | (uint16_t)(at + 4 + y), v);
+    cyc(22);                            /* REP #$20 */
+    return v;
 }
 
 /*
@@ -1092,17 +1180,24 @@ static void large_letter(uint32_t b, uint16_t at, uint16_t n)
  * offset. Exit: A = the third letter's bottom tile; M 16-bit; N, Z, C, V
  * from its 8-bit add.
  */
+uint8_t RecordNameLettersLarge(uint8_t bank, uint16_t d, uint16_t letters, uint16_t y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
+
+    large_letter(b, d, y, 0x03BF, (uint16_t)(letters & 0x001F));
+    cyc(98);
+    large_letter(b, d, y, 0x03C7, (uint16_t)(((uint16_t)(letters << 3) >> 8) & 0x001F));
+    cyc(54);
+    v = large_letter(b, d, y, 0x03CF, (uint16_t)(((uint16_t)(letters >> 2) >> 8) & 0x001F));
+    cyc(42);                            /* RTS */
+    return v;
+}
+
 void abi_RecordNameLettersLarge(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t v = cpu.a;
-
-    large_letter(b, 0x03BF, (uint16_t)(v & 0x001F));
-    cyc(98);
-    large_letter(b, 0x03C7, (uint16_t)(((uint16_t)(v << 3) >> 8) & 0x001F));
-    cyc(54);
-    large_letter(b, 0x03CF, (uint16_t)(((uint16_t)(v >> 2) >> 8) & 0x001F));
-    cyc(42);                            /* RTS */
+    cpu.a = RecordNameLettersLarge(cpu.db, cpu.d, cpu.a, cpu.y);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M)) | tile_flags);
 }
 
 /*
@@ -1112,20 +1207,16 @@ void abi_RecordNameLettersLarge(void)
  * HOW: As RecordNameLetters. Not reached in the traces so far.
  * Entry: as RecordNameLetters. Exit: as RecordNameLetters.
  */
-void abi_RecordNameLettersSmall(void)
+uint16_t RecordNameLettersSmall(uint8_t bank, uint16_t letters, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t v = cpu.a;
-    unsigned i;
-    static const uint8_t shift[3] = {0, 5, 10};
     static const uint16_t clk[3] = {144, 264, 220};
 
-    for (i = 0; i < 3; i++) {
-        cpu.a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
-        cyc(clk[i]);
-        wr8(b | (uint16_t)(0x03B3 + i * 4 + cpu.y), (uint8_t)cpu.a);
-    }
-    cyc(64);
+    return name_letters(bank, 0x03B3, clk, letters, y);
+}
+
+void abi_RecordNameLettersSmall(void)
+{
+    cpu.a = RecordNameLettersSmall(cpu.db, cpu.a, cpu.y);
     cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
 }
 
@@ -1145,29 +1236,31 @@ void abi_RecordNameLettersSmall(void)
  * adding $F2. Otherwise as RecordNameLetters, X as SpritePieces3 left it,
  * Y = sprite * 4 + 4.
  */
-void abi_RecordRowDraw(void)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t w, y;
-    uint8_t v, t;
-    unsigned i;
-    static const uint16_t hi[3] = {0x039B, 0x038F, 0x0383}, lo[3] = {0x039F, 0x0393, 0x0387};
+/* The adapters' view of the last row drawn: X and Y as it leaves them;
+   for a row with no time (hidden), V from the add of $F2. */
+static int row_hidden;
+static uint16_t row_x, row_y;
+static uint8_t row_v;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    w = rd16(cyc_then(38, dp(0xF7)));
-    cpu.p &= (uint8_t)~P_C;
-    w = op_adc16(w, rd16(cyc_then(30, dp(0xF2))), &cpu.p);
-    cpu.x = (uint16_t)(w & 0x00FF);
-    y = (uint16_t)(cpu.y << 2);
-    cpu.p = (uint8_t)((nz16(cpu.p, y) & ~P_C) | ((cpu.y & 0x4000) ? P_C : 0));
-    cpu.y = y;
-    cpu.p |= P_M;
+uint16_t RecordRowDraw(uint8_t bank, uint16_t d, uint16_t sprite)
+{
+    static const uint16_t hi[3] = {0x039B, 0x038F, 0x0383}, lo[3] = {0x039F, 0x0393, 0x0387};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t w, m, r, y, set;
+    uint8_t v, t, p = 0;
+    unsigned i;
+
+    w = rd16(cyc_then(38, dp(d, 0xF7)));
+    m = rd16(cyc_then(30, dp(d, 0xF2)));
+    r = (uint16_t)(w + m);
+    row_v = (~(w ^ m) & (w ^ r) & 0x8000) ? P_V : 0;
+    row_x = (uint16_t)(r & 0x00FF);
+    y = (uint16_t)(sprite << 2);
+    row_y = y;
     cyc(146);
-    v = rd8(b | (uint16_t)(0x0F77 + cpu.x));
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+    v = rd8(b | (uint16_t)(0x0F77 + row_x));
     if (v == 0xFF) {
-        cpu.a = (uint16_t)((y & 0xFF00) | 0xF0);
-        cpu.p = nz8(cpu.p, 0xF0);
+        row_hidden = 1;
         cyc(84);
         wr8(b | (uint16_t)(0x0376 + y), 0xF0);
         cyc(30);
@@ -1175,68 +1268,85 @@ void abi_RecordRowDraw(void)
         cyc(30);
         wr8(b | (uint16_t)(0x037E + y), 0xF0);
         cyc(42);
-        return;
+        return (uint16_t)((y & 0xFF00) | 0xF0);
     }
+    row_hidden = 0;
     for (i = 0; i < 3; i++) {
         cyc(i == 0 ? 62 : 30);
-        v = rd8(b | (uint16_t)(0x0F76 + i + cpu.x));
+        v = rd8(b | (uint16_t)(0x0F76 + i + row_x));
         cyc(86);
         wr8(b | (uint16_t)(hi[i] + y), (uint8_t)(v >> 4));
         cyc(30);
-        t = rd8(b | (uint16_t)(0x0F76 + i + cpu.x));
+        t = rd8(b | (uint16_t)(0x0F76 + i + row_x));
         cyc(46);
         wr8(b | (uint16_t)(lo[i] + y), (uint8_t)(t & 0x0F));
     }
-    cpu.p &= (uint8_t)~P_M;
     cyc(38);
-    w = rd16(dp(0xF5));
+    w = rd16(dp(d, 0xF5));
     cyc(44);
-    w = (uint16_t)((w << 1) + rd16(dp(0xF5)));
+    w = (uint16_t)((w << 1) + rd16(dp(d, 0xF5)));
     cyc(48);
     wr16(b | 0x10C3, (uint16_t)(w & 0x000F));
     cyc(48);
     wr16(b | 0x10BD, 0x0057);
     cyc(24);
     wr16(b | 0x10C5, 0x0000);
-    cpu.a = 0x0057;
     cyc(92);
-    abi_SpritePieces3();
-    cpu.y = (uint16_t)(y + 4);
-    cpu.p &= (uint8_t)~P_M;
+    SpritePieces3(bank, &row_x, &y, &p, &set);
+    row_y = (uint16_t)((sprite << 2) + 4);
     cyc(130);
-    cpu.a = rd16(dp(0xF3));
-    abi_RecordNameLetters();
+    r = RecordNameLetters(bank, rd16(dp(d, 0xF3)), row_y);
     cyc(42);                            /* RTS */
+    return r;
+}
+
+void abi_RecordRowDraw(void)
+{
+    cpu.a = RecordRowDraw(cpu.db, cpu.d, cpu.y);
+    cpu.x = row_x;
+    cpu.y = row_y;
+    if (row_hidden)
+        cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_V | P_X)) | P_N | P_C | P_M | row_v);
+    else
+        cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M | P_X);
 }
 
 /* Row n (0-2): its name entry ($10CF + n * 3) to $F3-$F5, its screen Y
    ($7C + n * $11) to $10BF, then RecordRowDraw from sprite $0D75 + n * 2. */
-static void record_row(unsigned n)
+static uint16_t record_row(uint8_t bank, uint16_t d, unsigned n)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t v = 0;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a;
     unsigned i;
 
     for (i = 0; i < 3; i++) {
         cyc(24);
-        v = rd8(b | (uint16_t)(0x10CF + n * 3 + i));
-        wr8(dp((uint8_t)(0xF3 + i)), cyc_then(16, v));
+        wr8(dp(d, (uint8_t)(0xF3 + i)), cyc_then(16, rd8(b | (uint16_t)(0x10CF + n * 3 + i))));
     }
     cyc(40);
     wr8(b | 0x10BF, (uint8_t)(0x7C + n * 0x11));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(0x7C + n * 0x11));
     cyc(24);
-    cpu.y = rd16(b | (uint16_t)(0x0D75 + n * 2));
-    (cyc(46), abi_RecordRowDraw());
+    a = rd16(b | (uint16_t)(0x0D75 + n * 2));
+    a = (cyc(46), RecordRowDraw(bank, d, a));
     cyc(42);
+    return a;
 }
 
 /* SEP #$20, REP #$10, then the time offset to $F2. */
-static void record_row_time(uint8_t t)
+static void record_row_time(uint16_t d, uint8_t t)
 {
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | t);
-    wr8(dp(0xF2), cyc_then(68, t));
+    wr8(dp(d, 0xF2), cyc_then(68, t));
+}
+
+/* The registers a row draw leaves (A is the caller's to set). */
+static void row_exit(void)
+{
+    cpu.x = row_x;
+    cpu.y = row_y;
+    if (row_hidden)
+        cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_V | P_X)) | P_N | P_C | P_M | row_v);
+    else
+        cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M | P_X);
 }
 
 /*
@@ -1247,9 +1357,15 @@ static void record_row_time(uint8_t t)
  * Entry: M 8-bit, X 16-bit; $F2 = the time's offset. Exit: as
  * RecordRowDraw.
  */
+uint16_t RecordRow1(uint8_t bank, uint16_t d)
+{
+    return record_row(bank, d, 0);
+}
+
 void abi_RecordRow1(void)
 {
-    record_row(0);
+    cpu.a = RecordRow1(cpu.db, cpu.d);
+    row_exit();
 }
 
 /*
@@ -1259,9 +1375,15 @@ void abi_RecordRow1(void)
  * HOW: record_row 1.
  * Entry: as RecordRow1. Exit: as RecordRow1.
  */
+uint16_t RecordRow2(uint8_t bank, uint16_t d)
+{
+    return record_row(bank, d, 1);
+}
+
 void abi_RecordRow2(void)
 {
-    record_row(1);
+    cpu.a = RecordRow2(cpu.db, cpu.d);
+    row_exit();
 }
 
 /*
@@ -1271,9 +1393,15 @@ void abi_RecordRow2(void)
  * HOW: record_row 2.
  * Entry: as RecordRow1. Exit: as RecordRow1.
  */
+uint16_t RecordRow3(uint8_t bank, uint16_t d)
+{
+    return record_row(bank, d, 2);
+}
+
 void abi_RecordRow3(void)
 {
-    record_row(2);
+    cpu.a = RecordRow3(cpu.db, cpu.d);
+    row_exit();
 }
 
 /*
@@ -1282,11 +1410,15 @@ void abi_RecordRow3(void)
  * HOW: Sets $F2 and falls into RecordRow1.
  * Entry: any widths. Exit: as RecordRow1.
  */
+uint16_t RecordRow1Time0(uint8_t bank, uint16_t d)
+{
+    return (cyc(8), record_row_time(d, 0x00), record_row(bank, d, 0));
+}
+
 void abi_RecordRow1Time0(void)
 {
-    cyc(8);
-    record_row_time(0x00);
-    record_row(0);
+    cpu.a = RecordRow1Time0(cpu.db, cpu.d);
+    row_exit();
 }
 
 /*
@@ -1295,11 +1427,15 @@ void abi_RecordRow1Time0(void)
  * HOW: Sets $F2 and falls into RecordRow2.
  * Entry: any widths. Exit: as RecordRow2.
  */
+uint16_t RecordRow2Time4(uint8_t bank, uint16_t d)
+{
+    return (cyc(8), record_row_time(d, 0x0C), record_row(bank, d, 1));
+}
+
 void abi_RecordRow2Time4(void)
 {
-    cyc(8);
-    record_row_time(0x0C);
-    record_row(1);
+    cpu.a = RecordRow2Time4(cpu.db, cpu.d);
+    row_exit();
 }
 
 /*
@@ -1308,11 +1444,15 @@ void abi_RecordRow2Time4(void)
  * HOW: Sets $F2 and falls into RecordRow3.
  * Entry: any widths. Exit: as RecordRow3.
  */
+uint16_t RecordRow3Time8(uint8_t bank, uint16_t d)
+{
+    return (cyc(8), record_row_time(d, 0x18), record_row(bank, d, 2));
+}
+
 void abi_RecordRow3Time8(void)
 {
-    cyc(8);
-    record_row_time(0x18);
-    record_row(2);
+    cpu.a = RecordRow3Time8(cpu.db, cpu.d);
+    row_exit();
 }
 
 /*
@@ -1338,37 +1478,52 @@ void abi_RecordRowsGroupFirsts(void)
  * HOW: Sets $F2 before each of RecordRow1, RecordRow2, RecordRow3.
  * Entry: any widths. Exit: as RecordRow3.
  */
-void abi_RecordRowsFirstTimes(void)
+uint16_t RecordRowsFirstTimes(uint8_t bank, uint16_t d)
 {
+    uint16_t a = 0;
     unsigned n;
 
     for (n = 0; cyc_loop(8, n < 3); n++) {
-        record_row_time((uint8_t)(n * 3));
+        record_row_time(d, (uint8_t)(n * 3));
         cyc(46);
-        record_row(n);
+        a = record_row(bank, d, n);
     }
     cyc(42);
+    return a;
 }
 
-void abi_SoundPort0QueuePush(void);
+void abi_RecordRowsFirstTimes(void)
+{
+    cpu.a = RecordRowsFirstTimes(cpu.db, cpu.d);
+    row_exit();
+}
+
+void SoundPort0QueuePush(uint8_t command);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
 
 /* $0FA3 = r, then sound $35 on port 0 unless $0E57 is set. */
+/* The adapters' view of the compare: whether the sound was queued (A $35,
+   N and Z from the data bank) or not (A and N, Z from $0E57); C from the
+   compare that decided; X where it stopped. */
+static int cmp_sound;
+static uint8_t cmp_low, cmp_c;
+static uint16_t cmp_x;
+
 static void compare_result(uint32_t b, uint8_t r)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
     cyc(62);                            /* SEP, LDA #imm, STA.W */
     wr8(b | 0x0FA3, r);
     cyc(24);
     v = rd8(b | 0x0E57);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    cmp_low = v;
+    cmp_sound = 0;
     if (v)
         { cyc(64); return; } else { cyc(94); }   /* BNE taken, RTS */
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
-    abi_SoundPort0QueuePush();
+    cmp_sound = 1;
+    cmp_low = 0x35;
+    SoundPort0QueuePush(0x35);
     cyc(42);                            /* RTS */
 }
 
@@ -1386,44 +1541,47 @@ static void compare_result(uint32_t b, uint8_t r)
  * digit the compare stopped at (or X unchanged with no best time); A low
  * byte = $0E57's value, or as SoundPort0QueuePush leaves it.
  */
-void abi_RecordTimeCompare(void)
+static uint8_t cmp_high;                /* A's high byte: $0F2B's */
+
+void RecordTimeCompare(uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t v, m;
-    uint16_t w;
+    uint16_t w, i;
 
     cyc(24);
     w = rd16(b | 0x0F2B);
-    cpu.a = w;
-    op_cmp16(0xFFFF);
+    cmp_high = (uint8_t)(w >> 8);
+    cmp_x = x;
     if (w == 0xFFFF) {
         cyc(46);                        /* CMP #imm16, BEQ taken */
+        cmp_c = P_C;
         compare_result(b, 0x01);
         return;
     }
-    cpu.p |= P_M;
     cyc(92);
-    v = rd8(b | (uint16_t)(0x0F5B + cpu.x));
+    v = rd8(b | (uint16_t)(0x0F5B + x));
     cyc(62);
     wr8(b | 0x0F68, (uint8_t)(v & 0x0F));
     cyc(108);
     wr8(b | 0x0F67, (uint8_t)(v >> 4));
     cyc(30);
-    v = rd8(b | (uint16_t)(0x0F5C + cpu.x));
+    v = rd8(b | (uint16_t)(0x0F5C + x));
     cyc(62);
     wr8(b | 0x0F66, (uint8_t)(v & 0x0F));
     cyc(108);
     wr8(b | 0x0F65, (uint8_t)(v >> 4));
     cyc(30);
-    v = rd8(b | (uint16_t)(0x0F5D + cpu.x));
+    v = rd8(b | (uint16_t)(0x0F5D + x));
     cyc(40);
     wr8(b | 0x0F64, (uint8_t)(v & 0x0F));
-    for (cpu.x = 0; cpu.x < 5; cpu.x++) {
-        cyc(cpu.x == 0 ? 54 : 90);      /* LDX #imm16 / INX, CPX.W, BCC taken; LDA.W,X */
-        v = rd8(b | (uint16_t)(0x0F64 + cpu.x));
+    for (i = 0; i < 5; i++) {
+        cyc(i == 0 ? 54 : 90);          /* LDX #imm16 / INX, CPX.W, BCC taken; LDA.W,X */
+        v = rd8(b | (uint16_t)(0x0F64 + i));
         cyc(30);
-        m = rd8(b | (uint16_t)(0x0F69 + cpu.x));
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        m = rd8(b | (uint16_t)(0x0F69 + i));
+        cmp_x = i;
+        cmp_c = v >= m ? P_C : 0;
         if (v < m) {
             cyc(22);                    /* BCC taken */
             compare_result(b, 0xFF);
@@ -1437,44 +1595,59 @@ void abi_RecordTimeCompare(void)
         }
         cyc(16);                        /* BNE not taken */
     }
+    cmp_x = 5;
+    cmp_c = P_C;
     cyc(54);                            /* INX, CPX.W, BCC not taken */
-    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~P_C) | P_C);
     compare_result(b, 0x00);
+}
+
+void abi_RecordTimeCompare(void)
+{
+    RecordTimeCompare(cpu.db, cpu.x);
+    cpu.a = (uint16_t)(cmp_high << 8 | cmp_low);
+    cpu.x = cmp_x;
+    cpu.p = (uint8_t)(((cmp_sound ? nz8(cpu.p, cpu.db) : nz8(cpu.p, cmp_low)) & ~P_C) | P_M | cmp_c);
 }
 
 void abi_PlayerSound35(void);
 
 /* By mode $0D2B: 0 sound $35 on port 0, 2 PlayerSound35, else
    RecordTimeCompare on record time x. P restored. */
-static void record_compare_by_mode(uint16_t x)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p;
+/* What the mode dispatch did, for the adapters: 0 sound $35, 2
+   PlayerSound35, else the compare. */
+static uint16_t mode_seen;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
+static void record_compare_by_mode(uint8_t bank, uint16_t x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
     cyc(68);
-    cpu.a = rd16(b | 0x0D2B);
-    cpu.p = nz16(cpu.p, cpu.a);
-    if (cpu.a == 0x0000) {
+    mode_seen = rd16(b | 0x0D2B);
+    if (mode_seen == 0x0000) {
         cyc(108);
-        cpu.a = 0x0035;
-        cpu.p = nz16(cpu.p, cpu.a);
-        abi_SoundPort0QueuePush();
+        SoundPort0QueuePushW(0x35, 24);
         cyc(72);
     } else {
         cyc(108);
-        op_cmp16(0x0002);
-        if (cpu.a == 0x0002)
-            { abi_PlayerSound35(); cyc(114); }
+        if (mode_seen == 0x0002)
+            { abi_PlayerSound35(); cyc(114); }  /* still in registers: it reads Y, the entry's */
         else {
             cyc(18);
-            cpu.x = x;
-            cpu.p = nz16(cpu.p, x);
-            abi_RecordTimeCompare();
+            RecordTimeCompare(bank, x);
             cyc(72);                    /* PLP, RTL: RecordTimeCompare states its RTS */
         }
     }
-    cpu.p = p0;
+}
+
+/* The registers the dispatch leaves; P is the caller's, restored. */
+static void compare_by_mode_exit(void)
+{
+    if (mode_seen == 0x0000 || mode_seen == 0x0002) {
+        cpu.a = 0x0035;
+    } else {
+        cpu.a = (uint16_t)(cmp_high << 8 | cmp_low);
+        cpu.x = cmp_x;
+    }
 }
 
 /*
@@ -1484,9 +1657,18 @@ static void record_compare_by_mode(uint16_t x)
  * HOW: 16-bit mode test.
  * Entry: any widths. Exit: as the call made; P restored.
  */
+void RecordCompareTime0(uint8_t bank)
+{
+    record_compare_by_mode(bank, 0x0000);
+}
+
 void abi_RecordCompareTime0(void)
 {
-    record_compare_by_mode(0x0000);
+    uint8_t p0 = cpu.p;
+
+    RecordCompareTime0(cpu.db);
+    compare_by_mode_exit();
+    cpu.p = p0;
 }
 
 /*
@@ -1496,9 +1678,18 @@ void abi_RecordCompareTime0(void)
  * traces so far.
  * Entry: any widths. Exit: as RecordCompareTime0.
  */
+void RecordCompareTime1(uint8_t bank)
+{
+    record_compare_by_mode(bank, 0x0003);
+}
+
 void abi_RecordCompareTime1(void)
 {
-    record_compare_by_mode(0x0003);
+    uint8_t p0 = cpu.p;
+
+    RecordCompareTime1(cpu.db);
+    compare_by_mode_exit();
+    cpu.p = p0;
 }
 
 /* Swap the words at at + x and at + 2 + x (PHA/PLA through A). */
@@ -1577,60 +1768,104 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
 }
 
 /* $10C9 = the place (1-3) of tag $10C7 among the first three, or 0. */
+/* The loaders' exit, for the adapters: A, X and Y (X and Y when ld_xy),
+   N, Z and C (ld_flags), and V when one was computed (ld_v_set). */
+static uint16_t ld_a, ld_x, ld_y;
+static int ld_xy, ld_v_set;
+static uint8_t ld_flags, ld_v;
+
 static uint16_t records_player_place(uint32_t b)
 {
     static const uint16_t tag_at[3] = {0x0F13, 0x0F15, 0x0F17};
     cyc(126);
     uint16_t a = rd16(b | 0x10C7), v = 0, t;
+    uint8_t c = 0;
     int i;
 
     for (i = 0; i < 3; i++) {
         cyc(24);
         t = rd16(b | tag_at[i]);
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >= t ? P_C : 0));     /* CMP */
+        c = a >= t ? P_C : 0;           /* CMP */
         if (a == t) {
             v = (uint16_t)(i + 1);
             break;
         } else { cyc(16); }
     }
-    cpu.p = nz16(cpu.p, v);
+    ld_flags = (uint8_t)(nz16(0, v) | c);
     cyc(v == 2 || v == 3 ? 92 : 70);    /* the places 2 and 3 BRA to the store */
     wr16(b | 0x10C9, v);
     return v;
 }
 
 /* The save offset of course a's entries: (a * 2 + $F3) * 16, $F3 = a. */
-static uint16_t records_offset(uint16_t a)
+static uint16_t records_offset(uint16_t d, uint16_t a)
 {
-    cpu.p &= (uint8_t)~P_C;
+    uint16_t m, r;
+
     cyc(84);
-    a = op_adc16((uint16_t)(a << 1), rd16((uint16_t)(cpu.d + 0xF3)), &cpu.p);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((a >> 12) & 1));    /* the last ASL */
-    return (uint16_t)(a << 4);
+    m = rd16((uint16_t)(d + 0xF3));
+    a = (uint16_t)(a << 1);
+    r = (uint16_t)(a + m);
+    ld_v = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    ld_v_set = 1;
+    return (uint16_t)(r << 4);
+}
+
+/* LDA $0E3D, AND #$FF, STA $F3, CMP #$0C: the course, N, Z, C from the compare. */
+static uint16_t records_course(uint32_t b, uint16_t d)
+{
+    uint16_t a;
+
+    cyc(46);
+    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+    cyc(40);
+    wr16((uint16_t)(d + 0xF3), a);
+    ld_flags = (uint8_t)(nz16(0, (uint16_t)(a - 0x000C)) | (a >= 0x000C ? P_C : 0));
+    return a;
+}
+
+uint16_t RecordsLoadSpecialCourse(uint8_t bank, uint16_t d)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a;
+
+    ld_xy = 0;
+    a = records_course(b, d);
+    ld_a = a;
+    if (a < 0x000C)
+        { cyc(88); return a; } else { cyc(46); }   /* CMP, BCC taken, RTS */
+    if (a >= 0x0010) {
+        ld_flags = (uint8_t)(nz16(0, (uint16_t)(a - 0x0010)) | P_C);
+        cyc(76);
+        return a;
+    }
+    records_load_sorted(b, records_offset(d, a), 1);
+    ld_a = records_player_place(b);
+    ld_x = 0xFFFE;
+    ld_y = 0x0018;
+    ld_xy = 1;
+    cyc(42);                            /* RTS */
+    return ld_a;
+}
+
+/* The loaders' registers over the current ones. */
+static void load_exit(void)
+{
+    cpu.a = ld_a;
+    if (ld_xy) {
+        cpu.x = ld_x;
+        cpu.y = ld_y;
+    }
 }
 
 void abi_RecordsLoadSpecialCourse(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t a;
-
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(46);
-    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
-    cyc(40);
-    wr16((uint16_t)(cpu.d + 0xF3), a);
-    cpu.a = a;
-    op_cmp16(0x000C);
-    if (a < 0x000C)
-        { cyc(88); return; } else { cyc(46); }   /* CMP, BCC taken, RTS */
-    op_cmp16(0x0010);
-    if (a >= 0x0010)
-        { cyc(76); return; }
-    records_load_sorted(b, records_offset(a), 1);
-    cpu.a = records_player_place(b);
-    cpu.x = 0xFFFE;
-    cpu.y = 0x0018;
-    cyc(42);                            /* RTS */
+    ld_v_set = 0;
+    RecordsLoadSpecialCourse(cpu.db, cpu.d);
+    load_exit();
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M | P_X)) | ld_flags);
+    if (ld_v_set)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | ld_v);
 }
 
 /*
@@ -1641,18 +1876,16 @@ void abi_RecordsLoadSpecialCourse(void)
  * Entry: any widths; D = $0000. Exit: P and the data bank unchanged; A,
  * X, Y as RecordsLoadSpecialCourse leaves them.
  */
+uint16_t RecordsLoadSpecialCourseLong(uint16_t d)
+{
+    return RecordsLoadSpecialCourse(0x07, d);
+}
+
 void abi_RecordsLoadSpecialCourseLong(void)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db;
-
-    op_sep(P_M);
-    cpu.db = 0x07;
-    cpu.p = nz8(cpu.p, 0x07);
-    abi_RecordsLoadSpecialCourse();
-    op_sep(P_M);
-    cpu.db = db0;
-    cpu.p = p0;                         /* PLP; its time is the caller's */
-    if (p0 & P_X) {
+    RecordsLoadSpecialCourseLong(cpu.d);
+    load_exit();
+    if (cpu.p & P_X) {                  /* the PLP; its time is the caller's */
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
@@ -1661,17 +1894,24 @@ void abi_RecordsLoadSpecialCourseLong(void)
 /* TimeUnpackBcd on A, its Y, X, A (8-bit) stored at `to`, + 1, + 2. */
 static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
 {
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.a = a;
-    cpu.p = nz16(cpu.p, a);
-    (cyc(46), abi_TimeUnpackBcd());
-    op_sep(P_M | P_X);
+    uint16_t min, sec, hund;
+    uint8_t p = 0;                      /* M and X 16-bit, binary */
+
+    (cyc(46), TimeUnpackBcd(a, &min, &sec, &hund, &p));
+    ld_flags = (uint8_t)(p & (P_N | P_Z | P_C));
+    if (a != 0xFFFF)
+        { ld_v = (uint8_t)(p & P_V); ld_v_set = 1; }
+    cyc(22);                            /* SEP #$30 */
     cyc(24);
-    wr8(b | to, (uint8_t)cpu.y);
+    wr8(b | to, (uint8_t)hund);
     cyc(24);
-    wr8(b | (uint16_t)(to + 1), (uint8_t)cpu.x);
+    wr8(b | (uint16_t)(to + 1), (uint8_t)sec);
     cyc(24);
-    wr8(b | (uint16_t)(to + 2), (uint8_t)cpu.a);
+    wr8(b | (uint16_t)(to + 2), (uint8_t)min);
+    ld_a = min;
+    ld_x = (uint8_t)sec;
+    ld_y = (uint8_t)hund;
+    ld_xy = 1;
 }
 
 /*
@@ -1686,20 +1926,14 @@ static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
  * Entry: any widths; D = $0000. Exit: M 8-bit, X 8-bit; A low byte = the
  * last minutes; X, Y the last seconds and hundredths.
  */
-void abi_RecordsLoadCourse(void)
+void RecordsLoadCourse(uint8_t bank, uint16_t d)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, x;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(46);
-    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
-    cyc(40);
-    wr16((uint16_t)(cpu.d + 0xF3), a);
-    cpu.a = a;
-    op_cmp16(0x000C);
+    a = records_course(b, d);
     if (a < 0x000C)
-        records_load_sorted(b, records_offset(a), 0);
+        records_load_sorted(b, records_offset(d, a), 0);
     records_player_place(b);
     cyc(24);
     x = (uint16_t)((rd16(b | 0x0E3D) & 0x00FF) << 2);
@@ -1712,6 +1946,16 @@ void abi_RecordsLoadCourse(void)
     cyc(64);                            /* REP, RTS */
 }
 
+void abi_RecordsLoadCourse(void)
+{
+    ld_v_set = 0;
+    RecordsLoadCourse(cpu.db, cpu.d);
+    load_exit();
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | ld_flags | P_M | P_X);
+    if (ld_v_set)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | ld_v);
+}
+
 /*
  * @routine 07:B3D4 RecordsLoadForCourse
  * WHAT IT DOES: Loads course $0E3D's records: RecordsLoadSpecialCourse for
@@ -1719,24 +1963,32 @@ void abi_RecordsLoadCourse(void)
  * HOW: The data bank is set to $07 (the tag table's) and restored.
  * Entry: any widths; D = $0000. Exit: P and the data bank restored.
  */
-void abi_RecordsLoadForCourse(void)
-{
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
-    uint32_t tail = 144;
+static int ld_none;                     /* RecordsLoadForCourse loaded nothing: A's low byte the course */
 
-    cpu.p |= P_M;
-    cpu.db = 0x07;
+void RecordsLoadForCourse(uint16_t d)
+{
+    uint32_t tail = 144;
+    uint8_t v;
+
     cyc(140);
     v = rd8(0x070000 | 0x0E3D);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    ld_xy = 0;
     if (v < 0x0C)
-        { cyc(84); abi_RecordsLoadCourse(); tail = 122; }
+        { cyc(84); RecordsLoadCourse(0x07, d); tail = 122; }
     else if (v < 0x10)
-        { cyc(110); abi_RecordsLoadSpecialCourse(); } else { cyc(6); tail = 186; }
+        { cyc(110); RecordsLoadSpecialCourse(0x07, d); } else { cyc(6); tail = 186; ld_a = v; ld_none = 1; return (void)cyc(tail); }
+    ld_none = 0;
     cyc(tail);                          /* (BRA; BCS taken) SEP, PLB, PLP, RTL */
-    cpu.db = db0;
-    cpu.p = p0;                         /* the PLP, its time in the tail */
-    if (p0 & P_X) {
+}
+
+void abi_RecordsLoadForCourse(void)
+{
+    RecordsLoadForCourse(cpu.d);
+    if (ld_none)
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | ld_a);
+    else
+        load_exit();
+    if (cpu.p & P_X) {                  /* the PLP, its time in the tail */
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
@@ -1749,18 +2001,18 @@ void abi_RecordsLoadForCourse(void)
  * HOW: As RecordsLoadForCourse. Not reached in the traces so far.
  * Entry: any widths; D = $0000. Exit: P and the data bank restored.
  */
-void abi_RecordsLoadCourseLong(void)
+void RecordsLoadCourseLong(uint16_t d)
 {
     cyc(162);
-    uint8_t p0 = cpu.p, db0 = cpu.db;
-
-    cpu.p |= P_M;
-    cpu.db = 0x07;
-    abi_RecordsLoadCourse();
+    RecordsLoadCourse(0x07, d);
     cyc(122);                           /* SEP, PLB, PLP, RTL */
-    cpu.db = db0;
-    cpu.p = p0;
-    if (p0 & P_X) {
+}
+
+void abi_RecordsLoadCourseLong(void)
+{
+    RecordsLoadCourseLong(cpu.d);
+    load_exit();
+    if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
