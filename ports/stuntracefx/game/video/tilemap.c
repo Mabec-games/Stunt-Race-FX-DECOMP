@@ -43,19 +43,16 @@ static uint16_t tilemap_row(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, 
     return v;
 }
 
-void TilemapRowFromGsuRam(uint8_t bank, uint16_t a, uint16_t y)
+uint16_t TilemapRowFromGsuRam(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint16_t x;
-    uint8_t p = 0;
-
-    tilemap_row(bank, a, &x, &y, &p);
+    return tilemap_row(bank, a, x, y, p);
 }
 
 void abi_TilemapRowFromGsuRam(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.a = tilemap_row(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    cpu.a = TilemapRowFromGsuRam(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)((p & ~P_N) | P_Z);
 }
 
@@ -97,22 +94,22 @@ static uint16_t vram_fill_gradient(uint16_t start, uint8_t *p)
     return a;
 }
 
-void VramFillGradient(uint16_t start)
+uint16_t VramFillGradient(uint16_t start, uint8_t *p)
 {
-    uint8_t p = 0;
+    uint16_t a = vram_fill_gradient(start, p);
 
-    vram_fill_gradient(start, &p);
+    cyc(50);
+    return a;
 }
 
 void abi_VramFillGradient(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.a = vram_fill_gradient(cpu.a, &p);
+    cpu.a = VramFillGradient(cpu.a, &p);
     cpu.x = 0;
     cpu.y = 0;
     cpu.p = (uint8_t)((p & ~P_N) | P_Z);
-    cyc(50);
 }
 
 /*
@@ -222,14 +219,14 @@ static uint8_t picture_rows(uint16_t base, uint8_t p)
  * Entry: M 16-bit, D = $0000; the VRAM address and VMAIN set. Exit: A
  * unchanged; X = 0; M 16-bit, X 16-bit; N, Z from A; C, V from the last add.
  */
-void VramFrameRows2B0(uint8_t bank)
+uint8_t VramFrameRows2B0(uint8_t bank, uint8_t p)
 {
-    frame_rows(bank, 0x02B0, 0);
+    return frame_rows(bank, 0x02B0, p);
 }
 
 void abi_VramFrameRows2B0(void)
 {
-    cpu.p = (uint8_t)(nz16(frame_rows(cpu.db, 0x02B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.p = (uint8_t)(nz16(VramFrameRows2B0(cpu.db, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0;
 }
 
@@ -239,14 +236,14 @@ void abi_VramFrameRows2B0(void)
  * HOW: As VramFrameRows2B0.
  * Entry: as VramFrameRows2B0. Exit: as VramFrameRows2B0.
  */
-void VramFrameRows1B0(uint8_t bank)
+uint8_t VramFrameRows1B0(uint8_t bank, uint8_t p)
 {
-    frame_rows(bank, 0x01B0, 0);
+    return frame_rows(bank, 0x01B0, p);
 }
 
 void abi_VramFrameRows1B0(void)
 {
-    cpu.p = (uint8_t)(nz16(frame_rows(cpu.db, 0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.p = (uint8_t)(nz16(VramFrameRows1B0(cpu.db, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0;
 }
 
@@ -259,14 +256,14 @@ void abi_VramFrameRows1B0(void)
  * unchanged; X = $180; M 16-bit, X 16-bit; N, Z from A; C set; V from the
  * last add.
  */
-void VramPictureRows2B0(void)
+uint8_t VramPictureRows2B0(uint8_t p)
 {
-    picture_rows(0x02B0, 0);
+    return picture_rows(0x02B0, p);
 }
 
 void abi_VramPictureRows2B0(void)
 {
-    cpu.p = (uint8_t)(nz16(picture_rows(0x02B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.p = (uint8_t)(nz16(VramPictureRows2B0(cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0x0180;
 }
 
@@ -276,14 +273,14 @@ void abi_VramPictureRows2B0(void)
  * HOW: As VramPictureRows2B0.
  * Entry: as VramPictureRows2B0. Exit: as VramPictureRows2B0.
  */
-void VramPictureRows1B0(void)
+uint8_t VramPictureRows1B0(uint8_t p)
 {
-    picture_rows(0x01B0, 0);
+    return picture_rows(0x01B0, p);
 }
 
 void abi_VramPictureRows1B0(void)
 {
-    cpu.p = (uint8_t)(nz16(picture_rows(0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.p = (uint8_t)(nz16(VramPictureRows1B0(cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0x0180;
 }
 
@@ -437,15 +434,19 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     return mode >= 2 ? 2 : 1;
 }
 
-void abi_TilemapPaletteCycle(void)
+/* TilemapPaletteCycle's exit flags from its result. */
+static void palette_cycle_exit(int r)
 {
-    int r = TilemapPaletteCycle(cpu.db, &cpu.x, &cpu.y, &cpu.a);
-
     if (r == 0)
         cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     else
         cpu.p = (uint8_t)((cpu.p & ~(P_N | P_C)) | P_Z | (r == 2 ? P_C : 0));
     cpu.p |= P_M;
+}
+
+void abi_TilemapPaletteCycle(void)
+{
+    palette_cycle_exit(TilemapPaletteCycle(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
 /*
@@ -460,57 +461,33 @@ void abi_TilemapPaletteCycle(void)
  */
 void ScreenFrameAndPictures(uint8_t bank)
 {
+    uint8_t p = 0;
+
+    cyc(114);
     ppu_wr16(VMADDL, 0x7800);
+    cyc(40);
     ppu_wr(VMAIN, 0x80);
-    VramFrameRows2B0(bank);
-    VramFillGradient(0x2000);
+    (cyc(46), VramFrameRows2B0(bank, 0));
+    (cyc(114), VramFillGradient(0x2000, &p));
+    cyc(70);
     ppu_wr16(VMADDL, 0x7A40);
-    VramPictureRows2B0();
+    (cyc(46), VramPictureRows2B0(0));
+    cyc(48);
     ppu_wr16(VMADDL, 0x7C00);
-    VramFrameRows1B0(bank);
-    VramFillGradient(0x2010);
+    (cyc(46), VramFrameRows1B0(bank, 0));
+    (cyc(114), VramFillGradient(0x2010, &p));
+    cyc(70);
     ppu_wr16(VMADDL, 0x7E40);
-    VramPictureRows1B0();
+    (cyc(46), VramPictureRows1B0(0));
+    cyc(70);
 }
 
 void abi_ScreenFrameAndPictures(void)
 {
-    uint8_t p = cpu.p;
-
-    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
-    cpu.a = 0x7800;
-    cyc(114);
-    ppu_wr16(VMADDL, cpu.a);
-    cpu.x = 0x80;
-    cyc(40);
-    ppu_wr(VMAIN, 0x80);
-    (cyc(46), abi_VramFrameRows2B0());
-    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.a = 0x2000;
-    (cyc(114), abi_VramFillGradient());
-    cpu.p &= (uint8_t)~P_M;
-    cpu.a = 0x7A40;
-    cyc(70);
-    ppu_wr16(VMADDL, cpu.a);
-    (cyc(46), abi_VramPictureRows2B0());
-    cpu.a = 0x7C00;
-    cyc(48);
-    ppu_wr16(VMADDL, cpu.a);
-    (cyc(46), abi_VramFrameRows1B0());
-    cpu.a = 0x2010;
-    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    (cyc(114), abi_VramFillGradient());
-    cpu.p &= (uint8_t)~P_M;
+    ScreenFrameAndPictures(cpu.db);
     cpu.a = 0x7E40;
-    cyc(70);
-    ppu_wr16(VMADDL, cpu.a);
-    (cyc(46), abi_VramPictureRows1B0());
-    cpu.p = p;
-    cyc(70);
+    cpu.x = 0x0180;
+    cpu.y = 0x0000;
 }
 
 uint16_t RandomWordStep(uint8_t bank);
@@ -823,16 +800,14 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
  * after a fill; X, Y past the copy (low bytes when P restores 8-bit index
  * registers); P and the data bank unchanged.
  */
-void BackdropRowsUpdate(uint8_t bank)
+uint16_t BackdropRowsUpdate(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint16_t x, y;
-
-    backdrop_rows_update(bank, &x, &y);
+    return backdrop_rows_update(bank, x, y);
 }
 
 void abi_BackdropRowsUpdate(void)
 {
-    cpu.a = backdrop_rows_update(cpu.db, &cpu.x, &cpu.y);
+    cpu.a = BackdropRowsUpdate(cpu.db, &cpu.x, &cpu.y);
     if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
@@ -890,21 +865,22 @@ void abi_BackdropAnglesFromView(void)
  * Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
  * when skipped, X = $87 and Y = 9.
  */
-void TilemapPaletteCycle87(uint8_t bank, uint16_t *a)
+int TilemapPaletteCycle87(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 {
-    uint16_t x = 0x0087, y = 0x0009;
+    int r;
 
-    TilemapPaletteCycle(bank, &x, &y, a);
+    cyc(116);
+    *x = 0x0087;
+    *y = 0x0009;
+    r = TilemapPaletteCycle(bank, x, y, a);
+    cyc(42);
+    return r;
 }
 
 void abi_TilemapPaletteCycle87(void)
 {
-    cyc(116);
-    cpu.x = 0x0087;
-    cpu.y = 0x0009;
     cpu.p &= (uint8_t)~P_X;
-    abi_TilemapPaletteCycle();
-    cyc(42);
+    palette_cycle_exit(TilemapPaletteCycle87(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
 /*
@@ -914,20 +890,22 @@ void abi_TilemapPaletteCycle87(void)
  * Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
  * when skipped, X = $107 and Y = 13.
  */
-void TilemapPaletteCycle107(uint8_t bank, uint16_t *a)
+int TilemapPaletteCycle107(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 {
-    uint16_t x = 0x0107, y = 0x000D;
+    int r;
 
-    TilemapPaletteCycle(bank, &x, &y, a);
+    cyc(116);
+    *x = 0x0107;
+    *y = 0x000D;
+    r = TilemapPaletteCycle(bank, x, y, a);
+    cyc(42);
+    return r;
 }
 
 void abi_TilemapPaletteCycle107(void)
 {
-    cpu.x = 0x0107;
-    cpu.y = 0x000D;
     cpu.p &= (uint8_t)~P_X;
-    (cyc(116), abi_TilemapPaletteCycle());
-    cyc(42);
+    palette_cycle_exit(TilemapPaletteCycle107(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
 /*
@@ -937,21 +915,22 @@ void abi_TilemapPaletteCycle107(void)
  * Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
  * when skipped, X = $187 and Y = 10.
  */
-void TilemapPaletteCycle187(uint8_t bank, uint16_t *a)
+int TilemapPaletteCycle187(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 {
-    uint16_t x = 0x0187, y = 0x000A;
+    int r;
 
-    TilemapPaletteCycle(bank, &x, &y, a);
+    cyc(116);
+    *x = 0x0187;
+    *y = 0x000A;
+    r = TilemapPaletteCycle(bank, x, y, a);
+    cyc(42);
+    return r;
 }
 
 void abi_TilemapPaletteCycle187(void)
 {
-    cyc(116);
-    cpu.x = 0x0187;
-    cpu.y = 0x000A;
     cpu.p &= (uint8_t)~P_X;
-    abi_TilemapPaletteCycle();
-    cyc(42);
+    palette_cycle_exit(TilemapPaletteCycle187(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
 /* Fill a row with palette `bits`, then give the entry at `mark` (an
@@ -1115,25 +1094,25 @@ void abi_TilemapRow287Palette4(void)
  * Entry: any widths. Exit: A = $20CA + the last digit; M 8-bit; N, Z from
  * the OR; C, V from the add.
  */
-void abi_DigitTiles1184(void)
+uint16_t DigitTiles1184(void)
 {
-    uint8_t v;
+    uint16_t a = 0;
     unsigned i;
 
-    cyc(0);
     for (i = 0; i < 3; i++) {
-        cpu.p |= P_M;
         cyc(54);
-        v = rd8(0x001184 + i);
-        cpu.p &= (uint8_t)~(P_M | P_C);
-        cpu.a = op_adc16(v, 0x00CA, &cpu.p);
-        cpu.a |= 0x2000;
-        cpu.p = nz16(cpu.p, cpu.a);
+        a = (uint16_t)((rd8(0x001184 + i) + 0x00CA) | 0x2000);  /* CLC, ADC #$CA (no decimal mode here) */
         cyc(140);
-        wr16(0x7F9481 + i * 2, cpu.a);
+        wr16(0x7F9481 + i * 2, a);
     }
     cyc(64);
-    cpu.p |= P_M;
+    return a;
+}
+
+void abi_DigitTiles1184(void)
+{
+    cpu.a = DigitTiles1184();
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | P_M);
 }
 
 /*
@@ -1144,32 +1123,32 @@ void abi_DigitTiles1184(void)
  * HOW: 8-bit stores through the data bank.
  * Entry: any widths. Exit: A low byte = 2; M 8-bit; N, Z clear.
  */
-void abi_TimesKeepAndAdvance(void)
+void TimesKeepAndAdvance(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t v;
+    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
 
-    cpu.p |= P_M;
     cyc(22);
     for (i = 0; i < 3; i++)
         { cyc(24); wr8(b | (uint16_t)(0x0EEA + i), cyc_then(24, rd8(b | (uint16_t)(0x0EE7 + i)))); }
     cyc(40);
     wr8(b | 0x0E3F, 0x00);
     cyc(24);
-    v = (uint8_t)(rd8(b | 0x0D59) + 1);
-    cyc(6);
-    wr8(b | 0x0D59, v);
-    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0D59, cyc_then(6, (uint8_t)(rd8(b | 0x0D59) + 1)));
     cyc(40);
     wr8(b | 0x0D23, 0x02);
     cyc(46);
     wr8(b | 0x19DF, 0x00);
     cyc(40);
     wr8(b | 0x19D8, 0x02);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    cpu.p = nz8(cpu.p, 0x02);
     cyc(42);
+}
+
+void abi_TimesKeepAndAdvance(void)
+{
+    TimesKeepAndAdvance(cpu.db);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
 }
 
 /*
