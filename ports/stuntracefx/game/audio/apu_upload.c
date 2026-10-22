@@ -12,6 +12,7 @@
 #include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
+#include "audio_calls.h"
 
 /*
  * @routine 04:D788 ApuUploadNextByte
@@ -65,21 +66,25 @@ static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
     return value;
 }
 
+/* The pointer's low word the last byte's add read, for the adapter's flags. */
+static uint16_t next_low;
+
 uint8_t ApuUploadNextByte(uint16_t *offset)
 {
     cyc(0);
-    uint16_t low;
-
-    return apu_upload_next_byte(offset, &low);
+    return apu_upload_next_byte(offset, &next_low);
 }
 
 void abi_ApuUploadNextByte(void)
 {
     /* The carry and overflow the original's 16-bit add leaves behind. */
-    uint16_t low, next = (uint16_t)(cpu.y + 1);
-    uint8_t value = apu_upload_next_byte(&cpu.y, &low);
-    uint32_t sum = (uint32_t)low + next;
+    uint16_t y = cpu.y, next = (uint16_t)(y + 1), low;
+    uint8_t value = ApuUploadNextByte(&y);
+    uint32_t sum;
 
+    low = next_low;
+    sum = (uint32_t)low + next;
+    cpu.y = y;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | value);
     cpu.p = nz16(cpu.p, cpu.a);
     cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
@@ -87,13 +92,22 @@ void abi_ApuUploadNextByte(void)
     cpu.p |= P_M;
 }
 
-/* Where an upload left the stream, and the last value it put on port 0. */
-typedef struct {
-    uint16_t offset;
-    uint8_t kick;
-} ApuUploadEnd;
-
-static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
+/*
+ * @routine 04:D720 ApuUpload
+ * WHAT IT DOES: Uploads a block list from ROM to the SPC700's boot loader and
+ * starts the SPC700 at the address the list ends with.
+ * HOW: Points the upload stream at bank:address, waits for the loader's ready
+ * signature $BBAA on ports 0-1, then for each block sends the SPC700 address
+ * on ports 2-3, a flag on port 1 (1: data follows, 0: start here) and a kick
+ * value on port 0, and waits for the loader to echo the kick. The block's
+ * bytes go out on port 1 with a running index on port 0, each waiting for the
+ * loader to echo the previous index. The first kick is $CC; each later one
+ * is the last index plus 4 (plus 3 more while that wraps to zero).
+ * Entry: M 16-bit, X 16-bit, D = $0000; A low byte = ROM bank, Y = address.
+ * Exit: A = the final kick (high byte 0); X = 0; Y = the stream offset after
+ * the list; N, V clear; Z, C set; M 8-bit.
+ */
+ApuUploadEnd ApuUpload(uint8_t bank, uint16_t addr)
 {
     ApuUploadEnd end;
     uint16_t offset = 0;
@@ -158,29 +172,9 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
     return end;
 }
 
-/*
- * @routine 04:D720 ApuUpload
- * WHAT IT DOES: Uploads a block list from ROM to the SPC700's boot loader and
- * starts the SPC700 at the address the list ends with.
- * HOW: Points the upload stream at bank:address, waits for the loader's ready
- * signature $BBAA on ports 0-1, then for each block sends the SPC700 address
- * on ports 2-3, a flag on port 1 (1: data follows, 0: start here) and a kick
- * value on port 0, and waits for the loader to echo the kick. The block's
- * bytes go out on port 1 with a running index on port 0, each waiting for the
- * loader to echo the previous index. The first kick is $CC; each later one
- * is the last index plus 4 (plus 3 more while that wraps to zero).
- * Entry: M 16-bit, X 16-bit, D = $0000; A low byte = ROM bank, Y = address.
- * Exit: A = the final kick (high byte 0); X = 0; Y = the stream offset after
- * the list; N, V clear; Z, C set; M 8-bit.
- */
-void ApuUpload(uint8_t bank, uint16_t addr)
-{
-    apu_upload(bank, addr);
-}
-
 void abi_ApuUpload(void)
 {
-    ApuUploadEnd end = apu_upload((uint8_t)cpu.a, cpu.y);
+    ApuUploadEnd end = ApuUpload((uint8_t)cpu.a, cpu.y);
 
     cpu.a = end.kick;
     cpu.x = 0;
@@ -239,21 +233,22 @@ void abi_ApuSettleDelay(void)
  * Entry: any widths, D = $0000. Exit: A = 0, X = 0, Y = the stream offset
  * after the list; P unchanged.
  */
-void ApuUploadBank19(void)
-{
-    ApuUpload(0x19, 0xC27C);
-    ApuSettleDelay();
-}
-
-void abi_ApuUploadBank19(void)
+uint16_t ApuUploadBank19(void)
 {
     cyc(154);
-    ApuUploadEnd end = apu_upload(0x19, 0xC27C);
+    ApuUploadEnd end = ApuUpload(0x19, 0xC27C);
 
     /* its own copy of the settle delay: REP, LDA #$4000, DEC A and BNE */
     cyc(118);
     delay_turns(0x4000);
+    return end.offset;
+}
+
+void abi_ApuUploadBank19(void)
+{
+    uint16_t offset = ApuUploadBank19();
+
     cpu.a = 0;
     cpu.x = 0;
-    cpu.y = end.offset;
+    cpu.y = offset;
 }

@@ -11,6 +11,7 @@
 #include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
+#include "audio_calls.h"
 
 /* Append a byte to a ring, unless sound is muted or the ring is full. The
    count is incremented in place (read again, as INC does): the frame code
@@ -42,6 +43,13 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
     cyc(184);
 }
 
+/* The caller's PHA/PLA 8 longer with A 16-bit, PHY/PHX/PLX/PLY 16 with X
+   and Y 16-bit, from its P. */
+static unsigned push_wide(uint8_t p)
+{
+    return (p & P_M ? 0 : 8) + (p & P_X ? 0 : 16);
+}
+
 /*
  * @routine 04:D649 SoundPort0QueuePushRaw
  * WHAT IT DOES: Queues a sound command for APU port 0 exactly as given.
@@ -63,21 +71,29 @@ void abi_SoundPort0QueuePushRaw(void)
 }
 
 /* From a caller with M and X 8-bit: the pulls take no extra byte. */
+void SoundPort0QueuePushRawX8(uint8_t command)
+{
+    SoundPort0QueuePushRaw(command);
+}
+
 void abi_SoundPort0QueuePushRawX8(void)
 {
-    SoundPort0QueuePushRaw((uint8_t)cpu.a);
+    SoundPort0QueuePushRawX8((uint8_t)cpu.a);
     cpu.p = nz8(cpu.p, cpu.db);
 }
 
-/* With the caller's widths: A 16-bit makes its push and pull 8 longer, X
-   and Y 16-bit 16 (the entry's BRA is queue_push's). */
+/* With the caller's widths: wide as for SoundPort0QueuePushW (the entry's
+   BRA is queue_push's). */
+void SoundPort0QueuePushRawWide(uint8_t command, unsigned wide)
+{
+    cyc(198 + wide);
+    queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
+    cyc(wide);
+}
+
 void abi_SoundPort0QueuePushRawWide(void)
 {
-    unsigned wide = (cpu.p & P_M ? 0 : 8) + (cpu.p & P_X ? 0 : 16);
-
-    cyc(198 + wide);
-    queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, (uint8_t)cpu.a);
-    cyc(wide);
+    SoundPort0QueuePushRawWide((uint8_t)cpu.a, push_wide(cpu.p));
     cpu.p = nz8(cpu.p, cpu.db);
 }
 
@@ -90,14 +106,8 @@ void abi_SoundPort0QueuePushRawWide(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-static unsigned push_wide(void)
-{
-    return (cpu.p & P_M ? 0 : 8) + (cpu.p & P_X ? 0 : 16);
-}
-
-/* wide: the caller's PHA/PLA 8 longer with A 16-bit, PHY/PHX/PLX/PLY 16 with
-   X and Y 16-bit. */
-static void port0_push(uint8_t command, unsigned wide)
+/* wide: push_wide's. */
+void SoundPort0QueuePushW(uint8_t command, unsigned wide)
 {
     cyc(222 + wide);
     if (rd8(CURRENT_PLAYER) != 0)
@@ -109,12 +119,12 @@ static void port0_push(uint8_t command, unsigned wide)
 /* From C: M 8-bit, X 16-bit. */
 void SoundPort0QueuePush(uint8_t command)
 {
-    port0_push(command, 16);
+    SoundPort0QueuePushW(command, 16);
 }
 
 void abi_SoundPort0QueuePush(void)
 {
-    port0_push((uint8_t)cpu.a, push_wide());
+    SoundPort0QueuePushW((uint8_t)cpu.a, push_wide(cpu.p));
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
 }
 
@@ -130,7 +140,7 @@ void abi_SoundPort0QueuePushX8(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-static void port1_push(uint8_t command, unsigned wide)
+void SoundPort1QueuePushW(uint8_t command, unsigned wide)
 {
     cyc(176 + wide);
     queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
@@ -140,18 +150,12 @@ static void port1_push(uint8_t command, unsigned wide)
 /* From C: M 8-bit, X 16-bit. */
 void SoundPort1QueuePush(uint8_t command)
 {
-    port1_push(command, 16);
-}
-
-/* From C with the caller's widths: wide as for port0_push. */
-void SoundPort1QueuePushW(uint8_t command, unsigned wide)
-{
-    port1_push(command, wide);
+    SoundPort1QueuePushW(command, 16);
 }
 
 void abi_SoundPort1QueuePush(void)
 {
-    port1_push((uint8_t)cpu.a, push_wide());
+    SoundPort1QueuePushW((uint8_t)cpu.a, push_wide(cpu.p));
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
 }
 
@@ -207,8 +211,10 @@ void abi_SoundReset(void)
 /* One ring to its port: 0 when the port still shows a command, else the
    oldest byte (the head steps on, wrapping at 16, unless that was the
    last). Returns 0 when the ring is empty and the port was clear (nothing
-   written), else 1 with the byte written in A. */
-static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, uint16_t ring)
+   written), else 1 with the byte written in *a (the 8-bit A); *x is the
+   8-bit X. */
+static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, uint16_t ring,
+                     uint8_t *a, uint8_t *x)
 {
     uint8_t v, n;
 
@@ -220,26 +226,26 @@ static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, u
     } else {
         cyc(40);
         n = rd8(b | count);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | n);
+        *a = n;
         if (!n)
             { cyc(22); return 0; }
         cyc(40);
-        cpu.x = rd8(b | head);
+        *x = rd8(b | head);
         cyc(24);
-        v = rd8(b | (uint16_t)(ring + cpu.x));
+        v = rd8(b | (uint16_t)(ring + *x));
         cyc(24);
         n = (uint8_t)(rd8(b | count) - 1);
         cyc(6);
         wr8(b | count, n);
         if (n) {
-            cpu.x = (uint8_t)(cpu.x + 1);
-            if (cpu.x >= 0x10)
-                cpu.x = 0x00;
+            *x = (uint8_t)(*x + 1);
+            if (*x >= 0x10)
+                *x = 0x00;
             cyc(92);
-            wr8(b | head, (uint8_t)cpu.x);
+            wr8(b | head, *x);
         } else { cyc(22); }
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    *a = v;
     cyc(46);
     reg_wr(b | port, v);
     return 1;
@@ -257,38 +263,36 @@ static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, u
  * bytes remain after the one taken. The direct bytes are not sent in the
  * traces so far.
  * Entry: any widths; DB a bank where work RAM and the APU ports are
- * mapped. Exit: X and Y high bytes cleared; X = the last head; A as the
- * last write; P restored.
+ * mapped (bank); X's low byte kept unless a head is read. Exit: X and Y high
+ * bytes cleared; X = the last head; A (low byte) as the last write; P
+ * restored. The function returns the low bytes of A and X.
  */
-void abi_SoundPortsSend(void)
+SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a, v;
+    SoundPortsEnd end;
 
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
     cyc(46);
-    v = rd8(b | 0x10E2);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    a = v = rd8(b | 0x10E2);
     if (v) {
         cyc(40);
         hw_wr(b | 0x2140, v);
         cyc(24);
         wr8(b | 0x10E2, 0x00);
-        cyc(28);                        /* PLP; op_plp states the RTS */
-        op_plp(p0);
-        return;
+        cyc(28);                        /* PLP; the plp's 42 states the RTS */
+        goto done;
     }
     cyc(46);
-    v = rd8(b | 0x10E3);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    a = v = rd8(b | 0x10E3);
     if (v) {
         cyc(40);
         hw_wr(b | 0x2141, v);
         cyc(24);
         wr8(b | 0x10E3, 0x00);
         cyc(28);
-        op_plp(p0);
-        return;
+        goto done;
     } else { cyc(6); }
     {
         static const uint16_t hold[2] = {0x10DA, 0x10DC};
@@ -296,31 +300,26 @@ void abi_SoundPortsSend(void)
 
         for (i = 0; i < 2; i++) {
             cyc(40);
-            v = rd8(b | hold[i]);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            a = v = rd8(b | hold[i]);
             if (v) {
                 cyc(50);
-                op_plp(p0);
-                return;
+                goto done;
             }
         }
     }
     cyc(40);
-    v = rd8(b | 0x0E3B);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    a = v = rd8(b | 0x0E3B);
     if (!(v & 0x01)) {
         cyc(60);
-        op_plp(p0);
-        return;
+        goto done;
     } else { cyc(38); }
-    ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8);
-    if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8))
-        { cyc(24); wr8(b | 0x0DD2, (uint8_t)cpu.a); }
+    ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8, &a, &x);
+    if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8, &a, &x))
+        { cyc(24); wr8(b | 0x0DD2, a); }
     cyc(24);
-    v = rd8(b | 0x0E4B);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    a = v = rd8(b | 0x0E4B);
     if (v) {
-        cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        a = 0x00;
         cyc(62);
         hw_wr(b | 0x2142, 0x00);
         cyc(24);
@@ -334,8 +333,23 @@ void abi_SoundPortsSend(void)
         v = rd8(b | 0x0E49);
         cyc(24);
         hw_wr(b | 0x2143, v);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        a = v;
     }
     cyc(28);
-    op_plp(p0);
+done:
+    cyc(42);                            /* PLP */
+    end.a = a;
+    end.x = x;
+    return end;
+}
+
+void abi_SoundPortsSend(void)
+{
+    uint8_t p0 = cpu.p;
+    SoundPortsEnd end = SoundPortsSend(cpu.db, (uint8_t)cpu.x);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | end.a);
+    cpu.x = end.x;
+    cpu.y &= 0x00FF;
+    cpu.p = p0;
 }

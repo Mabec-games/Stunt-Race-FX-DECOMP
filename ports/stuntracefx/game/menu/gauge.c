@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "wram.h"
+#include "menu_calls.h"
 
 #define MENU_GAUGE 0x00117Eu
 
@@ -198,16 +199,24 @@ void abi_GaugeFromSpeed(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; P on the stack above the return
  * address. Exit: as GaugeFromSpeed.
  */
-void abi_GaugeFromSpeedZero(void)
+uint16_t GaugeFromSpeedZero(uint8_t bank, uint16_t *x)
 {
-    uint16_t x, a;
+    uint16_t a;
 
     cyc(84);
-    x = GaugeTableIndex(cpu.db, 0x0000);
+    *x = GaugeTableIndex(bank, 0x0000);
     cyc(124);
-    a = rd8(0x0BB158 + x);
+    a = rd8(0x0BB158 + *x);
     wr16(0x000002, a);
-    cpu.a = a;
+    return a;
+}
+
+/* The tail pulls the P the routine's start pushed. */
+void abi_GaugeFromSpeedZero(void)
+{
+    uint16_t x;
+
+    cpu.a = GaugeFromSpeedZero(cpu.db, &x);
     cpu.x = x;
     cpu.s++;
     cyc(20);
