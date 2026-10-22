@@ -4,9 +4,10 @@
  */
 #include "machine.h"
 
-void abi_Gsu8325(void);
-void abi_Gsu82CE(void);
-void abi_ScaleFiveThirtySeconds(void);
+#include "math_calls.h"
+
+uint16_t Gsu8325(uint8_t bank);
+uint16_t Gsu82CE(void);
 
 #define CAM(r, f) ((uint16_t)((f) + (r)))      /* a camera field, bank 0 */
 #define CAM_TARGET 0x1F33u                      /* the followed object */
@@ -88,14 +89,17 @@ static uint16_t angle_hi(uint32_t b, uint16_t y, uint16_t field)
  * X 16-bit; with bit 1: A = 2, N, Z from it; otherwise A = the last
  * position word, N, Z, C, V from its add, Y as the last step left it.
  */
-void abi_CameraFollowStep(void)
+static int cam_early;                   /* the adapter's: bit 1 set, nothing done */
+static uint16_t cam_y;                  /* Y as it ends */
+static uint8_t cam_flags;               /* N, Z, C, V of the last add */
+
+uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t r = cpu.x, a, t, f, y, g, w;
-    uint8_t p = cpu.p;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, t, f, y, g, w;
+    uint8_t p = 0, sp;
     unsigned i;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(104);
     t = rd16(CAM(r, 0x02));
     cyc(38);
@@ -106,9 +110,8 @@ void abi_CameraFollowStep(void)
     a = (uint16_t)(rd16(b | CAM_FLAGS) & 0x0002);
     if (a) {
         cyc(150);
-        cpu.a = a;
-        cpu.p = (uint8_t)(nz16(cpu.p, a) & ~(P_M | P_X));
-        return;
+        cam_early = 1;
+        return a;
     }
     cyc(92);
     if (rd16(b | CAM_FLAGS) & 0x0004) {
@@ -160,7 +163,7 @@ void abi_CameraFollowStep(void)
     } else if (!(f & 0x1C00)) {
         cyc(110);
         y = rd16(b | CAM_TARGET);
-        cpu.y = y;
+        cy = y;
         a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
         cyc(104);
         wr16(CAM(r, 0x16), a);
@@ -177,7 +180,7 @@ void abi_CameraFollowStep(void)
     } else {
         cyc(116);
         y = rd16(b | CAM_TARGET);
-        cpu.y = y;
+        cy = y;
         cyc(62);
         g = rd16(0x70247A);
         cyc(46);
@@ -221,17 +224,20 @@ void abi_CameraFollowStep(void)
                 break;
             case 0x0C00:
                 cyc(214);
-                cpu.a = rd16(b | CAM_LAG);
-                (cyc(62), abi_ScaleFiveThirtySeconds());
+                a = rd16(b | CAM_LAG);
+                sp = 0;
+                a = (cyc(62), ScaleFiveThirtySeconds(bank, a, &sp));
+                cyc(44);                /* its RTL */
                 cyc(22); /* BRA */
-                a = asr_round(cpu.a, 1);
+                a = asr_round(a, 1);
                 break;
             case 0x1000:
                 cyc(254);
-                cpu.a = rd16(b | CAM_LAG);
-                (cyc(62), abi_ScaleFiveThirtySeconds());
-                cyc(0);
-                a = asr_round(cpu.a, 2);
+                a = rd16(b | CAM_LAG);
+                sp = 0;
+                a = (cyc(62), ScaleFiveThirtySeconds(bank, a, &sp));
+                cyc(44);                /* its RTL */
+                a = asr_round(a, 2);
                 break;
             default:
                 cyc(248);
@@ -269,22 +275,17 @@ void abi_CameraFollowStep(void)
     a = rd16(b | 0x0662);
     cyc(36);
     wr16(b | 0x0662, cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x39)))));
-    cpu.p |= P_M;
-    (cyc(84), abi_Gsu8325());
-    cpu.p &= (uint8_t)~P_M;
+    (cyc(84), Gsu8325(bank));
+    cy &= 0x00FF;                       /* Gsu8325's 8-bit index registers */
     cyc(22);
     for (i = 0; i < 18; i += 2)
         { cyc(24); wr16(b | (uint16_t)(0x064C + i), cyc_then(24, rd16(b | (uint16_t)(0x0608 + i)))); }
     cyc(84);
-    cpu.p |= P_M;
-    abi_Gsu82CE();
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.x = r;
+    Gsu82CE();
     cyc(82);
     f = rd16(b | CAM_FLAGS);
-    p = cpu.p;
     if (f & 0x0008) {
-        y = cpu.y;
+        y = cy;
         cyc(100);
         a = rd16(b | (uint16_t)(0x200C + y));
         cyc(30);
@@ -318,7 +319,7 @@ void abi_CameraFollowStep(void)
     } else {
         cyc((f & 0x0010) ? 116 : 110);    /* BNE taken 22, not 16 */
         y = rd16(b | CAM_TARGET);
-        cpu.y = y;
+        cy = y;
         cyc(30);
         a = rd16(b | (uint16_t)(0x200C + y));
         cyc(30);
@@ -346,6 +347,19 @@ void abi_CameraFollowStep(void)
         wr16(CAM(r, 0x0C), a);
     }
     cyc(102);
-    cpu.a = a;
-    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+    cam_y = cy;
+    cam_flags = (uint8_t)(p & (P_N | P_Z | P_C | P_V));
+    return a;
+}
+
+void abi_CameraFollowStep(void)
+{
+    cam_early = 0;
+    cpu.a = CameraFollowStep(cpu.db, cpu.x, cpu.y);
+    if (cam_early) {
+        cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~(P_M | P_X));
+        return;
+    }
+    cpu.y = cam_y;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags);
 }

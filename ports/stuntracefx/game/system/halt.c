@@ -10,7 +10,7 @@
 #include "hw.h"
 #include "cpu_ops.h"
 
-void abi_DebugPrintHexByte(void);
+#include "system_calls.h"
 
 /*
  * @routine 0B:E41D SystemHalt
@@ -107,16 +107,12 @@ void abi_Hang(void)
  * loop; the $69 kept across the stores by PHA, PLA. Never returns.
  * Entry: D = $0000. Exit: does not return.
  */
-void DebugByteHalt(void)
+void DebugByteHalt(uint16_t d)
 {
-    uint32_t b;
+    uint32_t b = 0x030000;
     uint16_t v;
 
-    op_sep(P_M);
-    op_rep(P_X);
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, cpu.db);
-    b = (uint32_t)cpu.db << 16;
+    cyc(22);                            /* REP #$10 */
     cyc(94);
     for (;;) {
         cyc(70);
@@ -124,20 +120,17 @@ void DebugByteHalt(void)
         cyc(40);
         wr8(b | 0x0D61, 0x0F);
         cyc(32);
-        wr8((uint16_t)(cpu.d + 0x00), 0x02);
+        wr8((uint16_t)(d + 0x00), 0x02);
         cyc(70);
-        wr8((uint16_t)(cpu.d + 0x46), 0x80);
+        wr8((uint16_t)(d + 0x46), 0x80);
         cyc(32);
-        wr8((uint16_t)(cpu.d + 0x47), 0x06);
+        wr8((uint16_t)(d + 0x47), 0x06);
         cyc(40);
         wr8(b | 0x0307, 0x00);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x69);
-        cpu.p = nz8(cpu.p, 0x69);
-        (cyc(90), abi_DebugPrintHexByte()) /* PLA, JSL */;
-        op_sep(P_M);
+        (cyc(90), DebugPrintHexByte(0x03, 0x69, P_M)) /* PLA, JSL */;
         cyc(46);
         wr8(b | 0x0357, 0x00);
-        op_rep(P_M);
+        cyc(22);                        /* REP #$20 */
         cyc(24);
         wr16(b | 0x0D7F, 0x0000);
         cyc(24);
@@ -147,15 +140,11 @@ void DebugByteHalt(void)
         cyc(56);
         wr16(0x70021A, 0x2C00);
         cyc(16);
-        wr16((uint16_t)(cpu.d + 0x48), 0x2C00);
+        wr16((uint16_t)(d + 0x48), 0x2C00);
         cyc(24);
         v = (uint16_t)(rd16(b | 0x0374) | 0x0018);
-        cpu.a = v;
         cyc(48);
         hw_wr16(b | 0x303A, v);
-        op_sep(P_M);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0B);
-        cpu.p = nz8(cpu.p, 0x0B);
         cyc(70);
         hw_wr(GSU_SCBR, 0x0B);
     }
@@ -163,5 +152,9 @@ void DebugByteHalt(void)
 
 void abi_DebugByteHalt(void)
 {
-    DebugByteHalt();
+    /* SEP #$20, REP #$10, PHB, PHK, PLB: what an interrupt in the loop
+       finds (the C below never returns) */
+    cpu.p = nz8((uint8_t)((cpu.p | P_M) & ~P_X), 0x03);
+    cpu.db = 0x03;
+    DebugByteHalt(cpu.d);
 }

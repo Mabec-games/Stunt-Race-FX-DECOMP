@@ -7,9 +7,8 @@
  * +$14/+$15/+$16.
  */
 #include "machine.h"
-
-void abi_ObjectGsu81E3(void);
-void abi_ObjectGsu80BCThen81E3(void);
+#include "gsu_programs_calls.h"
+#include "object_calls.h"
 
 /* An absolute indexed address: the data bank, plus the offset and index
    (the sum may carry into the next bank). */
@@ -61,60 +60,59 @@ static void ease_half(uint8_t bank, uint16_t rec, uint16_t off, uint16_t v)
  * unchanged; Y = the record when either flag was set, else unchanged; P
  * unchanged.
  */
-void ObjectFaceTied(void)
-{
-    uint8_t p0 = cpu.p, bank = cpu.db;
-    uint16_t rec = cpu.x, a, old;
+static int face_y_set;                  /* the adapter's: Y = the record */
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
+uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
+{
+    uint16_t a, old, x;
+
+    face_y_set = 0;
     cyc(66);
     if (rd16(rec) & 0x0001) {
-        cpu.y = rec;
+        face_y_set = 1;
         cyc(104);
-        cpu.x = rd16((uint16_t)(rec + 0x02));
+        x = rd16((uint16_t)(rec + 0x02));
         wr16(0x000004, cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
         wr16(0x00000A, cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
         wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
-        (cyc(62), abi_ObjectGsu81E3());
-        wr16(absidx(bank, 0x0010, rec), cyc_then(68, (uint16_t)(cpu.a + 0x8000)));
+        a = (cyc(62), ObjectGsu81E3(bank, x));
+        wr16(absidx(bank, 0x0010, rec), cyc_then(68, (uint16_t)(a + 0x8000)));
         if (!(rd16(cyc_then(30, absidx(bank, 0x0000, rec))) & 0x0040)) {
             cyc(102);
-            abi_ObjectGsu80BCThen81E3();
-            a = cpu.a;
+            a = ObjectGsu80BCThen81E3(bank, x);
         } else {
             cyc(108);
-            abi_ObjectGsu80BCThen81E3();
+            a = ObjectGsu80BCThen81E3(bank, x);
             old = rd16(cyc_then(22, absidx(bank, 0x000E, rec)));
-            a = asr16(asr16((uint16_t)(cpu.a - old)));
+            a = asr16(asr16((uint16_t)(a - old)));
             a = (uint16_t)(a + rd16(cyc_then(44, absidx(bank, 0x000E, rec))));
         }
         wr16(absidx(bank, 0x000E, rec), cyc_then(30, a));
-        a = asr16(asr16(neg_angle(absidx(bank, 0x2016, cpu.x))));
+        a = asr16(asr16(neg_angle(absidx(bank, 0x2016, x))));
         ease_half(bank, rec, 0x0012, a);
-        cpu.x = cpu.y;
         cyc(22);                                       /* BRA */
     } else { cyc(114); if (rd16(rec) & 0x4000) {
-        cpu.y = rec;
+        face_y_set = 1;
         cyc(76);
-        cpu.x = rd16((uint16_t)(rec + 0x02));
+        x = rd16((uint16_t)(rec + 0x02));
         cyc(14);
-        ease_half(bank, rec, 0x000E, neg_angle(absidx(bank, 0x2014, cpu.x)));
-        ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, cpu.x)));
-        ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, cpu.x)));
-        cpu.x = cpu.y;
+        ease_half(bank, rec, 0x000E, neg_angle(absidx(bank, 0x2014, x)));
+        ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, x)));
+        ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, x)));
     } else { cyc(32); } }
     cyc(36);
-    a = rd16(cpu.x) & 0x8000;
+    a = rd16(rec) & 0x8000;
     if (!a)
-        { cyc(62); wr16((uint16_t)(cpu.x + 0x12), 0x0000); } else { cyc(46); }
+        { cyc(62); wr16((uint16_t)(rec + 0x12), 0x0000); } else { cyc(46); }
     cyc(72);
-    cpu.a = a;
-    cpu.p = p0;
+    return a;
 }
 
 void abi_ObjectFaceTied(void)
 {
-    ObjectFaceTied();
+    cpu.a = ObjectFaceTied(cpu.db, cpu.x);
+    if (face_y_set)
+        cpu.y = cpu.x;
 }
 
 uint16_t ScaleDp02Dp94Long(uint8_t *p);
