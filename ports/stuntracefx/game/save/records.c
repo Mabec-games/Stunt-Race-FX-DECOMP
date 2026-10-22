@@ -2018,34 +2018,31 @@ void abi_RecordsLoadCourseLong(void)
     }
 }
 
-void abi_RecordTagCar0(void);
-void abi_RecordTagCar4(void);
-void abi_RecordTagCar8(void);
-void abi_TimePackBcd(void);
+uint16_t RecordTagCar0(uint8_t bank);
+uint16_t RecordTagCar4(uint8_t bank);
+uint16_t RecordTagCar8(uint8_t bank);
 
 #define SPECIAL_SAVES 0x70FCD0u
 #define SPECIAL_LAPS 0x70FFD0u
 
 /* A direct page address (bank 0). */
-static uint32_t special_dp(uint8_t off)
-{
-    return (uint16_t)(cpu.d + off);
-}
+
 
 /* CPX (16-bit): N, Z and C. */
-static void special_cpx(uint16_t m)
-{
-    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - m)) & ~P_C) | (cpu.x >= m ? P_C : 0));
-}
+
 
 /* CLC; ADC (8-bit) of a direct page byte. */
-static void special_add8(uint8_t off)
-{
-    uint8_t v;
+static uint8_t chk_cv;                  /* C and V of the checksum's last add */
+static uint8_t chk_x;                   /* X on exit: the course byte */
 
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8((uint8_t)cpu.a, rd8(cyc_then(30, special_dp(off))), &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+/* CLC; ADC (8-bit) of the direct page byte $F1, binary. */
+static uint8_t special_add8(uint16_t d, uint8_t a)
+{
+    uint8_t m = rd8(cyc_then(30, (uint16_t)(d + 0xF1)));
+    unsigned s = (unsigned)a + m;
+
+    chk_cv = (uint8_t)((s > 0xFF ? P_C : 0) | ((~(a ^ m) & (a ^ s) & 0x80) ? P_V : 0));
+    return (uint8_t)s;
 }
 
 /*
@@ -2059,84 +2056,92 @@ static void special_add8(uint8_t off)
  * the low byte of the sum; X = the course, Y = 0; M 16-bit, X 16-bit; N, Z
  * from the last count; C, V from the last add.
  */
-void abi_SpecialRecordsChecksum(void)
+uint8_t SpecialRecordsChecksum(uint8_t bank, uint16_t d)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, x, y;
+    uint8_t s;
     int i;
 
     cyc(24);
-    op_lda16(b | 0x0E3D);
-    op_and16(0x00FF);
-    op_cmp16(0x000C);
-    if (cpu.p & P_C) {
+    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+    cyc(2);
+    if (a >= 0x000C) {
         cyc(84);
-        op_sep(P_M);
-        cpu.a &= 0xFF00;
-        cpu.p = nz8(cpu.p, 0x00);
+        s = 0x00;
     } else {
-        op_asl16();
-        op_asl16();
-        op_tax16();
-        op_sep(P_M);
+        x = (uint16_t)(a << 2);
+        cyc(30);                        /* TAX */
         cyc(128);
-        op_lda8(SPECIAL_LAPS + cpu.x);
+        s = rd8(SPECIAL_LAPS + x);
         for (i = 1; i < 4; i++) {
-            wr8(special_dp(0xF1), cyc_then(16, (uint8_t)cpu.a));
+            wr8((uint16_t)(d + 0xF1), cyc_then(16, s));
             cyc(32);
-            op_lda8(SPECIAL_LAPS + i + cpu.x);
-            special_add8(0xF1);
+            s = rd8(SPECIAL_LAPS + i + x);
+            s = special_add8(d, s);
         }
     }
-    wr8(special_dp(0xF1), cyc_then(38, (uint8_t)cpu.a));
-    cpu.y = 0x0030;
-    cpu.p = nz16(cpu.p, cpu.y);
+    wr8((uint16_t)(d + 0xF1), cyc_then(38, s));
+    y = 0x0030;
     cyc(48);
-    cpu.x = rd16(b | 0x0D14);
-    cpu.p = nz16(cpu.p, cpu.x);
-    cpu.p &= (uint8_t)~P_C;
+    x = rd16(b | 0x0D14);
     do {
         cyc(46);
-        op_lda8(SPECIAL_SAVES + cpu.x);
-        special_add8(0xF1);
-        wr8(special_dp(0xF1), cyc_then(16, (uint8_t)cpu.a));
-        cpu.x++;
-        cpu.p = nz16(cpu.p, cpu.x);
-        cpu.y--;
-        cpu.p = nz16(cpu.p, cpu.y);
-    } while (cyc_loop(36, cpu.y));
-    op_sep(P_X);
+        s = rd8(SPECIAL_SAVES + x);
+        s = special_add8(d, s);
+        wr8((uint16_t)(d + 0xF1), cyc_then(16, s));
+        x++;
+        y--;
+    } while (cyc_loop(36, y));
+    cyc(22);                            /* SEP #$10 */
     cyc(68);
-    cpu.x = rd8(b | 0x0E3D);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-    op_lda8(cyc_then(16, special_dp(0xF1)));
+    chk_x = rd8(b | 0x0E3D);
+    s = rd8(cyc_then(16, (uint16_t)(d + 0xF1)));
     cyc(32);
-    wr8(0x70FC33 + cpu.x, (uint8_t)cpu.a);
-    op_rep(P_M | P_X);
+    wr8(0x70FC33 + chk_x, s);
+    cyc(22);                            /* REP #$30 */
     cyc(42);
+    return s;
+}
+
+/* The registers SpecialRecordsChecksum leaves. */
+static void checksum_exit(uint8_t s)
+{
+    cpu.a = s;
+    cpu.x = chk_x;
+    cpu.y = 0x0000;
+    cpu.p = nz8((uint8_t)((cpu.p & ~(P_C | P_V | P_M | P_X)) | chk_cv), s);
+}
+
+void abi_SpecialRecordsChecksum(void)
+{
+    checksum_exit(SpecialRecordsChecksum(cpu.db, cpu.d));
 }
 
 /* Entry +a's word to entry +b (the course's entries, from X). */
-static void special_move(uint16_t from, uint16_t to)
+static void special_move(uint16_t x, uint16_t from, uint16_t to)
 {
+    uint16_t v;
+
     cyc(32);
-    op_lda16(SPECIAL_SAVES + from + cpu.x);
+    v = rd16(SPECIAL_SAVES + from + x);
     cyc(32);
-    wr16(SPECIAL_SAVES + to + cpu.x, cpu.a);
+    wr16(SPECIAL_SAVES + to + x, v);
 }
 
 /* LDA abs, LDX abs, LDY abs; TimePackBcd: one lap's packed time. */
 static uint16_t special_pack(uint32_t b, uint16_t at)
 {
+    uint16_t hund, sec, min;
+    uint8_t p = 0;                      /* 16-bit registers, binary */
+
     cyc(40);
-    op_lda16(b | at);
+    hund = rd16(b | at);
     cyc(24);
-    cpu.x = rd16(b | (uint16_t)(at + 1));
-    cpu.p = nz16(cpu.p, cpu.x);
+    sec = rd16(b | (uint16_t)(at + 1));
     cyc(24);
-    cpu.y = rd16(b | (uint16_t)(at + 2));
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(46), abi_TimePackBcd());
-    return cpu.a;
+    min = rd16(b | (uint16_t)(at + 2));
+    return (cyc(46), TimePackBcd(hund, sec, min, &p));
 }
 
 /*
@@ -2158,154 +2163,172 @@ static uint16_t special_pack(uint32_t b, uint16_t at)
  * leaves it; or A = $FFFF; or, for no special course or car, A = the time
  * and N, Z from it.
  */
-void abi_SpecialRecordInsert(void)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t t = cpu.a, r1, r2, n;
+/* SpecialRecordInsert's exit, for its adapter: none (A the time), $FFFF
+   (no place) or the checksum's; X and Y when it changed them; C for the
+   none case, V when an add computed one. */
+enum { INS_NONE, INS_NO_PLACE, INS_CHECKSUM };
+static int ins_kind, ins_x_set, ins_y_set, ins_v_set;
+static uint16_t ins_x, ins_y;
+static uint8_t ins_v, ins_sum;
 
+/* CLC; ADC (16-bit), binary; V to ins_v. */
+static uint16_t ins_add(uint16_t a, uint16_t m)
+{
+    uint16_t r = (uint16_t)(a + m);
+
+    ins_v = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    ins_v_set = 1;
+    return r;
+}
+
+void SpecialRecordInsert(uint8_t bank, uint16_t d, uint16_t t)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, x, y, n, r1, r2;
+
+    ins_x_set = ins_y_set = ins_v_set = 0;
     cyc(54);
-    op_lda16(b | 0x0D2B);
-    if (!cpu.a) {
+    if (!rd16(b | 0x0D2B)) {
         cyc(40);
-        op_lda16(b | 0x0D48);
-        op_asl16();
-        op_and16(0x00FF);
-        op_tax16();
+        a = (uint16_t)((rd16(b | 0x0D48) << 1) & 0x00FF);
+        cyc(2);
+        cyc(30);                        /* TAX */
+        ins_x = a;
+        ins_x_set = 1;
         cyc(50);
-        wr16(b + 0x0F6E + cpu.x, cpu.a);
+        wr16(b + 0x0F6E + a, a);
     } else { cyc(22); }
     cyc(24);
-    op_lda16(b | 0x0E3D);
-    op_and16(0x00FF);
-    op_cmp16(0x000C);
-    if (cpu.p & P_C)
+    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+    cyc(2);
+    if (a >= 0x000C)
         goto none;
-    wr16(special_dp(0xF1), cyc_then(84, cpu.a));
-    op_asl16();
-    op_add16(rd16(cyc_then(44, special_dp(0xF1))));
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    wr16(special_dp(0xF1), cyc_then(72, cpu.a));
+    wr16((uint16_t)(d + 0xF1), cyc_then(84, a));
+    a = ins_add((uint16_t)(a << 1), rd16(cyc_then(44, (uint16_t)(d + 0xF1))));
+    a = (uint16_t)(a << 4);
+    wr16((uint16_t)(d + 0xF1), cyc_then(72, a));
     cyc(24);
-    wr16(b | 0x0D14, cpu.a);
-    op_tay16();
+    wr16(b | 0x0D14, a);
+    y = a;                              /* TAY */
+    ins_y = y;
+    ins_y_set = 1;
     cyc(38);
-    op_lda16(b | 0x0D89);
-    op_and16(0x00FF);
-    op_cmp16(0x0004);
-    if (cpu.p & P_C)
+    a = (uint16_t)(rd16(b | 0x0D89) & 0x00FF);
+    cyc(2);
+    if (a >= 0x0004)
         { cyc(6); goto none; }
-    wr16(special_dp(0xF3), cyc_then(78, cpu.a));
-    op_asl16();
-    op_add16(rd16(cyc_then(44, special_dp(0xF3))));
-    op_asl16();
-    op_asl16();
-    op_add16(rd16(cyc_then(58, special_dp(0xF1))));
-    op_tax16();
-    wr16(special_dp(0xF7), cpu.a);
-    cpu.a = t;
-    cpu.p = nz16(cpu.p, t);
+    wr16((uint16_t)(d + 0xF3), cyc_then(78, a));
+    a = ins_add((uint16_t)(a << 1), rd16(cyc_then(44, (uint16_t)(d + 0xF3))));
+    a = (uint16_t)(a << 2);
+    a = ins_add(a, rd16(cyc_then(58, (uint16_t)(d + 0xF1))));
+    cyc(30);                            /* TAX */
+    x = a;
+    ins_x = x;
+    ins_x_set = 1;
+    wr16((uint16_t)(d + 0xF7), x);
     cyc(68);
-    op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
-    if (!(cpu.p & P_C)) {
+    if (t < rd16(SPECIAL_SAVES + x)) {
         cyc(98);
-        abi_RecordTagCar0();
-        cyc(0);
-        special_move(4, 8);
-        special_move(6, 10);
-        special_move(0, 4);
-        special_move(2, 6);
+        RecordTagCar0(bank);
+        special_move(x, 4, 8);
+        special_move(x, 6, 10);
+        special_move(x, 0, 4);
+        special_move(x, 2, 6);
         cyc(24);
-        op_lda16(b | 0x0F11);
+        a = rd16(b | 0x0F11);
         cyc(32);
-        wr16(SPECIAL_SAVES + 2 + cpu.x, cpu.a);
-        cpu.a = t;
-        cpu.p = nz16(cpu.p, t);
+        wr16(SPECIAL_SAVES + 2 + x, a);
         cyc(68);
-        wr16(SPECIAL_SAVES + cpu.x, t);
-        wr16(special_dp(0xF1), cyc_then(16, cpu.x));
-        cpu.x = 0x000C;
-        cpu.p = nz16(cpu.p, cpu.x);
-        wr16(special_dp(0xF5), cyc_then(40, cpu.x));
-        cpu.x = cpu.y;
-        cpu.p = nz16(cpu.p, cpu.x);
+        wr16(SPECIAL_SAVES + x, t);
+        wr16((uint16_t)(d + 0xF1), cyc_then(16, x));
+        wr16((uint16_t)(d + 0xF5), cyc_then(40, 0x000C));
+        x = y;
         do {
-            special_cpx(rd16(cyc_then(30, special_dp(0xF1))));
-            if (!(cpu.p & P_Z)) {
+            if (x != rd16(cyc_then(30, (uint16_t)(d + 0xF1)))) {
                 cyc(48);
-                op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
-                if (cpu.p & P_C)
+                if (t >= rd16(SPECIAL_SAVES + x))
                     { cyc(36); goto checksum; } else { cyc(4); }
             } else { cyc(4); }
-            cpu.x = (uint16_t)(cpu.x + 4);
-            cpu.p = nz16(cpu.p, cpu.x);
-            n = (uint16_t)(rd16(cyc_then(90, special_dp(0xF5))) - 1);
-            wr16(special_dp(0xF5), cyc_then(14, n));
-            cpu.p = nz16(cpu.p, n);
+            x = (uint16_t)(x + 4);
+            n = (uint16_t)(rd16(cyc_then(90, (uint16_t)(d + 0xF5))) - 1);
+            wr16((uint16_t)(d + 0xF5), cyc_then(14, n));
         } while (cyc_loop(8, n));
         r1 = special_pack(b, 0x0EF0);
         cyc(14);
         r2 = special_pack(b, 0x0EF3);
         cyc(54);
-        op_lda16(b | 0x0E3D);
-        op_and16(0x00FF);
-        op_asl16();
-        op_asl16();
-        op_tax16();
-        cpu.a = r2;
-        cpu.p = nz16(cpu.p, r2);
+        x = (uint16_t)((rd16(b | 0x0E3D) & 0x00FF) << 2);
+        cyc(2);
+        cyc(30);                        /* TAX */
         cyc(102);
-        wr16(SPECIAL_LAPS + 2 + cpu.x, r2);
-        cpu.a = r1;
-        cpu.p = nz16(cpu.p, r1);
+        wr16(SPECIAL_LAPS + 2 + x, r2);
         cyc(68);
-        wr16(SPECIAL_LAPS + cpu.x, r1);
+        wr16(SPECIAL_LAPS + x, r1);
         goto checksum;
     }
     cyc(68);
-    op_cmp16(rd16(SPECIAL_SAVES + 4 + cpu.x));
-    if (!(cpu.p & P_C)) {
+    if (t < rd16(SPECIAL_SAVES + 4 + x)) {
         cyc(88);
-        abi_RecordTagCar4();
+        RecordTagCar4(bank);
         cyc(42);
-        special_move(4, 8);
-        special_move(6, 10);
-        cpu.a = t;
-        cpu.p = nz16(cpu.p, t);
+        special_move(x, 4, 8);
+        special_move(x, 6, 10);
         cyc(68);
-        wr16(SPECIAL_SAVES + 4 + cpu.x, t);
+        wr16(SPECIAL_SAVES + 4 + x, t);
         cyc(24);
-        op_lda16(b | 0x0F11);
+        a = rd16(b | 0x0F11);
         cyc(32);
-        wr16(SPECIAL_SAVES + 6 + cpu.x, cpu.a);
+        wr16(SPECIAL_SAVES + 6 + x, a);
         goto checksum;
     }
     cyc(50);
-    op_cmp16(rd16(SPECIAL_SAVES + 8 + cpu.x));
-    if (cpu.p & P_C) {
-        op_rep(P_M | P_X);
-        op_lda16_imm(0xFFFF);
+    if (t >= rd16(SPECIAL_SAVES + 8 + x)) {
+        cyc(22);
+        cyc(38);
         cyc(28);
         wr16(b | 0x10C7, 0xFFFF);
+        ins_kind = INS_NO_PLACE;
         return;
     }
     cyc(44);
-    wr16(SPECIAL_SAVES + 8 + cpu.x, t);
-    abi_RecordTagCar8();
+    wr16(SPECIAL_SAVES + 8 + x, t);
+    RecordTagCar8(bank);
     cyc(66);
-    op_lda16(b | 0x0F11);
+    a = rd16(b | 0x0F11);
     cyc(32);
-    wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
+    wr16(SPECIAL_SAVES + 10 + x, a);
 checksum:
     cyc(22);
-    abi_SpecialRecordsChecksum();
+    ins_sum = SpecialRecordsChecksum(bank, d);
+    ins_kind = INS_CHECKSUM;
     return;
 none:
     cyc(140);                           /* PLA, RTS */
-    cpu.a = t;
-    cpu.p = nz16(cpu.p, t);
+    ins_kind = INS_NONE;
+}
+
+void abi_SpecialRecordInsert(void)
+{
+    uint16_t t = cpu.a;
+
+    SpecialRecordInsert(cpu.db, cpu.d, t);
+    if (ins_kind == INS_CHECKSUM) {
+        checksum_exit(ins_sum);
+        return;
+    }
+    if (ins_x_set)
+        cpu.x = ins_x;
+    if (ins_y_set)
+        cpu.y = ins_y;
+    if (ins_v_set)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | ins_v);
+    if (ins_kind == INS_NO_PLACE) {
+        cpu.a = 0xFFFF;
+        cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M | P_X)) | P_N | P_C);
+    } else {
+        cpu.a = t;
+        cpu.p = (uint8_t)(nz16(cpu.p, t) | P_C);
+    }
 }
 
 /*
@@ -2316,33 +2339,49 @@ none:
  * Entry: M 16-bit. Exit: A = the value; N, Z from it; C from the last
  * shift; V from the add.
  */
-void abi_RecordCarTimes12(void)
+static uint8_t car12_flags;             /* N, Z, C, V as RecordCarTimes12 leaves them */
+
+uint16_t RecordCarTimes12(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, m, r;
 
     cyc(24);
-    op_lda16(b | 0x0D89);
-    op_asl16();
+    a = (uint16_t)(rd16(b | 0x0D89) << 1);
     cyc(52);
-    op_add16(rd16(b | 0x0D89));
-    op_asl16();
-    op_asl16();
-    op_and16(0x00FF);
+    m = rd16(b | 0x0D89);
+    r = (uint16_t)(a + m);
+    car12_flags = (uint8_t)(((r >> 14) & 1)                        /* the last ASL */
+                            | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
+    a = (uint16_t)((r << 2) & 0x00FF);
+    car12_flags |= nz16(0, a);
+    cyc(2);
     cyc(92);
+    return a;
 }
 
-void abi_RecordCarTimes12(void);
+void abi_RecordCarTimes12(void)
+{
+    cpu.a = RecordCarTimes12(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
+}
 
 /* JSR RecordCarTimes12, (CLC, ADC #extra,) STA $10C7. */
-static void record_tag(uint16_t extra)
+static uint16_t record_tag(uint8_t bank, uint16_t extra)
 {
-    abi_RecordCarTimes12();
-    if (extra)
-        op_add16(extra);
+    uint16_t a = RecordCarTimes12(bank), r;
+
+    if (extra) {
+        r = (uint16_t)(a + extra);
+        car12_flags = (uint8_t)(nz16(0, r) | ((unsigned)a + extra > 0xFFFF ? P_C : 0)
+                                | ((~(a ^ extra) & (a ^ r) & 0x8000) ? P_V : 0));
+        a = r;
+    }
     /* BRA, STA; CLC, ADC, BRA, STA for +4; CLC, ADC, STA for +8 */
     cyc(extra == 0x0004 ? 84 : extra ? 62 : 46);
-    wr16((uint32_t)cpu.db << 16 | 0x10C7, cpu.a);
+    wr16((uint32_t)bank << 16 | 0x10C7, a);
     cyc(42);
+    return a;
 }
 
 /*
@@ -2352,10 +2391,16 @@ static void record_tag(uint16_t extra)
  * HOW: RecordCarTimes12; the entries at $07:B063 and $07:B06C add 4 and 8.
  * Entry: M 16-bit. Exit: A = the tag; N, Z from RecordCarTimes12's AND.
  */
-void abi_RecordTagCar0(void)
+uint16_t RecordTagCar0(uint8_t bank)
 {
     cyc(46);
-    record_tag(0);
+    return record_tag(bank, 0);
+}
+
+void abi_RecordTagCar0(void)
+{
+    cpu.a = RecordTagCar0(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
 }
 
 /*
@@ -2365,10 +2410,16 @@ void abi_RecordTagCar0(void)
  * does).
  * Entry: M 16-bit. Exit: A = the tag; N, Z, C, V from the add.
  */
-void abi_RecordTagCar4(void)
+uint16_t RecordTagCar4(uint8_t bank)
 {
     cyc(46);
-    record_tag(0x0004);
+    return record_tag(bank, 0x0004);
+}
+
+void abi_RecordTagCar4(void)
+{
+    cpu.a = RecordTagCar4(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
 }
 
 /*
@@ -2377,10 +2428,16 @@ void abi_RecordTagCar4(void)
  * HOW: As RecordTagCar4 with 8; no script reaches it (unit_cpu does).
  * Entry: M 16-bit. Exit: as RecordTagCar4.
  */
-void abi_RecordTagCar8(void)
+uint16_t RecordTagCar8(uint8_t bank)
 {
     cyc(46);
-    record_tag(0x0008);
+    return record_tag(bank, 0x0008);
+}
+
+void abi_RecordTagCar8(void)
+{
+    cpu.a = RecordTagCar8(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
 }
 /*
  * @routine 07:ADA3 SaveRecordSumsTimeUp
@@ -2391,36 +2448,40 @@ void abi_RecordTagCar8(void)
  * Entry: any widths, D = $0000. Exit: M 8-bit, X 8-bit; A low byte = the
  * last sum; X = $14, Y = 0; Z set, N clear; C, V from the last add.
  */
-void abi_SaveRecordSumsTimeUp(void)
+uint8_t SaveRecordSumsTimeUp(void)
 {
     static const uint8_t at[4] = {0x00, 0x05, 0x0A, 0x0F};
-    uint8_t x, p, v;
+    uint8_t x, v = 0;
     int i;
 
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
     cyc(62);
     wr8(0x0000F1, 0x00);
+    sums_p = 0;
     for (i = 0; i < 4; i++) {
         cyc(62);
         x = at[i];
-        p = cpu.p;
-        v = SaveRecordSumA(&x, &p);
-        cpu.p = p;
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cpu.x = x;
-        cpu.y = 0;
+        v = SaveRecordSumA(&x, &sums_p);
         cyc(72);
         wr8(0x70FC46 + (uint32_t)i, v);
     }
     cyc(42);                            /* RTS */
+    return v;
+}
+
+void abi_SaveRecordSumsTimeUp(void)
+{
+    uint8_t v = SaveRecordSumsTimeUp();
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x0014;
+    cpu.y = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X);
 }
 
 /* SEP #$20, LDA #v, STA.L $000FA3: player 1's lead byte. */
 static void time_up_lead(uint8_t v)
 {
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
     cyc(48);
     wr8(0x000FA3, v);
 }
@@ -2438,13 +2499,17 @@ static void time_up_lead(uint8_t v)
  * Entry: any widths; data bank $07, D = $0000. Exit: M 8-bit; X the
  * record's offset (or as the sums leave it); A low byte = $0FA3's value.
  */
-void abi_TimeUpRecordUpdate(void)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t t, k, x, r;
-    uint8_t v, p;
+/* TimeUpRecordUpdate's exit, for its adapter: the lead byte it set and,
+   when it was a new record, the sums' registers. */
+static uint8_t up_lead, up_cv, up_sum;
+static uint16_t up_t, up_x, up_y, up_high;
 
-    op_sep(P_M);
+uint8_t TimeUpRecordUpdate(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, sec, min, k, m, x, r, w;
+    uint8_t v, p = 0;
+
     cyc(46);
     v = rd8(b | 0x0E66);
     cyc(40);
@@ -2462,62 +2527,75 @@ void abi_TimeUpRecordUpdate(void)
     cyc(80);
     wr8(b | 0x0F6C, (uint8_t)(v >> 4));
     cyc(24);
-    v = rd8(b | 0x0E63);
-    v = (uint8_t)(v & 0x0F);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    v = (uint8_t)(rd8(b | 0x0E63) & 0x0F);
     cyc(40);
     wr8(b | 0x0F6D, v);
-    op_rep(P_M | P_X);
+    cyc(22);                            /* REP #$30 */
     cyc(24);
-    op_lda16(b | 0x0E63);
+    a = rd16(b | 0x0E63);
     cyc(24);
-    cpu.x = rd16(b | 0x0E64);
+    sec = rd16(b | 0x0E64);
     cyc(24);
-    cpu.y = rd16(b | 0x0E66);
-    (cyc(46), abi_TimePackBcd());
-    t = cpu.a;
+    min = rd16(b | 0x0E66);
+    up_y = min;
+    up_t = (cyc(46), TimePackBcd(a, sec, min, &p));   /* 16-bit, binary */
     cyc(54);
-    op_lda16(b | 0x0E3D);
-    p = (uint8_t)(cpu.p | P_C);
-    k = op_sbc16(cpu.a, 0x0017, &p);
+    k = (uint16_t)(rd16(b | 0x0E3D) - 0x0017);
+    cyc(6);                             /* the SBC */
     cyc(48);
     wr16(0x0000F1, k);
     k = (uint16_t)(k << 2);
-    p = (uint8_t)(p & ~P_C);
     cyc(58);
-    k = op_adc16(k, rd16(0x0000F1), &p);
-    x = (uint16_t)(k & 0x00FF);
-    cpu.x = x;
-    cpu.a = t;
+    m = rd16(0x0000F1);
+    r = (uint16_t)(k + m);
+    up_cv = (~(k ^ m) & (k ^ r) & 0x8000) ? P_V : 0;
+    x = (uint16_t)(r & 0x00FF);
+    up_x = x;
     cyc(106);
     r = rd16(0x70FC4A + (uint32_t)x);
-    cpu.p = (uint8_t)((nz16(p, (uint16_t)(t - r)) & ~P_C) | (t >= r ? (cyc(44), P_C) : 0));
-    if (t == r) {
-        time_up_lead(0x00);
+    if (up_t >= r)
+        { cyc(44); up_cv |= P_C; }
+    if (up_t == r) {
+        time_up_lead(up_lead = 0x00);
         cyc(42);                        /* RTS */
-        return;
+        return 0;
     }
-    if (t > r) {
+    if (up_t > r) {
         cyc(16);
-        time_up_lead(0x01);
+        time_up_lead(up_lead = 0x01);
         cyc(42);                        /* RTS */
-        return;
+        return 0;
     }
     cyc(64);
-    wr16(0x70FC4A + (uint32_t)x, t);
+    wr16(0x70FC4A + (uint32_t)x, up_t);
     cyc(24);
-    op_lda16(b | 0x0F11);
+    w = rd16(b | 0x0F11);
+    up_high = (uint16_t)(w & 0xFF00);
     cyc(32);
-    wr16(0x70FC4C + (uint32_t)x, cpu.a);
-    op_sep(P_M);
+    wr16(0x70FC4C + (uint32_t)x, w);
     cyc(46);
-    op_lda8(b | 0x0D89);
+    v = rd8(b | 0x0D89);
     cyc(32);
-    wr8(0x70FC4E + (uint32_t)x, (uint8_t)cpu.a);
-    time_up_lead(0xFF);
-    abi_SaveRecordSumsTimeUp();
+    wr8(0x70FC4E + (uint32_t)x, v);
+    time_up_lead(up_lead = 0xFF);
+    up_sum = SaveRecordSumsTimeUp();
     cyc(42);                            /* RTS */
+    return 1;
+}
+
+void abi_TimeUpRecordUpdate(void)
+{
+    if (TimeUpRecordUpdate(cpu.db)) {
+        cpu.a = (uint16_t)(up_high | up_sum);
+        cpu.x = 0x0014;
+        cpu.y = 0x0000;
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X);
+    } else {
+        cpu.a = (uint16_t)((up_t & 0xFF00) | up_lead);
+        cpu.x = up_x;
+        cpu.y = up_y;
+        cpu.p = nz8((uint8_t)((cpu.p & ~(P_C | P_V | P_X)) | P_M | up_cv), up_lead);
+    }
 }
 
 /*
@@ -2536,154 +2614,189 @@ void abi_TimeUpRecordUpdate(void)
  * Entry: any widths; data bank $07, D = $0000. Exit: M 16-bit, X 16-bit;
  * A as the last step leaves it.
  */
-void abi_StuntRecordTime(void)
+/* SED; CLC; ADC (8-bit): the BCD add as the 65816 does it, V from the
+   sum before its last adjust; N, Z, C, V to *f. */
+static uint8_t bcd_add8(uint8_t a, uint8_t m, uint8_t *f)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t t, k, n, sum_at;
-    uint8_t lo, sum;
+    int c, r;
 
-    op_sep(P_M);
+    r = (a & 0x0F) + (m & 0x0F);
+    if (r > 0x09) r += 0x06;
+    c = r > 0x0F;
+    r = (a & 0xF0) + (m & 0xF0) + (c << 4) + (r & 0x0F);
+    *f = (uint8_t)((~(a ^ m) & (a ^ r) & 0x80) ? P_V : 0);
+    if (r > 0x9F) r += 0x60;
+    if (r > 0xFF) *f |= P_C;
+    *f = nz8(*f, (uint8_t)r);
+    return (uint8_t)r;
+}
+
+/* StuntRecordTime's exit, for its adapter. */
+enum { STUNT_OTHER_COURSE, STUNT_NO_PLACE, STUNT_SUMMED };
+static int stunt_kind;
+static uint16_t stunt_a, stunt_x, stunt_y;
+static uint8_t stunt_flags, stunt_v;
+
+uint8_t StuntRecordTime(uint8_t bank, uint16_t d)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t t, a, x, y, n, m, r, sum_at, e;
+    uint8_t h, lo, sum = 0, f;
+
     cyc(46);
-    op_lda8(b | 0x19EC);
-    op_xba();
-    cpu.p |= P_D;
+    h = rd8(b | 0x19EC);
     cyc(58);
-    op_lda8(b | 0x0E70);
-    cpu.p &= (uint8_t)~P_C;
+    lo = rd8(b | 0x0E70);
     cyc(38);
-    lo = op_adc8((uint8_t)cpu.a, rd8(b | 0x19F0), &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | lo);
-    cpu.p &= (uint8_t)~P_D;
-    op_rep(P_M | P_X);
-    t = cpu.a;
+    lo = bcd_add8(lo, rd8(b | 0x19F0), &f);
+    stunt_v = (uint8_t)(f & P_V);
+    cyc(22);                            /* REP #$30 */
+    t = (uint16_t)(h << 8 | lo);
     cyc(68);
-    op_lda16(b | 0x0E3D);
-    op_and16(0x00FF);
-    op_cmp16(0x000C);
-    if (cpu.p & P_C)
-        op_cmp16(0x0010);
-    if (cpu.a < 0x000C || cpu.a >= 0x0010) {
+    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+    cyc(2);
+    if (a < 0x000C || a >= 0x0010) {
         /* the score pushed (PHA, 16-bit: high byte first) is what the RTS
            at 07:AE29 pulls as its return address: on at $07:score + 1 */
         uint16_t ret;
 
+        stunt_kind = STUNT_OTHER_COURSE;
+        stunt_a = a;
+        stunt_flags = a < 0x000C ? (uint8_t)(nz16(0, (uint16_t)(a - 0x000C)))
+                                 : (uint8_t)(nz16(0, (uint16_t)(a - 0x0010)) | P_C);
         cyc(88);
         wr8((uint16_t)cpu.s, (uint8_t)(t >> 8));
         wr8((uint16_t)(cpu.s - 1), (uint8_t)t);
         ret = rd16((uint16_t)(cpu.s - 1));
         if ((uint16_t)(ret + 1) == 0xAE29)
-            { cyc(48); return; }    /* this RTS again: it returns to the caller */
+            { cyc(48); return 0; }      /* this RTS again: it returns to the caller */
+        /* the jump is to code still in registers: the state it has here */
+        cpu.a = a;
+        cpu.p = (uint8_t)((cpu.p & P_I) | stunt_flags | stunt_v);   /* SED ... CLD: D clear */
         jump_routine(0x070000 | (uint16_t)(ret + 1));
-        return;
+        return 0;
     }
-    wr16(special_dp(0xF1), cyc_then(124, cpu.a));
-    op_asl16();
-    op_add16(rd16(cyc_then(44, special_dp(0xF1))));
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    wr16(special_dp(0xF1), cyc_then(72, cpu.a));
+    wr16((uint16_t)(d + 0xF1), cyc_then(124, a));
+    a = (uint16_t)(a << 1);
+    m = rd16(cyc_then(44, (uint16_t)(d + 0xF1)));
+    r = (uint16_t)(a + m);
+    stunt_v = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    a = (uint16_t)(r << 4);
+    wr16((uint16_t)(d + 0xF1), cyc_then(72, a));
     cyc(24);
-    wr16(b | 0x0D14, cpu.a);
-    cpu.y = cpu.a;
+    wr16(b | 0x0D14, a);
+    y = a;
     cyc(38);
-    op_lda16(b | 0x0D89);
-    op_and16(0x00FF);
-    wr16(special_dp(0xF3), cyc_then(38, cpu.a));
-    op_asl16();
-    op_add16(rd16(cyc_then(44, special_dp(0xF3))));
-    op_asl16();
-    op_asl16();
-    op_add16(rd16(cyc_then(58, special_dp(0xF1))));
-    op_tax16();
-    wr16(special_dp(0xF7), cpu.a);
-    cpu.a = t;
-    cpu.p = nz16(cpu.p, t);
+    a = (uint16_t)(rd16(b | 0x0D89) & 0x00FF);
+    cyc(2);
+    wr16((uint16_t)(d + 0xF3), cyc_then(38, a));
+    a = (uint16_t)(a << 1);
+    m = rd16(cyc_then(44, (uint16_t)(d + 0xF3)));
+    r = (uint16_t)(a + m);
+    a = (uint16_t)(r << 2);
+    m = rd16(cyc_then(58, (uint16_t)(d + 0xF1)));
+    r = (uint16_t)(a + m);
+    stunt_v = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    cyc(30);                            /* TAX */
+    x = r;
+    wr16((uint16_t)(d + 0xF7), x);
     cyc(68);
-    op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
-    if ((cpu.p & P_C) && (cyc(108), !(cpu.p & P_Z))) {
-        abi_RecordTagCar0();
-        special_move(4, 8);
-        special_move(6, 10);
-        special_move(0, 4);
-        special_move(2, 6);
+    e = rd16(SPECIAL_SAVES + x);
+    if (t >= e && (cyc(108), t != e)) {
+        RecordTagCar0(bank);
+        special_move(x, 4, 8);
+        special_move(x, 6, 10);
+        special_move(x, 0, 4);
+        special_move(x, 2, 6);
         cyc(24);
-        op_lda16(b | 0x0F11);
+        a = rd16(b | 0x0F11);
         cyc(32);
-        wr16(SPECIAL_SAVES + 2 + cpu.x, cpu.a);
-        cpu.a = t;
-        cpu.p = nz16(cpu.p, t);
+        wr16(SPECIAL_SAVES + 2 + x, a);
         cyc(68);
-        wr16(SPECIAL_SAVES + cpu.x, t);
+        wr16(SPECIAL_SAVES + x, t);
+        a = t;
         sum_at = 78;                    /* JMP */
     } else {
-        cyc(cpu.p & P_C ? 70 : 54);     /* BCC taken, or BCC not taken and BEQ taken; CMP.L */
-        op_cmp16(rd16(SPECIAL_SAVES + 4 + cpu.x));
-        if ((cpu.p & P_C) && (cyc(108), !(cpu.p & P_Z))) {
-            abi_RecordTagCar4();
-            special_move(4, 8);
-            special_move(6, 10);
-            cpu.a = t;
-            cpu.p = nz16(cpu.p, t);
+        cyc(t >= e ? 70 : 54);          /* BCC taken, or BCC not taken and BEQ taken; CMP.L */
+        e = rd16(SPECIAL_SAVES + 4 + x);
+        if (t >= e && (cyc(108), t != e)) {
+            RecordTagCar4(bank);
+            special_move(x, 4, 8);
+            special_move(x, 6, 10);
             cyc(68);
-            wr16(SPECIAL_SAVES + 4 + cpu.x, t);
+            wr16(SPECIAL_SAVES + 4 + x, t);
             cyc(24);
-            op_lda16(b | 0x0F11);
+            a = rd16(b | 0x0F11);
             cyc(32);
-            wr16(SPECIAL_SAVES + 6 + cpu.x, cpu.a);
+            wr16(SPECIAL_SAVES + 6 + x, a);
             sum_at = 76;                /* BRA */
         } else {
-            cyc(cpu.p & P_C ? 70 : 54);
-            op_cmp16(rd16(SPECIAL_SAVES + 8 + cpu.x));
-            if (!(cpu.p & P_C) || (cpu.p & P_Z)) {
-                cyc(cpu.p & P_C ? 38 : 22);   /* BCC taken, or BCC not taken and BEQ taken */
-                op_rep(P_M | P_X);
+            cyc(t >= e ? 70 : 54);
+            e = rd16(SPECIAL_SAVES + 8 + x);
+            if (t < e || t == e) {
+                cyc(t >= e ? 38 : 22);  /* BCC taken, or BCC not taken and BEQ taken */
+                cyc(22);
                 cyc(42);                /* RTS */
-                return;
+                stunt_kind = STUNT_NO_PLACE;
+                stunt_a = t;
+                stunt_x = x;
+                stunt_y = y;
+                stunt_flags = (uint8_t)(nz16(0, (uint16_t)(t - e)) | (t >= e ? P_C : 0));
+                return 0;
             }
             cyc(64);
-            wr16(SPECIAL_SAVES + 8 + cpu.x, t);
-            (cyc(46), abi_RecordTagCar8());
+            wr16(SPECIAL_SAVES + 8 + x, t);
+            (cyc(46), RecordTagCar8(bank));
             cyc(24);
             sum_at = 54;
-            op_lda16(b | 0x0F11);
+            a = rd16(b | 0x0F11);
             cyc(32);
-            wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
+            wr16(SPECIAL_SAVES + 10 + x, a);
         }
     }
-    op_sep(P_M);
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    cpu.p = nz8(cpu.p, 0);
-    wr8(special_dp(0xF1), cyc_then(sum_at, 0x00));
-    cpu.y = 0x0030;
-    cpu.x = rd16(cyc_then(40, special_dp(0xF7)));
+    wr8((uint16_t)(d + 0xF1), cyc_then(sum_at, 0x00));
+    rd16(cyc_then(40, (uint16_t)(d + 0xF7)));
     cyc(24);
-    cpu.x = rd16(b | 0x0D14);
+    x = rd16(b | 0x0D14);
     n = 0x0030;
-    sum = 0;
     do {
         cyc(n == 0x0030 ? 32 : 82);
-        uint8_t v = rd8(SPECIAL_SAVES + cpu.x);
+        uint8_t v = rd8(SPECIAL_SAVES + x), w = rd8(cyc_then(30, (uint16_t)(d + 0xF1)));
+        unsigned s = (unsigned)v + w;
 
-        cpu.p &= (uint8_t)~P_C;
-        sum = op_adc8(v, rd8(cyc_then(30, special_dp(0xF1))), &cpu.p);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | sum);
-        wr8(special_dp(0xF1), cyc_then(16, sum));
-        cpu.x = (uint16_t)(cpu.x + 1);
+        stunt_v = (~(v ^ w) & (v ^ s) & 0x80) ? P_V : 0;
+        stunt_flags = s > 0xFF ? P_C : 0;
+        sum = (uint8_t)s;
+        wr8((uint16_t)(d + 0xF1), cyc_then(16, sum));
+        x = (uint16_t)(x + 1);
         n = (uint16_t)(n - 1);
-        cpu.y = n;
     } while (n);
-    op_sep(P_X);
+    cyc(22);                            /* SEP #$10 */
     cyc(68);
-    cpu.x = rd8(b | 0x0E3D);
-    k = rd8(cyc_then(16, special_dp(0xF1)));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | k);
-    cpu.p = nz8(cpu.p, (uint8_t)k);
+    stunt_x = rd8(b | 0x0E3D);
+    sum = rd8(cyc_then(16, (uint16_t)(d + 0xF1)));
     cyc(32);
-    wr8(0x70FC33 + cpu.x, (uint8_t)k);
-    op_rep(P_M | P_X);
+    wr8(0x70FC33 + stunt_x, sum);
+    cyc(22);
     cyc(42);                            /* RTS */
+    stunt_kind = STUNT_SUMMED;
+    stunt_a = (uint16_t)((a & 0xFF00) | sum);
+    stunt_flags = (uint8_t)(nz8(0, sum) | stunt_flags);
+    return sum;
+}
+
+void abi_StuntRecordTime(void)
+{
+    StuntRecordTime(cpu.db, cpu.d);
+    cpu.a = stunt_a;
+    if (stunt_kind == STUNT_SUMMED) {
+        cpu.x = stunt_x;
+        cpu.y = 0x0000;
+    } else if (stunt_kind == STUNT_NO_PLACE) {
+        cpu.x = stunt_x;
+        cpu.y = stunt_y;
+    }
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M | P_X | P_D)) | stunt_flags | stunt_v);
 }
 
 /*
