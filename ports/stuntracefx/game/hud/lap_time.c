@@ -5,6 +5,115 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "hud_calls.h"
+
+/* The 65816 instructions these routines run, on a value and the flags in
+   *p (a routine's P, kept for its exit and for the decimal adds). */
+
+/* CMP: N, Z, C from a - m. */
+static void cmp16(uint16_t a, uint16_t m, uint8_t *p)
+{
+    cyc(0);
+    *p = (uint8_t)((nz16(*p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+/* AND #: the time of an immediate AND is 2 more clocks. */
+static uint16_t and16(uint16_t a, uint16_t m, uint8_t *p)
+{
+    cyc(2);
+    a &= m;
+    *p = nz16(*p, a);
+    return a;
+}
+
+/* LDA # (16-bit). */
+static uint16_t lda16_imm(uint16_t v, uint8_t *p)
+{
+    cyc(38);
+    *p = nz16(*p, v);
+    return v;
+}
+
+/* TAX / TXA with 16-bit registers: the value, N and Z from it. */
+static uint16_t transfer30(uint16_t v, uint8_t *p)
+{
+    cyc(30);
+    *p = nz16(*p, v);
+    return v;
+}
+
+/* TAY, or a load of A from a register: the value, N and Z from it. */
+static uint16_t transfer(uint16_t v, uint8_t *p)
+{
+    *p = nz16(*p, v);
+    return v;
+}
+
+/* CLC / ADC (16-bit). */
+static uint16_t add16(uint16_t a, uint16_t m, uint8_t *p)
+{
+    *p &= (uint8_t)~P_C;
+    return op_adc16(a, m, p);
+}
+
+/* ASL A (16-bit), C the bit out. */
+static uint16_t asl16(uint16_t a, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (a >> 15));
+    return (uint16_t)(a << 1);
+}
+
+/* ASL A with N and Z from the result. */
+static uint16_t asl16nz(uint16_t a, uint8_t *p)
+{
+    a = asl16(a, p);
+    *p = nz16(*p, a);
+    return a;
+}
+
+/* ASL A (8-bit): C the bit out. */
+static uint8_t asl8(uint8_t a, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (a >> 7));
+    return (uint8_t)(a << 1);
+}
+
+/* XBA: N and Z from the new low byte. */
+static uint16_t xba(uint16_t a, uint8_t *p)
+{
+    a = (uint16_t)(a << 8 | a >> 8);
+    *p = nz8(*p, (uint8_t)a);
+    return a;
+}
+
+/* LSR A (16-bit). */
+static uint16_t lsr16(uint16_t a, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (a & 1));
+    a >>= 1;
+    *p = nz16(*p, a);
+    return a;
+}
+
+/* ROL A (16-bit) through the carry. */
+static uint16_t rol16(uint16_t a, uint8_t *p)
+{
+    uint8_t c = (uint8_t)(a >> 15);
+
+    a = (uint16_t)(a << 1 | (*p & P_C));
+    *p = (uint8_t)(nz16((uint8_t)(*p & ~P_C), a) | c);
+    return a;
+}
+
+/* ROR A (16-bit) through the carry. */
+static uint16_t ror16(uint16_t a, uint8_t *p)
+{
+    uint8_t c = (uint8_t)(a & 1);
+
+    a = (uint16_t)(a >> 1 | (*p & P_C) << 15);
+    *p = (uint8_t)(nz16((uint8_t)(*p & ~P_C), a) | c);
+    return a;
+}
 
 /*
  * @routine 07:ACD9 BinaryToBcd
@@ -14,51 +123,47 @@
  * reached in the traces so far.
  * Entry: M 16-bit, D = $0000; A = the value. Exit: A = the BCD value; $F1
  * = A less its units digit; X, Y unchanged; N, Z, C, V from the last add.
+ * The function takes A and returns the BCD value; *p is P (flags in and out).
  */
-uint16_t BinaryToBcd(uint16_t v)
+uint16_t BinaryToBcd(uint16_t v, uint8_t *p)
 {
     static const uint16_t unit[3] = {1000, 100, 10}, digit[3] = {0x1000, 0x0100, 0x0010};
-    unsigned i;
-
-    wr16(0x0000F1, 0x0000);
-    for (i = 0; i < 3; i++) {
-        while (v >= unit[i]) {
-            v = (uint16_t)(v - unit[i]);
-            wr16(0x0000F1, (uint16_t)(rd16(0x0000F1) + digit[i]));
-        }
-    }
-    return (uint16_t)(v + rd16(0x0000F1));
-}
-
-void abi_BinaryToBcd(void)
-{
-    static const uint16_t unit[3] = {1000, 100, 10}, digit[3] = {0x1000, 0x0100, 0x0010};
-    uint16_t a;
+    uint16_t saved;
     unsigned i;
 
     cyc(16);
     wr16(0x0000F1, 0x0000);
     for (i = 0; i < 3; i++) {
         for (;;) {
-            op_cmp16(unit[i]);
-            if (!(cpu.p & P_C)) {
+            cmp16(v, unit[i], p);
+            if (!(*p & P_C)) {
                 cyc(46);                /* CMP, BCC taken */
                 break;
             }
-            cpu.a = op_sbc16(cpu.a, unit[i], &cpu.p);
-            a = cpu.a;                  /* PHA, the count, PLA */
+            v = op_sbc16(v, unit[i], p);
+            saved = v;                  /* PHA, the count, PLA */
             cyc(104);
-            op_lda16(0x0000F1);
-            op_add16(digit[i]);
+            v = rd16(0x0000F1);
+            *p = nz16(*p, v);
+            v = add16(v, digit[i], p);
             cyc(54);
-            wr16(0x0000F1, cpu.a);
-            op_lda16_imm(a);
+            wr16(0x0000F1, v);
+            v = lda16_imm(saved, p);
             cyc(20);                    /* BRA */
         }
     }
     cyc(30);
-    op_add16(rd16(0x0000F1));
+    v = add16(v, rd16(0x0000F1), p);
     cyc(44);
+    return v;
+}
+
+void abi_BinaryToBcd(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = BinaryToBcd(cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -71,49 +176,53 @@ void abi_BinaryToBcd(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time. Exit: A, X, Y
  * as above; $F1 as BinaryToBcd leaves it; N, Z, C, V from its last add, or
  * N set, Z and C set by the compare for $FFFF.
+ * The function takes A and returns *min (A), *sec (X), *hund (Y); *p is P.
  */
-void TimeUnpackBcd(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund)
+void TimeUnpackBcd(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund, uint8_t *p)
 {
-    if (packed == 0xFFFF) {
-        *min = *sec = *hund = 0xFFFF;
+    uint16_t a = packed, v;
+
+    cmp16(a, 0xFFFF, p);
+    if (*p & P_Z) {
+        cyc(78);
+        a = lda16_imm(0xFFFF, p);
+        *min = *sec = *hund = a;
+        cyc(44);
         return;
-    }
-    *hund = BinaryToBcd(packed & 0x007F);
-    *sec = BinaryToBcd((uint16_t)(packed << 1) >> 8 & 0x003F);
-    *min = BinaryToBcd(packed >> 13);
+    } else { cyc(108); }
+    *sec = transfer30(a, p);                    /* TAX */
+    a = and16(a, 0x007F, p);
+    a = BinaryToBcd(a, p);
+    *hund = transfer(a, p);                     /* TAY */
+    a = transfer30(*sec, p);                    /* TXA */
+    v = a;                                      /* PHA */
+    a = asl16nz(a, p);
+    a = xba(a, p);
+    a = and16(a, 0x003F, p);
+    cyc(146);
+    a = BinaryToBcd(a, p);
+    *sec = transfer30(a, p);                    /* TAX */
+    a = lda16_imm(v, p);                        /* PLA */
+    a = rol16(a, p);
+    a = rol16(a, p);
+    a = rol16(a, p);
+    a = rol16(a, p);
+    a = and16(a, 0x0007, p);
+    cyc(122);
+    *min = BinaryToBcd(a, p);
+    cyc(42);
 }
 
 void abi_TimeUnpackBcd(void)
 {
-    uint16_t v;
+    uint16_t min, sec, hund;
+    uint8_t p = cpu.p;
 
-    op_cmp16(0xFFFF);
-    if (cpu.p & P_Z) {
-        cyc(78);
-        op_lda16_imm(0xFFFF);
-        cpu.x = cpu.y = 0xFFFF;
-        cyc(44);
-        return;
-    } else { cyc(108); }
-    op_tax16();
-    op_and16(0x007F);
-    abi_BinaryToBcd();
-    op_tay16();
-    op_txa16();
-    v = cpu.a;                          /* PHA */
-    op_asl16();
-    op_xba();
-    op_and16(0x003F);
-    (cyc(146), abi_BinaryToBcd());
-    op_tax16();
-    op_lda16_imm(v);                    /* PLA */
-    op_rol16();
-    op_rol16();
-    op_rol16();
-    op_rol16();
-    op_and16(0x0007);
-    (cyc(122), abi_BinaryToBcd());
-    cyc(42);
+    TimeUnpackBcd(cpu.a, &min, &sec, &hund, &p);
+    cpu.a = min;
+    cpu.x = sec;
+    cpu.y = hund;
+    cpu.p = p;
 }
 
 /*
@@ -121,11 +230,25 @@ void abi_TimeUnpackBcd(void)
  * WHAT IT DOES: TimeUnpackBcd for a JSL caller.
  * HOW: JSR TimeUnpackBcd, RTL. Not reached in the traces so far.
  * Entry: as TimeUnpackBcd. Exit: as TimeUnpackBcd.
+ * As TimeUnpackBcd.
  */
+void TimeUnpackBcdLong(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund, uint8_t *p)
+{
+    cyc(46);
+    TimeUnpackBcd(packed, min, sec, hund, p);
+    cyc(44);                            /* RTL */
+}
+
 void abi_TimeUnpackBcdLong(void)
 {
-    (cyc(46), abi_TimeUnpackBcd());
-    cyc(44);                            /* RTL */
+    uint16_t min, sec, hund;
+    uint8_t p = cpu.p;
+
+    TimeUnpackBcdLong(cpu.a, &min, &sec, &hund, &p);
+    cpu.a = min;
+    cpu.x = sec;
+    cpu.y = hund;
+    cpu.p = p;
 }
 
 /* Adds the BCD time at $0F76 + X (hundredths, seconds, minutes) to the
@@ -133,66 +256,66 @@ void abi_TimeUnpackBcdLong(void)
    hundredths into seconds, seconds past 59 (once on the add's carry, once
    on 60 or more) into minutes. A $FF hundredths byte means no time. The
    decimal flag is as the caller set it. dp: direct page
-   operands (TimeAddToTotal), else absolute,X (TimeAddToNext). */
-static void time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp)
+   operands (TimeAddToTotal), else absolute,X (TimeAddToNext). Returns the
+   last byte (A's low byte on exit). */
+static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t *p)
 {
     uint8_t v;
     int big;
-    uint16_t xw = (cpu.p & P_X) ? 0 : 6;    /* a read absolute,X with X 16-bit: one more cycle */
+    uint16_t xw = (*p & P_X) ? 0 : 6;       /* a read absolute,X with X 16-bit: one more cycle */
     uint16_t kr = dp ? 16 : 24 + xw;        /* ADC/LDA of the sum's byte */
     uint16_t kw = dp ? 16 : 30;             /* STA absolute,X: the extra cycle always */
 
     cyc(24 + xw);
     v = rd8(b | (uint16_t)(0x0F76 + x));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(80), P_C) : 0));
+    *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(80), P_C) : 0));
     if (v == 0xFF)
-        return;
-    cpu.p &= (uint8_t)~P_C;
+        return v;
+    *p &= (uint8_t)~P_C;
     cyc(46 + kr);                       /* CMP, BEQ, CLC, ADC's fetch */
-    v = op_adc8(v, rd8(to[0]), &cpu.p);
+    v = op_adc8(v, rd8(to[0]), p);
     cyc(kw);
     wr8(to[0], v);
     cyc(24 + xw);
     v = rd8(b | (uint16_t)(0x0F77 + x));
     cyc(kr);
-    v = op_adc8(v, rd8(to[1]), &cpu.p);
-    if (cpu.p & P_C) {
-        cpu.p |= P_C;
-        v = op_sbc8(v, 0x60, &cpu.p);
+    v = op_adc8(v, rd8(to[1]), p);
+    if (*p & P_C) {
+        *p |= P_C;
+        v = op_sbc8(v, 0x60, p);
         cyc(30 + kw);
         wr8(to[1], v);
         cyc(kr);
         v = rd8(to[2]);
-        cpu.p &= (uint8_t)~P_C;
+        *p &= (uint8_t)~P_C;
         cyc(30 + kw);
-        wr8(to[2], op_adc8(v, 0x01, &cpu.p));
+        wr8(to[2], op_adc8(v, 0x01, p));
         cyc(kr);
         v = rd8(to[1]);
         cyc(kw);
     } else { cyc(22 + kw); /* BCC taken */ }
     wr8(to[1], v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x60)) & ~P_C) | (v >= 0x60 ? P_C : 0));
+    *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0x60)) & ~P_C) | (v >= 0x60 ? P_C : 0));
     big = v >= 0x60;
     if (big) {
-        v = op_sbc8(v, 0x60, &cpu.p);
+        v = op_sbc8(v, 0x60, p);
         cyc(32 + kw);
         wr8(to[1], v);
         cyc(kr);
         v = rd8(to[2]);
-        cpu.p &= (uint8_t)~P_C;
+        *p &= (uint8_t)~P_C;
         cyc(30 + kw);
-        wr8(to[2], op_adc8(v, 0x01, &cpu.p));
+        wr8(to[2], op_adc8(v, 0x01, p));
     }
-    cpu.p &= (uint8_t)~P_C;
+    *p &= (uint8_t)~P_C;
     cyc((big ? 38 : 76) + xw);
     v = rd8(b | (uint16_t)(0x0F78 + x));
     cyc(kr);
-    v = op_adc8(v, rd8(to[2]), &cpu.p);
+    v = op_adc8(v, rd8(to[2]), p);
     cyc(kw);
     wr8(to[2], v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cyc(42);
+    return v;
 }
 
 /*
@@ -205,12 +328,22 @@ static void time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp)
  * Entry: M 8-bit, D = $0000, decimal mode; X = the time's offset. Exit: A
  * low byte = the new minutes, N, Z, C, V from their add; or, for no time,
  * $FF with Z and C set.
+ * The function takes the bank and X and returns the new minutes (A low byte);
+ * *p is P.
  */
-void abi_TimeAddToTotal(void)
+uint8_t TimeAddToTotal(uint8_t bank, uint16_t x, uint8_t *p)
 {
     uint32_t to[3] = {0x0000F1, 0x0000F2, 0x0000F3};
 
-    time_add((uint32_t)cpu.db << 16, cpu.x, to, 1);
+    return time_add((uint32_t)bank << 16, x, to, 1, p);
+}
+
+void abi_TimeAddToTotal(void)
+{
+    uint8_t p = cpu.p, v = TimeAddToTotal(cpu.db, cpu.x, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = p;
 }
 
 /*
@@ -219,13 +352,22 @@ void abi_TimeAddToTotal(void)
  * unless it is no time ($FF).
  * HOW: As TimeAddToTotal. Not reached in the traces so far.
  * Entry: as TimeAddToTotal. Exit: as TimeAddToTotal.
+ * As TimeAddToTotal.
  */
+uint8_t TimeAddToNext(uint8_t bank, uint16_t x, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint32_t to[3] = {b | (uint16_t)(0x0F79 + x), b | (uint16_t)(0x0F7A + x), b | (uint16_t)(0x0F7B + x)};
+
+    return time_add(b, x, to, 0, p);
+}
+
 void abi_TimeAddToNext(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint32_t to[3] = {b | (uint16_t)(0x0F79 + cpu.x), b | (uint16_t)(0x0F7A + cpu.x), b | (uint16_t)(0x0F7B + cpu.x)};
+    uint8_t p = cpu.p, v = TimeAddToNext(cpu.db, cpu.x, &p);
 
-    time_add(b, cpu.x, to, 0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = p;
 }
 
 /*
@@ -237,15 +379,16 @@ void abi_TimeAddToNext(void)
  * Not reached in the traces so far.
  * Entry: D = $0000. Exit: A low byte = the last total's minutes; X = $21;
  * P restored.
+ * The function takes the bank and the caller's P and returns the last total's
+ * minutes (A low byte); the adapter sets X = $21 and restores P.
  */
-void abi_TimeTotalsSum(void)
+uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = p0 | P_M | P_X | P_D, v = 0;
     unsigned g, i;
 
-    op_sep(P_M | P_X);
-    cpu.p |= P_D;
+    cyc(22);                            /* SEP #$30 */
     cyc(36);
     for (g = 0; g < 3; g++) {
         cyc(16);
@@ -256,12 +399,11 @@ void abi_TimeTotalsSum(void)
         wr8(0x0000F3, 0);
         for (i = 0; i < 4; i++) {
             cyc(62);
-            cpu.x = (uint16_t)(g * 12 + i * 3);
-            abi_TimeAddToTotal();
+            TimeAddToTotal(bank, (uint16_t)(g * 12 + i * 3), &p);
         }
         cyc(24);
         v = rd8(b | (uint16_t)(0x0F78 + g * 12));
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+        p = (uint8_t)((nz8(p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
         if (v == 0xFF) {
             cyc(48);
             wr8(0x0000F1, v);
@@ -276,10 +418,21 @@ void abi_TimeTotalsSum(void)
             cyc(24);
             wr8(b | (uint16_t)(0x0F9A + g * 3 + i), v);
         }
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     }
-    cpu.p = p0;
     cyc(84);
+    return v;
+}
+
+void abi_TimeTotalsSum(void)
+{
+    uint8_t p0 = cpu.p, v;
+
+    cpu.p = p0 | P_M | P_X | P_D;       /* what an interrupt pushes */
+    v = TimeTotalsSum(cpu.db, p0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x21;
+    cpu.y &= 0x00FF;
+    cpu.p = p0;
 }
 
 /*
@@ -289,60 +442,76 @@ void abi_TimeTotalsSum(void)
  * HOW: Decimal mode, TimeAddToNext for times 0-2, 4-6 and 8-10. Not
  * reached in the traces so far.
  * Entry: D = $0000. Exit: X = $1E; P restored; A as TimeAddToNext left it.
+ * The function takes the bank and the caller's P and returns A's low byte;
+ * the adapter sets X = $1E and restores P.
  */
-void abi_TimeRunningTotals(void)
+uint8_t TimeRunningTotals(uint8_t bank, uint8_t p0)
 {
-    cyc(36);
-    uint8_t p0 = cpu.p;
+    uint8_t p, v = 0;
     unsigned g, i;
 
-    op_sep(P_M | P_X);
-    cpu.p |= P_D;
+    cyc(36);
+    p = p0 | P_M | P_X | P_D;
+    cyc(22);                            /* SEP #$30 */
     for (g = 0; g < 3; g++)
         for (i = 0; i < 3; i++) {
             cyc(62);
-            cpu.x = (uint16_t)(g * 12 + i * 3);
-            abi_TimeAddToNext();
+            v = TimeAddToNext(bank, (uint16_t)(g * 12 + i * 3), &p);
         }
     cyc(84);
+    return v;
+}
+
+void abi_TimeRunningTotals(void)
+{
+    uint8_t p0 = cpu.p, v;
+
+    cpu.p = p0 | P_M | P_X | P_D;       /* what an interrupt pushes */
+    v = TimeRunningTotals(cpu.db, p0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x1E;
+    cpu.y &= 0x00FF;
     cpu.p = p0;
 }
 
+/* The X a record routine leaves (its offset, advanced by its copy loop),
+   for the adapters. */
+static uint8_t exit_x;
+
 /* LDA $0D4A, ASL x3, CLC, ADC $0D4A (8-bit): the course times nine. */
-static uint8_t course_times_9(void)
+static uint8_t course_times_9(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    cyc(24);
-    uint8_t v = rd8(b | 0x0D4A), a = v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a;
     int i;
 
-    for (i = 0; i < 3; i++) {
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
-        a = (uint8_t)(a << 1);
-    }
-    cpu.p &= (uint8_t)~P_C;
+    cyc(24);
+    a = rd8(b | 0x0D4A);
+    for (i = 0; i < 3; i++)
+        a = asl8(a, p);
+    *p &= (uint8_t)~P_C;
     cyc(80);
-    return op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
+    return op_adc8(a, rd8(b | 0x0D4A), p);
 }
 
-/* TAX, LDY #3, then three bytes from $70:FC6D + X to $70:FC70 + X. */
-static void record_slot_copy(uint8_t a)
+/* TAX, LDY #3, then three bytes from $70:FC6D + X to $70:FC70 + X. Returns
+   the last byte; exit_x = X. */
+static uint8_t record_slot_copy(uint8_t x, uint8_t *p)
 {
-    uint8_t v = 0;
+    uint8_t v = 0, y = 3;
 
-    cpu.x = a;
-    cpu.y = 3;
     do {
         cyc(78);
-        v = rd8(0x70FC6D + (uint32_t)cpu.x);
+        v = rd8(0x70FC6D + (uint32_t)x);
         cyc(32);
-        wr8(0x70FC70 + (uint32_t)cpu.x, v);
-        cpu.x = (uint8_t)(cpu.x + 1);
-        cpu.y = (uint8_t)(cpu.y - 1);
-    } while (cyc_loop(4, cpu.y));
+        wr8(0x70FC70 + (uint32_t)x, v);
+        x = (uint8_t)(x + 1);
+        y = (uint8_t)(y - 1);
+    } while (cyc_loop(4, y));
     cyc(86);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, 0);
+    *p = nz8(*p, 0);
+    exit_x = x;
+    return v;
 }
 
 /*
@@ -353,10 +522,27 @@ static void record_slot_copy(uint8_t a)
  * RecordSlotCopy3 (its code from the TAX).
  * Entry: M 8-bit, X 8-bit. Exit: A = the last byte copied; X = the offset
  * + 3; Y = 0; Z set, N clear; C, V from the add.
+ * The function returns the last byte copied (A low byte); *p is P; the
+ * adapter sets X = the offset + 3, Y = 0.
  */
+uint8_t RecordSlotCopy0(uint8_t bank, uint8_t *p)
+{
+    uint8_t a = course_times_9(bank, p);
+
+    cyc(2);
+    cyc(2);
+    cyc(2);
+    return record_slot_copy(a, p);
+}
+
 void abi_RecordSlotCopy0(void)
 {
-    record_slot_copy(cyc_then(2, cyc_then(2, cyc_then(2, course_times_9()))));
+    uint8_t p = cpu.p, v = RecordSlotCopy0(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.y = 0;
+    cpu.p = p;
 }
 
 /*
@@ -365,57 +551,63 @@ void abi_RecordSlotCopy0(void)
  * ($70:FC70 + course * 9) to the third.
  * HOW: As RecordSlotCopy0 with 3 added (the carry of the first add in).
  * Entry: M 8-bit, X 8-bit. Exit: as RecordSlotCopy0.
+ * As RecordSlotCopy0.
  */
-void abi_RecordSlotCopy3(void)
+uint8_t RecordSlotCopy3(uint8_t bank, uint8_t *p)
 {
-    uint8_t a = course_times_9();
+    uint8_t a = course_times_9(bank, p);
 
-    record_slot_copy(op_adc8(a, 0x03, &cpu.p));
+    return record_slot_copy(op_adc8(a, 0x03, p), p);
 }
 
-void abi_RecordSlotCopy0(void);
-void abi_RecordSlotCopy3(void);
+void abi_RecordSlotCopy3(void)
+{
+    uint8_t p = cpu.p, v = RecordSlotCopy3(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.y = 0;
+    cpu.p = p;
+}
 
 /* LDA $0D4A, ASL, CLC, ADC $0D4A, ASL x3 (8-bit): the course times 24. */
-static uint8_t course_times_24(void)
+static uint8_t course_times_24(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    cyc(24);
-    uint8_t a = rd8(b | 0x0D4A);
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a;
     int i;
 
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
-    a = (uint8_t)(a << 1);
-    cpu.p &= (uint8_t)~P_C;
+    cyc(24);
+    a = rd8(b | 0x0D4A);
+    a = asl8(a, p);
+    *p &= (uint8_t)~P_C;
     cyc(52);
-    a = op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
+    a = op_adc8(a, rd8(b | 0x0D4A), p);
     cyc(2);
-    for (i = 0; cyc_loop(12, i < 3); i++) {
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
-        a = (uint8_t)(a << 1);
-    }
-    cpu.p = nz8(cpu.p, a);
+    for (i = 0; cyc_loop(12, i < 3); i++)
+        a = asl8(a, p);
+    *p = nz8(*p, a);
     return a;
 }
 
-/* TAX, LDY #8, then eight bytes from $70:FC88 + X to $70:FC90 + X. */
-static void times_slot_copy(uint8_t a)
+/* TAX, LDY #8, then eight bytes from $70:FC88 + X to $70:FC90 + X. Returns
+   the last byte; exit_x = X. */
+static uint8_t times_slot_copy(uint8_t x, uint8_t *p)
 {
-    uint8_t v = 0;
+    uint8_t v = 0, y = 8;
 
-    cpu.x = a;
-    cpu.y = 8;
     do {
         cyc(82);
-        v = rd8(0x70FC88 + (uint32_t)cpu.x);
+        v = rd8(0x70FC88 + (uint32_t)x);
         cyc(32);
-        wr8(0x70FC90 + (uint32_t)cpu.x, v);
-        cpu.x = (uint8_t)(cpu.x + 1);
-        cpu.y = (uint8_t)(cpu.y - 1);
-    } while (cpu.y);
+        wr8(0x70FC90 + (uint32_t)x, v);
+        x = (uint8_t)(x + 1);
+        y = (uint8_t)(y - 1);
+    } while (y);
     cyc(86);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, 0);
+    *p = nz8(*p, 0);
+    exit_x = x;
+    return v;
 }
 
 /*
@@ -427,12 +619,28 @@ static void times_slot_copy(uint8_t a)
  * RecordShiftFrom1 (its code from the TAX).
  * Entry: M 8-bit, X 8-bit. Exit: A = the last byte copied; X = the offset
  * + 8; Y = 0; Z set, N clear; C from the last shift.
+ * The function returns the last byte copied (A low byte); *p is P; the
+ * adapter sets X = the offset + 8, Y = 0.
  */
+uint8_t RecordShiftFrom0(uint8_t bank, uint8_t *p)
+{
+    uint8_t a;
+
+    cyc(46);
+    RecordSlotCopy0(bank, p);
+    a = course_times_24(bank, p);
+    cyc(6);
+    return times_slot_copy(a, p);
+}
+
 void abi_RecordShiftFrom0(void)
 {
-    cyc(46);
-    abi_RecordSlotCopy0();
-    times_slot_copy(cyc_then(6, course_times_24()));
+    uint8_t p = cpu.p, v = RecordShiftFrom0(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.y = 0;
+    cpu.p = p;
 }
 
 /*
@@ -442,55 +650,69 @@ void abi_RecordShiftFrom0(void)
  * next eight.
  * HOW: As RecordShiftFrom0 with 8 added (and the last shift's carry).
  * Entry: M 8-bit, X 8-bit. Exit: as RecordShiftFrom0, C from the add.
+ * As RecordShiftFrom0.
  */
-void abi_RecordShiftFrom1(void)
+uint8_t RecordShiftFrom1(uint8_t bank, uint8_t *p)
 {
-    cyc(46);
     uint8_t a;
 
-    abi_RecordSlotCopy3();
-    a = course_times_24();
-    times_slot_copy(op_adc8(a, 0x08, &cpu.p));
+    cyc(46);
+    RecordSlotCopy3(bank, p);
+    a = course_times_24(bank, p);
+    return times_slot_copy(op_adc8(a, 0x08, p), p);
+}
+
+void abi_RecordShiftFrom1(void)
+{
+    uint8_t p = cpu.p, v = RecordShiftFrom1(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.y = 0;
+    cpu.p = p;
 }
 
 /* STA $F5, then the record entry at $70:FC6D + course * 9 + $F5 gets the
-   name bytes $0F11, $0F12 and the car $0D89. */
-static void record_name_store(uint8_t slot)
+   name bytes $0F11, $0F12 and the car $0D89. Returns the car (A's low
+   byte on exit); exit_x = the entry's offset. */
+static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t a;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a, x, v;
     int i;
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | slot);
-    cpu.p = nz8(cpu.p, slot);
+    *p = nz8(*p, slot);
     cyc(32);
     wr8(0x0000F5, slot);
     cyc(24);
     a = rd8(b | 0x0D4A);
-    for (i = 0; i < 3; i++) {
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
-        a = (uint8_t)(a << 1);
-    }
-    cpu.p &= (uint8_t)~P_C;
+    for (i = 0; i < 3; i++)
+        a = asl8(a, p);
+    *p &= (uint8_t)~P_C;
     cyc(80);
-    a = op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
+    a = op_adc8(a, rd8(b | 0x0D4A), p);
     cyc(16);
-    a = op_adc8(a, rd8(0x0000F5), &cpu.p);
-    cpu.x = a;
-    cpu.p = nz8(cpu.p, a);
+    a = op_adc8(a, rd8(0x0000F5), p);
+    x = a;
+    *p = nz8(*p, a);
     cyc(38);
-    op_lda8(b | 0x0F11);
+    v = rd8(b | 0x0F11);
+    *p = nz8(*p, v);
     cyc(32);
-    wr8(0x70FC6D + (uint32_t)cpu.x, (uint8_t)cpu.a);
+    wr8(0x70FC6D + (uint32_t)x, v);
     cyc(24);
-    op_lda8(b | 0x0F12);
+    v = rd8(b | 0x0F12);
+    *p = nz8(*p, v);
     cyc(32);
-    wr8(0x70FC6E + (uint32_t)cpu.x, (uint8_t)cpu.a);
+    wr8(0x70FC6E + (uint32_t)x, v);
     cyc(24);
-    op_lda8(b | 0x0D89);
+    v = rd8(b | 0x0D89);
+    *p = nz8(*p, v);
     cyc(32);
-    wr8(0x70FC6F + (uint32_t)cpu.x, (uint8_t)cpu.a);
+    wr8(0x70FC6F + (uint32_t)x, v);
     cyc(42);
+    exit_x = x;
+    return v;
 }
 
 /*
@@ -502,11 +724,22 @@ static void record_name_store(uint8_t slot)
  * direct page $F5; 8-bit long stores.
  * Entry: M 8-bit, X 8-bit, D = $0000. Exit: A = the car; X = the entry's
  * offset; N, Z from the car.
+ * The function returns the car (A low byte); *p is P; the adapter sets X =
+ * the entry's offset.
  */
-void abi_RecordNameStore0(void)
+uint8_t RecordNameStore0(uint8_t bank, uint8_t *p)
 {
     cyc(22);
-    record_name_store(0x00);
+    return record_name_store(bank, 0x00, p);
+}
+
+void abi_RecordNameStore0(void)
+{
+    uint8_t p = cpu.p, v = RecordNameStore0(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.p = p;
 }
 
 /*
@@ -514,11 +747,21 @@ void abi_RecordNameStore0(void)
  * WHAT IT DOES: As RecordNameStore0 for the second entry.
  * HOW: The same code with 3; no script reaches it (unit_cpu does).
  * Entry: as RecordNameStore0. Exit: as RecordNameStore0.
+ * As RecordNameStore0.
  */
-void abi_RecordNameStore3(void)
+uint8_t RecordNameStore3(uint8_t bank, uint8_t *p)
 {
     cyc(22);
-    record_name_store(0x03);
+    return record_name_store(bank, 0x03, p);
+}
+
+void abi_RecordNameStore3(void)
+{
+    uint8_t p = cpu.p, v = RecordNameStore3(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.p = p;
 }
 
 /*
@@ -526,11 +769,25 @@ void abi_RecordNameStore3(void)
  * WHAT IT DOES: As RecordNameStore0 for the third entry.
  * HOW: The same code with 6; no script reaches it (unit_cpu does).
  * Entry: as RecordNameStore0. Exit: as RecordNameStore0.
+ * As RecordNameStore0.
  */
+uint8_t RecordNameStore6(uint8_t bank, uint8_t *p)
+{
+    return record_name_store(bank, 0x06, p);
+}
+
 void abi_RecordNameStore6(void)
 {
-    record_name_store(0x06);
+    uint8_t p = cpu.p, v = RecordNameStore6(cpu.db, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = exit_x;
+    cpu.p = p;
 }
+
+/* The last byte TimeBelowRecord compared (A's low byte on exit), for the
+   adapter. */
+static uint8_t below_a;
 
 /*
  * @routine 07:B964 TimeBelowRecord
@@ -540,25 +797,39 @@ void abi_RecordNameStore6(void)
  * HOW: 8-bit CMP per byte, BCC lower, BEQ on to the next.
  * Entry: M 8-bit; X = the record's offset. Exit: A = the last byte
  * compared; N, Z, C from that compare.
+ * The function takes the bank and X and returns 1 when the time is lower
+ * (carry clear); *p is P; the adapter sets A low byte = the last byte
+ * compared.
  */
-void abi_TimeBelowRecord(void)
+int TimeBelowRecord(uint8_t bank, uint16_t x, uint8_t *p)
 {
     static const uint16_t mine[3] = {0x0EEF, 0x0EEE, 0x0EED}, rec[3] = {0x0F81, 0x0F80, 0x0F7F};
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t a, m;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a = 0, m;
     int i;
 
     for (i = 0; i < 3; i++) {
         cyc(24);
-        op_lda8(b | mine[i]);
-        a = (uint8_t)cpu.a;
+        a = rd8(b | mine[i]);
+        *p = nz8(*p, a);
         cyc(24);
-        m = rd8(b | (uint16_t)(rec[i] + cpu.x));
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(38), P_C) : (cyc(28), 0)));
+        m = rd8(b | (uint16_t)(rec[i] + x));
+        *p = (uint8_t)((nz8(*p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(38), P_C) : (cyc(28), 0)));
         if (a != m)
-            { cyc(36); return; }
+            { cyc(36); below_a = a; return !(*p & P_C); }
     }
     cyc(4);
+    below_a = a;
+    return !(*p & P_C);
+}
+
+void abi_TimeBelowRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    TimeBelowRecord(cpu.db, cpu.x, &p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | below_a);
+    cpu.p = p;
 }
 
 /*
@@ -571,13 +842,15 @@ void abi_TimeBelowRecord(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; A = the BCD value. Exit: A = the
  * value; $F1 = A less the units; X unchanged, N and Z from it; C and V from
  * the last addition.
+ * The function takes A and returns the value; *p is P with N, Z from the last
+ * add (the adapter sets them from X).
  */
-void abi_BcdToBinary(void)
+uint16_t BcdToBinary(uint16_t v, uint8_t *p)
 {
     static const uint16_t thr[3] = {0x1000, 0x0100, 0x0010};
     static const uint16_t mul[3] = {1000, 100, 10};
     static const uint8_t sh[3] = {12, 8, 4};
-    uint16_t x0 = cpu.x, v = cpu.a, n, t, pre = 30;
+    uint16_t n, t, pre = 30;
     int i;
 
     cyc(16);
@@ -596,21 +869,18 @@ void abi_BcdToBinary(void)
         v &= (uint16_t)(thr[i] - 1);
         pre = 60;                       /* PLA, AND */
     }
-    cpu.a = v;
     cyc(pre + 30);
-    op_add16(rd16(0x0000F1));
-    cpu.x = x0;
-    cpu.p = nz16(cpu.p, x0);
+    v = add16(v, rd16(0x0000F1), p);
     cyc(80);
+    return v;
 }
 
-/* ROR A (16-bit) through the carry. */
-static void ror16(void)
+void abi_BcdToBinary(void)
 {
-    uint8_t c = (uint8_t)(cpu.a & 1);
+    uint8_t p = cpu.p;
 
-    cpu.a = (uint16_t)(cpu.a >> 1 | (cpu.p & P_C) << 15);
-    cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_C), cpu.a) | c);
+    cpu.a = BcdToBinary(cpu.a, &p);
+    cpu.p = nz16(p, cpu.x);
 }
 
 /*
@@ -622,69 +892,74 @@ static void ror16(void)
  * seconds, four RORs for the minutes).
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the packed time, $F3 =
  * its bits 0-12; N, Z from A; C = bit 3 of the minutes; X and Y unchanged.
+ * The function takes the hundredths (A), seconds (X) and minutes (Y) and
+ * returns the packed time; *p is P.
  */
-void abi_TimePackBcd(void)
+uint16_t TimePackBcd(uint16_t hund, uint16_t sec, uint16_t min, uint8_t *p)
 {
+    uint16_t a;
     int i;
 
-    op_and16(0x00FF);
-    (cyc(84), abi_BcdToBinary());
-    op_and16(0x007F);
+    a = and16(hund, 0x00FF, p);
+    cyc(84);
+    a = BcdToBinary(a, p);
+    a = and16(a, 0x007F, p);
     cyc(38);
-    wr16(0x0000F3, cpu.a);
-    cpu.a = cpu.x;
-    cpu.p = nz16(cpu.p, cpu.a);
-    op_and16(0x00FF);
-    (cyc(98), abi_BcdToBinary());
-    op_xba();
-    op_lsr16();
-    op_and16(0x1F80);
+    wr16(0x0000F3, a);
+    a = transfer(sec, p);
+    a = and16(a, 0x00FF, p);
+    cyc(98);
+    a = BcdToBinary(a, p);
+    a = xba(a, p);
+    a = lsr16(a, p);
+    a = and16(a, 0x1F80, p);
     cyc(72);
-    cpu.a |= rd16(0x0000F3);
-    cpu.p = nz16(cpu.p, cpu.a);
+    a |= rd16(0x0000F3);
+    *p = nz16(*p, a);
     cyc(16);
-    wr16(0x0000F3, cpu.a);
-    cpu.a = cpu.y;
-    cpu.p = nz16(cpu.p, cpu.a);
-    op_and16(0x00FF);
-    (cyc(98), abi_BcdToBinary());
+    wr16(0x0000F3, a);
+    a = transfer(min, p);
+    a = and16(a, 0x00FF, p);
+    cyc(98);
+    a = BcdToBinary(a, p);
     for (i = 0; i < 4; i++)
-        ror16();
-    op_and16(0xE000);
+        a = ror16(a, p);
+    a = and16(a, 0xE000, p);
     cyc(94);
-    cpu.a |= rd16(0x0000F3);
-    cpu.p = nz16(cpu.p, cpu.a);
+    a |= rd16(0x0000F3);
+    *p = nz16(*p, a);
     cyc(42);
+    return a;
 }
 
-/* CLC, LDA.L, ADC $F1, STA $F1 over n bytes from addr + x (8-bit X). */
-static void sum_into_f1(uint32_t addr, uint8_t x, unsigned n)
+void abi_TimePackBcd(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = TimePackBcd(cpu.a, cpu.x, cpu.y, &p);
+    cpu.p = p;
+}
+
+/* CLC, LDA.L, ADC $F1, STA $F1 over n bytes from addr + x (8-bit X).
+   Returns the last sum (A's low byte on exit). */
+static uint8_t sum_into_f1(uint32_t addr, uint8_t x, unsigned n, uint8_t *p)
 {
     uint8_t a = 0;
     unsigned first = 1;
 
     while (n--) {
-        cpu.p &= (uint8_t)~P_C;
+        *p &= (uint8_t)~P_C;
         /* the first round comes from TAX, LDY, CLC; later ones from INX, DEY, BNE, CLC */
         cyc(first ? 76 : 96);
         first = 0;
         a = rd8(addr + x);
         cyc(16);
-        a = op_adc8(a, rd8(0x0000F1), &cpu.p);
+        a = op_adc8(a, rd8(0x0000F1), p);
         cyc(16);
         wr8(0x0000F1, a);
         x++;
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = x;
-    cpu.y = 0;
-}
-
-/* ASL A (16-bit), C the bit out. */
-static uint16_t asl16(uint16_t a)
-{
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
-    return (uint16_t)(a << 1);
+    return a;
 }
 
 /*
@@ -707,99 +982,127 @@ static uint16_t asl16(uint16_t a)
  * Entry: any widths; D = $0000. Exit: P restored; A low byte the checksum
  * (high byte the last packed time's), X = course, Y = 0; or, at $0D24 = 3,
  * A low byte 3; with no record, A low byte 0 and X = $18.
+ * The function takes A and the caller's P, with X and Y in *x and *y, and
+ * returns A; *x, *y are X and Y on exit.
  */
-void abi_RecordTimeInsert(void)
+uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t p0)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, place, page;
-    uint16_t a;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = p0 | P_M | P_X, place, page, v, sum;
+    uint16_t w, xx, yy, aa;
     unsigned i;
 
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
+    *x &= 0x00FF;
+    *y &= 0x00FF;
     cyc(46);
-    op_lda8(b | 0x0D24);
-    if ((uint8_t)cpu.a == 0x03) {
+    v = rd8(b | 0x0D24);
+    p = nz8(p, v);
+    a = (uint16_t)((a & 0xFF00) | v);
+    if (v == 0x03) {
         cyc(32);
-        op_plp(p0);
+        cyc(42);                        /* PLP */
         cyc(28);
-        return;
+        return a;
     } else { cyc(122); }
-    cpu.x = 0x00;
-    abi_TimeBelowRecord();
-    if (!(cpu.p & P_C)) {
+    if (TimeBelowRecord(bank, 0x00, &p)) {
         cyc(62);
-        abi_RecordShiftFrom1();
-        (cyc(46), abi_RecordShiftFrom0());
-        (cyc(46), abi_RecordNameStore0());
+        RecordShiftFrom1(bank, &p);
+        cyc(46);
+        RecordShiftFrom0(bank, &p);
+        cyc(46);
+        RecordNameStore0(bank, &p);
         place = 0x01;
         page = 0x00;
     } else {
         cyc(84);
-        cpu.x = 0x0C;
-        abi_TimeBelowRecord();
-        if (!(cpu.p & P_C)) {
+        if (TimeBelowRecord(bank, 0x0C, &p)) {
             cyc(62);                    /* BCS not taken, JSR */
-            abi_RecordShiftFrom1();
-            (cyc(46), abi_RecordNameStore3());
+            RecordShiftFrom1(bank, &p);
+            cyc(46);
+            RecordNameStore3(bank, &p);
             place = 0x02;
             page = 0x08;
         } else {
             cyc(84);
-            cpu.x = 0x18;
-            abi_TimeBelowRecord();
-            if (cpu.p & P_C) {
+            if (!TimeBelowRecord(bank, 0x18, &p)) {
                 cyc(56);
                 wr8(b | 0x10C7, 0xFF);
                 cyc(40);
                 wr8(b | 0x0FAC, 0x00);
-                cpu.a = (uint16_t)(cpu.a & 0xFF00);
-                op_plp(p0);
+                cyc(42);                /* PLP */
                 cyc(28);
-                return;
+                *x = 0x18;
+                return (uint16_t)(a & 0xFF00);
             } else { cyc(68); }         /* BCC taken, JSR */
-            abi_RecordNameStore6();
+            RecordNameStore6(bank, &p);
             place = 0x03;
             page = 0x10;
         }
     }
     cyc(40);
     wr8(b | 0x0FAC, place);
-    op_rep(P_M | P_X);
+    p &= (uint8_t)~(P_M | P_X);         /* REP #$30 */
+    cyc(22);
     cyc(place == 0x03 ? 56 : 78);       /* the third place has no BRA */
     wr16(0x0000F7, page);
     cyc(24);
-    a = asl16(rd16(b | 0x0D4A));
-    cpu.p &= (uint8_t)~P_C;
+    w = asl16(rd16(b | 0x0D4A), &p);
+    p &= (uint8_t)~P_C;
     cyc(52);
-    a = (uint16_t)(op_adc16(a, rd16(b | 0x0D4A), &cpu.p) & 0x00FF);
+    w = (uint16_t)(op_adc16(w, rd16(b | 0x0D4A), &p) & 0x00FF);
     for (i = 0; i < 3; i++)
-        a = asl16(a);
+        w = asl16(w, &p);
     cyc(82);
-    a = op_adc16(a, rd16(0x0000F7), &cpu.p);
+    w = op_adc16(w, rd16(0x0000F7), &p);
     cyc(16);
-    wr16(0x0000F7, a);
+    wr16(0x0000F7, w);
+    aa = a;
     for (i = 0; i < 4; i++) {
         cyc(24);
-        cpu.a = rd16(b | (uint16_t)(0x0EF9 + 3 * i));
+        aa = rd16(b | (uint16_t)(0x0EF9 + 3 * i));
         cyc(24);
-        cpu.x = rd16(b | (uint16_t)(0x0EFA + 3 * i));
+        xx = rd16(b | (uint16_t)(0x0EFA + 3 * i));
         cyc(24);
-        cpu.y = rd16(b | (uint16_t)(0x0EFB + 3 * i));
-        (cyc(46), abi_TimePackBcd());
+        yy = rd16(b | (uint16_t)(0x0EFB + 3 * i));
+        cyc(46);
+        aa = TimePackBcd(aa, xx, yy, &p);
         cyc(16);
-        cpu.x = rd16(0x0000F7);
+        xx = rd16(0x0000F7);
         cyc(32);
-        wr16(0x70FC88 + cpu.x + 2 * i, cpu.a);
+        wr16(0x70FC88 + xx + 2 * i, aa);
     }
-    op_sep(P_M | P_X);
+    p |= P_M | P_X;                     /* SEP #$30 */
+    cyc(22);
     cyc(16);
     wr8(0x0000F1, 0x00);
-    sum_into_f1(0x70FC88, course_times_24(), cyc_then(4, 24));
-    sum_into_f1(0x70FC6D, (cyc(44), course_times_9()), 9);
+    v = course_times_24(bank, &p);
+    cyc(4);
+    sum_into_f1(0x70FC88, v, 24, &p);
+    cyc(44);
+    v = course_times_9(bank, &p);
+    sum = sum_into_f1(0x70FC6D, v, 9, &p);
     cyc(68);
-    cpu.x = rd8(b | 0x0D4A);
+    xx = rd8(b | 0x0D4A);
     cyc(16);
-    wr8(0x70FC2D + cpu.x, cyc_then(32, rd8(0x0000F1)));
-    op_plp(p0);
+    v = rd8(0x0000F1);
+    cyc(32);
+    wr8(0x70FC2D + xx, v);
+    cyc(42);                            /* PLP */
     cyc(28);
+    *x = xx;
+    *y = 0;
+    return (uint16_t)((aa & 0xFF00) | sum);
+}
+
+void abi_RecordTimeInsert(void)
+{
+    uint8_t p0 = cpu.p;
+    uint16_t x = cpu.x, y = cpu.y;
+
+    cpu.p = p0 | P_M | P_X;             /* what an interrupt pushes */
+    cpu.a = RecordTimeInsert(cpu.db, cpu.a, &x, &y, p0);
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = p0;
 }

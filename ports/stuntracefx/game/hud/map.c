@@ -3,6 +3,7 @@
  * objects' world positions scaled down to map pixels.
  */
 #include "machine.h"
+#include "hud_calls.h"
 
 /* Arithmetic shift right by 3, as three CMP #$8000 / ROR A. */
 static uint16_t asr3(uint16_t v)
@@ -80,19 +81,21 @@ void abi_MapMarkerSprites(void)
     }
 }
 
-void abi_MapMarkerSprites(void);
-
-/* For the abi_ wrappers: the map origin from the byte at x_at ($F1) and the
-   byte at x_at + 3 (high byte of $F3), the slot step in $F5, and Y = the
-   first slot. */
-static void abi_map_markers_setup(uint32_t x_at, uint16_t step, uint16_t slot)
+/* The map origin from the word at x_at ($F1, low byte) and at x_at + 2
+   ($F3, high byte), and the slot step ($F5), as the panels store them. */
+static void map_origin(uint32_t x_at, uint16_t step)
 {
-    wr16(0x0000F1, cyc_then(40, (uint16_t)(rd16(x_at) & 0x00FF)));   /* AND #, STA */
+    uint16_t v;
+
+    v = (uint16_t)(rd16(x_at) & 0x00FF);
+    cyc(40);                                    /* AND #, STA */
+    wr16(0x0000F1, v);
     cyc(24);
-    wr16(0x0000F3, cyc_then(40, (uint16_t)(rd16(x_at + 2) & 0xFF00)));
+    v = (uint16_t)(rd16(x_at + 2) & 0xFF00);
+    cyc(40);
+    wr16(0x0000F3, v);
     cyc(40);
     wr16(0x0000F5, step);
-    cpu.y = slot;
 }
 
 /*
@@ -101,29 +104,37 @@ static void abi_map_markers_setup(uint32_t x_at, uint16_t step, uint16_t slot)
  * $0E0D), from sprite table offset $158 downward.
  * HOW: Direct page $F1 = $0E0A, $F3 high byte = $0E0D, $F5 = -4, Y = $158,
  * then MapMarkerSprites. Work RAM through the data bank.
- * Entry: X 16-bit, D = $0000. Exit: as MapMarkerSprites, with M 16-bit.
+ * Entry: X 16-bit, D = $0000. Exit: returns the list position (X) and sets *y
+ * (Y); the adapter leaves A = 0 and P with M 16-bit, N and Z clear, as
+ * MapMarkerSprites otherwise.
  */
-void MapMarkersPanelA(uint8_t bank)
+uint16_t MapMarkersPanelA(uint8_t bank, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t y = 0x0158;
+    uint16_t x;
 
-    wr16(0x0000F1, (uint16_t)(rd16(b | 0x0E0A) & 0x00FF));
-    wr16(0x0000F3, (uint16_t)(rd16(b | 0x0E0C) & 0xFF00));
-    wr16(0x0000F5, 0xFFFC);
-    MapMarkerSprites(bank, &y);
+    cyc(46);
+    map_origin(b | 0x0E0A, 0xFFFC);
+    *y = 0x0158;
+    cyc(86);                                    /* JSL */
+    x = MapMarkerSprites(bank, y);
+    cyc(42);
+    return x;
 }
 
 void abi_MapMarkersPanelA(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t y;
 
-    cyc(46);
-    abi_map_markers_setup(b | 0x0E0A, 0xFFFC, 0x0158);
-    cpu.a = 0xFFFC;
-    cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_M), 0x0158));
-    (cyc(86), abi_MapMarkerSprites());
-    cyc(42);
+    /* an interrupt inside the markers pushes the P they run under */
+    cpu.p = (uint8_t)nz16((uint8_t)(cpu.p & ~P_M), 0x0158);
+    cpu.x = MapMarkersPanelA(cpu.db, &y);
+    cpu.y = y;
+    cpu.a = 0;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 /*
@@ -135,46 +146,54 @@ void abi_MapMarkersPanelA(void)
  * MapMarkerSprites. $0D55 and $0D62 are tested with long loads, the rest
  * goes through the data bank.
  * Entry: X 16-bit, D = $0000. Exit: when neither is set, A low byte = 0, M
- * 8-bit, Z set, N clear; otherwise as MapMarkerSprites, with M 8-bit.
+ * 8-bit, Z set, N clear; otherwise as MapMarkerSprites, with M 8-bit, N and
+ * Z clear. Returns 0 when neither is set; else 1 with *x, *y as
+ * MapMarkerSprites gives them.
  */
-void MapMarkersPanelB(uint8_t bank)
+int MapMarkersPanelB(uint8_t bank, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t y;
+    uint8_t v;
 
-    if (!rd8(0x000D55) && !rd8(0x000D62))
-        return;
-    wr16(0x0000F1, (uint16_t)(rd16(b | 0x0E09) & 0x00FF));
-    wr16(0x0000F3, (uint16_t)(rd16(b | 0x0E0B) & 0xFF00));
-    wr16(0x0000F5, 0x0004);
-    y = rd8(b | 0x0D62) ? 0x0054 : 0x0180;
-    MapMarkerSprites(bank, &y);
+    cyc(54);
+    v = rd8(0x000D55);
+    if (!v)
+        { cyc(48); v = rd8(0x000D62); }
+    cyc(58);
+    if (!v)
+        return 0;
+    /* the setup's stores come before the $0D62 read that picks the first
+       slot */
+    cyc(10);
+    map_origin(b | 0x0E09, 0x0004);
+    cyc(46);                                    /* SEP, LDA long */
+    v = rd8(b | 0x0D62);
+    *y = v ? 0x0054 : 0x0180;
+    cyc(v ? 108 : 124);                         /* BNE, LDY # (and BRA), JSL */
+    *x = MapMarkerSprites(bank, y);
+    cyc(42);
+    return 1;
 }
 
 void abi_MapMarkersPanelB(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    cyc(54);
-    uint8_t v = rd8(0x000D55);
+    uint16_t x, y;
+    uint8_t p0 = cpu.p;
 
-    if (!v)
-        { cyc(48); v = rd8(0x000D62); }
-    cyc(58);
-    if (!v) {
+    cpu.p = (uint8_t)((p0 | P_M) & ~(P_N | P_Z));
+    if (!MapMarkersPanelB(cpu.db, &x, &y)) {
+        cpu.p = p0;
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)(nz8(cpu.p, 0) | P_M);
         return;
     }
-    /* the setup's stores come before the $0D62 read that picks the first
-       slot */
-    cyc(10);
-    abi_map_markers_setup(b | 0x0E09, 0x0004, 0);
-    cyc(46);                            /* SEP, LDA long */
-    v = rd8(b | 0x0D62);
-    cpu.y = v ? 0x0054 : 0x0180;
-    cyc(v ? 108 : 124);                 /* BNE, LDY # (and BRA), JSL */
-    cpu.a = (uint16_t)(0x0000 | v);
-    cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p | P_M), cpu.y));
-    abi_MapMarkerSprites();
-    cyc(42);
+    /* N, Z from the first slot, which is never 0 or negative */
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~(P_N | P_Z));
+    cpu.x = x;
+    cpu.y = y;
+    cpu.a = 0;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }

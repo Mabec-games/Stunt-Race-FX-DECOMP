@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "race_calls.h"
 
 uint8_t CourseIndex12(uint8_t a, uint8_t *p);
 
@@ -90,14 +91,12 @@ void abi_RaceTimeAddD814(void)
     cpu.p = (uint8_t)((p & ~P_D) | P_M);
 }
 
-void abi_CourseIndex12(void);
-
-/* ASL A, 8-bit: C from bit 7. */
-static uint8_t asl8(uint8_t v)
+/* ASL A, 8-bit: C from bit 7, N and Z from the result, in *p. */
+static uint8_t asl8(uint8_t v, uint8_t *p)
 {
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x80 ? P_C : 0));
+    *p = (uint8_t)((*p & ~P_C) | (v & 0x80 ? P_C : 0));
     v = (uint8_t)(v << 1);
-    cpu.p = nz8(cpu.p, v);
+    *p = nz8(*p, v);
     return v;
 }
 
@@ -112,39 +111,41 @@ static uint8_t asl8(uint8_t v)
  * path is not reached in the traces so far.
  * Entry: any widths, D = $0000. Exit: A low byte = the value, N, Z from
  * it; X as the path left it (8-bit); X and Y high bytes cleared; M 8-bit,
- * X 8-bit; C, V as the path left them.
+ * X 8-bit; C, V as the path left them. (The function returns the value;
+ * *x and *p carry X and P.)
  */
-void abi_RaceTimeInit(void)
+uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
     unsigned i;
 
-    op_sep(P_M | P_X);
+    *p |= P_M | P_X;
+    cyc(22);
     cyc(16);
     for (i = 0; i < 4; i++)
         { cyc(24); wr8(b | (uint16_t)(0x0E68 + i), 0x99); }
     cyc(24);
     v = rd8(b | 0x0D2B);
-    cpu.p = nz8(cpu.p, v);
+    *p = nz8(*p, v);
     if (v == 0) {
         cyc(46);
         v = rd8(b | 0x0D4C);
-        cpu.p = nz8(cpu.p, v);
+        *p = nz8(*p, v);
         if (v == 0) {
             cyc(40);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0D89));
-            abi_CourseIndex12();
+            v = rd8(b | 0x0D89);
+            *x = CourseIndex12(v, p);
             cyc(0);
-            v = rd8((uint32_t)(0x03D813 + cpu.x));
+            v = rd8((uint32_t)(0x03D813 + *x));
         } else {
             cyc(46);
-            cpu.x = rd8(b | 0x0D4A);
-            v = rd8((uint32_t)(0x03D810 + cpu.x));
+            *x = rd8(b | 0x0D4A);
+            v = rd8((uint32_t)(0x03D810 + *x));
         }
     } else {
         cyc(8);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+        *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
         if (v >= 0x02)
             v = 0x00;
         else { cyc(64); if (rd8(b | 0x0D4E) != 0)
@@ -152,24 +153,38 @@ void abi_RaceTimeInit(void)
         else {
             cyc(40);
             v = rd8(b | 0x0E3D);
-            cpu.p |= P_C;
-            v = op_sbc8(v, 0x0C, &cpu.p);
-            v = asl8(asl8(v));
-            cpu.p &= (uint8_t)~P_C;
+            *p |= P_C;
+            v = op_sbc8(v, 0x0C, p);
+            v = asl8(asl8(v, p), p);
+            *p &= (uint8_t)~P_C;
             cyc(80);
-            v = op_adc8(v, rd8(b | 0x0D89), &cpu.p);
-            cpu.x = v;
+            v = op_adc8(v, rd8(b | 0x0D89), p);
+            *x = v;
             cyc(14);
-            v = rd8((uint32_t)(0x03D8A3 + cpu.x));
+            v = rd8((uint32_t)(0x03D8A3 + *x));
         } }
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    *p = nz8(*p, v);
     cyc(86);
     wr8(b | 0x0E70, v);
     cyc(24);
     wr8(b | 0x0E71, 0x00);
     cyc(42);
+    return v;
+}
+
+void abi_RaceTimeInit(void)
+{
+    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    uint8_t v;
+
+    cpu.p = p | P_M | P_X;                      /* what an interrupt pushes */
+    v = RaceTimeInit(cpu.db, &x, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = x;
+    cpu.y &= 0x00FF;
+    cpu.p = p;
 }
 
 /*
@@ -184,45 +199,45 @@ void abi_RaceTimeInit(void)
  * Entry: any widths. Exit: X and Y high bytes cleared (SEP #$30); A as
  * the last step left it; P restored (decimal off).
  */
-void abi_RaceClockStep(void)
+uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = p0 | P_M | P_X, v;
     uint16_t a;
 
-    op_sep(P_M | P_X);
+    cyc(22);                                    /* SEP #$30 */
     cyc(54);
     v = rd8(0x000E5B);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    acc = (uint16_t)((acc & 0xFF00) | v);
     if (!v) {
         cyc(44);
-        op_plp(p0);
-        return;
+        cyc(42);                                /* PLP */
+        return acc;
     }
-    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_D);
+    p = (uint8_t)((p & ~P_M) | P_D);
     cyc(82);
     a = rd16(b | 0x0E62);
-    cpu.p &= (uint8_t)~P_C;
+    p &= (uint8_t)~P_C;
     cyc(38);
-    a = op_adc16(a, rd16(b | 0x0D29), &cpu.p);
+    a = op_adc16(a, rd16(b | 0x0D29), &p);
     cyc(24);
     wr16(b | 0x0E62, a);
     cyc(24);
-    a = op_adc16(rd16(b | 0x0E64), 0x0000, &cpu.p);
+    a = op_adc16(rd16(b | 0x0E64), 0x0000, &p);
     cyc(48);
     wr16(b | 0x0E64, a);
-    cpu.a = a;
-    op_cmp16(0x0060);
+    acc = a;
+    cyc(0);                                     /* CMP #$0060 */
     if (a >= 0x0060) {
         cyc(64);
         wr16(b | 0x0E64, 0x0000);
-        cpu.p &= (uint8_t)~P_C;
+        p &= (uint8_t)~P_C;
         cyc(24);
-        a = op_adc16(rd16(b | 0x0E66), 0x0001, &cpu.p);
+        a = op_adc16(rd16(b | 0x0E66), 0x0001, &p);
         cyc(62);
         wr16(b | 0x0E66, a);
-        cpu.a = a;
-        op_cmp16(0x0010);
+        acc = a;
+        cyc(0);                                 /* CMP #$0010 */
         if (a >= 0x0010) {
             cyc(88);
             wr16(b | 0x0E66, 0x0009);
@@ -230,28 +245,26 @@ void abi_RaceClockStep(void)
             wr16(b | 0x0E64, 0x0059);
             cyc(48);
             wr16(b | 0x0E62, 0x9999);
-            cpu.a = 0x9999;
-            cpu.p = nz16(cpu.p, cpu.a);
+            acc = 0x9999;
         }
     } else { cyc(46); }
     cyc(38);
     a = rd16(b | 0x0E68);
-    cpu.p |= P_C;
+    p |= P_C;
     cyc(38);
-    a = op_sbc16(a, rd16(b | 0x0D29), &cpu.p);
-    cpu.a = a;
+    a = op_sbc16(a, rd16(b | 0x0D29), &p);
+    acc = a;
     cyc(40);
     wr16(b | 0x0E68, a);
-    if (!(cpu.p & P_C)) {
+    if (!(p & P_C)) {
         cyc(24);
         a = rd16(b | 0x0E70);
-        cpu.a = a;
-        cpu.p = nz16(cpu.p, a);
+        acc = a;
         if (a) {
-            cpu.p |= P_C;
-            cpu.a = op_sbc16(a, 0x0001, &cpu.p);
+            p |= P_C;
+            acc = op_sbc16(a, 0x0001, &p);
             cyc(72);
-            wr16(b | 0x0E70, cpu.a);
+            wr16(b | 0x0E70, acc);
         } else {
             cyc(46);
             wr16(b | 0x0E68, 0x0000);
@@ -261,5 +274,16 @@ void abi_RaceClockStep(void)
         cyc(22);
     }
     cyc(42);
-    op_plp(p0);
+    cyc(42);                                    /* PLP */
+    return acc;
+}
+
+void abi_RaceClockStep(void)
+{
+    uint8_t p0 = cpu.p;
+
+    cpu.a = RaceClockStep(cpu.db, cpu.a, p0);
+    cpu.p = p0;
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
 }
