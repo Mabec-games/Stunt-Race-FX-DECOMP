@@ -5,9 +5,9 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "gsu_programs_calls.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
-void abi_Gsu81E3Long(void);
 
 /*
  * @routine 03:AF9D Gsu8277
@@ -19,12 +19,12 @@ void abi_Gsu81E3Long(void);
  * Entry: any widths, D = $0000. Exit: A = the third result (16 bits); X, Y
  * unchanged; P unchanged but N, Z, which the final pull of X sets.
  */
-uint16_t Gsu8277(void)
+uint16_t Gsu8277(int x8)
 {
     uint16_t v;
     unsigned i;
 
-    cyc((cpu.p & P_X) ? 104 : 120);     /* PHP, REP, PHX, PHY, the vector's first load */
+    cyc(x8 ? 104 : 120);                /* PHP, REP, PHX, PHY, the vector's first load */
     v = rd16(0x000002);
     cyc(32);
     wr16(0x700068, v);
@@ -46,18 +46,17 @@ uint16_t Gsu8277(void)
         wr16(0x0000B7 + 2 * i, v);
     }
     cyc(128);
+    if (!x8)
+        cyc(16);                        /* the 16-bit PLX */
     return v;
 }
 
 void abi_Gsu8277(void)
 {
-    uint8_t p = cpu.p;
-    uint16_t x = cpu.x, y = cpu.y;
+    int x8 = (cpu.p & P_X) != 0;
 
-    cpu.a = Gsu8277();
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = (p & P_X) ? nz8(p, (uint8_t)x) : (cyc(16), nz16(p, x));
+    cpu.a = Gsu8277(x8);
+    cpu.p = x8 ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
 }
 
 /*
@@ -70,12 +69,13 @@ void abi_Gsu8277(void)
  * Entry: X 16-bit, D = $0000. Exit: A as Gsu81E3Long leaves it; X, Y
  * unchanged; M 16-bit; N, Z from X.
  */
-void VectorGsu81E3(void)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x = cpu.x, y = cpu.y, u, v;
+static uint8_t vector_cv;               /* the adapter's: C and V of the second subtract */
 
-    cpu.p &= (uint8_t)~P_M;
+uint16_t VectorGsu81E3(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t u, v, r;
+
     cyc(98);
     u = rd16(0x000004);
     cyc(30);
@@ -86,23 +86,37 @@ void VectorGsu81E3(void)
     u = rd16(b | 0x05F2);
     cyc(30);
     v = rd16(0x000094);
-    cpu.a = (uint16_t)(u - v);
-    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (u >= v ? P_C : 0) | (((u ^ v) & (u ^ cpu.a) & 0x8000) ? P_V : 0));
+    r = (uint16_t)(u - v);
+    vector_cv = (uint8_t)((u >= v ? P_C : 0) | (((u ^ v) & (u ^ r) & 0x8000) ? P_V : 0));
     cyc(16);
-    wr16(0x000008, cpu.a);
-    (cyc(62), abi_Gsu81E3Long());
-    cpu.y = y;
-    cpu.x = x;
-    cpu.p = nz16(cpu.p & ~P_M, x);
+    wr16(0x000008, r);
+    r = (cyc(62), Gsu81E3Long());
     cyc(138);                           /* REP, PLY, PLX, RTL */
+    return r;
 }
 
 void abi_VectorGsu81E3(void)
 {
-    VectorGsu81E3();
+    cpu.a = VectorGsu81E3(cpu.db);
+    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_C | P_V)) | vector_cv), cpu.x);
 }
 
-void abi_Gsu8277(void);
+/* ADC and SBC (8-bit, binary: D is clear here) with the carry in *p; N,
+   Z, C, V to *p. The SBC's 16 clocks are op_sbc8's stated time. */
+static uint8_t adc8(uint8_t a, uint8_t m, uint8_t *p)
+{
+    unsigned r = (unsigned)a + m + (*p & P_C);
+
+    *p = (uint8_t)((*p & ~(P_V | P_C)) | ((~(a ^ m) & (a ^ r) & 0x80) ? P_V : 0) | (r > 0xFF ? P_C : 0));
+    *p = nz8(*p, (uint8_t)r);
+    return (uint8_t)r;
+}
+
+static uint8_t sbc8(uint8_t a, uint8_t m, uint8_t *p)
+{
+    cyc(16);
+    return adc8(a, (uint8_t)~m, p);
+}
 
 /* 8-bit shifts and compares as the 65816 sets N, Z and C. */
 static uint8_t lsr8(uint8_t v, uint8_t *p)
@@ -223,11 +237,11 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         *p |= P_C;
         cyc(62);
         v = rd8(0x000088);
-        a = op_sbc8(0x00, v, p);
+        a = sbc8(0x00, v, p);
         wr8(0x000088, a);
         cyc(32);
         v = rd8(0x000089);
-        a = op_sbc8(0x00, v, p);
+        a = sbc8(0x00, v, p);
         wr8(0x000089, a);
     } else { cyc(22); }
     cyc(16);
@@ -296,7 +310,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     *p |= P_C;
     cyc(44);
     v = rd8(0x000096);
-    a = op_sbc8(x, v, p);
+    a = sbc8(x, v, p);
     wr8(0x00008E, a);
     cyc(16);
     x = rd8(0x000088);
@@ -306,7 +320,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     *p |= P_C;
     cyc(92 + (x > 0x97 ? 6 : 0));
     v = rd8(b | (uint16_t)(0x8368 + x));
-    a = op_sbc8(a, v, p);
+    a = sbc8(a, v, p);
     x = a;
     cyc(x > 0x97 ? 6 : 0);
     a = rd8(b | (uint16_t)(0x8268 + x));
@@ -347,13 +361,13 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         a = rd8(0x0000CE);
         cyc(16);
         v = rd8(0x00008C);
-        a = op_sbc8(a, v, p);
+        a = sbc8(a, v, p);
         wr8(0x00008C, a);
         cyc(16);
         a = rd8(0x0000CF);
         cyc(16);
         v = rd8(0x00008D);
-        a = op_sbc8(a, v, p);
+        a = sbc8(a, v, p);
         wr8(0x00008D, a);
         cyc(24);                        /* JMP */
     } else {
@@ -362,14 +376,14 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         a = rd8(0x00008C);
         cyc(16);
         v = rd8(0x0000CE);
-        a = op_adc8(a, v, p);
+        a = adc8(a, v, p);
         cyc(16);
         wr8(0x00008C, a);
         cyc(16);
         a = rd8(0x00008D);
         cyc(16);
         v = rd8(0x0000CF);
-        a = op_adc8(a, v, p);
+        a = adc8(a, v, p);
         cyc(16);
         wr8(0x00008D, a);
     }
@@ -398,7 +412,7 @@ void abi_ScaledOffset(void)
  * value; X as the second ScaledOffset left it; N, Z, C, V from the last
  * subtract.
  */
-void abi_ScaledOffsetPair(void)
+void ScaledOffsetPair(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
 {
     uint8_t a, v;
     unsigned i;
@@ -422,7 +436,8 @@ void abi_ScaledOffsetPair(void)
         a = rd8(0x000095);
         cyc(16);
         wr8(0x00008B, a);
-        (cyc(62), abi_ScaledOffset());
+        (cyc(62), ScaledOffset(bank, &a, rx, p));
+        cyc(44);                        /* its RTL */
         cyc(16);
         a = rd8(0x00008C);
         cyc(16);
@@ -432,36 +447,45 @@ void abi_ScaledOffsetPair(void)
         cyc(16);
         wr8((uint16_t)(out[i] + 1), a);
     }
-    cpu.p &= (uint8_t)~P_C;
+    *p &= (uint8_t)~P_C;
     cyc(30);
     a = rd8(0x0000D0);
     cyc(16);
     v = rd8(0x000078);
-    a = op_adc8(a, v, &cpu.p);
+    a = adc8(a, v, p);
     cyc(16);
     wr8(0x000078, a);
     cyc(16);
     a = rd8(0x0000D1);
     cyc(16);
     v = rd8(0x000079);
-    a = op_adc8(a, v, &cpu.p);
+    a = adc8(a, v, p);
     cyc(16);
     wr8(0x000079, a);
-    cpu.p |= P_C;
+    *p |= P_C;
     cyc(30);
     a = rd8(0x000078);
     cyc(16);
     v = rd8(0x0000CE);
-    a = op_sbc8(a, v, &cpu.p);
+    a = sbc8(a, v, p);
     wr8(0x000078, a);
     cyc(16);
     a = rd8(0x000079);
     cyc(16);
     v = rd8(0x0000CF);
-    a = op_sbc8(a, v, &cpu.p);
+    a = sbc8(a, v, p);
     wr8(0x000079, a);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    *ra = a;
     cyc(44);                            /* RTL */
+}
+
+void abi_ScaledOffsetPair(void)
+{
+    uint8_t a, x = (uint8_t)cpu.x;
+
+    ScaledOffsetPair(cpu.db, &a, &x, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.x = x;
 }
 
 /* LDA / CMP #$8000 / ROR seven times: an arithmetic shift right by 7. */
@@ -494,14 +518,17 @@ static uint16_t asr7(uint16_t w, uint8_t *p)
  * Entry: D = $0000. Exit: M 8-bit, X 8-bit (X and Y high bytes 0); A =
  * $067B and $067D (high, low); N, Z from $067D; C = bit 6 of $065C.
  */
-void abi_ViewFromAnglesGsu8277(void)
+static uint8_t view_c;                  /* the adapter's: C from the last division */
+
+uint16_t ViewFromAnglesGsu8277(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     static const uint16_t gsu_words[6] = {0x066A, 0x066C, 0x066E, 0x0676, 0x0678, 0x067A};
     uint16_t w;
+    uint8_t p = 0;
     unsigned i;
 
-    op_rep(P_M | P_X);
+    cyc(22);                            /* REP #$30 */
     cyc(16);
     w = rd16(0x0000C5);
     w = (uint16_t)((w & 0x00FF) ^ 0x00FF);
@@ -524,10 +551,8 @@ void abi_ViewFromAnglesGsu8277(void)
     w = rd16(0x0000C9);
     cyc(182);
     wr8(b | 0x067D, (uint8_t)(w >> 8));
-    cpu.a = (uint16_t)(w >> 8);
-    op_sep(P_M);
-    (cyc(62), abi_Gsu8277());
-    op_rep(P_M);
+    (cyc(62), Gsu8277(0));
+    cyc(22);                            /* REP #$20 */
     cyc(16);
     w = rd16(0x0000B7);
     cyc(16);
@@ -544,10 +569,11 @@ void abi_ViewFromAnglesGsu8277(void)
     for (i = 0; i < 9; i++) {
         cyc(24);
         w = rd16(b | (uint16_t)(0x064C + 2 * i));
-        w = asr7(w, &cpu.p);
+        w = asr7(w, &p);
         cyc(290);
         wr16(b | (uint16_t)(0x066A + 2 * i), w);
     }
+    view_c = (uint8_t)(p & P_C);
     cyc(60);
     w = rd16(0x000002);
     cyc(32);
@@ -566,7 +592,6 @@ void abi_ViewFromAnglesGsu8277(void)
         cyc(32);
         wr16(0x700154 + 2 * i, w);
     }
-    op_sep(P_M);
     cyc(68);
     w = (uint16_t)((w & 0xFF00) | rd8(b | 0x067C));
     cyc(32);
@@ -575,10 +600,17 @@ void abi_ViewFromAnglesGsu8277(void)
     w = (uint16_t)((w & 0xFF00) | rd8(b | 0x067D));
     cyc(32);
     wr8(0x700164, (uint8_t)w);
-    cpu.a = w;
-    cpu.p = nz8(cpu.p, (uint8_t)w);
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
     cyc(44);                            /* RTL */
+    return w;
+}
+
+void abi_ViewFromAnglesGsu8277(void)
+{
+    cpu.a = ViewFromAnglesGsu8277(cpu.db);
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.p = nz8((uint8_t)((cpu.p & ~P_C) | view_c | P_M | P_X), (uint8_t)cpu.a);
 }
 
 /*
@@ -591,13 +623,13 @@ void abi_ViewFromAnglesGsu8277(void)
  * Entry: D = $0000. Exit: M 8-bit, X 8-bit (X and Y high bytes 0); A =
  * the word at $065C; N, Z from it.
  */
-void abi_ViewToGsuParams(void)
+uint16_t ViewToGsuParams(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t w;
     unsigned i;
 
-    op_rep(P_M);
+    cyc(22);                            /* REP #$20 */
     cyc(24);
     w = (uint16_t)(rd16(b | 0x1167) & 0x00FF);
     if (w) {
@@ -622,7 +654,14 @@ void abi_ViewToGsuParams(void)
         wr16(0x7000E4 + 2 * i, w);
     }
     cyc(44);
-    cpu.a = w;
-    cpu.p = nz16(cpu.p, w);
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
+    return w;
+}
+
+void abi_ViewToGsuParams(void)
+{
+    cpu.a = ViewToGsuParams(cpu.db);
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M | P_X);
 }

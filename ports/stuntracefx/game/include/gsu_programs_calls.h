@@ -19,6 +19,15 @@ uint8_t ViewUpdateAndGsuAEF8(uint8_t bank);
 uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x);
 uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x);
 
+/* The vector programs (gsu/programs_vector.c); x8: index registers 8-bit
+   (Gsu8277's pushes and pull are a byte each then). */
+uint16_t Gsu8277(int x8);
+uint16_t VectorGsu81E3(uint8_t bank);
+void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p);
+void ScaledOffsetPair(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p);
+uint16_t ViewFromAnglesGsu8277(uint8_t bank);
+uint16_t ViewToGsuParams(uint8_t bank);
+
 /* Piece lists and records: the result is the end marker's offset. */
 uint16_t GsuPiecesFromRecord(uint8_t bank, uint16_t x);
 uint16_t GsuPiecesListFAF2(uint8_t bank, uint16_t list);
