@@ -6,7 +6,8 @@
 While the console's parts are replaced, each step that only moves code
 behind a new interface must leave the port's run exactly as it was. The
 reference is the port as of REF (built once, from that commit, into
-build/stuntracefx/port/ref); the port is build/stuntracefx/port/null. Each
+build/stuntracefx/port/ref); the port is build/stuntracefx/port/null, built
+from the working tree first. Each
 script (default: every play in tools/stuntracefx/plays, without its save
 and load lines, a shot and a dump added at its end) runs on both from
 power-on with --pacing; every shot, dump and the pacing record must be the
@@ -72,8 +73,17 @@ def one(path):
     return name, ('%d files differ: %s' % (len(bad), ' '.join(bad[:6]))) if bad else 'same (%d files)' % len(fa)
 
 
+def build_port():
+    """The port from the working tree, so a run never judges a stale build."""
+    env = dict(os.environ, HOST='null', OUT=os.path.relpath(os.path.dirname(PORT_EXE), ROOT), SRFX_ROM=ROM)
+    r = subprocess.run(['sh', 'ports/stuntracefx/link.sh'], cwd=ROOT, env=env, capture_output=True, text=True)
+    if r.returncode:
+        sys.exit('the port does not build:\n' + r.stdout[-4000:] + r.stderr[-4000:])
+
+
 def main(argv):
     build_ref()
+    build_port()
     scripts = argv[1:] or sorted(glob.glob(os.path.join(ROOT, 'tools', 'stuntracefx', 'plays', '*.sfx')))
     workers = max(1, (os.cpu_count() or 2) // 2)
     bad = 0
