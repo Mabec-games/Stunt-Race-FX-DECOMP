@@ -11,6 +11,7 @@
  * The object being run is the one at $11F9 (D = $0000).
  */
 #include "machine.h"
+#include "menu_calls.h"
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
 void VramDmaQueueAdd(void);
@@ -43,14 +44,22 @@ static uint16_t next_step(uint8_t bank, uint16_t next)
     return x;
 }
 
-/* The common exit: A = the next handler, X = the object; M 16-bit, X
-   16-bit; N, Z from A. */
-static void step_exit(uint16_t next)
+/* The routine's end: the next step set, then the RTL; returns the object. */
+static uint16_t finish(uint8_t bank, uint16_t next)
 {
-    cpu.x = next_step(cpu.db, next);
+    uint16_t x = next_step(bank, next);
+
+    cyc(42);
+    return x;
+}
+
+/* The common register exit: A = the next handler, X = the object; M
+   16-bit, X 16-bit; N, Z from A. */
+static void step_exit(uint16_t x, uint16_t next)
+{
+    cpu.x = x;
     cpu.a = next;
     cpu.p = (uint8_t)(nz16(cpu.p, next) & ~(P_M | P_X));
-    cyc(42);
 }
 
 /*
@@ -61,21 +70,19 @@ static void step_exit(uint16_t next)
  * Entry: D = $0000. Exit: A = $D234; X = the object; M 16-bit, X 16-bit;
  * N set, Z clear.
  */
-void MenuLoadPictureCC78(uint8_t bank)
-{
-    GsuCF42To3000(0xCC78, 0x0017);
-    queue_from_gsu_ram(0x1000, 0x3000, 0x3000);
-    next_step(bank, 0xD234);
-}
-
-void abi_MenuLoadPictureCC78(void)
+uint16_t MenuLoadPictureCC78(uint8_t bank)
 {
     cyc(132);
     GsuCF42To3000(0xCC78, 0x0017);
     cyc(40);
     queue_from_gsu_ram(0x1000, 0x3000, 0x3000);
     cyc(68);
-    step_exit(0xD234);
+    return finish(bank, 0xD234);
+}
+
+void abi_MenuLoadPictureCC78(void)
+{
+    step_exit(MenuLoadPictureCC78(cpu.db), 0xD234);
 }
 
 /*
@@ -86,21 +93,19 @@ void abi_MenuLoadPictureCC78(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuLoadPictureCC78, A =
  * $D26F.
  */
-void MenuLoadPictureCE78(uint8_t bank)
-{
-    GsuCF42To3000(0xCE78, 0x0017);
-    queue_from_gsu_ram(0x1000, 0x3000, 0x6800);
-    next_step(bank, 0xD26F);
-}
-
-void abi_MenuLoadPictureCE78(void)
+uint16_t MenuLoadPictureCE78(uint8_t bank)
 {
     cyc(110);
     GsuCF42To3000(0xCE78, 0x0017);
     cyc(40);
     queue_from_gsu_ram(0x1000, 0x3000, 0x6800);
     cyc(68);
-    step_exit(0xD26F);
+    return finish(bank, 0xD26F);
+}
+
+void abi_MenuLoadPictureCE78(void)
+{
+    step_exit(MenuLoadPictureCE78(cpu.db), 0xD26F);
 }
 
 /*
@@ -112,24 +117,21 @@ void abi_MenuLoadPictureCE78(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuLoadPictureCC78, A =
  * $D2C9.
  */
-void MenuLoadPictureGrid(uint8_t bank)
-{
-    MenuPictureDC8CGrid0(bank);
-    queue_from_gsu_ram(0x0800, 0x3000, 0x6000);
-    queue_from_gsu_ram(0x0800, 0x3800, 0x6400);
-    next_step(bank, 0xD2C9);
-}
-
-void abi_MenuLoadPictureGrid(void)
+uint16_t MenuLoadPictureGrid(uint8_t bank)
 {
     cyc(46);
-    MenuPictureDC8CGrid0(cpu.db);
+    MenuPictureDC8CGrid0(bank);
     cyc(22);
     queue_from_gsu_ram(0x0800, 0x3000, 0x6000);
     cyc(44);
     queue_from_gsu_ram(0x0800, 0x3800, 0x6400);
     cyc(68);
-    step_exit(0xD2C9);
+    return finish(bank, 0xD2C9);
+}
+
+void abi_MenuLoadPictureGrid(void)
+{
+    step_exit(MenuLoadPictureGrid(cpu.db), 0xD2C9);
 }
 
 /*
@@ -140,21 +142,19 @@ void abi_MenuLoadPictureGrid(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuLoadPictureCC78, A =
  * $D304.
  */
-void MenuLoadPictureDD8C(uint8_t bank)
-{
-    GsuCF42To3000(0xDD8C, 0x0017);
-    queue_from_gsu_ram(0x1000, 0x3000, 0x4000);
-    next_step(bank, 0xD304);
-}
-
-void abi_MenuLoadPictureDD8C(void)
+uint16_t MenuLoadPictureDD8C(uint8_t bank)
 {
     cyc(110);
     GsuCF42To3000(0xDD8C, 0x0017);
     cyc(40);
     queue_from_gsu_ram(0x1000, 0x3000, 0x4000);
     cyc(68);
-    step_exit(0xD304);
+    return finish(bank, 0xD304);
+}
+
+void abi_MenuLoadPictureDD8C(void)
+{
+    step_exit(MenuLoadPictureDD8C(cpu.db), 0xD304);
 }
 
 /*
@@ -165,17 +165,16 @@ void abi_MenuLoadPictureDD8C(void)
  * Entry: D = $0000. Exit: A = $D333; X = the object; M 16-bit, X 16-bit; N
  * set, Z clear.
  */
-void MenuLoadGsu4000(uint8_t bank)
+uint16_t MenuLoadGsu4000(uint8_t bank)
 {
     queue_from_gsu_ram(0x1000, 0x4000, 0x4800);
-    next_step(bank, 0xD333);
+    cyc(68);
+    return finish(bank, 0xD333);
 }
 
 void abi_MenuLoadGsu4000(void)
 {
-    queue_from_gsu_ram(0x1000, 0x4000, 0x4800);
-    cyc(68);
-    step_exit(0xD333);
+    step_exit(MenuLoadGsu4000(cpu.db), 0xD333);
 }
 
 /*
@@ -185,17 +184,16 @@ void abi_MenuLoadGsu4000(void)
  * HOW: As MenuLoadGsu4000.
  * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D362.
  */
-void MenuLoadGsu5000(uint8_t bank)
+uint16_t MenuLoadGsu5000(uint8_t bank)
 {
     queue_from_gsu_ram(0x1000, 0x5000, 0x5000);
-    next_step(bank, 0xD362);
+    cyc(68);
+    return finish(bank, 0xD362);
 }
 
 void abi_MenuLoadGsu5000(void)
 {
-    queue_from_gsu_ram(0x1000, 0x5000, 0x5000);
-    cyc(68);
-    step_exit(0xD362);
+    step_exit(MenuLoadGsu5000(cpu.db), 0xD362);
 }
 
 /*
@@ -205,17 +203,16 @@ void abi_MenuLoadGsu5000(void)
  * HOW: As MenuLoadGsu4000.
  * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D391.
  */
-void MenuLoadGsu6000(uint8_t bank)
+uint16_t MenuLoadGsu6000(uint8_t bank)
 {
     queue_from_gsu_ram(0x1000, 0x6000, 0x5800);
-    next_step(bank, 0xD391);
+    cyc(68);
+    return finish(bank, 0xD391);
 }
 
 void abi_MenuLoadGsu6000(void)
 {
-    queue_from_gsu_ram(0x1000, 0x6000, 0x5800);
-    cyc(68);
-    step_exit(0xD391);
+    step_exit(MenuLoadGsu6000(cpu.db), 0xD391);
 }
 
 /* Copy `bytes` from the Super FX picture at $70:3000 to bank $7F. */
@@ -238,16 +235,7 @@ static void picture_to_7f(uint16_t dest, uint16_t bytes)
  * Entry: D = $0000. Exit: A = $D3D8; X = the object; M 16-bit, X 16-bit; N
  * set, Z clear.
  */
-void MenuLoadPicturesTo7F(uint8_t bank)
-{
-    GsuCF42To3000(0x9068, 0x001D);
-    picture_to_7f(0xA7D7, 0x2000);
-    GsuCF42To3000(0xF8E8, 0x0017);
-    picture_to_7f(0x3FD7, 0x6800);
-    next_step(bank, 0xD3D8);
-}
-
-void abi_MenuLoadPicturesTo7F(void)
+uint16_t MenuLoadPicturesTo7F(uint8_t bank)
 {
     cyc(132);
     GsuCF42To3000(0x9068, 0x001D);
@@ -255,7 +243,12 @@ void abi_MenuLoadPicturesTo7F(void)
     cyc(86);
     GsuCF42To3000(0xF8E8, 0x0017);
     picture_to_7f(0x3FD7, 0x6800);
-    step_exit(0xD3D8);
+    return finish(bank, 0xD3D8);
+}
+
+void abi_MenuLoadPicturesTo7F(void)
+{
+    step_exit(MenuLoadPicturesTo7F(cpu.db), 0xD3D8);
 }
 
 /*
@@ -280,17 +273,16 @@ static void clear_gsu_picture(void)
     queue_from_gsu_ram(0x1000, 0x3000, 0x0000);
 }
 
-void MenuLoadClearGsu(uint8_t bank)
+uint16_t MenuLoadClearGsu(uint8_t bank)
 {
     clear_gsu_picture();
-    next_step(bank, 0xD418);
+    cyc(68);
+    return finish(bank, 0xD418);
 }
 
 void abi_MenuLoadClearGsu(void)
 {
-    clear_gsu_picture();
-    cyc(68);
-    step_exit(0xD418);
+    step_exit(MenuLoadClearGsu(cpu.db), 0xD418);
 }
 
 /*
@@ -300,17 +292,16 @@ void abi_MenuLoadClearGsu(void)
  * HOW: As MenuLoadGsu4000.
  * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D447.
  */
-void MenuLoadBlank0800(uint8_t bank)
+uint16_t MenuLoadBlank0800(uint8_t bank)
 {
     queue_from_gsu_ram(0x1000, 0x3000, 0x0800);
-    next_step(bank, 0xD447);
+    cyc(68);
+    return finish(bank, 0xD447);
 }
 
 void abi_MenuLoadBlank0800(void)
 {
-    queue_from_gsu_ram(0x1000, 0x3000, 0x0800);
-    cyc(68);
-    step_exit(0xD447);
+    step_exit(MenuLoadBlank0800(cpu.db), 0xD447);
 }
 
 /*
@@ -320,17 +311,16 @@ void abi_MenuLoadBlank0800(void)
  * HOW: As MenuLoadGsu4000.
  * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D476.
  */
-void MenuLoadBlank1000(uint8_t bank)
+uint16_t MenuLoadBlank1000(uint8_t bank)
 {
     queue_from_gsu_ram(0x1000, 0x3000, 0x1000);
-    next_step(bank, 0xD476);
+    cyc(68);
+    return finish(bank, 0xD476);
 }
 
 void abi_MenuLoadBlank1000(void)
 {
-    queue_from_gsu_ram(0x1000, 0x3000, 0x1000);
-    cyc(68);
-    step_exit(0xD476);
+    step_exit(MenuLoadBlank1000(cpu.db), 0xD476);
 }
 
 /*
@@ -340,15 +330,14 @@ void abi_MenuLoadBlank1000(void)
  * HOW: As MenuLoadGsu4000.
  * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D4A5.
  */
-void MenuLoadBlank1800(uint8_t bank)
+uint16_t MenuLoadBlank1800(uint8_t bank)
 {
     queue_from_gsu_ram(0x0400, 0x3000, 0x1800);
-    next_step(bank, 0xD4A5);
+    cyc(68);
+    return finish(bank, 0xD4A5);
 }
 
 void abi_MenuLoadBlank1800(void)
 {
-    queue_from_gsu_ram(0x0400, 0x3000, 0x1800);
-    cyc(68);
-    step_exit(0xD4A5);
+    step_exit(MenuLoadBlank1800(cpu.db), 0xD4A5);
 }

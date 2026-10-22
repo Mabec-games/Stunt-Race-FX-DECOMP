@@ -8,6 +8,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "object_calls.h"
 
 #define FIELDS_SCRATCH 0x00003Eu
 
@@ -174,11 +175,12 @@ void abi_ObjectStepByte17(void)
  */
 void ObjectStubNothing(void)
 {
+    cyc(88);
 }
 
 void abi_ObjectStubNothing(void)
 {
-    cyc(88);
+    ObjectStubNothing();
     cpu.p |= P_M;
 }
 
@@ -190,14 +192,18 @@ void abi_ObjectStubNothing(void)
  * Entry: any widths. Exit: X, Y unchanged; M 8-bit; N, Z from Y (index
  * width).
  */
-void ObjectStubSwapTwice(void)
+void ObjectStubSwapTwice(int x8)
 {
+    cyc(x8 ? 216 : 248);
 }
 
 void abi_ObjectStubSwapTwice(void)
 {
+    int x8 = (cpu.p & P_X) != 0;
+
     cpu.p |= P_M;
-    cpu.p = (cpu.p & P_X) ? (cyc(216), nz8(cpu.p, (uint8_t)cpu.y)) : (cyc(248), nz16(cpu.p, cpu.y));
+    ObjectStubSwapTwice(x8);
+    cpu.p = x8 ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
 }
 
 /*
