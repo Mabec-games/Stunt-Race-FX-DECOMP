@@ -12,6 +12,7 @@
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "system_calls.h"
 
 #define CRASH_COLOUR 0x1A2Eu
 #define CRASH_CODE 0x000717u
