@@ -125,12 +125,6 @@ static void speed_alt_top_show(Carried *cr, int pushed);
 static void speed_bottom_show(Carried *cr, int pushed);
 static void speed_top_show(Carried *cr, int pushed);
 static void w_ColourMathA7Start(Carried *cr);
-static void w_OamAttr36x4(Carried *cr);
-static void w_OamAttr36x6(Carried *cr);
-static void w_OamAttr38x4(Carried *cr);
-static void w_OamAttr38x6(Carried *cr);
-static void w_OamAttr38x7(Carried *cr);
-static void w_OamBufferHideLargeLong(Carried *cr);
 static void w_OamClassName(Carried *cr);
 static void w_OamHideEntries0To2(Carried *cr);
 static void w_OamHideEntries3And9(Carried *cr);
@@ -163,7 +157,13 @@ static void w_SpriteTextAt8952(Carried *cr);
 static void w_SpriteTextAt895E(Carried *cr);
 void CourseScreenState8(Carried *cr);
 void MetaspriteDraw_cr(Carried *cr);
+void OamAttr36x4_cr(Carried *cr);
+void OamAttr36x6_cr(Carried *cr);
 void OamAttr36x7(Carried *cr);
+void OamAttr38x4_cr(Carried *cr);
+void OamAttr38x6_cr(Carried *cr);
+void OamAttr38x7_cr(Carried *cr);
+void OamBufferHideLargeLong_cr(Carried *cr);
 void RecordNameLettersLarge_cr(Carried *cr);
 void RecordScoreDigits_cr(Carried *cr);
 void RecordTimeDigitsLarge_cr(Carried *cr);
@@ -356,7 +356,7 @@ void RecordsMenuBack(Carried *cr)
     cyc(10);
     sound16(cr, 0x002F);
     (cyc(46), CourseScreenState8(cr));
-    (cyc(62), w_OamBufferHideLargeLong(cr));
+    (cyc(62), OamBufferHideLargeLong_cr(cr));
     r_sep(cr, P_M);
     lda8(cr, 0xF0);
     cyc(70);
@@ -395,7 +395,7 @@ void RecordsMenuGo(Carried *cr)
     lda8(cr, 0x0A);
     wr8(db(cr) | 0x0D40, cyc_then(40, 0x0A));
     (cyc(62), w_ColourMathA7Start(cr));
-    (cyc(106), w_OamBufferHideLargeLong(cr));
+    (cyc(106), OamBufferHideLargeLong_cr(cr));
     cyc(42);
 }
 
@@ -455,17 +455,17 @@ static void records_view(Carried *cr)
 /* The three-choice menus' highlights. */
 static void all_top_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x00, w_OamAttr36x4, w_OamAttr38x7, w_OamAttr38x6, 0x00);
+    choice_show(cr, pushed, 0x00, OamAttr36x4_cr, OamAttr38x7_cr, OamAttr38x6_cr, 0x00);
 }
 
 static void all_middle_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x04, w_OamAttr38x4, OamAttr36x7, w_OamAttr38x6, 0x0F);
+    choice_show(cr, pushed, 0x04, OamAttr38x4_cr, OamAttr36x7, OamAttr38x6_cr, 0x0F);
 }
 
 static void all_bottom_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x02, w_OamAttr38x4, w_OamAttr38x7, w_OamAttr36x6, 0x1E);
+    choice_show(cr, pushed, 0x02, OamAttr38x4_cr, OamAttr38x7_cr, OamAttr36x6_cr, 0x1E);
 }
 
 /*
@@ -721,12 +721,12 @@ static void all_menu_c(Carried *cr)
 /* The Speed Trax records menu's highlights. */
 static void speed_top_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x00, w_OamAttr36x4, w_OamAttr38x6, 0, 0x00);
+    choice_show(cr, pushed, 0x00, OamAttr36x4_cr, OamAttr38x6_cr, 0, 0x00);
 }
 
 static void speed_bottom_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x02, w_OamAttr38x4, w_OamAttr36x6, 0, 0x0F);
+    choice_show(cr, pushed, 0x02, OamAttr38x4_cr, OamAttr36x6_cr, 0, 0x0F);
 }
 
 /*
@@ -747,7 +747,7 @@ void RecordsMenuSpeedTop(Carried *cr)
     } else { cyc(30); }
     if (pressed(cr, 0x0400)) {
         sound16(cr, 0x0045);
-        choice_show_at(cr, 84, 0x02, w_OamAttr38x4, w_OamAttr36x6, 0, 0x0F);
+        choice_show_at(cr, 84, 0x02, OamAttr38x4_cr, OamAttr36x6_cr, 0, 0x0F);
         return;
     }
     speed_top_show(cr, 0);
@@ -851,7 +851,7 @@ static void speed_alt_leave(Carried *cr)
     cyc(6);
     wr8(b | 0x0D48, v);
     cr->p = nz8(cr->p, v);
-    (cyc(62), w_OamBufferHideLargeLong(cr));
+    (cyc(62), OamBufferHideLargeLong_cr(cr));
     lda8(cr, 0xF0);
     cyc(48);
     wr8(0x000E92, 0xF0);
@@ -860,12 +860,12 @@ static void speed_alt_leave(Carried *cr)
 
 static void speed_alt_top_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x00, w_OamAttr36x4, w_OamAttr38x4, 0, 0x00);
+    choice_show(cr, pushed, 0x00, OamAttr36x4_cr, OamAttr38x4_cr, 0, 0x00);
 }
 
 static void speed_alt_bottom_show(Carried *cr, int pushed)
 {
-    choice_show(cr, pushed, 0x02, w_OamAttr38x4, w_OamAttr36x4, 0, 0x0F);
+    choice_show(cr, pushed, 0x02, OamAttr38x4_cr, OamAttr36x4_cr, 0, 0x0F);
 }
 
 /*
@@ -1897,25 +1897,6 @@ void abi_AllRecordsScreen(void)
     cpu.db = r.db;
 }
 
-/* OamBufferHideLargeLong, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamBufferHideLargeLong(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamBufferHideLargeLong();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* ColourMathA7Start as its adapter leaves the registers. */
 static void w_ColourMathA7Start(Carried *cr)
 {
@@ -1933,101 +1914,6 @@ static void w_OamSprite0AddY(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamSprite0AddY(cr->db, (uint8_t)cr->a, &p));
     cr->p = p;
-}
-
-/* OamAttr36x4, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamAttr36x4(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamAttr36x4();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* OamAttr38x6, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamAttr38x6(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamAttr38x6();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* OamAttr38x7, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamAttr38x7(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamAttr38x7();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* OamAttr38x4, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamAttr38x4(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamAttr38x4();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* OamAttr36x6, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamAttr36x6(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamAttr36x6();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* OamClassName as its adapter leaves the registers. */

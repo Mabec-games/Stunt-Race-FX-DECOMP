@@ -345,7 +345,13 @@ static uint16_t oam_attr_fill(uint8_t bank, uint16_t first, uint16_t count, uint
     return x;
 }
 
+void OamAttr36x4_cr(Carried *cr);
+void OamAttr36x6_cr(Carried *cr);
 void OamAttr36x7(Carried *cr);
+void OamAttr38x4_cr(Carried *cr);
+void OamAttr38x6_cr(Carried *cr);
+void OamAttr38x7_cr(Carried *cr);
+void OamBufferHideLargeLong_cr(Carried *cr);
 void OamHide119To127(Carried *cr);
 void OamHide55To63(Carried *cr);
 void OamStagePause(Carried *cr);
@@ -361,6 +367,7 @@ static void pieces_exit(Carried *cr, uint16_t a);
 static void pull_p(Carried *cr, uint8_t p);
 static void stage_loop(Carried *cr, uint32_t b, void (*dispatch)(Carried *));
 static void two_cars_exit(Carried *cr, uint16_t a);
+static void w_OamBufferHideLarge(Carried *cr);
 static void w_OamHighBits18(Carried *cr);
 static void w_OamHighBits58(Carried *cr);
 static void w_OamStageDispatchBB3C(Carried *cr);
@@ -378,19 +385,6 @@ static void abi_oam_attr_fill(Carried *cr, uint16_t count, uint8_t attr)
     cr->a = (uint16_t)((a4 & 0xFF00) | attr);
 }
 
-static void abi_oam_attr_fill_g(uint16_t count, uint8_t attr)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    abi_oam_attr_fill(&c, count, attr);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 02:FB92 OamAttr36x4
  * WHAT IT DOES: Gives 4 sprites from entry A attribute byte $36.
@@ -405,10 +399,23 @@ void OamAttr36x4(uint8_t bank, uint16_t first)
     oam_attr_fill(bank, first, 4, 0x36);
 }
 
-void abi_OamAttr36x4(void)
+void OamAttr36x4_cr(Carried *cr)
 {
     cyc(22);
-    abi_oam_attr_fill_g(4, 0x36);
+    abi_oam_attr_fill(cr, 4, 0x36);
+}
+
+void abi_OamAttr36x4(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamAttr36x4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -422,10 +429,23 @@ void OamAttr38x6(uint8_t bank, uint16_t first)
     oam_attr_fill(bank, first, 6, 0x38);
 }
 
-void abi_OamAttr38x6(void)
+void OamAttr38x6_cr(Carried *cr)
 {
     cyc(22);
-    abi_oam_attr_fill_g(6, 0x38);
+    abi_oam_attr_fill(cr, 6, 0x38);
+}
+
+void abi_OamAttr38x6(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamAttr38x6_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -439,9 +459,22 @@ void OamAttr38x7(uint8_t bank, uint16_t first)
     oam_attr_fill(bank, first, 7, 0x38);
 }
 
+void OamAttr38x7_cr(Carried *cr)
+{
+    abi_oam_attr_fill(cr, 7, 0x38);
+}
+
 void abi_OamAttr38x7(void)
 {
-    abi_oam_attr_fill_g(7, 0x38);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamAttr38x7_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -792,11 +825,24 @@ void OamBufferHideLargeLong(void)
     OamBufferHideLarge();
 }
 
-void abi_OamBufferHideLargeLong(void)
+void OamBufferHideLargeLong_cr(Carried *cr)
 {
     cyc(46);                            /* the JSR from the long entry */
-    abi_OamBufferHideLarge();
+    w_OamBufferHideLarge(cr);
     cyc(44);                            /* the RTL */
+}
+
+void abi_OamBufferHideLargeLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamBufferHideLargeLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1525,10 +1571,23 @@ void OamAttr36x6(uint8_t bank, uint16_t first)
     oam_attr_fill(bank, first, 6, 0x36);
 }
 
-void abi_OamAttr36x6(void)
+void OamAttr36x6_cr(Carried *cr)
 {
     cyc(22);
-    abi_oam_attr_fill_g(6, 0x36);
+    abi_oam_attr_fill(cr, 6, 0x36);
+}
+
+void abi_OamAttr36x6(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamAttr36x6_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1542,10 +1601,23 @@ void OamAttr38x4(uint8_t bank, uint16_t first)
     oam_attr_fill(bank, first, 4, 0x38);
 }
 
-void abi_OamAttr38x4(void)
+void OamAttr38x4_cr(Carried *cr)
 {
     cyc(22);
-    abi_oam_attr_fill_g(4, 0x38);
+    abi_oam_attr_fill(cr, 4, 0x38);
+}
+
+void abi_OamAttr38x4(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamAttr38x4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3281,6 +3353,14 @@ void abi_OamHide119To127(void)
     cpu.d = r.d;
     cpu.p = r.p;
     cpu.db = r.db;
+}
+
+/* OamBufferHideLarge as its adapter leaves the registers. */
+static void w_OamBufferHideLarge(Carried *cr)
+{
+    OamBufferHideLarge();
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xAA);
+    cr->x = 0x0020;
 }
 
 /* OamHighBits18 as its adapter leaves the registers. */
