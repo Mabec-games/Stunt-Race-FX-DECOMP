@@ -30,6 +30,9 @@ uint8_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved);
    the flags as the routine leaves them. */
 void approach_regs(uint16_t (*f)(uint16_t, int *));
 void approach_regs_byte(uint8_t (*f)(uint8_t, int *));
+/* P as an approach leaves it from p: v its result (wide: 16-bit), moved
+   whether it moved. */
+uint8_t ApproachExitP(uint8_t p, uint16_t v, int wide, int moved);
 
 /* Rotating a vector by an 8-bit angle (rotate.c): the high byte of the
    second result. */

@@ -113,9 +113,9 @@ void abi_ObjectCopy14From(void)
  * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A = the
  * last word; N, Z from it (16-bit); M 8-bit.
  */
-void ObjectCopyPositionTo(uint8_t bank, uint16_t from, uint16_t to)
+uint16_t ObjectCopyPositionTo(uint8_t bank, uint16_t from, uint16_t to)
 {
-    copy_words(bank, from, to);
+    return copy_words(bank, from, to);
 }
 
 void abi_ObjectCopyPositionTo(void)
@@ -130,9 +130,9 @@ void abi_ObjectCopyPositionTo(void)
  * HOW: As ObjectCopyPositionTo, the other way.
  * Entry: as ObjectCopyPositionTo. Exit: as ObjectCopyPositionTo.
  */
-void ObjectCopyPositionFrom(uint8_t bank, uint16_t to, uint16_t from)
+uint16_t ObjectCopyPositionFrom(uint8_t bank, uint16_t to, uint16_t from)
 {
-    copy_words(bank, from, to);
+    return copy_words(bank, from, to);
 }
 
 void abi_ObjectCopyPositionFrom(void)
@@ -167,11 +167,9 @@ static uint16_t apply_velocity(uint8_t bank, uint16_t obj, uint8_t *p)
     return r;
 }
 
-void ObjectApplyVelocity(uint8_t bank, uint16_t obj)
+uint16_t ObjectApplyVelocity(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint8_t p = 0;
-
-    apply_velocity(bank, obj, &p);
+    return apply_velocity(bank, obj, p);
 }
 
 void abi_ObjectApplyVelocity(void)

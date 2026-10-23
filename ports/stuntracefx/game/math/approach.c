@@ -90,13 +90,19 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
 
 /* The routine's register exit: N, Z from $3E; C clear when it moved, set
    when it was there; V from the add when it moved. */
+uint8_t ApproachExitP(uint8_t p, uint16_t v, int wide, int moved)
+{
+    p = (uint8_t)(wide ? nz16(p, v) : nz8(p, (uint8_t)v));
+    if (moved)
+        p = (uint8_t)((p & ~(P_C | P_V)) | (approach_v ? P_V : 0));
+    else
+        p |= P_C;
+    return p;
+}
+
 static void approach_exit(uint16_t v, int wide, int moved)
 {
-    cpu.p = (uint8_t)(wide ? nz16(cpu.p, v) : nz8(cpu.p, (uint8_t)v));
-    if (moved)
-        cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (approach_v ? P_V : 0));
-    else
-        cpu.p |= P_C;
+    cpu.p = ApproachExitP(cpu.p, v, wide, moved);
 }
 
 
