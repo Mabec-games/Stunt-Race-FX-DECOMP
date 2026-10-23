@@ -41,6 +41,7 @@ void RaceFrameRun(Carried *cr);
 void RaceFrameRunTwoPlayers(Carried *cr);
 void RaceFrameStep(Carried *cr);
 void RaceLoad(Carried *cr);
+void RaceLoop(Carried *cr);
 void RaceModeSetup(Carried *cr);
 void RaceStart(Carried *cr);
 void RaceVarsReset(Carried *cr);
@@ -70,6 +71,7 @@ static void w_FrameRunGsu8FCA(Carried *cr);
 static void w_GsuScreenFlip(Carried *cr);
 static void w_GsuScreenFlipMenu(Carried *cr);
 static void w_GsuScreenToggle(Carried *cr);
+static void w_LoopLeaveWhenEnded(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
 static void w_ReturnOnly(Carried *cr);
 static void w_SpeedGauge2Update(Carried *cr);
@@ -80,15 +82,18 @@ void CameraFollowStep_cr(Carried *cr);
 void CarFinishSound(Carried *cr);
 void CarFinishSoundP2(Carried *cr);
 void CgramDmaAll_cr(Carried *cr);
+void CourseScreenStep(Carried *cr);
 void CourseScriptRun(Carried *cr);
 void FrameRunGsuAB13A(Carried *cr);
 void FrameRunGsuAB13B(Carried *cr);
 void GsuAB13WithParams_cr(Carried *cr);
 void GsuCF42ToVram_cr(Carried *cr);
+void GsuEE88Ramp_cr(Carried *cr);
 void GsuRun_cr(Carried *cr);
 void HandlerSoundIndex_cr(Carried *cr);
 void NearCarSoundUpdate_cr(Carried *cr);
 void OamBufferClear_cr(Carried *cr);
+void OamBufferHideLargeLong_cr(Carried *cr);
 void ObjectFaceTied_cr(Carried *cr);
 void ObjectLinkBobStart(Carried *cr);
 void ObjectLinkSpeedSet(Carried *cr);
@@ -102,7 +107,9 @@ void RaceSoundsPlayer1(Carried *cr);
 void RaceSoundsPlayer2(Carried *cr);
 void RecordsUnpackCourseRunning(Carried *cr);
 void SaveUnlocksCheck_cr(Carried *cr);
+void ScrollHdmaSet_cr(Carried *cr);
 void Set7EBC2BTrio_cr(Carried *cr);
+void SoftResetLong_cr(Carried *cr);
 void SoundDataLoad_cr(Carried *cr);
 void SoundIndicesFromHandlers_cr(Carried *cr);
 void SoundPort0QueuePushRaw_cr(Carried *cr);
@@ -1604,68 +1611,68 @@ static void loop_push8(uint8_t v)
  * LoopLeaveWhenEnded: as the caller left P and the data bank; or, with
  * $10CD set, at once.
  */
-void abi_RaceLoop(void)
+void RaceLoop(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     int first;
 
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(46);
-    op_lda8(b | 0x10CD);
-    if ((uint8_t)cpu.a)
+    r_lda8(cr, b | 0x10CD);
+    if ((uint8_t)cr->a)
         { cyc(60); return; }
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(46);
-    op_lda16(b | 0x1184);
-    op_and16(0x001F);
+    r_lda16(cr, b | 0x1184);
+    r_and16(cr, 0x001F);
     cyc(38);
-    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F1, cr->a);
     cyc(24);
-    op_lda16(b | 0x1185);
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_and16(0x03E0);
+    r_lda16(cr, b | 0x1185);
+    r_asl16(cr);
+    r_asl16(cr);
+    r_asl16(cr);
+    r_asl16(cr);
+    r_asl16(cr);
+    r_and16(cr, 0x03E0);
     cyc(108);
-    cpu.a |= rd16(0x0000F1);
-    cpu.p = nz16(cpu.p, cpu.a);
+    cr->a |= rd16(0x0000F1);
+    set_p(cr, nz16(cr->p, cr->a));
     cyc(16);
-    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F1, cr->a);
     cyc(24);
-    op_lda16(b | 0x1186);
-    op_xba();
-    op_asl16();
-    op_asl16();
-    op_and16(0x7C00);
+    r_lda16(cr, b | 0x1186);
+    r_xba(cr);
+    r_asl16(cr);
+    r_asl16(cr);
+    r_and16(cr, 0x7C00);
     cyc(86);
-    cpu.a |= rd16(0x0000F1);
-    cpu.p = nz16(cpu.p, cpu.a);
+    cr->a |= rd16(0x0000F1);
+    set_p(cr, nz16(cr->p, cr->a));
     cyc(24);
-    wr16(b | 0x0F11, cpu.a);
+    wr16(b | 0x0F11, cr->a);
     cyc(14);
-    loop_push8(cpu.p);
-    op_sep(P_M | P_X);
+    loop_push8(cr->p);
+    r_sep(cr, P_M | P_X);
     cyc(14);
-    loop_push8(cpu.db);
-    cpu.db = 0x02;
-    cpu.p = nz8(cpu.p, 0x02);
+    loop_push8(cr->db);
+    cr->db = 0x02;
+    set_p(cr, nz8(cr->p, 0x02));
     b = 0x020000;
     cyc(74);
-    cpu.x = rd8(b | 0x0D2B);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    cr->x = rd8(b | 0x0D2B);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(56);
-    v = rd8(0x02E338 + cpu.x);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    v = rd8(0x02E338 + cr->x);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, nz8(cr->p, v));
     wr8(b | 0x0D62, v);
-    (cyc(62), abi_RaceLoad());
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
-    cpu.p = nz8(cpu.p, 0x10);
+    (cyc(62), RaceLoad(cr));
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x10);
+    set_p(cr, nz8(cr->p, 0x10));
     cyc(62);
     wr8(b | 0x0D3F, 0x10);
     cyc(24);
@@ -1678,70 +1685,83 @@ void abi_RaceLoop(void)
     wr8(b | 0x0D40, 0x00);
     cyc(24);
     wr8(b | 0x0D50, 0x00);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
-    cpu.p = nz8(cpu.p, 0x31);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x31);
+    set_p(cr, nz8(cr->p, 0x31));
     cyc(40);
     hw_wr(b | 0x4200, 0x31);
-    cpu.p &= (uint8_t)~P_I;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
     first = 1;                          /* CLI then SEP: 8 less than a retry */
     for (;;) {
-        op_sep(P_M);
-        b = (uint32_t)cpu.db << 16;
+        r_sep(cr, P_M);
+        b = (uint32_t)cr->db << 16;
         do
-            { cyc(first ? 60 : 68); first = 0; op_lda8(b | 0x0D52); }
-        while (!(uint8_t)cpu.a);
+            { cyc(first ? 60 : 68); first = 0; r_lda8(cr, b | 0x0D52); }
+        while (!(uint8_t)cr->a);
         cyc(40);
         wr8(b | 0x0D52, 0x00);
-        op_rep(P_M);
+        r_rep(cr, P_M);
         do
-            { cyc(24); op_lda16(b | 0x0D81); }
-        while (!cpu.a);
+            { cyc(24); r_lda16(cr, b | 0x0D81); }
+        while (!cr->a);
         cyc(40);
         wr16(b | 0x0D81, 0x0000);
-        (cyc(62), abi_GsuEE88Ramp());
-        op_sep(P_M);
-        b = (uint32_t)cpu.db << 16;
+        (cyc(62), GsuEE88Ramp_cr(cr));
+        r_sep(cr, P_M);
+        b = (uint32_t)cr->db << 16;
         cyc(46);
-        op_lda8(b | 0x0E3B);
-        v = (uint8_t)(cpu.a & 0x07);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 7)) & ~P_C) | (v >= 7 ? P_C : (cyc(54), 0)));
+        r_lda8(cr, b | 0x0E3B);
+        v = (uint8_t)(cr->a & 0x07);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 7)) & ~P_C) | (v >= 7 ? P_C : (cyc(54), 0))));
         if (v == 7) {
             cyc(72);
-            op_lda8(b | 0x10BB);
-            v = (uint8_t)(cpu.a + 1);
-            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 4)) & ~P_C) | (v >= 4 ? (cyc(10), P_C) : 0));
+            r_lda8(cr, b | 0x10BB);
+            v = (uint8_t)(cr->a + 1);
+            set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 4)) & ~P_C) | (v >= 4 ? (cyc(10), P_C) : 0)));
             if (v >= 4)
                 v = 0;
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-            cpu.p = nz8(cpu.p, v);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+            set_p(cr, nz8(cr->p, v));
             cyc(76);
             wr8(b | 0x10BB, v);
         }
-        cpu.a = (uint16_t)(cpu.a & 0xFF00);
-        cpu.p = nz8(cpu.p, 0x00);
+        cr->a = (uint16_t)(cr->a & 0xFF00);
+        set_p(cr, nz8(cr->p, 0x00));
         cyc(40);
         wr8(b | 0x10C5, 0x00);
         cyc(24);
         wr8(b | 0x10C1, 0x00);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-        cpu.p = nz8(cpu.p, 0x01);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+        set_p(cr, nz8(cr->p, 0x01));
         cyc(40);
         wr8(b | 0x0D7F, 0x01);
-        (cyc(62), abi_SoftResetLong());
-        (cyc(62), abi_ScrollHdmaSet());
-        (cyc(62), abi_OamBufferHideLargeLong());
+        (cyc(62), SoftResetLong_cr(cr));
+        (cyc(62), ScrollHdmaSet_cr(cr));
+        (cyc(62), OamBufferHideLargeLong_cr(cr));
         /* JSR LoopLeaveWhenEnded: its return address (02:E332) on the
            stack, which it drops on the way out of the loop. */
         cyc(30);
         loop_push8(0xE3);
         loop_push8(0x32);
-        abi_LoopLeaveWhenEnded();
+        w_LoopLeaveWhenEnded(cr);
         if (cpu.unwound)
             return; else { cyc(46); }
         cpu.s = (uint16_t)(cpu.s + 2);
-        abi_CourseScreenStep();
+        CourseScreenStep(cr);
     }
+}
+
+void abi_RaceLoop(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceLoop(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_Set7EBC2BTrio(void);
@@ -2013,6 +2033,25 @@ static void w_SpeedGauge2Update(Carried *cr)
 {
     cr->a = SpeedGauge2Update(cr->db, cr->a);
     cyc(72);
+}
+
+/* LoopLeaveWhenEnded, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_LoopLeaveWhenEnded(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_LoopLeaveWhenEnded();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /* SpriteSlotFirstLong as its adapter leaves the registers. */

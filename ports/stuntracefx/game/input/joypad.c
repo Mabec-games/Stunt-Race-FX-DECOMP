@@ -50,7 +50,11 @@ uint16_t JoypadRead(void)
 void FrameSoundAndJoypads(Carried *cr);
 void JoypadAccumulate_cr(Carried *cr);
 void JoypadPortCheck_cr(Carried *cr);
+void JoypadPortCheckBit(Carried *cr);
+void JoypadPortCheckBit2(Carried *cr);
+void JoypadPortCheckLatchOff(Carried *cr);
 void JoypadRead_cr(Carried *cr);
+static void port_check_entry(Carried *cr, int stage);
 void SoundPortsSend_cr(Carried *cr);
 
 void JoypadRead_cr(Carried *cr)
@@ -216,15 +220,15 @@ done:
 
 /* An inner entry's end: A, X, Y as JoypadPortCheck leaves them, then P
    pulled as its PHP pushed it. */
-static void port_check_entry(int stage)
+static void port_check_entry(Carried *cr, int stage)
 {
-    uint8_t port = (uint8_t)cpu.x;
+    uint8_t port = (uint8_t)cr->x;
 
-    cpu.a = port_check((uint32_t)cpu.db << 16, port, stage, (uint8_t)cpu.y) ? 0x0000
-        : (uint16_t)(cpu.a & 0xFF00);
-    cpu.x = port;
-    cpu.y = 0x00FF;
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cr->a = port_check((uint32_t)cr->db << 16, port, stage, (uint8_t)cr->y) ? 0x0000
+        : (uint16_t)(cr->a & 0xFF00);
+    cr->x = port;
+    cr->y = 0x00FF;
+    r_plp(cr, rd8((uint16_t)(cpu.s + 1)));
     cpu.s = (uint16_t)(cpu.s + 1);
 }
 
@@ -278,9 +282,22 @@ void abi_JoypadPortCheck(void)
  * bits so far; JoypadPortCheck's P on the stack. Exit: as
  * JoypadPortCheck.
  */
+void JoypadPortCheckBit(Carried *cr)
+{
+    port_check_entry(cr, 1);
+}
+
 void abi_JoypadPortCheckBit(void)
 {
-    port_check_entry(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    JoypadPortCheckBit(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -292,9 +309,22 @@ void abi_JoypadPortCheckBit(void)
  * Entry: M, X 8-bit; X = the port; JoypadPortCheck's P on the stack.
  * Exit: as JoypadPortCheck.
  */
+void JoypadPortCheckLatchOff(Carried *cr)
+{
+    port_check_entry(cr, 2);
+}
+
 void abi_JoypadPortCheckLatchOff(void)
 {
-    port_check_entry(2);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    JoypadPortCheckLatchOff(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -307,9 +337,22 @@ void abi_JoypadPortCheckLatchOff(void)
  * bits so far; JoypadPortCheck's P on the stack. Exit: as
  * JoypadPortCheck.
  */
+void JoypadPortCheckBit2(Carried *cr)
+{
+    port_check_entry(cr, 3);
+}
+
 void abi_JoypadPortCheckBit2(void)
 {
-    port_check_entry(3);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    JoypadPortCheckBit2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_SoundPortsSend(void);
