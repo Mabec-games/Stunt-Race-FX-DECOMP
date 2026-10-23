@@ -156,7 +156,7 @@ game's own code as plain C over native parts, with no console model, no
 processor registers and nothing drawn in software, at the original's
 pacing.
 
-Where it stands (2026-10-22):
+Where it stands (2026-10-23):
 
 - **Plays the whole game** on macOS (a Windows target builds from the same
   tree), with the player's own ROM checked by SHA-1 and built into the
@@ -171,13 +171,17 @@ Where it stands (2026-10-22):
   channel (open).
 - **Pacing** is the original's: race frames take as many video frames as
   they did on the console, from the time the C states.
-- **Now: the game's C as plain C.** The port's copy is being turned, routine
-  by routine, from code that works on an emulated 65816 register file into
-  typed C functions. Each step is checked old against new from random
-  states (every memory access, every clock, every exit register) and by
-  every play byte for byte against the reference port. References to the
-  register file left: 13,590, from 17,415 when the conversion began
-  (`python3 ports/stuntracefx/tools/plainc.py`).
+- **Now: the game's C as plain C.** The port's copy is being turned from
+  code that works on an emulated 65816 register file into C that carries
+  its own values. Each step is checked three ways: every routine of the
+  whole game against the previous commit's from random states (every
+  memory access, every clock, every exit register), every play byte for
+  byte against the reference port, and the decomp's full gate. References
+  to the register file left: 1,591, from 17,415 when the conversion began
+  (`python3 ports/stuntracefx/tools/plainc.py`). What remains is code that
+  works the stack directly (boot, the race loop, restarts, frames a callee
+  pulls for its caller) and typed functions that still hand results back
+  in registers; it is converted by hand.
 - **Still to do:** the rest of that phase (typed work RAM, a frame loop
   with no interrupts, the Super FX programs and the sound drivers as
   native code); removing the console model (`ports/common/snes`) and every
