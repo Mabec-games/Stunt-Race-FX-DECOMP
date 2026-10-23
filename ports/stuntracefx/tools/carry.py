@@ -178,8 +178,14 @@ def find_adapter(n):
 
 def statics(f):
     t = src[f]
-    return set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*\(', t, re.M)) | \
-           set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*(?:\[|=|;)', t, re.M))
+    out = set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*\(', t, re.M))
+    for m in re.finditer(r'^static (?:const )?(?:struct\s+\w+\s+|\w+\s+)+\**\s*([^;(]*);', t, re.M):
+        for d in m.group(1).split(','):
+            w = re.match(r'\s*\**\s*(\w+)', d)
+            if w:
+                out.add(w.group(1))
+    out |= set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*(?:\[|=)', t, re.M))
+    return out
 
 def touches_regs(f, b):
     return touches_any(f, b, regfn if f == FILE else set())
@@ -484,6 +490,17 @@ for h in sorted(cvariants):
 
 # the header and forward declarations after the includes, the wrappers at
 # the end (where every routine of the file is declared)
+HEADERS = {}
+for hf in os.listdir(os.path.join(G, 'include')):
+    if hf.endswith('.h'):
+        HEADERS[hf] = open(os.path.join(G, 'include', hf)).read()
+
+def header_of(n):
+    for hf, t in HEADERS.items():
+        if re.search(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\)\s*;' % n, t, re.M):
+            return hf
+    return None
+
 def proto_of(n):
     pat = re.compile(r'^((?!static)[A-Za-z_][\w \*]*?\b%s\s*\([^;{]*\))\s*\n\{' % n, re.M)
     for f, t in src.items():
@@ -514,6 +531,11 @@ if wrapcode or regfn:
         if c.startswith(('abi_', 'w_', 'r_', 'alu_')) or c in byname:
             continue
         if re.search(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\)\s*;' % c, res, re.M):
+            continue
+        hf = header_of(c)
+        if hf:
+            if ('"%s"' % hf) not in res:
+                protos.append('#include "%s"\n' % hf)
             continue
         pr = proto_of(c)
         if pr:
