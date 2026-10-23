@@ -1338,6 +1338,17 @@ void abi_MetaspriteDraw(void)
     cpu.p = p;
 }
 
+/* MetaspriteDraw on carried registers, as abi_MetaspriteDraw leaves them. */
+void MetaspriteDraw_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MetaspriteDraw(cr->db, cr->x, cr->y, &p);
+    cr->x = md_x;
+    cr->y = md_y;
+    cr->p = p;
+}
+
 /* The cycled palette (attribute bits 1-3) for phase 1 and for phase 2 or
    more: by which of bits 3 and 1 the piece's own attributes have set (bit 3,
    else bit 1, else neither). */

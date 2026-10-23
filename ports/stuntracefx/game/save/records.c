@@ -984,6 +984,15 @@ void abi_RecordTimeDigitsLarge(void)
     cpu.x = digits_x;
 }
 
+/* RecordTimeDigitsLarge on carried registers, as abi_RecordTimeDigitsLarge leaves them. */
+void RecordTimeDigitsLarge_cr(Carried *cr)
+{
+    uint8_t t = RecordTimeDigitsLarge(cr->db, cr->d, cr->a, cr->y);
+
+    cr->a = (uint16_t)(digits_high << 8 | t);
+    cr->x = digits_x;
+}
+
 /* SEP'd A low byte to `v`, N and Z from it (an 8-bit LDA, AND or LSR). */
 
 
@@ -1044,6 +1053,16 @@ void abi_RecordTimeDigitsSmall(void)
     cpu.p = nz8((uint8_t)((unpack_p(cpu.p) & ~(P_C | P_M)) | nibble_c), v);
 }
 
+/* RecordTimeDigitsSmall on carried registers, as abi_RecordTimeDigitsSmall leaves them. */
+void RecordTimeDigitsSmall_cr(Carried *cr)
+{
+    uint8_t v = RecordTimeDigitsSmall(cr->db, cr->d, cr->a, cr->y);
+
+    cr->a = (uint16_t)(digits_high << 8 | v);
+    cr->x = digits_x;
+    cr->p = nz8((uint8_t)((unpack_p(cr->p) & ~(P_C | P_M)) | nibble_c), v);
+}
+
 /*
  * @routine 02:FE38 RecordScoreDigits
  * WHAT IT DOES: Draws a Stunt Trax score A from sprite buffer offset Y:
@@ -1102,6 +1121,18 @@ void abi_RecordScoreDigits(void)
     } else {
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
         cpu.p = (uint8_t)(((cpu.p & ~(P_Z | P_C | P_M)) | P_N) | nibble_c);
+    }
+}
+
+/* RecordScoreDigits on carried registers, as abi_RecordScoreDigits leaves them. */
+void RecordScoreDigits_cr(Carried *cr)
+{
+    if (RecordScoreDigits(cr->db, cr->d, cr->a, cr->y)) {
+        cr->a = 0x361D;
+        cr->p = (uint8_t)(cr->p & ~(P_N | P_Z | P_C | P_M)) | nibble_c;
+    } else {
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
+        cr->p = (uint8_t)(((cr->p & ~(P_Z | P_C | P_M)) | P_N) | nibble_c);
     }
 }
 
@@ -1200,6 +1231,13 @@ void abi_RecordNameLettersLarge(void)
 {
     cpu.a = RecordNameLettersLarge(cpu.db, cpu.d, cpu.a, cpu.y);
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M)) | tile_flags);
+}
+
+/* RecordNameLettersLarge on carried registers, as abi_RecordNameLettersLarge leaves them. */
+void RecordNameLettersLarge_cr(Carried *cr)
+{
+    cr->a = RecordNameLettersLarge(cr->db, cr->d, cr->a, cr->y);
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M)) | tile_flags);
 }
 
 /*
