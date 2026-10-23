@@ -155,21 +155,20 @@ while changed:
             if not isroutine[h] and re.search(r'(?<![\w>.])%s\s*\(' % h, b):
                 regfn.add(n); changed = True; break
 # public typed functions with outside callers can't take the new parameter
+# (a routine whose name a typed function already has is converted as X_cr)
 left = {}
+crname = set()
 for n in list(regfn):
     hdr = byname[n][3]
     if isroutine[n]:
         t = n[4:]
-        if t in byname and t not in regfn:
-            left[n] = 'typed %s exists here' % t; regfn.discard(n); glue.add(n); continue
-        ext = [f for f in typed_elsewhere(t) if f != FILE]
-        if ext:
-            left[n] = 'typed %s in %s' % (t, ext); regfn.discard(n); glue.add(n); continue
+        if (t in byname and t not in regfn) or [f for f in typed_elsewhere(t) if f != FILE]:
+            crname.add(n); continue
     elif not hdr.startswith('static'):
         ext = callers_elsewhere(n)
         if ext:
             left[n] = 'called from %s' % ext; regfn.discard(n); glue.add(n)
-newname = {n: (n[4:] if isroutine[n] else n) for n in regfn}
+newname = {n: (n[4:] + ('_cr' if n in crname else '') if isroutine[n] else n) for n in regfn}
 # glue that takes routines: its callers pass carried routines, which it
 # calls through cr_call
 cglue = {n for n in glue if not isroutine[n] and takes_routine(byname[n][4])}

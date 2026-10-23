@@ -10,8 +10,9 @@ callers read, and only its abi_ adapter (the verification harness's way in)
 touches the register file (cpu.a, cpu.x, cpu.y, cpu.p, cpu.db, cpu.d,
 cpu.e, cpu.pc, and cpu_ops.h's op_ helpers; cpu.s stays until the work RAM
 step). An abi_X counts as an
-adapter when it calls X; one that does not is still the routine itself, in
-registers. Per file: the references to the register file outside the
+adapter when it calls X (or X_cr, the carried form of a routine whose name
+a typed function already has); one that does not is still the routine
+itself, in registers. Per file: the references to the register file outside the
 adapters, and the functions that make them (glue for callers still in
 registers among them). Default: the whole game.
 """
@@ -48,7 +49,7 @@ def measure(path):
     text = re.sub(r'//[^\n]*', '', text)
     refs, funcs = 0, []
     for name, body in functions(text):
-        if name.startswith('abi_') and re.search(r'\b%s\s*\(' % name[4:], body):
+        if name.startswith('abi_') and re.search(r'\b%s(?:_cr)?\s*\(' % name[4:], body):
             continue                            # an adapter: it calls the C function
         n = len(REG.findall(body))
         if n:
