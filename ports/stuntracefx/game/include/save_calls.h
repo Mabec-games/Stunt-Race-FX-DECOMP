@@ -39,8 +39,6 @@ uint16_t RecordRow2Time4(uint8_t bank, uint16_t d);
 uint16_t RecordRow3Time8(uint8_t bank, uint16_t d);
 uint16_t RecordRowsFirstTimes(uint8_t bank, uint16_t d);
 void RecordTimeCompare(uint8_t bank, uint16_t x);
-void RecordCompareTime0(uint8_t bank);
-void RecordCompareTime1(uint8_t bank);
 uint16_t RecordsLoadSpecialCourse(uint8_t bank, uint16_t d);
 uint16_t RecordsLoadSpecialCourseLong(uint16_t d);
 void RecordsLoadCourse(uint8_t bank, uint16_t d);
@@ -54,15 +52,8 @@ uint16_t RecordTagCar4(uint8_t bank);
 uint16_t RecordTagCar8(uint8_t bank);
 uint8_t SaveRecordSumsTimeUp(void);
 uint8_t TimeUpRecordUpdate(uint8_t bank);
-uint8_t StuntRecordTime(uint8_t bank, uint16_t d);
 uint16_t RecordsCharOffsetStunt(uint8_t bank);
 uint16_t RecordsCharOffsetAll(uint8_t bank);
 uint16_t RecordsEntryLoad(uint8_t bank);
-uint16_t RecordsCharTileStunt(uint8_t bank);
-uint16_t RecordsCharTileAll(uint8_t bank);
-uint16_t RecordsCharDrawStunt(uint8_t bank);
-uint16_t RecordsCharDrawAll(uint8_t bank);
-uint16_t PreviewRowDrawStunt(void);
-uint16_t PreviewRowDrawAll(void);
 
 #endif

@@ -32,7 +32,6 @@ uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled);
 /* The stop screens (crash.c); `bank` the data bank the shared body stores
    through. They never return. */
 void CrashWhite(uint8_t bank);
-void CrashGreen(uint8_t bank);
 
 /* Debug text and numbers (debug_text.c, debug_numbers.c). DebugDrawChar
    draws the character ch; A, X and Y come back as it leaves them. */

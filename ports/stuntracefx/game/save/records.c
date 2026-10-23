@@ -99,6 +99,15 @@ void SpecialRecordInsert_cr(Carried *cr);
 void SpecialRecordsChecksum_cr(Carried *cr);
 void StuntRecordTime_cr(Carried *cr);
 void TimeUpRecordUpdate_cr(Carried *cr);
+uint16_t PreviewRowDrawAll(Carried *cr);
+uint16_t PreviewRowDrawStunt(Carried *cr);
+void RecordCompareTime0(Carried *cr, uint8_t bank);
+void RecordCompareTime1(Carried *cr, uint8_t bank);
+uint16_t RecordsCharDrawAll(Carried *cr, uint8_t bank);
+uint16_t RecordsCharDrawStunt(Carried *cr, uint8_t bank);
+uint16_t RecordsCharTileAll(Carried *cr, uint8_t bank);
+uint16_t RecordsCharTileStunt(Carried *cr, uint8_t bank);
+uint8_t StuntRecordTime(Carried *cr, uint8_t bank, uint16_t d);
 static void char_draw_exit(Carried *cr);
 static void char_offset_exit(Carried *cr, uint16_t r);
 static void char_tile_exit(Carried *cr, uint16_t t);
@@ -2143,19 +2152,6 @@ static void record_compare_by_mode(Carried *cr, uint8_t bank, uint16_t x)
     }
 }
 
-static void record_compare_by_mode_g(uint8_t bank, uint16_t x)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    record_compare_by_mode(&c, bank, x);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The registers the dispatch leaves; P is the caller's, restored. */
 static void compare_by_mode_exit(Carried *cr)
 {
@@ -2174,33 +2170,16 @@ static void compare_by_mode_exit(Carried *cr)
  * HOW: 16-bit mode test.
  * Entry: any widths. Exit: as the call made; P restored.
  */
-void RecordCompareTime0(uint8_t bank)
+void RecordCompareTime0(Carried *cr, uint8_t bank)
 {
-    record_compare_by_mode_g(bank, 0x0000);
-}
-
-static void RecordCompareTime0_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    RecordCompareTime0(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    record_compare_by_mode(cr, bank, 0x0000);
 }
 
 void RecordCompareTime0_cr(Carried *cr)
 {
     uint8_t p0 = cr->p;
 
-    RecordCompareTime0_c(cr, cr->db);
+    RecordCompareTime0(cr, cr->db);
     compare_by_mode_exit(cr);
     set_p(cr, p0);
 }
@@ -2225,33 +2204,16 @@ void abi_RecordCompareTime0(void)
  * traces so far.
  * Entry: any widths. Exit: as RecordCompareTime0.
  */
-void RecordCompareTime1(uint8_t bank)
+void RecordCompareTime1(Carried *cr, uint8_t bank)
 {
-    record_compare_by_mode_g(bank, 0x0003);
-}
-
-static void RecordCompareTime1_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    RecordCompareTime1(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    record_compare_by_mode(cr, bank, 0x0003);
 }
 
 void RecordCompareTime1_cr(Carried *cr)
 {
     uint8_t p0 = cr->p;
 
-    RecordCompareTime1_c(cr, cr->db);
+    RecordCompareTime1(cr, cr->db);
     compare_by_mode_exit(cr);
     set_p(cr, p0);
 }
@@ -3383,7 +3345,7 @@ static int stunt_kind;
 static uint16_t stunt_a, stunt_x, stunt_y;
 static uint8_t stunt_flags, stunt_v;
 
-uint8_t StuntRecordTime(uint8_t bank, uint16_t d)
+uint8_t StuntRecordTime(Carried *cr, uint8_t bank, uint16_t d)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t t, a, x, y, n, m, r, sum_at, e;
@@ -3417,9 +3379,9 @@ uint8_t StuntRecordTime(uint8_t bank, uint16_t d)
         if ((uint16_t)(ret + 1) == 0xAE29)
             { cyc(48); return 0; }      /* this RTS again: it returns to the caller */
         /* the jump is to code still in registers: the state it has here */
-        cpu.a = a;
-        cpu.p = (uint8_t)((cpu.p & P_I) | stunt_flags | stunt_v);   /* SED ... CLD: D clear */
-        jump_routine(0x070000 | (uint16_t)(ret + 1));
+        cr->a = a;
+        set_p(cr, (uint8_t)((cr->p & P_I) | stunt_flags | stunt_v));   /* SED ... CLD: D clear */
+        carried_jump(cr, 0x070000 | (uint16_t)(ret + 1));
         return 0;
     }
     wr16((uint16_t)(d + 0xF1), cyc_then(124, a));
@@ -3531,27 +3493,9 @@ uint8_t StuntRecordTime(uint8_t bank, uint16_t d)
     return sum;
 }
 
-static uint8_t StuntRecordTime_c(Carried *cr, uint8_t bank, uint16_t d)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint8_t ret_ = StuntRecordTime(bank, d);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
-}
-
 void StuntRecordTime_cr(Carried *cr)
 {
-    StuntRecordTime_c(cr, cr->db, cr->d);
+    StuntRecordTime(cr, cr->db, cr->d);
     cr->a = stunt_a;
     if (stunt_kind == STUNT_SUMMED) {
         cr->x = stunt_x;
@@ -3876,20 +3820,7 @@ static void records_char_jump(Carried *cr, uint8_t bank, uint32_t table)
     carried_jump(cr, 0x070000 | rd16(table + rc_x));
 }
 
-static void records_char_jump_g(uint8_t bank, uint32_t table)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    records_char_jump(&c, bank, table);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
-uint16_t RecordsCharTileStunt(uint8_t bank)
+uint16_t RecordsCharTileStunt(Carried *cr, uint8_t bank)
 {
     uint16_t a;
 
@@ -3923,27 +3854,9 @@ uint16_t RecordsCharTileStunt(uint8_t bank)
         cyc(50);
         return a;
     default:
-        records_char_jump_g(bank, 0x07D79D);
+        records_char_jump(cr, bank, 0x07D79D);
         return 0;
     }
-}
-
-static uint16_t RecordsCharTileStunt_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = RecordsCharTileStunt(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
 }
 
 /* The registers a tile routine leaves: A the tile, X the index * 2. */
@@ -3961,7 +3874,7 @@ static void char_tile_exit(Carried *cr, uint16_t t)
 void RecordsCharTileStunt_cr(Carried *cr)
 {
     rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
-    char_tile_exit(cr, RecordsCharTileStunt_c(cr, cr->db));
+    char_tile_exit(cr, RecordsCharTileStunt(cr, cr->db));
 }
 
 void abi_RecordsCharTileStunt(void)
@@ -4026,7 +3939,7 @@ static uint16_t records_time_digit(uint16_t mask, int seconds, int tens)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile;
  * X = $0FA6 * 2.
  */
-uint16_t RecordsCharTileAll(uint8_t bank)
+uint16_t RecordsCharTileAll(Carried *cr, uint8_t bank)
 {
     uint16_t a;
     unsigned i;
@@ -4065,35 +3978,17 @@ uint16_t RecordsCharTileAll(uint8_t bank)
         cyc(6);
         break;
     default:
-        records_char_jump_g(bank, 0x07D807);
+        records_char_jump(cr, bank, 0x07D807);
         return 0;
     }
     cyc(44);
     return a;
 }
 
-static uint16_t RecordsCharTileAll_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = RecordsCharTileAll(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
-}
-
 void RecordsCharTileAll_cr(Carried *cr)
 {
     rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
-    char_tile_exit(cr, RecordsCharTileAll_c(cr, cr->db));
+    char_tile_exit(cr, RecordsCharTileAll(cr, cr->db));
 }
 
 void abi_RecordsCharTileAll(void)
@@ -4134,7 +4029,7 @@ static int rc_drawn;
 static uint16_t rc_a;
 static uint8_t rc_empty_flags;
 
-uint16_t RecordsCharDrawStunt(uint8_t bank)
+uint16_t RecordsCharDrawStunt(Carried *cr, uint8_t bank)
 {
     uint16_t t;
 
@@ -4147,28 +4042,10 @@ uint16_t RecordsCharDrawStunt(uint8_t bank)
         cyc(106);                       /* EntryLoad's RTS, BEQ taken, RTS */
         return rc_a;
     }
-    t = RecordsCharTileStunt(bank);
+    t = RecordsCharTileStunt(cr, bank);
     records_char_store(rc_y, t);
     rc_drawn = 1;
     return rc_a = t;
-}
-
-static uint16_t RecordsCharDrawStunt_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = RecordsCharDrawStunt(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
 }
 
 /* The registers a records character draw leaves. */
@@ -4190,7 +4067,7 @@ static void char_draw_exit(Carried *cr)
 void RecordsCharDrawStunt_cr(Carried *cr)
 {
     rc_preview = 0;
-    RecordsCharDrawStunt_c(cr, cr->db);
+    RecordsCharDrawStunt(cr, cr->db);
     char_draw_exit(cr);
 }
 
@@ -4216,7 +4093,7 @@ void abi_RecordsCharDrawStunt(void)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharDrawStunt;
  * for an empty entry C and Z set.
  */
-uint16_t RecordsCharDrawAll(uint8_t bank)
+uint16_t RecordsCharDrawAll(Carried *cr, uint8_t bank)
 {
     uint16_t t;
 
@@ -4229,34 +4106,16 @@ uint16_t RecordsCharDrawAll(uint8_t bank)
         cyc(130);
         return rc_a;
     } else { cyc(24); }
-    t = RecordsCharTileAll(bank);
+    t = RecordsCharTileAll(cr, bank);
     records_char_store(rc_y, t);
     rc_drawn = 1;
     return rc_a = t;
 }
 
-static uint16_t RecordsCharDrawAll_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = RecordsCharDrawAll(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
-}
-
 void RecordsCharDrawAll_cr(Carried *cr)
 {
     rc_preview = 0;
-    RecordsCharDrawAll_c(cr, cr->db);
+    RecordsCharDrawAll(cr, cr->db);
     char_draw_exit(cr);
 }
 
@@ -4285,34 +4144,16 @@ void abi_RecordsCharDrawAll(void)
  * Entry: X 16-bit; D = $0000. Exit: P and the data bank unchanged; A, X,
  * Y as RecordsCharDrawStunt leaves them.
  */
-uint16_t PreviewRowDrawStunt(void)
+uint16_t PreviewRowDrawStunt(Carried *cr)
 {
     uint16_t a;
 
     cyc(22);                            /* REP #$20 */
     rc_preview = 1;
-    a = RecordsCharDrawStunt(0x07);
+    a = RecordsCharDrawStunt(cr, 0x07);
     rc_preview = 0;
     cyc(122);                           /* SEP, PLB, PLP, RTL */
     return a;
-}
-
-static uint16_t PreviewRowDrawStunt_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = PreviewRowDrawStunt();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
 }
 
 /* The draws' registers with the caller's P (PLP). */
@@ -4330,7 +4171,7 @@ void PreviewRowDrawStunt_cr(Carried *cr)
 {
     uint8_t p0 = cr->p;
 
-    PreviewRowDrawStunt_c(cr);
+    PreviewRowDrawStunt(cr);
     preview_exit(cr, p0);
 }
 
@@ -4353,41 +4194,23 @@ void abi_PreviewRowDrawStunt(void)
  * HOW: As PreviewRowDrawStunt.
  * Entry: X 16-bit; D = $0000. Exit: as PreviewRowDrawStunt.
  */
-uint16_t PreviewRowDrawAll(void)
+uint16_t PreviewRowDrawAll(Carried *cr)
 {
     uint16_t a;
 
     cyc(22);
     rc_preview = 1;
-    a = RecordsCharDrawAll(0x07);
+    a = RecordsCharDrawAll(cr, 0x07);
     rc_preview = 0;
     cyc(122);
     return a;
-}
-
-static uint16_t PreviewRowDrawAll_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = PreviewRowDrawAll();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
 }
 
 void PreviewRowDrawAll_cr(Carried *cr)
 {
     uint8_t p0 = cr->p;
 
-    PreviewRowDrawAll_c(cr);
+    PreviewRowDrawAll(cr);
     preview_exit(cr, p0);
 }
 

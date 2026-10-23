@@ -39,11 +39,6 @@ uint8_t MenuFramesTarget7(uint8_t bank);
 uint16_t MenuRandomStep(uint8_t bank, uint8_t p);
 uint16_t MenuDimOnL(uint8_t bank);
 void MenuWaitFrame(uint8_t bank);
-uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y);
-void MenuRegionPal(uint16_t a, uint16_t x);
-uint8_t MenuRegionCheck(uint16_t a, uint16_t x);
-uint16_t MenuHeldRestart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
-uint16_t MenuScreen0Run(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p);
 
 /* The menu objects (actors.c). */
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p);

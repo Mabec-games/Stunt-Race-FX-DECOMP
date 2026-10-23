@@ -88,8 +88,8 @@ void RaceTimeInit_cr(Carried *cr);
 void SoundIndicesFromHandlers_cr(Carried *cr);
 void SoundReset_cr(Carried *cr);
 void VramDmaTileFromGsuRam_cr(Carried *cr);
-static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db);
 static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db);
+static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db);
 
 void VideoRegsReset_cr(Carried *cr)
 {
@@ -906,25 +906,6 @@ void abi_RaceHudLoad(void)
     cpu.db = r.db;
 }
 
-/* RaceHudSetup, still in registers: its call with the registers loaded and taken
-   back. */
-static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    RaceHudSetup(p, db);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* RaceHudSetupTwoPlayers, still in registers: its call with the registers loaded and taken
    back. */
 static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db)
@@ -936,6 +917,25 @@ static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db)
     cpu.p = cr->p;
     cpu.db = cr->db;
     RaceHudSetupTwoPlayers(p, db);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* RaceHudSetup, still in registers: its call with the registers loaded and taken
+   back. */
+static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    RaceHudSetup(p, db);
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;

@@ -22,6 +22,7 @@
 
 void CrashGreen_cr(Carried *cr);
 void CrashWhite_cr(Carried *cr);
+void CrashGreen(Carried *cr, uint8_t bank);
 static void crash_body(Carried *cr, uint8_t bank, uint16_t code);
 
 /* The shared body ($00:805C). The data bank is the caller's until the PLB,
@@ -206,33 +207,16 @@ void abi_CrashWhite(void)
  * HOW: As CrashWhite, with $1A2E = $03E0 and X = $E2.
  * Entry: any widths; D = $0000. Exit: never returns.
  */
-void CrashGreen(uint8_t bank)
+void CrashGreen(Carried *cr, uint8_t bank)
 {
     cyc(70);
     wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x03E0);
-    crash_body_g(bank, 0x00E2);
-}
-
-static void CrashGreen_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    CrashGreen(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    crash_body(cr, bank, 0x00E2);
 }
 
 void CrashGreen_cr(Carried *cr)
 {
-    CrashGreen_c(cr, cr->db);
+    CrashGreen(cr, cr->db);
 }
 
 void abi_CrashGreen(void)

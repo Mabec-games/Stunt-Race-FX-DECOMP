@@ -134,8 +134,11 @@ void ViewMatrixUpdateAndSave_cr(Carried *cr);
 void ViewReset_cr(Carried *cr);
 void ViewSetup_cr(Carried *cr);
 void ViewUpdateAndGsuAEF8_cr(Carried *cr);
+void GlyphSpritesGrowAndTimes(Carried *cr);
+void GlyphTimesSequence(Carried *cr, uint8_t bank);
 static void abi_cf42(Carried *cr, uint16_t dest);
 static void glyph_times_exit(Carried *cr);
+void ChampionshipFinish(Carried *cr);
 
 static void abi_cf42(Carried *cr, uint16_t dest)
 {
@@ -4122,7 +4125,7 @@ void abi_ChampionshipFinish(void);
  * Entry: any widths, D = $0000. Exit: M 16-bit, X 16-bit; A, X, Y as the
  * step leaves them.
  */
-void GlyphTimesSequence(uint8_t bank)
+void GlyphTimesSequence(Carried *cr, uint8_t bank)
 {
     static uint8_t (*const row[6])(void) = {GlyphRowY60From0, GlyphRowY60From1, GlyphRowY60From2,
                                              GlyphRowY60From3, GlyphRowY60From4, GlyphRowY60From5};
@@ -4208,13 +4211,13 @@ void GlyphTimesSequence(uint8_t bank)
             cyc(136);
             /* ChampionshipFinish is still in registers: A low byte 7, X the
                step * 2, M 8-bit, X 16-bit, N, Z, C clear, data bank 7. */
-            cpu.a = (uint16_t)((seq_x & 0xFF00) | 0x07);
-            cpu.x = seq_x;
+            cr->a = (uint16_t)((seq_x & 0xFF00) | 0x07);
+            cr->x = seq_x;
             if (times_y_valid)
-                cpu.y = times_y;
-            cpu.p = (uint8_t)((cpu.p & (P_D | P_I)) | P_M | times_v);
-            cpu.db = 0x07;
-            abi_ChampionshipFinish();
+                cr->y = times_y;
+            set_p(cr, (uint8_t)((cr->p & (P_D | P_I)) | P_M | times_v));
+            cr->db = 0x07;
+            ChampionshipFinish(cr);
             return;
         } else { cyc(68); }
         cyc(22);
@@ -4223,23 +4226,6 @@ void GlyphTimesSequence(uint8_t bank)
         break;
     }
     cyc(42);
-}
-
-static void GlyphTimesSequence_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    GlyphTimesSequence(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* The registers GlyphTimesSequence leaves, from what it recorded. */
@@ -4274,7 +4260,7 @@ void GlyphTimesSequence_cr(Carried *cr)
 {
     times_y_valid = 0;
     times_v = (uint8_t)(cr->p & P_V);
-    GlyphTimesSequence_c(cr, cr->db);
+    GlyphTimesSequence(cr, cr->db);
     glyph_times_exit(cr);
 }
 
@@ -4318,7 +4304,7 @@ static uint8_t gprog_run(uint16_t prog)
  * Entry: any widths, D = $0000. Exit: P and the data bank restored; A, X,
  * Y as GlyphTimesSequence leaves them.
  */
-void GlyphSpritesGrowAndTimes(void)
+void GlyphSpritesGrowAndTimes(Carried *cr)
 {
     uint32_t b = 0x040000;
     uint16_t x, v, s;
@@ -4398,26 +4384,9 @@ void GlyphSpritesGrowAndTimes(void)
             x = (uint16_t)(x + 2);
         } while (x != 0x0020);
     }
-    GlyphTimesSequence(0x04);
+    GlyphTimesSequence(cr, 0x04);
     cyc(42);                            /* PLP */
     cyc(122);
-}
-
-static void GlyphSpritesGrowAndTimes_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    GlyphSpritesGrowAndTimes();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 void GlyphSpritesGrowAndTimes_cr(Carried *cr)
@@ -4426,7 +4395,7 @@ void GlyphSpritesGrowAndTimes_cr(Carried *cr)
 
     times_y_valid = 0;
     times_v = (uint8_t)(cr->p & P_V);
-    GlyphSpritesGrowAndTimes_c(cr);
+    GlyphSpritesGrowAndTimes(cr);
     if (times_y_valid)
         cr->y = times_y;
     glyph_times_exit(cr);

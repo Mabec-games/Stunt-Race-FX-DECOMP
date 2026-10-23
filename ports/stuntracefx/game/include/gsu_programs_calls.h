@@ -73,8 +73,6 @@ int GlyphSpritesSlideOut(uint8_t bank);         /* 1: both out, nothing drawn */
 uint8_t GlyphSpritesSlideIn(uint8_t bank);
 uint16_t GlyphListDraw(uint8_t bank);           /* the end offset */
 uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message);  /* the last entry */
-void GlyphTimesSequence(uint8_t bank);
-void GlyphSpritesGrowAndTimes(void);
 
 /* The HUD's times, lap digits and marks. */
 int HudHoldDraw(uint8_t bank);                  /* 1 when it drew */

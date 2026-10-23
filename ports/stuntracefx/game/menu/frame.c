@@ -11,6 +11,7 @@
 #include "carried.h"
 
 void abi_MenuActorsRun(void);
+void abi_MenuScreenOpen0(void);
 
 /*
  * @routine 0B:E2D7 MenuFramesTarget7
@@ -37,9 +38,15 @@ void MenuRegionPal_cr(Carried *cr);
 void MenuRunFrames_cr(Carried *cr);
 void MenuScreen0Run_cr(Carried *cr);
 void MenuWaitFrame_cr(Carried *cr);
+uint16_t MenuHeldRestart(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
+uint8_t MenuRegionCheck(Carried *cr, uint16_t a, uint16_t x);
+void MenuRegionPal(Carried *cr, uint16_t a, uint16_t x);
+uint16_t MenuRunFrames(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y);
+uint16_t MenuScreen0Run(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p);
 static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y);
 static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y);
 static void w_MenuActorsRun(Carried *cr);
+static void w_MenuScreenOpen0(Carried *cr);
 
 void MenuFramesTarget7_cr(Carried *cr)
 {
@@ -210,19 +217,6 @@ static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_
     *y = cr->y;
 }
 
-static void run_actors_g(uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    run_actors(&c, bank, a, p, x, y);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 0B:E2E1 MenuRunFrames
  * WHAT IT DOES: Runs menu frames until $11DA equals $11DB: each frame waits
@@ -234,7 +228,7 @@ static void run_actors_g(uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint1
  * high byte as MenuOamBuild left it (returned); *x, *y as MenuOamBuild left
  * them; P unchanged.
  */
-uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
+uint16_t MenuRunFrames(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
@@ -244,7 +238,7 @@ uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
     do {
         cyc(68);
         MenuWaitFrame(bank);
-        run_actors_g(bank, 0x0000, (uint8_t)(p | P_M), x, y);
+        run_actors(cr, bank, 0x0000, (uint8_t)(p | P_M), x, y);
         cyc(62);
         a = MenuOamBuild(x, y);
         cyc(46);
@@ -256,30 +250,12 @@ uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
     return (uint16_t)((a & 0xFF00) | m);
 }
 
-static uint16_t MenuRunFrames_c(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = MenuRunFrames(bank, p, x, y);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
-}
-
 void MenuRunFrames_cr(Carried *cr)
 {
     uint16_t x = cr->x, y = cr->y;
     uint8_t p = cr->p;
 
-    cr->a = MenuRunFrames_c(cr, cr->db, p, &x, &y);
+    cr->a = MenuRunFrames(cr, cr->db, p, &x, &y);
     cr->x = x;
     cr->y = y;
     set_p(cr, p);
@@ -339,19 +315,6 @@ static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16
     wr8(b | 0x11D7, f);
 }
 
-static void menu_frame_g(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    menu_frame(&c, bank, p, x, y);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 0B:AE58 MenuRegionPal
  * WHAT IT DOES: MenuRegionCheck's stop on a PAL console, which no NTSC
@@ -366,7 +329,7 @@ static void menu_frame_g(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
  * a = A (its high byte reaches the objects).
  * Exit: does not return.
  */
-void MenuRegionPal(uint16_t a, uint16_t x)
+void MenuRegionPal(Carried *cr, uint16_t a, uint16_t x)
 {
     uint16_t y = 0;
 
@@ -385,37 +348,20 @@ void MenuRegionPal(uint16_t a, uint16_t x)
     x = actor_find8(0x10, x);
     cyc(80);
     wr8((uint16_t)(x + 0x10), 0x00);
-    y = cpu.y;
-    run_actors_g(0x00, a, cpu.p, &x, &y);
+    y = cr->y;
+    run_actors(cr, 0x00, a, cr->p, &x, &y);
     cyc(62);
-    cpu.a = MenuOamBuild(&x, &y);
-    cpu.x = x;
-    cpu.y = y;
+    cr->a = MenuOamBuild(&x, &y);
+    cr->x = x;
+    cr->y = y;
     cyc(46);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
-    cpu_loop_forever(0x0BAE8A);
-}
-
-static void MenuRegionPal_c(Carried *cr, uint16_t a, uint16_t x)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    MenuRegionPal(a, x);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    carried_loop_forever(cr, 0x0BAE8A);
 }
 
 void MenuRegionPal_cr(Carried *cr)
 {
-    MenuRegionPal_c(cr, cr->a, cr->x);
+    MenuRegionPal(cr, cr->a, cr->x);
 }
 
 void abi_MenuRegionPal(void)
@@ -444,7 +390,7 @@ void abi_MenuRegionPal(void)
  * Entry: X 16-bit (x); a = A (used on PAL). Exit: (NTSC) A low byte = 0 (returned); X, Y
  * unchanged; P and DB unchanged.
  */
-uint8_t MenuRegionCheck(uint16_t a, uint16_t x)
+uint8_t MenuRegionCheck(Carried *cr, uint16_t a, uint16_t x)
 {
     uint8_t s;
 
@@ -454,32 +400,14 @@ uint8_t MenuRegionCheck(uint16_t a, uint16_t x)
         cyc(136);
         return 0x00;
     }
-    cpu.db = 0x00;
-    MenuRegionPal(a, x);
+    cr->db = 0x00;
+    MenuRegionPal(cr, a, x);
     return s;
-}
-
-static uint8_t MenuRegionCheck_c(Carried *cr, uint16_t a, uint16_t x)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint8_t ret_ = MenuRegionCheck(a, x);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
 }
 
 void MenuRegionCheck_cr(Carried *cr)
 {
-    cr->a = (uint16_t)((cr->a & 0xFF00) | MenuRegionCheck_c(cr, cr->a, cr->x));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | MenuRegionCheck(cr, cr->a, cr->x));
 }
 
 void abi_MenuRegionCheck(void)
@@ -516,7 +444,7 @@ static int held_or_18fb(uint32_t b)
  * the last frame left them when $FFFF, C then from the compare of the
  * animation with $18 (*p).
  */
-uint16_t MenuHeldRestart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+uint16_t MenuHeldRestart(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t a, rec = *x;
@@ -543,29 +471,11 @@ uint16_t MenuHeldRestart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *x = rec;
     now = (uint8_t)(found & ~(P_M | P_X));
     do {
-        menu_frame_g(bank, now, x, y);
+        menu_frame(cr, bank, now, x, y);
     } while (held_or_18fb(b));
     cyc(82);
     *p = nz16(now, 0xFFFF);
     return 0xFFFF;
-}
-
-static uint16_t MenuHeldRestart_c(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = MenuHeldRestart(bank, x, y, p);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
 }
 
 void MenuHeldRestart_cr(Carried *cr)
@@ -573,7 +483,7 @@ void MenuHeldRestart_cr(Carried *cr)
     uint16_t x = cr->x, y = cr->y;
     uint8_t p = cr->p;
 
-    cr->a = MenuHeldRestart_c(cr, cr->db, &x, &y, &p);
+    cr->a = MenuHeldRestart(cr, cr->db, &x, &y, &p);
     cr->x = x;
     cr->y = y;
     set_p(cr, p);
@@ -603,36 +513,36 @@ void abi_MenuHeldRestart(void)
  * (returned); X, Y as the last frame left them; M 8-bit, X 16-bit; N set,
  * Z clear; C clear.
  */
-uint16_t MenuScreen0Run(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
+uint16_t MenuScreen0Run(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint32_t b;
 
     do {
         *p &= (uint8_t)~(P_M | P_X);
         /* MenuScreenOpen0 works in registers: A, X, Y, P and DB in, and out. */
-        cpu.a = a;
-        cpu.x = *x;
-        cpu.y = *y;
-        cpu.p = *p;
-        cpu.db = bank;
-        MenuScreenOpen0();
-        a = cpu.a;
-        *x = cpu.x;
-        *y = cpu.y;
-        *p = cpu.p;
-        bank = cpu.db;
+        cr->a = a;
+        cr->x = *x;
+        cr->y = *y;
+        set_p(cr, *p);
+        cr->db = bank;
+        w_MenuScreenOpen0(cr);
+        a = cr->a;
+        *x = cr->x;
+        *y = cr->y;
+        *p = cr->p;
+        bank = cr->db;
         cyc(76);
         do {
             cyc(22);
-            menu_frame_g(bank, *p, x, y);
+            menu_frame(cr, bank, *p, x, y);
             *p &= (uint8_t)~(P_M | P_X);
             b = (uint32_t)bank << 16;
             cyc(46);
             a = rd16(b | 0x11EB);
         } while (!a);
         cyc(62);
-        MenuRegionCheck(a, *x);
-        a = (cyc(46), MenuHeldRestart(bank, x, y, p));
+        MenuRegionCheck(cr, a, *x);
+        a = (cyc(46), MenuHeldRestart(cr, bank, x, y, p));
     } while (a == 0xFFFF);
     b = (uint32_t)bank << 16;
     cyc(102);
@@ -648,30 +558,12 @@ uint16_t MenuScreen0Run(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint
     return 0x0080;
 }
 
-static uint16_t MenuScreen0Run_c(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    uint16_t ret_ = MenuScreen0Run(bank, a, x, y, p);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return ret_;
-}
-
 void MenuScreen0Run_cr(Carried *cr)
 {
     uint16_t x = cr->x, y = cr->y;
     uint8_t p = cr->p;
 
-    cr->a = MenuScreen0Run_c(cr, cr->db, cr->a, &x, &y, &p);
+    cr->a = MenuScreen0Run(cr, cr->db, cr->a, &x, &y, &p);
     cr->x = x;
     cr->y = y;
     set_p(cr, p);
@@ -701,6 +593,25 @@ static void w_MenuActorsRun(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_MenuActorsRun();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* MenuScreenOpen0, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_MenuScreenOpen0(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_MenuScreenOpen0();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;

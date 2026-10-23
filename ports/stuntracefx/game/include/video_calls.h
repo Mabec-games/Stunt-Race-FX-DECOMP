@@ -94,7 +94,6 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y, uint16_t *x, uint8_t *p, int 
 uint8_t WindowSlideDown(uint8_t bank, uint8_t *p, int *moved);
 uint8_t WindowSlideUp(uint8_t bank, uint8_t *p, int *moved);
 uint8_t WindowSlideStep(uint8_t bank, uint8_t *p, int *moved);
-void WindowsInit(void);
 WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0);
 uint16_t WindowHdmaFFD5(void);
 uint16_t WindowHdmaFFD9(void);

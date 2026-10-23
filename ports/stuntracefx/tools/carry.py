@@ -188,9 +188,18 @@ def typed_elsewhere(n):
     pat = re.compile(r'^(?!static)[A-Za-z_][\w \*]*?\b%s\s*\([^;{]*\)\s*\n\{' % n, re.M)
     return [f for f, t in src.items() if pat.search(t)]
 
+# the code outside the game that calls into it (the runtime, the gate's
+# shim, the console model)
+OUTSIDE = {}
+for d in ('runtime', 'hybrid', '../common'):
+    for dp, _, fs in os.walk(os.path.join(os.path.dirname(G), d)):
+        for f in fs:
+            if f.endswith(('.c', '.h', '.m', '.mm', '.cpp')):
+                OUTSIDE[os.path.join(dp, f)] = open(os.path.join(dp, f), errors='replace').read()
 def callers_elsewhere(n):
     pat = re.compile(r'(?<![\w>.])%s\s*\(' % n)
-    return [f for f, t in src.items() if f != FILE and pat.search(t)]
+    return [f for f, t in src.items() if f != FILE and pat.search(t)] + \
+        [f for f, t in OUTSIDE.items() if pat.search(t)]
 
 # classify (a helper that takes a routine as a parameter calls it in
 # registers: glue)
@@ -259,6 +268,7 @@ while changed:
 # (a routine whose name a typed function already has is converted as X_cr)
 left = {}
 crname = set()
+unproto = {}
 for n in list(regfn):
     hdr = byname[n][3]
     if isroutine[n]:
@@ -269,8 +279,10 @@ for n in list(regfn):
         ext = callers_elsewhere(n)
         hh = [hf for hf in os.listdir(os.path.join(G, 'include')) if hf.endswith('.h') and
               re.search(r'(?<![\w>.])%s\s*\(' % n, open(os.path.join(G, 'include', hf)).read())]
-        if ext or hh:
-            left[n] = 'called from %s' % (ext or hh); regfn.discard(n); glue.add(n)
+        if ext:
+            left[n] = 'called from %s' % ext; regfn.discard(n); glue.add(n)
+        elif hh:
+            unproto[n] = hh             # nothing else calls it: its header prototype goes
 newname = {n: (n[4:] + ('_cr' if n in crname else '') if isroutine[n] else n) for n in regfn}
 # glue that takes routines: its callers pass carried routines, which it
 # calls through cr_call
@@ -888,6 +900,16 @@ for m in list(re.finditer(r'\n/\* (\w+) on carried registers, as abi_\1 leaves t
     if len(re.findall(r'^void %s_cr\(Carried \*cr\)\n\{' % m.group(1), res, re.M)) > 1:
         res = res.replace(m.group(0), '\n', 1)
 open(os.path.join(G, FILE), 'w').write(res)
+# the header prototypes of converted functions nothing else calls
+for n, hh in unproto.items():
+    for hf in hh:
+        hp = os.path.join(G, 'include', hf)
+        t = open(hp).read()
+        t2 = re.sub(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\);\n' % n, '', t, flags=re.M)
+        if t2 != t:
+            open(hp, 'w').write(t2)
+if unproto:
+    print('header prototypes dropped: %s' % ', '.join(sorted(unproto)))
 if p_left:
     print('P written other than through set_p: %d places' % sum(p_left))
 print('converted %d, glue %d (%s), sync wrappers %d (%s)' % (len(regfn), len(glue), ', '.join(sorted(glue)), len(syncw | extsw), ', '.join(sorted(syncw | extsw))))

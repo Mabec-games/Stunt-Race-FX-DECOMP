@@ -72,6 +72,7 @@ void WindowSlideStep_cr(Carried *cr);
 void WindowSlideUp_cr(Carried *cr);
 void WindowSplitAnimate_cr(Carried *cr);
 void WindowsInit_cr(Carried *cr);
+void WindowsInit(Carried *cr);
 static void records_7f(Carried *cr, int course_screen);
 static void w_Records7FFromF170(Carried *cr);
 static void w_Records7FFromF634(Carried *cr);
@@ -1149,19 +1150,6 @@ static void records_7f(Carried *cr, int course_screen)
     set_p(cr, p);
 }
 
-static void records_7f_g(int course_screen)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    records_7f(&c, course_screen);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* Bytes `n` from ROM $09:src to `dst` (bank $7F), long stores. */
 static void copy_rom09(uint16_t src, uint32_t dst, unsigned n)
 {
@@ -1194,7 +1182,7 @@ static void copy_rom09(uint16_t src, uint32_t dst, unsigned n)
  * adapter's: WindowEdgesFromList leaves it so); P and the data bank
  * unchanged.
  */
-void WindowsInit(void)
+void WindowsInit(Carried *cr)
 {
     const uint32_t b = 0x090000;
     uint16_t x, w, m, ex;
@@ -1210,9 +1198,9 @@ void WindowsInit(void)
     cyc(92);
     v = rd8(b | 0x0D62);
     if (v)
-        { cyc(68); records_7f_g(1); }
+        { cyc(68); records_7f(cr, 1); }
     else
-        { cyc(62); records_7f_g(0); }
+        { cyc(62); records_7f(cr, 0); }
     cyc(42);
     copy_rom09(0xF163, 0x7FF85B, 16);
     cyc(92);
@@ -1394,26 +1382,9 @@ void WindowsInit(void)
     cyc(100);
 }
 
-static void WindowsInit_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    WindowsInit();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 void WindowsInit_cr(Carried *cr)
 {
-    WindowsInit_c(cr);
+    WindowsInit(cr);
     cr->a = 0x007F;
     cr->x = 0x0000;
     cr->y = 0x0000;
