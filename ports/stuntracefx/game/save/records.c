@@ -6,6 +6,7 @@
 #include "cpu_ops.h"
 #include "hud_calls.h"
 #include "save_calls.h"
+#include "carried.h"
 
 /* Sum five bytes from `base` + X with 8-bit adds; X steps past them. */
 static uint8_t sum5(uint32_t base, uint8_t *x, uint8_t *p)
@@ -1608,6 +1609,15 @@ void abi_RecordTimeCompare(void)
     cpu.a = (uint16_t)(cmp_high << 8 | cmp_low);
     cpu.x = cmp_x;
     cpu.p = (uint8_t)(((cmp_sound ? nz8(cpu.p, cpu.db) : nz8(cpu.p, cmp_low)) & ~P_C) | P_M | cmp_c);
+}
+
+/* RecordTimeCompare on carried registers, as abi_RecordTimeCompare leaves them. */
+void RecordTimeCompare_cr(Carried *cr)
+{
+    RecordTimeCompare(cr->db, cr->x);
+    cr->a = (uint16_t)(cmp_high << 8 | cmp_low);
+    cr->x = cmp_x;
+    cr->p = (uint8_t)(((cmp_sound ? nz8(cr->p, cr->db) : nz8(cr->p, cmp_low)) & ~P_C) | P_M | cmp_c);
 }
 
 void abi_PlayerSound35(void);

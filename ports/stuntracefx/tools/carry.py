@@ -187,6 +187,21 @@ def statics(f):
     out |= set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*(?:\[|=)', t, re.M))
     return out
 
+exports = {}
+def export_into(f, n, b):
+    """Write n's carried form beside abi_n in file f, when nothing it
+    reaches uses the register file; True when it is there."""
+    if re.search(r'\bcpu\.(s|pc|e|unwound)\b|call_routine|jump_routine|\babi_\w+\s*\(', b):
+        return False
+    if touches_any(f, b, set()):
+        return False
+    bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
+    bb = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', bb)
+    bb = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', bb)
+    bb = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', bb)
+    exports.setdefault(f, []).append((n, bb))
+    return True
+
 def touches_regs(f, b):
     return touches_any(f, b, regfn if f == FILE else set())
 
@@ -255,6 +270,11 @@ def make_wrapper(n):
         st = statics(f)
         used = set(re.findall(r'\b([A-Za-z_]\w*)\b', b))
         if used & st:
+            # its own file's helpers: a carried form there, made now
+            if export_into(f, n, b):
+                wrap[n] = '%s_cr(cr)' % n
+                carried_ext.add(n + '_cr')
+                return wrap[n]
             ok = False
     if ok and GLUE.search(b):
         ok = False
@@ -442,12 +462,14 @@ def fix_macro(m):
     line = m.group(0)
     mm = re.match(r'#define (\w+)', line)
     hits = [n for n in regfn if not isroutine[n] and re.search(r'(?<![\w>.])%s\s*\(' % n, line)]
-    if not mm or not hits:
+    regs = re.search(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_\w+\s*\(', line)
+    if not mm or not (hits or regs):
         return line
     name = mm.group(1)
     macros[name] = hits
     twin = line.replace('#define %s' % name, '#define %s_c' % name, 1)
     orig = line
+    twin = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', twin)
     for n in hits:
         twin = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % n, '%s(cr)' % n, twin)
         twin = re.sub(r'(?<![\w>.])%s\s*\((?!cr\b)' % n, '%s(cr, ' % n, twin)
@@ -619,6 +641,19 @@ while changed:
             res = res[:m.start()] + res[e:].lstrip('\n')
             changed = True
             break
+
+# the carried forms made in other files
+for f, lst in exports.items():
+    t = src[f]
+    for n, bb in lst:
+        m = re.search(r'^void abi_%s\(void\)\n\{\n.*?^\}\n' % n, t, re.M | re.S)
+        t = t[:m.end()] + '\n/* %s on carried registers, as abi_%s leaves them. */\nvoid %s_cr(Carried *cr)\n{\n%s}\n' % (n, n, n, bb) + t[m.end():]
+    if '"carried.h"' not in t:
+        inc = list(re.finditer(r'^#include .*\n', t, re.M))[-1]
+        t = t[:inc.end()] + '#include "carried.h"\n' + t[inc.end():]
+    if not stops:
+        open(os.path.join(G, f), 'w').write(t)
+    print('exported into %s: %s' % (f, ', '.join(n for n, _ in lst)))
 
 if stops:
     sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))

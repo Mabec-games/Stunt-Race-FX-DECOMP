@@ -14,6 +14,7 @@
 #include "gsu_calls.h"
 #include "audio_calls.h"
 #include "gsu_programs_calls.h"
+#include "carried.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 void abi_GsuRun(void);
@@ -2326,6 +2327,21 @@ void abi_BigSpritesRow6(void)
     }
 }
 
+/* BigSpritesRow6 on carried registers, as abi_BigSpritesRow6 leaves them. */
+void BigSpritesRow6_cr(Carried *cr)
+{
+    uint8_t v = BigSpritesRow6(cr->db);
+
+    cr->x = 0xFA88;
+    if (rows_counted) {
+        cr->a = (uint16_t)(count_high << 8 | v);
+        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cr->a = (uint16_t)(0xAA00 | v);
+        cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
+    }
+}
+
 /*
  * @routine 07:9E3B BigSpritesRow5
  * WHAT IT DOES: Unless $0E5C is set, draws five 24 x 40 sprites
@@ -2362,6 +2378,21 @@ void abi_BigSpritesRow5(void)
     } else {
         cpu.a = (uint16_t)(0xA500 | v);
         cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    }
+}
+
+/* BigSpritesRow5 on carried registers, as abi_BigSpritesRow5 leaves them. */
+void BigSpritesRow5_cr(Carried *cr)
+{
+    uint8_t v = BigSpritesRow5(cr->db);
+
+    cr->x = 0xFA88;
+    if (rows_counted) {
+        cr->a = (uint16_t)(count_high << 8 | v);
+        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cr->a = (uint16_t)(0xA500 | v);
+        cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X));
     }
 }
 
@@ -2991,6 +3022,14 @@ void abi_GlyphWordAt1C28(void)
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
 }
 
+/* GlyphWordAt1C28 on carried registers, as abi_GlyphWordAt1C28 leaves them. */
+void GlyphWordAt1C28_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x9000 | GlyphWordAt1C28());
+    cr->x = 0xF15B;
+    cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+}
+
 /* Three rows of three 8 x 8 glyphs (program $07:F280), each row 8 lower
    and back 24; the glyphs are row byte * $100 + $1A, $1C, $1E. `mid` (when
    not 0) sets the renderer bytes before the first row's third glyph,
@@ -3548,6 +3587,15 @@ void abi_GlyphSlideThree(void)
 
     cpu.a = (uint16_t)((slide_glyph & 0xFF00) | mode);
     cpu.x = 0x0006;
+}
+
+/* GlyphSlideThree on carried registers, as abi_GlyphSlideThree leaves them. */
+void GlyphSlideThree_cr(Carried *cr)
+{
+    uint8_t mode = GlyphSlideThree(cr->db);
+
+    cr->a = (uint16_t)((slide_glyph & 0xFF00) | mode);
+    cr->x = 0x0006;
 }
 
 void abi_GsuBytes200_BF12B6(void);
@@ -4567,6 +4615,21 @@ void abi_BigSpritesNine(void)
     }
 }
 
+/* BigSpritesNine on carried registers, as abi_BigSpritesNine leaves them. */
+void BigSpritesNine_cr(Carried *cr)
+{
+    uint8_t v = BigSpritesNine(cr->db);
+
+    cr->x = 0xFA88;
+    if (rows_counted) {
+        cr->a = (uint16_t)(count_high << 8 | v);
+        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cr->a = (uint16_t)(0xA500 | v);
+        cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
+    }
+}
+
 /*
  * @routine 07:9C9F BigSpritesRow6B
  * WHAT IT DOES: Unless $0E5C is set, draws six 24 x 40 sprites
@@ -4606,6 +4669,21 @@ void abi_BigSpritesRow6B(void)
     } else {
         cpu.a = (uint16_t)(0xA500 | v);
         cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    }
+}
+
+/* BigSpritesRow6B on carried registers, as abi_BigSpritesRow6B leaves them. */
+void BigSpritesRow6B_cr(Carried *cr)
+{
+    uint8_t v = BigSpritesRow6B(cr->db);
+
+    cr->x = 0xFA88;
+    if (rows_counted) {
+        cr->a = (uint16_t)(count_high << 8 | v);
+        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cr->a = (uint16_t)(0xA500 | v);
+        cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X));
     }
 }
 
