@@ -55,7 +55,12 @@ def callers_elsewhere(n):
     pat = re.compile(r'(?<![\w>.])%s\s*\(' % n)
     return [f for f, t in src.items() if f != FILE and pat.search(t)]
 
-# classify
+# classify (a helper that takes a routine as a parameter calls it in
+# registers: glue)
+fptypes = set(re.findall(r'typedef\s+void\s*\(\s*\*\s*(\w+)\s*\)\s*\(\s*void\s*\)', text))
+def takes_routine(params):
+    return re.search(r'\(\s*\*\s*\w+\s*\)\s*\(\s*void\s*\)', params) or \
+        any(re.search(r'\b%s\b' % t, params) for t in fptypes)
 adapter, regfn, glue = set(), set(), set()
 for n, b in body.items():
     if isroutine[n] and re.search(r'(?<![\w])%s\s*\(' % n[4:], b):
@@ -63,7 +68,7 @@ for n, b in body.items():
 for n, b in body.items():
     if n in adapter:
         continue
-    if GLUE.search(b):
+    if GLUE.search(b) or takes_routine(byname[n][4]):
         glue.add(n)
     elif REG.search(b):
         regfn.add(n)
@@ -211,6 +216,32 @@ def glue_body(b):
             b = re.sub(r'(?<![\w>.])%s\s*\(' % n, '%s_g(' % n, b)
     return b
 
+def find_def(t, name, carried):
+    """The end of name's definition in t (the one taking Carried *cr, or not)."""
+    for m in HDR.finditer(t):
+        if m.group(2) == name and (('Carried *cr' in m.group(3)) == carried):
+            return t.index('\n}\n', m.end() - 1) + 3
+    raise SystemExit('no definition of %s' % name)
+
+def pname(p):
+    m = re.search(r'\(\s*\*\s*(\w+)\s*\)', p)
+    return m.group(1) if m else re.findall(r'(\w+)\s*(?:\[\])?$', p)[0]
+
+def split_params(params):
+    out, depth, cur = [], 0, ''
+    for ch in params:
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        if ch == ',' and depth == 0:
+            out.append(cur.strip()); cur = ''
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur.strip())
+    return out
+
 gvariants = set()
 out, pos = [], 0
 for (s0, e, n, hdr, params, bs) in fns:
@@ -252,13 +283,53 @@ void %s(void)
 out.append(text[pos:])
 res = ''.join(out)
 
+# macros that call converted helpers get a carried twin NAME_c (used in
+# converted code); the original calls the helpers' register forms (_g)
+macros = {}
+def fix_macro(m):
+    line = m.group(0)
+    mm = re.match(r'#define (\w+)', line)
+    hits = [n for n in regfn if not isroutine[n] and re.search(r'(?<![\w>.])%s\s*\(' % n, line)]
+    if not mm or not hits:
+        return line
+    name = mm.group(1)
+    macros[name] = hits
+    twin = line.replace('#define %s' % name, '#define %s_c' % name, 1)
+    orig = line
+    for n in hits:
+        twin = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % n, '%s(cr)' % n, twin)
+        twin = re.sub(r'(?<![\w>.])%s\s*\((?!cr\b)' % n, '%s(cr, ' % n, twin)
+        orig = re.sub(r'(?<![\w>.])%s\s*\(' % n, '%s_g(' % n, orig)
+    return orig + '\n' + twin
+res = re.sub(r'^#define [^\n]*(?:\\\n[^\n]*)*', fix_macro, res, flags=re.M)
+for name, hits in macros.items():
+    for n in hits:
+        if n not in gvariants:
+            gvariants.add(n)
+# converted bodies use the twins
+def use_twins(t):
+    for (s0, e, n, hdr, params, bs) in functions(t):
+        pass
+    return t
+if macros:
+    out2, pos2 = [], 0
+    for m in HDR.finditer(res):
+        e = res.find('\n}\n', m.end() - 1) + 3
+        if 'Carried *cr' in m.group(3) or m.group(2).startswith('w_'):
+            seg = res[m.start():e]
+            for name in macros:
+                seg = re.sub(r'(?<![\w>.])%s\s*\(' % name, '%s_c(' % name, seg)
+            out2.append(res[pos2:m.start()]); out2.append(seg); pos2 = e
+    out2.append(res[pos2:])
+    res = ''.join(out2)
+
 # _g variants for glue callers, after each helper's definition
 for h in sorted(gvariants):
     f = byname[h]
     hdr, params = f[3], f[4]
     ret = re.sub(r'\b%s\s*$' % h, '', hdr.strip()).strip()
-    plist = [] if params.strip() in ('void', '') else [p.strip() for p in params.split(',')]
-    names = [re.findall(r'(\w+)\s*(?:\[\])?$', p)[0] for p in plist]
+    plist = [] if params.strip() in ('void', '') else split_params(params)
+    names = [pname(p) for p in plist]
     call = '%s(&c%s)' % (h, ''.join(', ' + x for x in names))
     isvoid = re.sub(r'\bstatic\b|\binline\b', '', ret).strip() == 'void'
     g = '''%s %s_g(%s)
@@ -275,8 +346,8 @@ for h in sorted(gvariants):
 }
 ''' % (ret, h, params, '' if isvoid else re.sub(r'\bstatic\b|\binline\b', '', ret).strip() + ' ret_ = ', call,
        '' if isvoid else '\n    return ret_;')
-    m = re.search(r'^[^\n]*\b%s\(Carried \*cr[^)]*\)\n\{\n.*?^\}\n' % h, res, re.M | re.S)
-    res = res[:m.end()] + '\n' + g + res[m.end():]
+    e = find_def(res, h, True)
+    res = res[:e] + '\n' + g + res[e:]
 
 # _c variants: a helper still in registers called from carried code
 for h in sorted(cvariants):
@@ -284,8 +355,8 @@ for h in sorted(cvariants):
     hdr, params = f[3], f[4]
     ret = re.sub(r'\b%s\s*$' % h, '', hdr.strip()).strip()
     rt = re.sub(r'\bstatic\b|\binline\b', '', ret).strip()
-    plist = [] if params.strip() in ('void', '') else [p.strip() for p in params.split(',')]
-    names = [re.findall(r'(\w+)\s*(?:\[\])?$', p)[0] for p in plist]
+    plist = [] if params.strip() in ('void', '') else split_params(params)
+    names = [pname(p) for p in plist]
     call = '%s(%s)' % (h, ', '.join(names))
     np = 'Carried *cr' if not plist else 'Carried *cr, ' + params
     g = '''static %s %s_c(%s)
@@ -305,8 +376,8 @@ for h in sorted(cvariants):
     cr->db = cpu.db;%s
 }
 ''' % (rt, h, np, '' if rt == 'void' else rt + ' ret_ = ', call, '' if rt == 'void' else '\n    return ret_;')
-    m = re.search(r'^[^\n]*\b%s\((?!Carried)[^)]*\)\n\{\n.*?^\}\n' % h, res, re.M | re.S)
-    res = res[:m.end()] + '\n' + g + res[m.end():]
+    e = find_def(res, h, False)
+    res = res[:e] + '\n' + g + res[e:]
 
 # the header and forward declarations after the includes, the wrappers at
 # the end (where every routine of the file is declared)
@@ -322,8 +393,12 @@ if wrapcode or regfn:
     inc = list(re.finditer(r'^#include .*\n', res, re.M))[-1]
     add = '#include "carried.h"\n' if '"carried.h"' not in res else ''
     fwd = ''.join('void %s(Carried *cr);\n' % newname[n] for n in sorted(regfn) if isroutine[n])
-    fwd += ''.join(re.search(r'^([^\n]*\b%s\(Carried \*cr[^)]*\))\n\{\n' % n, res, re.M).group(1) + ';\n'
-                   for n in sorted(regfn) if not isroutine[n])
+    def decl(n):
+        for m in HDR.finditer(res):
+            if m.group(2) == n and 'Carried *cr' in m.group(3):
+                return '%s(%s);\n' % (m.group(1).rstrip(), m.group(3))
+        raise SystemExit('no definition of %s' % n)
+    fwd += ''.join(decl(n) for n in sorted(regfn) if not isroutine[n])
     # the file's own forward declarations of converted helpers go
     for n in regfn:
         if not isroutine[n]:
@@ -334,7 +409,7 @@ if wrapcode or regfn:
     for c in sorted(set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', wcode + ''.join(body[n] for n in regfn)))):
         if c.startswith(('abi_', 'w_', 'r_', 'alu_')) or c in byname:
             continue
-        if re.search(r'^[^\n]*\b%s\s*\([^;{]*\)\s*;' % c, res, re.M):
+        if re.search(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\)\s*;' % c, res, re.M):
             continue
         pr = proto_of(c)
         if pr:

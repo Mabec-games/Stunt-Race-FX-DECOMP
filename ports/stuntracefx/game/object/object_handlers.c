@@ -188,7 +188,6 @@ static uint32_t dpx(Carried *cr, uint16_t off, uint16_t x);
 static void lamp_drop_start(Carried *cr);
 static void lamp_look_step(Carried *cr, uint16_t table);
 static void lamp_place(Carried *cr);
-static uint32_t latch(Carried *cr, uint16_t bit, int on, AbiFn snd);
 static uint16_t latch_addr(Carried *cr);
 static void lda8(Carried *cr, uint8_t v);
 static void offset_on_parent(Carried *cr, int sh);
@@ -3931,40 +3930,10 @@ static uint16_t latch_addr(Carried *cr)
     return cr->a ? 0x1A60 : (cyc(6), 0x1A5E);
 }
 
-/* A latch bit and its sound: when `on` and the bit is clear, the sound
-   (`snd`) and the bit set; when off and the bit is set, the sound and the
-   bit cleared. 16-bit, the latch word re-chosen before the store. Returns
-   the time from its last access to the code after it (each copy's tail in
-   the assembly): unchanged, BIT # and the branch taken, then on the BRA
-   (68 on, 46 off; 22 more for player 2's word, its BRA); changed, the
-   BRAs after the store (on: 44 for player 2's word, 22 for player 1's;
-   off: 22 or 0). */
-static uint32_t latch(Carried *cr, uint16_t bit, int on, AbiFn snd)
-{
-    uint32_t b = db(cr);
-    uint16_t w, at, word = latch_addr(cr);
-
-    r_lda16(cr, cyc_then(62, b | word));
-    cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & bit) ? 0 : P_Z));
-    if (((cr->a & bit) ? 1 : 0) == on)
-        return (on ? 68 : 46) + (word == 0x1A60 ? 22 : 0);   /* player 2's word: BRA */
-    w = cr->a;
-    if (word == 0x1A60)
-        cyc(22);                            /* player 2's BRA past player 1's load */
-    snd();
-    w = on ? (uint16_t)(w | bit) : (uint16_t)(w & ~bit);
-    cr->p &= (uint8_t)~P_M;
-    at = (cyc(50), latch_addr(cr));
-    wr16(b | at, cyc_then(98, w));
-    cr->a = w;
-    cr->p = nz16(cr->p, w);
-    return (at == 0x1A60 ? 22 : 0) + (on ? 22 : 0);
-}
-
-static uint32_t latch_g(uint16_t bit, int on, AbiFn snd)
+static uint16_t latch_addr_g(void)
 {
     Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint32_t ret_ = latch(&c, bit, on, snd);
+    uint16_t ret_ = latch_addr(&c);
 
     cpu.a = c.a;
     cpu.x = c.x;
@@ -3973,6 +3942,36 @@ static uint32_t latch_g(uint16_t bit, int on, AbiFn snd)
     cpu.p = c.p;
     cpu.db = c.db;
     return ret_;
+}
+
+/* A latch bit and its sound: when `on` and the bit is clear, the sound
+   (`snd`) and the bit set; when off and the bit is set, the sound and the
+   bit cleared. 16-bit, the latch word re-chosen before the store. Returns
+   the time from its last access to the code after it (each copy's tail in
+   the assembly): unchanged, BIT # and the branch taken, then on the BRA
+   (68 on, 46 off; 22 more for player 2's word, its BRA); changed, the
+   BRAs after the store (on: 44 for player 2's word, 22 for player 1's;
+   off: 22 or 0). */
+static uint32_t latch(uint16_t bit, int on, AbiFn snd)
+{
+    uint32_t b = db_g();
+    uint16_t w, at, word = latch_addr_g();
+
+    op_lda16(cyc_then(62, b | word));
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & bit) ? 0 : P_Z));
+    if (((cpu.a & bit) ? 1 : 0) == on)
+        return (on ? 68 : 46) + (word == 0x1A60 ? 22 : 0);   /* player 2's word: BRA */
+    w = cpu.a;
+    if (word == 0x1A60)
+        cyc(22);                            /* player 2's BRA past player 1's load */
+    snd();
+    w = on ? (uint16_t)(w | bit) : (uint16_t)(w & ~bit);
+    cpu.p &= (uint8_t)~P_M;
+    at = (cyc(50), latch_addr_g());
+    wr16(b | at, cyc_then(98, w));
+    cpu.a = w;
+    cpu.p = nz16(cpu.p, w);
+    return (at == 0x1A60 ? 22 : 0) + (on ? 22 : 0);
 }
 
 /* CMP #k (8-bit) on v: N, Z, C set; whether v - k is negative. */
@@ -4134,9 +4133,9 @@ void abi_PlayerCarEvents(void)
             cyc(102);
             op_lda16(0x700092 + cpu.x);
             if (cpu.a & 0x0020)
-                tail = latch_g(0x0004, 1, abi_PlayerSound12);
+                tail = latch(0x0004, 1, abi_PlayerSound12);
             else
-                { cyc(6); tail = latch_g(0x0004, 0, abi_PlayerSound0C); }
+                { cyc(6); tail = latch(0x0004, 0, abi_PlayerSound0C); }
             tail += 32;                         /* LDA long at $C213 */
         }
     } else { cyc(24); }
@@ -4144,9 +4143,9 @@ void abi_PlayerCarEvents(void)
     cyc(tail);
     op_lda16(0x700042 + cpu.x);
     if (cpu.a & 0x0400)
-        tail = latch_g(0x0001, 1, abi_PlayerSound23);
+        tail = latch(0x0001, 1, abi_PlayerSound23);
     else
-        { cyc(6); tail = latch_g(0x0001, 0, abi_PlayerSound24); }
+        { cyc(6); tail = latch(0x0001, 0, abi_PlayerSound24); }
     cyc(tail + 32);                             /* LDA long at $C280 */
     op_lda16(0x700042 + cpu.x);
     cyc(cpu.a & 0x0080 ? 72 : 78);              /* BEQ to the next line: 6 more taken */
@@ -4158,7 +4157,7 @@ void abi_PlayerCarEvents(void)
         if ((cpu.a & 0x0800) && (cyc(40), !(cpu.a & 0x0100)))
             found = 1;
     }
-    tail = latch_g(0x0002, found, found ? abi_PlayerSound0D : (cyc(6), abi_PlayerSound0B));
+    tail = latch(0x0002, found, found ? abi_PlayerSound0D : (cyc(6), abi_PlayerSound0B));
     /* $08:C304: the held sound by the record's +$57. */
     cpu.p |= P_M;
     cyc(tail + 54);                             /* SEP, LDA long */
