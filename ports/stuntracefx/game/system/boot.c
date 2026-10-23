@@ -6,6 +6,9 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
+#include "carried.h"
+
+void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count);
 
 void abi_ApuUploadBank19(void);
 void abi_SaveUnlocksCheck(void);
@@ -28,6 +31,17 @@ void abi_WramFillZeroLong(void);
 void abi_SoftResetApuLong(void);
 void abi_DemoRunThird(void);
 
+void HardwareRegsInit(Carried *cr);
+static void boot_bank03(Carried *cr);
+static void boot_blank(Carried *cr, uint32_t b);
+static void boot_clear(Carried *cr, void (*fill)(Carried *), uint32_t first, uint32_t rest, uint32_t after);
+static void boot_dma(Carried *cr, uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, uint16_t count);
+static void boot_lda8(Carried *cr, uint8_t v);
+static void boot_ldx(Carried *cr, uint16_t v);
+static void boot_ldy(Carried *cr, uint16_t v);
+static void w_WramFillZero(Carried *cr);
+void WramFillZeroLong(Carried *cr);
+
 /*
  * @routine 03:89B4 HardwareRegsInit
  * WHAT IT DOES: Puts the video and CPU registers in a known state: the
@@ -40,7 +54,7 @@ void abi_DemoRunThird(void);
  * data bank.
  * Entry: any widths. Exit: A = 0, X = $FF, Y = $30 (8-bit); N set, Z clear.
  */
-void abi_HardwareRegsInit(void)
+void HardwareRegsInit(Carried *cr)
 {
     static const struct { uint16_t reg; uint8_t v; } writes[] = {
         {0x2100, 0x8F},
@@ -122,8 +136,8 @@ void abi_HardwareRegsInit(void)
     uint32_t b;
     unsigned i;
 
-    op_sep(P_M | P_X);
-    b = (uint32_t)cpu.db << 16;
+    r_sep(cr, P_M | P_X);
+    b = (uint32_t)cr->db << 16;
     for (i = 0; i < sizeof writes / sizeof writes[0]; i++) {
         uint16_t reg = writes[i].reg;
 
@@ -138,39 +152,91 @@ void abi_HardwareRegsInit(void)
     }
     ppu_mul_factor = 0x0100;                 /* M7A: $00, then $01 */
     cyc(44);
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    cpu.x = 0x00FF;
-    cpu.y = 0x0030;
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
+    cr->a = (uint16_t)(cr->a & 0xFF00);
+    cr->x = 0x00FF;
+    cr->y = 0x0030;
+    cr->p = (uint8_t)((cr->p & ~P_Z) | P_N);
+}
+
+void abi_HardwareRegsInit(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HardwareRegsInit(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA # (8-bit). */
-static void boot_lda8(uint8_t v)
+static void boot_lda8(Carried *cr, uint8_t v)
 {
     cyc(40);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+static void boot_lda8_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_lda8(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDX # / LDY # (16-bit). */
-static void boot_ldx(uint16_t v)
+static void boot_ldx(Carried *cr, uint16_t v)
 {
     cyc(22);
-    cpu.x = v;
-    cpu.p = nz16(cpu.p, v);
+    cr->x = v;
+    cr->p = nz16(cr->p, v);
 }
 
-static void boot_ldy(uint16_t v)
+static void boot_ldx_g(uint16_t v)
 {
-    cpu.y = v;
-    cpu.p = nz16(cpu.p, v);
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_ldx(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
+static void boot_ldy(Carried *cr, uint16_t v)
+{
+    cr->y = v;
+    cr->p = nz16(cr->p, v);
 }
 
 /* PHK, PLB: the data bank $03. */
-static void boot_bank03(void)
+static void boot_bank03(Carried *cr)
 {
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
+    cr->db = 0x03;
+    cr->p = nz8(cr->p, 0x03);
+}
+
+static void boot_bank03_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_bank03(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* REP #$10 (or as is), LDX #$02FF, TXS. */
@@ -178,14 +244,14 @@ static void boot_stack(void)
 {
     op_rep(P_X);
     cyc(76);
-    boot_ldx(0x02FF);
+    boot_ldx_g(0x02FF);
     cpu.s = 0x02FF;
 }
 
 /* Work RAM and Super FX RAM cleared: three fills (A = bank, X = start,
    Y = count) by `fill`, then $70:0000 = 0 and MVN from each byte of
    $70:0000-$27FF to the next, P and the data bank kept around it. */
-static void boot_clear(void (*fill)(void), uint32_t first, uint32_t rest, uint32_t after)
+static void boot_clear(Carried *cr, void (*fill)(Carried *), uint32_t first, uint32_t rest, uint32_t after)
 {
     static const struct { uint8_t bank; uint16_t x, y; } f[3] = {
         {0x00, 0x0300, 0x2100}, {0x7E, 0x2000, 0xE000}, {0x7F, 0x0000, 0xFFFF}};
@@ -194,63 +260,102 @@ static void boot_clear(void (*fill)(void), uint32_t first, uint32_t rest, uint32
 
     for (i = 0; i < 3; i++) {
         cyc(i ? rest : first);
-        boot_lda8(f[i].bank);
-        boot_ldx(f[i].x);
-        boot_ldy(f[i].y);
-        fill();
+        boot_lda8(cr, f[i].bank);
+        boot_ldx(cr, f[i].x);
+        boot_ldy(cr, f[i].y);
+        fill(cr);
     }
-    db = cpu.db;
-    p = cpu.p;
-    op_rep(P_M | P_X);
-    op_lda16_imm(0x0000);
+    db = cr->db;
+    p = cr->p;
+    r_rep(cr, P_M | P_X);
+    r_lda16_imm(cr, 0x0000);
     cyc(after);
     wr16(0x700000, 0x0000);
-    op_lda16_imm(0x27FF);
-    boot_ldx(0x0000);
-    boot_ldy(0x0001);
+    r_lda16_imm(cr, 0x27FF);
+    boot_ldx(cr, 0x0000);
+    boot_ldy(cr, 0x0001);
     for (i = 0; i <= 0x27FF; i++)
         { cyc(36); wr8(0x700001u + i, rd8(0x700000u + i)); }
     cyc(88);
-    cpu.a = 0xFFFF;
-    cpu.x = 0x2800;
-    cpu.y = 0x2801;
-    cpu.db = 0x70;
-    op_plp(p);
-    cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
+    cr->a = 0xFFFF;
+    cr->x = 0x2800;
+    cr->y = 0x2801;
+    cr->db = 0x70;
+    r_plp(cr, p);
+    cr->db = db;
+    cr->p = nz8(cr->p, db);
+}
+
+static void boot_clear_g(void (*fill)(Carried *), uint32_t first, uint32_t rest, uint32_t after)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_clear(&c, fill, first, rest, after);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The screen blanked and HDMA off; interrupts off. */
-static void boot_blank(uint32_t b)
+static void boot_blank(Carried *cr, uint32_t b)
 {
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(96);
     hdmaen_wr(b | HDMAEN, 0x00);
-    boot_lda8(0x80);
+    boot_lda8(cr, 0x80);
     ppu_wr(b | INIDISP, 0x80);
-    cpu.p |= P_I;
+    cr->p |= P_I;
+}
+
+static void boot_blank_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_blank(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* One DMA of `count` bytes from bank:$8000 to work RAM bank:to. */
-static void boot_dma(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, uint16_t count)
+static void boot_dma(Carried *cr, uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, uint16_t count)
 {
-    boot_ldx(0x8000);
+    boot_ldx(cr, 0x8000);
     cyc(26);
     dma_wr16(b | 0x4300, 0x8000);
-    boot_ldy(to);
+    boot_ldy(cr, to);
     cyc(48);
     hw_wr16(b | WMADDL, to);
-    boot_lda8(wbank);
+    boot_lda8(cr, wbank);
     hw_wr(b | WMADDH, wbank);
     cyc(24);
     dma_wr16(b | 0x4302, 0x8000);
-    boot_lda8(from_bank);
+    boot_lda8(cr, from_bank);
     dma_wr(b | 0x4304, from_bank);
-    boot_ldy(count);
+    boot_ldy(cr, count);
     cyc(48);
     dma_wr16(b | 0x4305, count);
-    boot_lda8(0x01);
+    boot_lda8(cr, 0x01);
     mdmaen_wr(b | MDMAEN, 0x01);
+}
+
+static void boot_dma_g(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, uint16_t count)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_dma(&c, b, to, wbank, from_bank, count);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_RACE, BOOT_ATTRACT, BOOT_SOFT, BOOT_SOFT_REST };
@@ -280,21 +385,21 @@ static void boot_run(int from)
     old_e = cpu.e;
     cpu.e = 0;
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : 0));
-    boot_bank03();
+    boot_bank03_g();
     op_rep(P_M | P_X);
-    boot_ldx(0x02FF);
+    boot_ldx_g(0x02FF);
     cpu.s = 0x02FF;
     op_lda16_imm(0x0000);
     cpu.d = 0x0000;
     op_sep(P_M);
-    boot_lda8(0x1C);
+    boot_lda8_g(0x1C);
     cyc(130);
     wr8(b | 0x0D3F, 0x1C);
     (cyc(62), abi_HardwareRegsInit());
     cpu.p &= (uint8_t)~P_I;
     op_sep(P_M);
     op_rep(P_X);
-    boot_ldx(0x02FE);
+    boot_ldx_g(0x02FE);
     cyc(2);
     do {
         cyc(58);
@@ -308,14 +413,14 @@ static void boot_run(int from)
     cpu.d = 0x0000;
     op_lda16_imm(0x02FF);
     cpu.s = 0x02FF;
-    boot_bank03();
+    boot_bank03_g();
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear(abi_WramFillZero, 90, 48, 62);
+    boot_clear_g(w_WramFillZero, 90, 48, 62);
     abi_ApuUploadBank19();
     abi_SaveUnlocksCheck();
     op_rep(P_M | P_X);
-    boot_ldx(0x000F);
+    boot_ldx_g(0x000F);
     do {
         op_lda16(0x038D16 + cpu.x);
         wr16(0x000101 + cpu.x, cpu.a);
@@ -326,17 +431,17 @@ start:
     cyc(22);
     op_sep(P_M);
     op_rep(P_X);
-    boot_dma(b, 0xA2D9, 0x7E, 0x02, 0x54A6);
-    boot_dma(b, 0x0800, 0x7F, 0x0B, 0x2C00);
+    boot_dma_g(b, 0xA2D9, 0x7E, 0x02, 0x54A6);
+    boot_dma_g(b, 0x0800, 0x7F, 0x0B, 0x2C00);
     op_sep(P_M);
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     cyc(22);
     wr8(b | 0x0374, 0x01);
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     hw_wr(b | 0x3039, 0x01);
-    boot_lda8(0x20);
+    boot_lda8_g(0x20);
     hw_wr(b | 0x3037, 0x20);
-    boot_lda8(0x0B);
+    boot_lda8_g(0x0B);
     hw_wr(b | 0x3038, 0x0B);
     (cyc(62), abi_MenuScreen0Run());
     op_rep(P_M | P_X);
@@ -347,21 +452,21 @@ start:
     cyc(18);
     wr16(0x001917, 0x0000);
 warm:
-    boot_bank03();
+    boot_bank03_g();
     boot_stack();
     op_sep(P_M);
     cyc(36);
     wr8(b | 0x0E4E, 0x00);
-    boot_lda8(0x02);
+    boot_lda8_g(0x02);
     wr8(b | 0x117A, 0x02);
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     wr8(b | 0x117B, 0x01);
     (cyc(62), abi_CourseMenuRun());
     abi_RaceModeSetup();
     abi_Set7EFFA6Sequence();
 race:
-    boot_bank03();
-    boot_blank(b);
+    boot_bank03_g();
+    boot_blank_g(b);
     boot_stack();
     op_sep(P_M);
     wr8(b | 0x0E4E, 0x00);
@@ -381,12 +486,12 @@ race:
     else
         cpu.s = (uint16_t)(cpu.s + 3);
     b = (uint32_t)cpu.db << 16;
-    boot_blank(b);
+    boot_blank_g(b);
     abi_RaceVideoInit();
 attract:
-    boot_bank03();
+    boot_bank03_g();
     b = 0x030000;
-    boot_blank(b);
+    boot_blank_g(b);
     (cyc(78), boot_stack());
     op_sep(P_M | P_X);
     call_routine(0x02CF3E, 1);
@@ -394,10 +499,10 @@ attract:
     op_sep(P_M);
     op_rep(P_X);
     b = (uint32_t)cpu.db << 16;
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     cyc(22);
     hw_wr(b | 0x3039, 0x01);
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     cyc(8);
     wr8(0x7EFF65, 0x01);
     cpu.p |= P_I;
@@ -409,24 +514,24 @@ attract:
     (cyc(62), abi_CourseScriptRun());
     (cyc(62), abi_ObjectPlaceAll());
     b = (uint32_t)cpu.db << 16;
-    boot_lda8(0x00);
+    boot_lda8_g(0x00);
     cyc(8);
     wr8(0x70023A, 0x00);
     cyc(24);
     wr8(b | 0x1A32, 0x00);
     cyc(24);
     wr8(b | 0x05E9, 0x00);
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     wr8(b | 0x0713, 0x01);
     op_sep(P_M);
     op_rep(P_X);
     cyc(62);
-    boot_lda8(0x04);
-    boot_ldx(0x8800);
+    boot_lda8_g(0x04);
+    boot_ldx_g(0x8800);
     abi_GsuRun();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
-    boot_lda8(0x01);
+    boot_lda8_g(0x01);
     cyc(22);
     wr8(b | 0x0357, 0x01);
     cyc(32);
@@ -462,10 +567,10 @@ soft:
 soft_rest:
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
-    boot_lda8(0x06);
+    boot_lda8_g(0x06);
     cyc(22);
     hw_wr(b | APUIO1, 0x06);
-    boot_lda8(0x80);
+    boot_lda8_g(0x80);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
     hw_wr(b | NMITIMEN, 0x00);
@@ -475,7 +580,7 @@ soft_rest:
     hdmaen_wr(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear(abi_WramFillZeroLong, 86, 64, 62);
+    boot_clear_g(WramFillZeroLong, 86, 64, 62);
     abi_SoftResetApuLong();
     b = (uint32_t)cpu.db << 16;
     cyc(24); /* JMP */
@@ -588,4 +693,13 @@ void abi_BootSoftRestart(void)
 void abi_BootSoftRestartRest(void)
 {
     boot_run(BOOT_SOFT_REST);
+}
+
+/* WramFillZero as its adapter leaves the registers. */
+static void w_WramFillZero(Carried *cr)
+{
+    WramFillZero((uint8_t)cr->a, cr->x, cr->y);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0x8008;
+    cr->p = (uint8_t)(cr->p & ~(P_N | P_Z));
 }
