@@ -6,6 +6,9 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
+#include "carried.h"
+
+#include "video_calls.h"
 
 /*
  * @routine 7E:DFE4 WindowsColourAddBg12
@@ -199,6 +202,27 @@ void abi_WindowsSetupSelect(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
 }
 
+void BobStep(Carried *cr);
+void BobWindow0(Carried *cr);
+void BobWindow1(Carried *cr);
+void BobWindowsRun(Carried *cr);
+void OscillatorStep(Carried *cr);
+void OscillatorWindow(Carried *cr);
+void WindowSlideOrOscillate(Carried *cr);
+void WindowSweep(Carried *cr);
+void WindowSweepIfOn(Carried *cr);
+void WindowSweepStep(Carried *cr);
+void WindowsColourSubtract3(Carried *cr);
+static void bob_setup(Carried *cr, uint32_t b);
+static int bob_window(Carried *cr, uint8_t x, uint16_t at);
+static void w_WindowHdmaFFD1(Carried *cr);
+static void w_WindowHdmaFFD5(Carried *cr);
+static void w_WindowHdmaFFD9(Carried *cr);
+static void w_WindowSlideStep(Carried *cr);
+static void w_WindowsColourWindowOnly(Carried *cr);
+void ObjectLinkEventTrigger2(Carried *cr);
+void ObjectLinkEventTrigger_cr(Carried *cr);
+
 /*
  * @routine 7E:DF61 BobStep
  * WHAT IT DOES: Steps bob X (0 or 1) at half rate: on every second call
@@ -212,64 +236,77 @@ void abi_WindowsSetupSelect(void)
  * Entry: X = bob. Exit: M 8-bit, X 8-bit (high bytes cleared); A low byte
  * and flags from the last step taken.
  */
-void abi_BobStep(void)
+void BobStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, c;
 
-    op_sep(P_M | P_X);
-    cpu.p &= (uint8_t)~P_C;
+    r_sep(cr, P_M | P_X);
+    cr->p &= (uint8_t)~P_C;
     cyc(32);
-    v = op_adc8(rd8(0x001A1E + cpu.x), 0x01, &cpu.p);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    v = alu_adc8(rd8(0x001A1E + cr->x), 0x01, &cr->p);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v != 0x02) {
         cyc(94);
-        wr8(0x001A1E + cpu.x, v);
+        wr8(0x001A1E + cr->x, v);
         cyc(66);                        /* JMP, RTS */
         return;
     }
-    cpu.p &= (uint8_t)~P_C;
+    cr->p &= (uint8_t)~P_C;
     cyc(100);
-    c = op_adc8(rd8(0x001A22 + cpu.x), 0x01, &cpu.p);
+    c = alu_adc8(rd8(0x001A22 + cr->x), 0x01, &cr->p);
     cyc(62);
-    wr8(0x001A22 + cpu.x, c);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - 0x0A)) & ~P_C) | (c >= 0x0A ? P_C : 0));
+    wr8(0x001A22 + cr->x, c);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(c - 0x0A)) & ~P_C) | (c >= 0x0A ? P_C : 0));
     if (c == 0x0A) {
-        uint16_t at = cpu.x == 0x01 ? 0x0DA6 : 0x0DA4;
+        uint16_t at = cr->x == 0x01 ? 0x0DA6 : 0x0DA4;
 
         cyc(80);
-        wr8(0x001A22 + cpu.x, 0x00);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.x - 0x01)) & ~P_C) | (cpu.x >= 0x01 ? P_C : 0));
+        wr8(0x001A22 + cr->x, 0x00);
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(cr->x - 0x01)) & ~P_C) | (cr->x >= 0x01 ? P_C : 0));
         cyc(62);
         v = (uint8_t)(rd8(b | at) & 0x7F);
         cyc(40);
         wr8(b | at, v);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cpu.p = nz8(cpu.p, v);
-        cyc(cpu.x == 0x01 ? 42 : 64);   /* RTS, after BRA for bob 0 */
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+        cr->p = nz8(cr->p, v);
+        cyc(cr->x == 0x01 ? 42 : 64);   /* RTS, after BRA for bob 0 */
         return;
     }
     cyc(86);
-    wr8(0x001A1E + cpu.x, 0x00);
+    wr8(0x001A1E + cr->x, 0x00);
     cyc(32);
-    v = rd8(0x001A1C + cpu.x);
-    cpu.p &= (uint8_t)~P_C;
+    v = rd8(0x001A1C + cr->x);
+    cr->p &= (uint8_t)~P_C;
     cyc(38);
-    v = op_adc8(v, rd8(b | (uint16_t)(0x1A20 + cpu.x)), &cpu.p);
+    v = alu_adc8(v, rd8(b | (uint16_t)(0x1A20 + cr->x)), &cr->p);
     cyc(32);
-    wr8(0x001A1C + cpu.x, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x1C)) & ~P_C) | (v >= 0x1C ? P_C : (cyc(64), 0)));
+    wr8(0x001A1C + cr->x, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x1C)) & ~P_C) | (v >= 0x1C ? P_C : (cyc(64), 0)));
     if (v != 0x1C) {
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x16)) & ~P_C) | (v >= 0x16 ? P_C : 0));
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x16)) & ~P_C) | (v >= 0x16 ? P_C : 0));
         if (v != 0x16)
             { cyc(66); return; }    /* JMP, RTS */
     }
-    v = (uint8_t)((rd8(0x001A20 + cpu.x) ^ 0xFF) + 1);
-    wr8(0x001A20 + cpu.x, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    v = (uint8_t)((rd8(0x001A20 + cr->x) ^ 0xFF) + 1);
+    wr8(0x001A20 + cr->x, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+void abi_BobStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BobStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_WindowHdmaFFD1(void);
@@ -278,27 +315,27 @@ void abi_WindowHdmaFFD9(void);
 
 /* Bob x's window: BobStep, then, unless its position is $18, the setup
    bytes at `at` ($20, (position | $40) - 2, position | $80). */
-static int bob_window(uint8_t x, uint16_t at)
+static int bob_window(Carried *cr, uint8_t x, uint16_t at)
 {
     uint8_t v, w;
 
-    op_sep(P_M | P_X);
-    cpu.x = x;
-    (cyc(62), abi_BobStep());
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
+    cr->x = x;
+    (cyc(62), BobStep(cr));
+    r_sep(cr, P_M | P_X);
     cyc(32);
     v = rd8((uint32_t)(0x001A1C + x));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : 0));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : 0));
     if (v == 0x18)
         return 0;
     cyc(102);
     wr8((uint32_t)(0x000002 + at), (uint8_t)(v | 0x80));
-    cpu.p |= P_C;
-    w = op_sbc8((uint8_t)(v | 0x40), 0x02, &cpu.p);
+    cr->p |= P_C;
+    w = alu_sbc8((uint8_t)(v | 0x40), 0x02, &cr->p);
     cyc(90);
     wr8((uint32_t)(0x000001 + at), w);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x20);
     cyc(48);
     wr8((uint32_t)at, 0x20);
     return 1;
@@ -314,20 +351,33 @@ static int bob_window(uint8_t x, uint16_t at)
  * case is not reached in the traces so far.
  * Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
  */
-void abi_BobWindow0(void)
+void BobWindow0(Carried *cr)
 {
     uint8_t v;
 
     cyc(46);
-    if (!bob_window(0, 0x19AC))
+    if (!bob_window(cr, 0, 0x19AC))
         { cyc(42); return; }
     cyc(24);
-    v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    v = rd8((uint32_t)cr->db << 16 | 0x0D62);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
-        { cyc(68); abi_WindowHdmaFFD5(); cyc(42); }
+        { cyc(68); w_WindowHdmaFFD5(cr); cyc(42); }
     else
-        { cyc(62); abi_WindowHdmaFFD1(); cyc(66); } /* JMP, RTS */
+        { cyc(62); w_WindowHdmaFFD1(cr); cyc(66); } /* JMP, RTS */
+}
+
+void abi_BobWindow0(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BobWindow0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -338,12 +388,25 @@ void abi_BobWindow0(void)
  * (unit_uncalled).
  * Entry: any widths. Exit: as BobWindow0.
  */
-void abi_BobWindow1(void)
+void BobWindow1(Carried *cr)
 {
-    if (bob_window(1, 0x19AF))
-        { cyc(46); abi_WindowHdmaFFD9(); cyc(42); }
+    if (bob_window(cr, 1, 0x19AF))
+        { cyc(46); w_WindowHdmaFFD9(cr); cyc(42); }
     else
         cyc(80);
+}
+
+void abi_BobWindow1(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BobWindow1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -357,30 +420,30 @@ void abi_BobWindow1(void)
  * Entry: X = sweep. Exit: M 8-bit, X 8-bit; A and flags from the last
  * step.
  */
-void abi_WindowSweepStep(void)
+void WindowSweepStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, c;
     unsigned i;
 
-    op_sep(P_M | P_X);
-    cpu.p &= (uint8_t)~P_C;
+    r_sep(cr, P_M | P_X);
+    cr->p &= (uint8_t)~P_C;
     cyc(32);
-    v = op_adc8(rd8(0x001A17 + cpu.x), 0x01, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    v = alu_adc8(rd8(0x001A17 + cr->x), 0x01, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
     if (v != 0x02) {
         cyc(94);
-        wr8(0x001A17 + cpu.x, v);
+        wr8(0x001A17 + cr->x, v);
         cyc(66);                        /* JMP, RTS */
         return;
     }
-    cpu.p &= (uint8_t)~P_C;
+    cr->p &= (uint8_t)~P_C;
     cyc(100);
-    c = op_adc8(rd8(0x001A1B), 0x01, &cpu.p);
+    c = alu_adc8(rd8(0x001A1B), 0x01, &cr->p);
     cyc(62);
     wr8(0x001A1B, c);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - 0x10)) & ~P_C) | (c >= 0x10 ? P_C : 0));
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(c - 0x10)) & ~P_C) | (c >= 0x10 ? P_C : 0));
     if (c == 0x10) {
         static const uint16_t z[3] = {0x1A17, 0x1A18, 0x1A1B};
 
@@ -401,34 +464,47 @@ void abi_WindowSweepStep(void)
         wr8(b | 0x1A15, 0xF0);
         cyc(24);
         wr8(b | 0x1A16, 0xF0);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
-        cpu.p = nz8(cpu.p, 0xF0);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
+        cr->p = nz8(cr->p, 0xF0);
         cyc(42);                        /* RTS */
         return;
     }
     cyc(86);
-    wr8(0x001A17 + cpu.x, 0x00);
+    wr8(0x001A17 + cr->x, 0x00);
     cyc(32);
-    v = rd8(0x001A15 + cpu.x);
-    cpu.p &= (uint8_t)~P_C;
+    v = rd8(0x001A15 + cr->x);
+    cr->p &= (uint8_t)~P_C;
     cyc(38);
-    v = op_adc8(v, rd8(b | (uint16_t)(0x1A19 + cpu.x)), &cpu.p);
+    v = alu_adc8(v, rd8(b | (uint16_t)(0x1A19 + cr->x)), &cr->p);
     cyc(32);
-    wr8(0x001A15 + cpu.x, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xF2)) & ~P_C) | (v >= 0xF2 ? P_C : (cyc(64), 0)));
+    wr8(0x001A15 + cr->x, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xF2)) & ~P_C) | (v >= 0xF2 ? P_C : (cyc(64), 0)));
     if (v != 0xF2) {
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xE8)) & ~P_C) | (v >= 0xE8 ? P_C : 0));
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xE8)) & ~P_C) | (v >= 0xE8 ? P_C : 0));
         if (v != 0xE8)
             { cyc(66); return; }    /* JMP, RTS */
     }
     cyc(70);
-    v = (uint8_t)((rd8(0x001A19 + cpu.x) ^ 0xFF) + 1);
+    v = (uint8_t)((rd8(0x001A19 + cr->x) ^ 0xFF) + 1);
     cyc(62);
-    wr8(0x001A19 + cpu.x, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    wr8(0x001A19 + cr->x, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
     cyc(42);                            /* RTS */
+}
+
+void abi_WindowSweepStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowSweepStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -440,17 +516,17 @@ void abi_WindowSweepStep(void)
  * HOW: Long stores to bank 0. Not reached in the traces so far.
  * Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
  */
-void abi_WindowSweep(void)
+void WindowSweep(Carried *cr)
 {
     uint8_t v;
 
-    op_sep(P_M | P_X);
-    cpu.x = 0x00;
-    (cyc(62), abi_WindowSweepStep());
+    r_sep(cr, P_M | P_X);
+    cr->x = 0x00;
+    (cyc(62), WindowSweepStep(cr));
     cyc(32);
     v = rd8(0x001A15);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xEE)) & ~P_C) | (v >= 0xEE ? P_C : 0));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xEE)) & ~P_C) | (v >= 0xEE ? P_C : 0));
     if (v == 0xEE)
         { cyc(80); return; }
     cyc(64);
@@ -460,13 +536,26 @@ void abi_WindowSweep(void)
     cyc(32);
     wr8(0x0019AD, v);
     cyc(24);
-    v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    v = rd8((uint32_t)cr->db << 16 | 0x0D62);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
-        { cyc(68); abi_WindowHdmaFFD5(); }
+        { cyc(68); w_WindowHdmaFFD5(cr); }
     else
-        (cyc(62), abi_WindowHdmaFFD1());
+        (cyc(62), w_WindowHdmaFFD1(cr));
     cyc(v ? 42 : 66);                   /* RTS; JMP, RTS after FFD1 */
+}
+
+void abi_WindowSweep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowSweep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -479,35 +568,48 @@ void abi_WindowSweep(void)
  * Entry: any widths. Exit: P and the data bank restored; A as the last
  * test or call left it.
  */
-void abi_WindowSweepIfOn(void)
+void WindowSweepIfOn(Carried *cr)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint8_t p0 = cr->p, db0 = cr->db, v;
     uint32_t b = 0x7E0000;
 
-    cpu.db = 0x7E;
-    cpu.p |= P_M;
+    cr->db = 0x7E;
+    cr->p |= P_M;
     cyc(140);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (!v) {
         cyc(48);
         v = rd8(0x0019BC);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (v != 0xFF) {
             cyc(78);
             v = (uint8_t)(rd8(b | 0x0DA5) & 0x10);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             if (v) {
-                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+                cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
                 cyc(94);
                 wr8(b | 0x19A9, 0x04);
-                (cyc(46), abi_WindowSweep());
+                (cyc(46), WindowSweep(cr));
             } else { cyc(38); }
         } else { cyc(38); }
     } else { cyc(22); }
     cyc(58);
-    cpu.db = db0;
-    op_plp(p0);
+    cr->db = db0;
+    r_plp(cr, p0);
+}
+
+void abi_WindowSweepIfOn(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowSweepIfOn(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -523,42 +625,42 @@ void abi_WindowSweepIfOn(void)
  * Entry: X = oscillator. Exit: M 8-bit, X 8-bit; A and flags from the
  * last step.
  */
-void abi_OscillatorStep(void)
+void OscillatorStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, a, c;
 
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
     cyc(32);
     v = (uint8_t)(rd8(0x001A11) & 0x80);
     if (v) {
         cyc(80);
-        wr8(0x001A0E + cpu.x, 0x80);
+        wr8(0x001A0E + cr->x, 0x80);
         a = 0x04;
         cyc(18);                        /* LDA #, JMP instead of BNE */
     } else {
         cyc(70);
         a = (uint8_t)(rd8(0x001A11) >> 5);
         cyc(102);
-        c = rd8(0x001A0E + cpu.x);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - c)) & ~P_C) | (a >= c ? P_C : 0));
+        c = rd8(0x001A0E + cr->x);
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a - c)) & ~P_C) | (a >= c ? P_C : 0));
         if (a != c)
-            wr8(0x001A0A + cpu.x, 0x00);
+            wr8(0x001A0A + cr->x, 0x00);
         cyc(54);
         v = rd8(0x001A11);
         a = (uint8_t)(v >> 5);
-        cpu.p = (uint8_t)((nz8(cpu.p, a) & ~P_C) | ((v & 0x10) ? P_C : 0));
+        cr->p = (uint8_t)((nz8(cr->p, a) & ~P_C) | ((v & 0x10) ? P_C : 0));
         cyc(102);
-        wr8(0x001A0E + cpu.x, a);
+        wr8(0x001A0E + cr->x, a);
         if (!a) {
             cyc(64);
-            wr8(0x001A0A + cpu.x, 0x00);
+            wr8(0x001A0A + cr->x, 0x00);
             cyc(48);
-            wr8(0x001A08 + cpu.x, 0x40);
+            wr8(0x001A08 + cr->x, 0x40);
             cyc(48);
-            wr8(0x001A0C + cpu.x, 0x01);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-            cpu.p = nz8(cpu.p, 0x01);
+            wr8(0x001A0C + cr->x, 0x01);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+            cr->p = nz8(cr->p, 0x01);
             cyc(66);
             return;
         }
@@ -568,35 +670,48 @@ void abi_OscillatorStep(void)
     v = rd8((uint32_t)(0x7ED30D + a));
     cyc(24);
     wr8(b | 0x1A10, v);
-    cpu.p &= (uint8_t)~P_C;
+    cr->p &= (uint8_t)~P_C;
     cyc(60);
-    c = op_adc8(rd8(0x001A0A + cpu.x), 0x01, &cpu.p);
+    c = alu_adc8(rd8(0x001A0A + cr->x), 0x01, &cr->p);
     cyc(62);
     v = rd8(0x001A10);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | c);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
     if (c != v) {
         cyc(48);
-        wr8(0x001A0A + cpu.x, c);
+        wr8(0x001A0A + cr->x, c);
         cyc(66);
         return;
     }
-    wr8(0x001A0A + cpu.x, 0x00);
-    v = rd8(0x001A08 + cpu.x);
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8(v, rd8(b | (uint16_t)(0x1A0C + cpu.x)), &cpu.p);
-    wr8(0x001A08 + cpu.x, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x40)) & ~P_C) | (v >= 0x40 ? P_C : 0));
+    wr8(0x001A0A + cr->x, 0x00);
+    v = rd8(0x001A08 + cr->x);
+    cr->p &= (uint8_t)~P_C;
+    v = alu_adc8(v, rd8(b | (uint16_t)(0x1A0C + cr->x)), &cr->p);
+    wr8(0x001A08 + cr->x, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x40)) & ~P_C) | (v >= 0x40 ? P_C : 0));
     if (v != 0x40) {
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x42)) & ~P_C) | (v >= 0x42 ? P_C : 0));
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x42)) & ~P_C) | (v >= 0x42 ? P_C : 0));
         if (v != 0x42)
             return;
     }
-    v = (uint8_t)((rd8(0x001A0C + cpu.x) ^ 0xFF) + 1);
-    wr8(0x001A0C + cpu.x, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    v = (uint8_t)((rd8(0x001A0C + cr->x) ^ 0xFF) + 1);
+    wr8(0x001A0C + cr->x, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+void abi_OscillatorStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OscillatorStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -609,18 +724,18 @@ void abi_OscillatorStep(void)
  * so far.
  * Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
  */
-void abi_OscillatorWindow(void)
+void OscillatorWindow(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
     cyc(32);
     v = rd8(0x000DDA);
     cyc(32);
     wr8(0x001A11, v);
-    cpu.x = 0x00;
-    (cyc(62), abi_OscillatorStep());
+    cr->x = 0x00;
+    (cyc(62), OscillatorStep(cr));
     cyc(24);
     v = rd8(b | 0x1A08);
     cyc(32);
@@ -631,30 +746,43 @@ void abi_OscillatorWindow(void)
     wr8(0x0019AE, 0x95);
     cyc(24);
     v = rd8(b | 0x0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
-        { cyc(68); abi_WindowHdmaFFD5(); }
+        { cyc(68); w_WindowHdmaFFD5(cr); }
     else
-        { cyc(62); abi_WindowHdmaFFD1(); }
+        { cyc(62); w_WindowHdmaFFD1(cr); }
     cyc(v ? 42 : 66);                   /* RTS; JMP, RTS after FFD1 */
+}
+
+void abi_OscillatorWindow(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OscillatorWindow(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectLinkEventTrigger(void);
 void abi_ObjectLinkEventTrigger2(void);
 
 /* Bit 5 of $0D45 cleared and window setup 2 ($19A9). */
-static void bob_setup(uint32_t b)
+static void bob_setup(Carried *cr, uint32_t b)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
+    cr->p |= P_M;
     cyc(86);
     v = (uint8_t)(rd8(0x000D45) & 0xDF);
     cyc(48);
     wr8(0x000D45, v);
     cyc(40);
     wr8(b | 0x19A9, 0x02);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
 }
 
 /*
@@ -669,57 +797,70 @@ static void bob_setup(uint32_t b)
  * is not reached in the traces so far.
  * Entry: any widths. Exit: P and the data bank restored.
  */
-void abi_BobWindowsRun(void)
+void BobWindowsRun(Carried *cr)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint8_t p0 = cr->p, db0 = cr->db, v;
     uint32_t b = 0x7E0000;
 
-    cpu.db = 0x7E;
-    cpu.p |= P_M;
+    cr->db = 0x7E;
+    cr->p |= P_M;
     cyc(140);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(22); goto out; }
     cyc(48);
     v = rd8(0x0019BC);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v == 0xFF)
         { cyc(38); goto out; }
-    (cyc(78), abi_ObjectLinkEventTrigger());
-    op_sep(P_M | P_X);
-    cyc(cpu.p & P_Z ? 110 : 126);       /* beq taken at lda.w $1A24, not bne at $0DA4 */
+    (cyc(78), ObjectLinkEventTrigger_cr(cr));
+    r_sep(cr, P_M | P_X);
+    cyc(cr->p & P_Z ? 110 : 126);       /* beq taken at lda.w $1A24, not bne at $0DA4 */
     v = (uint8_t)(rd8(b | 0x0DA4) & 0x80);
     if (v) {
-        bob_setup(b);
-        abi_BobWindow0();
+        bob_setup(cr, b);
+        BobWindow0(cr);
     }
-    if (cpu.p & P_M) {
+    if (cr->p & P_M) {
         cyc(62);
         v = rd8(b | 0x0D62);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (!v)
             { cyc(22); goto out; }
     } else {                    /* WindowHdmaFFD1 left M 16-bit: a word */
         cyc(24);
-        cpu.a = rd16(b | 0x0D62);
-        if (!cpu.a)
+        cr->a = rd16(b | 0x0D62);
+        if (!cr->a)
             goto out;
     }
     cyc(62);
-    op_sep(P_M | P_X);
-    abi_ObjectLinkEventTrigger2();
-    cpu.p |= P_M;
+    r_sep(cr, P_M | P_X);
+    ObjectLinkEventTrigger2(cr);
+    cr->p |= P_M;
     cyc(46);
     v = (uint8_t)(rd8(b | 0x0DA6) & 0x80);
     if (v) {
-        bob_setup(b);
-        (cyc(46), abi_BobWindow1());
+        bob_setup(cr, b);
+        (cyc(46), BobWindow1(cr));
     } else { cyc(38); }
 out:
     cyc(100);
-    cpu.db = db0;
-    cpu.p = p0;
+    cr->db = db0;
+    cr->p = p0;
+}
+
+void abi_BobWindowsRun(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BobWindowsRun(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -729,14 +870,27 @@ out:
  * HOW: An 8-bit long store, then the call.
  * Entry: any widths. Exit: M 8-bit; as WindowsColourWindowOnly.
  */
+void WindowsColourSubtract3(Carried *cr)
+{
+    r_sep(cr, P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
+    cr->p = nz8(cr->p, 0x03);
+    ppu_wr(0x002131, 0x03);
+    (cyc(46), w_WindowsColourWindowOnly(cr));
+    cyc(42);                            /* RTS */
+}
+
 void abi_WindowsColourSubtract3(void)
 {
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
-    cpu.p = nz8(cpu.p, 0x03);
-    ppu_wr(0x002131, 0x03);
-    (cyc(46), abi_WindowsColourWindowOnly());
-    cyc(42);                            /* RTS */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowsColourSubtract3(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_WindowSlideStep(void);
@@ -751,58 +905,112 @@ void abi_WindowSlideStep(void);
  * Entry: any widths. Exit: P and the data bank restored; A, X, Y as the
  * last step left them.
  */
-void abi_WindowSlideOrOscillate(void)
+void WindowSlideOrOscillate(Carried *cr)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint8_t p0 = cr->p, db0 = cr->db, v;
 
-    cpu.db = 0x7E;
-    op_sep(P_M);
+    cr->db = 0x7E;
+    r_sep(cr, P_M);
     cyc(140);
-    op_lda8(0x7E19D8);
-    if (!(uint8_t)cpu.a) {
+    r_lda8(cr, 0x7E19D8);
+    if (!(uint8_t)cr->a) {
         cyc(48);
-        op_lda8(0x0019BC);
-        v = (uint8_t)cpu.a;
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(38), P_C) : 0));
+        r_lda8(cr, 0x0019BC);
+        v = (uint8_t)cr->a;
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(38), P_C) : 0));
         if (v != 0xFF) {
             cyc(78);
-            op_lda8(0x7E0DA5);
-            v = (uint8_t)(cpu.a & 0x06);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-            cpu.p = nz8(cpu.p, v);
+            r_lda8(cr, 0x7E0DA5);
+            v = (uint8_t)(cr->a & 0x06);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+            cr->p = nz8(cr->p, v);
             if (v) {
-                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-                cpu.p = nz8(cpu.p, 0x02);
+                cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+                cr->p = nz8(cr->p, 0x02);
                 cyc(72);
                 wr8(0x7E19A9, 0x02);
-                abi_WindowSlideStep();
+                w_WindowSlideStep(cr);
                 cyc(108);
-                op_lda8(0x7E0DA5);
-                v = (uint8_t)(cpu.a & 0x06);
-                cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-                cpu.p = nz8(cpu.p, v);
+                r_lda8(cr, 0x7E0DA5);
+                v = (uint8_t)(cr->a & 0x06);
+                cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+                cr->p = nz8(cr->p, v);
                 if (v)
                     { cyc(32); goto out; }
             }
-            op_sep(P_M);
+            r_sep(cr, P_M);
             cyc(84);
-            op_lda8(0x7E0DA5);
-            v = (uint8_t)(cpu.a & 0x08);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-            cpu.p = nz8(cpu.p, v);
+            r_lda8(cr, 0x7E0DA5);
+            v = (uint8_t)(cr->a & 0x08);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+            cr->p = nz8(cr->p, v);
             if (v) {
-                op_sep(P_M);
-                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-                cpu.p = nz8(cpu.p, 0x02);
+                r_sep(cr, P_M);
+                cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+                cr->p = nz8(cr->p, 0x02);
                 cyc(94);
                 wr8(0x7E19A9, 0x02);
-                (cyc(46), abi_OscillatorWindow());
+                (cyc(46), OscillatorWindow(cr));
             } else { cyc(38); }
         }
         cyc(0);
     } else { cyc(22); }
 out:
     cyc(58);
-    cpu.db = db0;
-    op_plp(p0);
+    cr->db = db0;
+    r_plp(cr, p0);
+}
+
+void abi_WindowSlideOrOscillate(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowSlideOrOscillate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* WindowHdmaFFD1 as its adapter leaves the registers. */
+static void w_WindowHdmaFFD1(Carried *cr)
+{
+    WindowHdmaFFD1();
+    cr->a = 0xFFD1;
+    cr->p = (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N);
+}
+
+/* WindowHdmaFFD5 as its adapter leaves the registers. */
+static void w_WindowHdmaFFD5(Carried *cr)
+{
+    cr->a = WindowHdmaFFD5();
+    cr->p = (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N);
+}
+
+/* WindowHdmaFFD9 as its adapter leaves the registers. */
+static void w_WindowHdmaFFD9(Carried *cr)
+{
+    cr->a = WindowHdmaFFD9();
+    cr->p = (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N);
+}
+
+/* WindowsColourWindowOnly as its adapter leaves the registers. */
+static void w_WindowsColourWindowOnly(Carried *cr)
+{
+    WindowsColourWindowOnly();
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M);
+}
+
+/* WindowSlideStep as its adapter leaves the registers. */
+static void w_WindowSlideStep(Carried *cr)
+{
+    uint8_t p = cr->p;
+    int moved;
+    uint8_t a = WindowSlideStep(cr->db, &p, &moved);
+
+    cr->a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cr->a & 0xFF00) | a);
+    cr->p = p;
 }
