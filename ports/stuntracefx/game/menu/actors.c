@@ -16,6 +16,7 @@
 #include "cpu_ops.h"
 #include "wram.h"
 #include "menu_calls.h"
+#include "carried.h"
 
 #define ACTOR_FIRST 0x1265u
 #define ACTOR_SIZE 0x2Cu
@@ -245,6 +246,27 @@ void abi_MenuActorFind(void)
     cpu.y = y;
     cpu.a = find_last_kind;
     cpu.p = p;
+}
+
+/* MenuActorFind on carried registers, as abi_MenuActorFind leaves them. */
+void MenuActorFind_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p, a8 = (uint8_t)cr->a;
+
+    if (cr->p & P_M) {
+        MenuActorFind8(cr->db, a8, &x, &y, &p, &a8);
+        cr->x = x;
+        cr->y = y;
+        cr->a = (uint16_t)((cr->a & 0xFF00) | a8);
+        cr->p = p;
+        return;
+    }
+    MenuActorFind(cr->db, cr->a, &x, &y, &p);
+    cr->x = x;
+    cr->y = y;
+    cr->a = find_last_kind;
+    cr->p = p;
 }
 
 /*
