@@ -54,6 +54,20 @@ void carried_jump(Carried *cr, uint32_t addr)
         through_registers(cr, addr, 1, 0);
 }
 
+/* The registers back: the port's runtime never returns from a restart or
+   a branch to itself, but the decomp's gate runs the original there and
+   comes back to the C with the original's registers, which the carried
+   caller's adapter then hands on. */
+static void take(Carried *cr)
+{
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
 static void load(const Carried *cr)
 {
     cpu.a = cr->a;
@@ -83,6 +97,7 @@ void carried_loop_forever(Carried *cr, uint32_t at)
 {
     load(cr);
     cpu_loop_forever(at);
+    take(cr);
 }
 
 /* A jump to code that resets the stack: the entry starts on the registers. */
@@ -90,4 +105,5 @@ void carried_restart(Carried *cr, uint32_t at, void (*entry)(void))
 {
     load(cr);
     cpu_restart(at, entry);
+    take(cr);
 }
