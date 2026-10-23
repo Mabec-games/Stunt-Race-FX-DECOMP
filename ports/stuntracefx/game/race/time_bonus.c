@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "wram.h"
+#include "carried.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 uint16_t GsuParam216A(uint8_t bank, uint16_t index);
@@ -1642,6 +1643,18 @@ void abi_GsuDigitPair0E74At(void)
     cpu.x = r.x;
     cpu.y = r.y;
     cpu.p = r.p;
+}
+
+/* GsuDigitPair0E74At on carried registers, as abi_GsuDigitPair0E74At leaves them. */
+void GsuDigitPair0E74At_cr(Carried *cr)
+{
+    TbRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    GsuDigitPair0E74At(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    cr->p = r.p;
 }
 
 /*

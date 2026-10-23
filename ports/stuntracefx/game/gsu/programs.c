@@ -3718,6 +3718,14 @@ void abi_GlyphSpritesDrawAll(void)
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
 }
 
+/* GlyphSpritesDrawAll on carried registers, as abi_GlyphSpritesDrawAll leaves them. */
+void GlyphSpritesDrawAll_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x1F00 | GlyphSpritesDrawAll(cr->db));
+    cr->x = 0xF280;
+    cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+}
+
 void TimeUnpackBcd(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund, uint8_t *p);
 
 /* What the HUD times' adapters rebuild: A as the last step leaves it, and
@@ -3901,6 +3909,21 @@ void abi_HudTimesDraw(void)
     if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
+    }
+}
+
+/* HudTimesDraw on carried registers, as abi_HudTimesDraw leaves them. */
+void HudTimesDraw_cr(Carried *cr)
+{
+    HudTimesDraw(cr->db);
+    cr->a = hud_a;
+    if (hud_xy & 1)
+        cr->x = hud_x;
+    if (hud_xy & 2)
+        cr->y = hud_y;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
 }
 
@@ -4145,6 +4168,14 @@ void abi_HudLeadWordDraw(void)
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | lead_cv);
 }
 
+/* HudLeadWordDraw on carried registers, as abi_HudLeadWordDraw leaves them. */
+void HudLeadWordDraw_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x9400 | HudLeadWordDraw());
+    cr->x = 0xF329;
+    cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | lead_cv);
+}
+
 /* LDA digit, AND #$00FF, JSR GsuParam216A, then Super FX program
    $07:F6DF. */
 static uint8_t lap_digit(uint32_t b, uint16_t at)
@@ -4203,6 +4234,16 @@ void abi_HudLapDigitsDraw(void)
     cpu.a = (uint16_t)(lap_hi << 8 | mode);
     cpu.x = 0xF6DF;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
+}
+
+/* HudLapDigitsDraw on carried registers, as abi_HudLapDigitsDraw leaves them. */
+void HudLapDigitsDraw_cr(Carried *cr)
+{
+    uint8_t mode = HudLapDigitsDraw(cr->db);
+
+    cr->a = (uint16_t)(lap_hi << 8 | mode);
+    cr->x = 0xF6DF;
+    cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C));
 }
 
 /* REP #$30, LDA #x, STA.L $70:020A, then Super FX program $07:F5C9. */
