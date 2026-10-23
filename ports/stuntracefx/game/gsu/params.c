@@ -303,10 +303,17 @@ void GsuBytes200_BFBAB9(void)
     cyc(72);
 }
 
-void abi_GsuBytes200_BFBAB9(void)
+/* GsuBytes200_BFBAB9 as a JSL reaches it: its time only, and A's low
+   byte as it leaves it. */
+uint8_t GsuBytes200_BFBAB9A(void)
 {
     cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xB9));
+    return gsu_200(0xBF, 0xBA, 0xB9);
+}
+
+void abi_GsuBytes200_BFBAB9(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBAB9A());
 }
 
 /*

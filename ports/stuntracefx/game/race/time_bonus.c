@@ -132,16 +132,6 @@ void abi_GsuTimeDigits(void)
     digit_exit(GsuTimeDigits(cpu.db, cpu.p & P_X));
 }
 
-/* GsuTimeDigits entered after `lead` clocks of a caller still in
-   registers. */
-static void abi_time_digits(uint32_t lead)
-{
-    uint8_t mode;
-    uint16_t d = time_digits(cpu.db, &mode, cpu.p & P_X, lead);
-
-    digit_exit(digit_a(cpu.db, d, mode));
-}
-
 /*
  * @routine 07:919D GsuTimeDigitsGrow
  * WHAT IT DOES: Draws the race time (GsuTimeDigits) at the digit size of
@@ -440,53 +430,305 @@ static void sound_push_decimal(uint8_t command)
  * X, Y unchanged; with $0D4C nonzero N, Z from it; otherwise N, Z, C from
  * the last compare ($0E76 - $20 or - $10).
  */
-void TimeDigitBytes(uint8_t bank)
+uint8_t GsuBytes200_BFBAB9A(void);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
+uint8_t GsuFA5AThree(uint8_t bank, uint8_t *p);
+uint8_t GsuFA5AFromTables(uint8_t bank, uint8_t *p);
+uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p);
+int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index);
+uint8_t GsuPiecesStep10CB(uint8_t bank, uint16_t *program, uint8_t *p);
+uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p);
+uint8_t GsuFA5ASixLeft(uint8_t bank, uint8_t *p);
+int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index);
+void SoundPort0QueuePushRaw(uint8_t command);
+
+/* The registers the routines below leave for their callers (they follow
+   every instruction), carried through their steps. */
+typedef struct {
+    uint16_t a, x, y;
+    uint8_t p;
+} TbRegs;
+
+/* From C: returns A; *p as the compares leave P. */
+uint16_t TimeDigitBytes(uint8_t bank, uint16_t a, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t v;
+    cyc(24);
+    uint16_t v = rd16(b | 0x0D4C);
 
-    if (rd16(b | 0x0D4C)) {
-        GsuBytes200_BFBAB9();
-        return;
+    if (v) {
+        cyc(78);
+        *p = nz16(*p, v);
+        a = (uint16_t)((v & 0xFF00) | GsuBytes200_BFBAB9A());
+        cyc(114);                       /* PLP, RTL, RTS */
+        return a;
     }
+    cyc(46);
     v = rd16(b | 0x0E76);
-    if (v >= 0x0020)
-        GsuBytes200_BFB5BB();
-    else if (v >= 0x0010)
+    if (v >= 0x0020) {
+        cyc(102);
+        *p = (uint8_t)(nz16(*p, (uint16_t)(v - 0x0020)) | P_C);
+        (cyc(0), GsuBytes200_BFB5BB());
+        cyc(136);                       /* PLP, RTL, BRA, RTS */
+        return (uint16_t)((v & 0xFF00) | 0xBB);
+    } else { cyc(86); }
+    *p = (uint8_t)((nz16(*p, (uint16_t)(v - 0x0010)) & ~P_C) | (v >= 0x0010 ? P_C : (cyc(6), 0)));
+    if (v >= 0x0010) {
+        cyc(62);
         GsuBytes200_BFBCBD();
-    else
-        GsuBytes200_BFB7B6();
+        cyc(22 + 114);                  /* its own 22 is the BRA */
+        return (uint16_t)((v & 0xFF00) | 0xBD);
+    }
+    cyc(62);
+    GsuBytes200_BFB7B6();
+    cyc(114);                           /* PLP, RTL, RTS */
+    return (uint16_t)((v & 0xFF00) | 0xB6);
 }
 
 void abi_TimeDigitBytes(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    cyc(24);
-    uint16_t v = rd16(b | 0x0D4C);
+    uint8_t p = cpu.p;
 
-    cpu.a = v;
-    if (v) {
-        cyc(78);
-        cpu.p = nz16(cpu.p, v);
-        abi_GsuBytes200_BFBAB9();
-        cyc(114);                       /* PLP, RTL, RTS */
+    cpu.a = TimeDigitBytes(cpu.db, cpu.a, &p);
+    cpu.p = p;
+}
+
+/* The calls of the routines below, each with the registers its adapter
+   leaves. */
+static void tb_TimeDigitBytes(uint8_t bank, TbRegs *r)
+{
+    r->a = TimeDigitBytes(bank, r->a, &r->p);
+}
+
+static void tb_SoundPort0QueuePushRaw(uint8_t bank, TbRegs *r)
+{
+    SoundPort0QueuePushRaw((uint8_t)r->a);
+    r->p = nz8(r->p, bank);
+    cyc(8);
+}
+
+static void tb_SoundPort0QueuePush(uint8_t bank, TbRegs *r)
+{
+    SoundPort0QueuePushW((uint8_t)r->a, (r->p & P_M ? 0 : 8) + (r->p & P_X ? 0 : 16));
+    r->p = nz8(r->p, bank);
+}
+
+static void a_low(TbRegs *r, uint8_t v)
+{
+    r->a = (uint16_t)((r->a & 0xFF00) | v);
+}
+
+static void tb_GsuBytes200_BFB7B6(uint8_t bank, TbRegs *r)
+{
+    (void)bank;
+    GsuBytes200_BFB7B6();
+    a_low(r, 0xB6);
+}
+
+static void tb_GsuBytes200_BFB5BB(uint8_t bank, TbRegs *r)
+{
+    (void)bank;
+    (cyc(0), GsuBytes200_BFB5BB());
+    a_low(r, 0xBB);
+}
+
+static void tb_GsuBytes200_BFBCBD(uint8_t bank, TbRegs *r)
+{
+    (void)bank;
+    GsuBytes200_BFBCBD();
+    cyc(22);
+    a_low(r, 0xBD);
+}
+
+static void tb_GsuBytes200_BFBAB9(uint8_t bank, TbRegs *r)
+{
+    (void)bank;
+    a_low(r, GsuBytes200_BFBAB9A());
+}
+
+/* A Super FX piece program's exit: A = hi and the screen mode value, X =
+   the program, N and Z from the data bank. */
+static void fa_exit(uint8_t bank, TbRegs *r, uint16_t hi, uint8_t mode, uint16_t prog)
+{
+    r->a = (uint16_t)(hi | mode);
+    r->x = prog;
+    r->p = nz8(r->p, bank);
+}
+
+static void tb_GsuFA5AThree(uint8_t bank, TbRegs *r)
+{
+    uint8_t mode = GsuFA5AThree(bank, &r->p);
+
+    fa_exit(bank, r, 0x1A00, mode, 0xFA5A);
+}
+
+static void tb_GsuFA5AFromTables(uint8_t bank, TbRegs *r)
+{
+    uint8_t mode = GsuFA5AFromTables(bank, &r->p);
+
+    fa_exit(bank, r, 0x0000, mode, 0xFA5A);
+}
+
+static void tb_GsuFA5ASix(uint8_t bank, TbRegs *r)
+{
+    uint8_t mode = GsuFA5ASix(bank, &r->p);
+
+    fa_exit(bank, r, 0x1B00, mode, 0xFA5A);
+}
+
+static void tb_GsuFA5AThreeShifted(uint8_t bank, TbRegs *r)
+{
+    uint8_t mode = GsuFA5AThreeShifted(bank, &r->p);
+
+    fa_exit(bank, r, 0x1C00, mode, 0xFA5A);
+}
+
+static void tb_GsuFA5ASixLeft(uint8_t bank, TbRegs *r)
+{
+    uint8_t mode = GsuFA5ASixLeft(bank, &r->p);
+
+    fa_exit(bank, r, 0x1B00, mode, 0xFA5A);
+}
+
+static void tb_GsuPiecesStep10CB(uint8_t bank, TbRegs *r)
+{
+    uint8_t mode = GsuPiecesStep10CB(bank, &r->x, &r->p);
+
+    r->a = (uint16_t)(0x8C00 | mode);
+    r->p = nz8(r->p, bank);
+}
+
+/* GsuFA35FromTables and GsuFA1BFromTables: drawn, as fa_exit with M and
+   X 16-bit; nothing to draw, A = 0, X = the step, Z set, N clear. */
+static void from_tables(uint8_t bank, TbRegs *r, int (*f)(uint8_t, uint8_t *, uint8_t *, uint16_t *),
+                        uint16_t hi, uint16_t prog)
+{
+    cyc(62);
+    uint16_t x;
+    uint8_t mode = 0;
+
+    if (f(bank, &mode, &r->p, &x)) {
+        cyc(154);
+        fa_exit(bank, r, hi, mode, prog);
+        r->p &= (uint8_t)~(P_M | P_X);
+    } else {
+        r->a = 0x0000;
+        r->x = x;
+        r->p = (uint8_t)((r->p & ~P_N) | P_Z);
+    }
+    cyc(4);
+}
+
+static void tb_GsuFA35FromTables(uint8_t bank, TbRegs *r)
+{
+    from_tables(bank, r, GsuFA35FromTables, 0x1C00, 0xFA35);
+}
+
+static void tb_GsuFA1BFromTables(uint8_t bank, TbRegs *r)
+{
+    from_tables(bank, r, GsuFA1BFromTables, 0x1E00, 0xFA1B);
+}
+
+/* A digit draw's exit (digit_exit's, carried). */
+static void digit_exit_r(uint8_t bank, TbRegs *r, uint16_t a)
+{
+    r->a = a;
+    r->x = 0xF15B;
+    r->p = (uint8_t)(nz8(r->p, bank) & ~(P_C | P_M | P_X));
+}
+
+static void tb_GsuDigitPair0E74(uint8_t bank, TbRegs *r)
+{
+    digit_exit_r(bank, r, GsuDigitPair0E74A(bank));
+}
+
+static void tb_GsuTimeDigitsGrow(uint8_t bank, TbRegs *r)
+{
+    digit_exit_r(bank, r, GsuTimeDigitsGrow(bank, r->p & P_X));
+}
+
+static void tb_time_digits(uint8_t bank, TbRegs *r, uint32_t lead)
+{
+    uint8_t mode;
+    uint16_t d = time_digits(bank, &mode, r->p & P_X, lead);
+
+    digit_exit_r(bank, r, digit_a(bank, d, mode));
+}
+
+static void tb_GsuBonusDigitsGrow(uint8_t bank, TbRegs *r)
+{
+    uint16_t a = GsuBonusDigitsGrow(bank);
+
+    if (bd_drawn) {
+        digit_exit_r(bank, r, a);
         return;
     }
-    cyc(46);
-    v = rd16(b | 0x0E76);
-    cpu.a = v;
-    if (v >= 0x0020) {
-        cyc(102);
-        cpu.p = (uint8_t)(nz16(cpu.p, (uint16_t)(v - 0x0020)) | P_C);
-        abi_GsuBytes200_BFB5BB();
-        cyc(136);                       /* PLP, RTL, BRA, RTS */
-        return;
-    } else { cyc(86); }
-    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(v - 0x0010)) & ~P_C) | (v >= 0x0010 ? P_C : (cyc(6), 0)));
-    if (v >= 0x0010)
-        { cyc(62); abi_GsuBytes200_BFBCBD(); cyc(114); }     /* its own 22 is the BRA */
-    else
-        { cyc(62); abi_GsuBytes200_BFB7B6(); cyc(114); }       /* PLP, RTL, RTS */
+    r->a = 0x0000;
+    r->x = bd_x;
+    r->p = (uint8_t)((r->p & ~P_N) | P_Z);
+}
+
+static void tb_GsuParam216A(uint8_t bank, TbRegs *r)
+{
+    uint16_t a0 = r->a, x = (uint16_t)(a0 << 1);
+
+    if (r->p & P_X)
+        x &= 0x00FF;
+    r->x = x;
+    r->a = GsuParam216A(bank, x);
+    r->p = (uint8_t)((nz16(r->p, r->a) & ~P_C) | (a0 & 0x8000 ? P_C : (cyc(42), 0)));
+}
+
+static void tb_GsuRun(uint8_t bank, TbRegs *r)
+{
+    a_low(r, GsuRun((uint8_t)r->a, r->x));
+    r->p = nz8(r->p, bank);
+    cyc(72);                            /* PLB, RTL */
+}
+
+/* SEP, REP (X too: 22 and the index high bytes cleared), LDA, LSR A,
+   AND # on the carried registers, as cpu_ops.h's. */
+static void r_sep(TbRegs *r, uint8_t bits)
+{
+    r->p |= bits;
+    if (bits & P_X) {
+        cyc(22);
+        r->x &= 0x00FF;
+        r->y &= 0x00FF;
+    }
+}
+
+static void r_rep(TbRegs *r, uint8_t bits)
+{
+    cyc(22);
+    r->p &= (uint8_t)~bits;
+}
+
+static void r_lda(TbRegs *r, uint32_t addr)
+{
+    r->a = rd16(addr);
+    r->p = nz16(r->p, r->a);
+}
+
+static void r_lda_imm(TbRegs *r, uint16_t v)
+{
+    cyc(38);
+    r->a = v;
+    r->p = nz16(r->p, v);
+}
+
+static void r_lsr(TbRegs *r)
+{
+    r->p = (uint8_t)((r->p & ~P_C) | (r->a & 1));
+    r->a >>= 1;
+    r->p = nz16(r->p, r->a);
+}
+
+static void r_and(TbRegs *r, uint16_t m)
+{
+    cyc(2);
+    r->a &= m;
+    r->p = nz16(r->p, r->a);
 }
 
 /* A 16-bit INC of a work-RAM word: one read, one write. */
@@ -496,112 +738,112 @@ static void inc16(uint32_t addr)
     wr16(addr, cyc_then(14, (uint16_t)(rd16(addr) + 1)));
 }
 
-static void sound(uint16_t command)
+static void sound(uint8_t bank, TbRegs *r, uint16_t command)
 {
-    cpu.a = command;
-    (cyc(56), abi_SoundPort0QueuePushRaw());
+    r->a = command;
+    (cyc(56), tb_SoundPort0QueuePushRaw(bank, r));
     cyc(8);
 }
 
 /* The size for the bonus digits when they shrink: $8F less entry $0D6B of
    the table at $07:9806, into $0D6D. */
-static void bonus_x_from_table(uint32_t b, uint16_t step)
+static void bonus_x_from_table(uint8_t bank, TbRegs *r, uint32_t b, uint16_t step)
 {
-    cpu.x = step;
+    r->x = step;
     cyc(124);
-    cpu.a = (uint16_t)(0x008F - rd16(0x079806 + step));
-    wr16(b | 0x0D6D, cpu.a);
+    r->a = (uint16_t)(0x008F - rd16(0x079806 + step));
+    wr16(b | 0x0D6D, r->a);
 }
 
 /* The frame drawn while $0E6C is nonzero, mirrored ($07:90DC). */
-static void draw_mirrored(void)
+static void draw_mirrored(uint8_t bank, TbRegs *r)
 {
     cyc(62);
-    abi_GsuBytes200_BFB7B6();
-    (cyc(118), abi_GsuFA5AThreeShifted());
-    (cyc(46), abi_GsuFA5AFromTables());
-    abi_GsuFA5ASixLeft();
-    (cyc(46), abi_GsuFA35FromTables());
+    tb_GsuBytes200_BFB7B6(bank, r);
+    (cyc(118), tb_GsuFA5AThreeShifted(bank, r));
+    (cyc(46), tb_GsuFA5AFromTables(bank, r));
+    tb_GsuFA5ASixLeft(bank, r);
+    (cyc(46), tb_GsuFA35FromTables(bank, r));
 }
 
 /* The bonus digits at the animation's size, then the time at full size
    and the mirrored frame ($07:9036 and $07:90CC). */
-static void draw_bonus_then_time(uint32_t b)
+static void draw_bonus_then_time(uint8_t bank, TbRegs *r, uint32_t b)
 {
-    (cyc(46), abi_TimeDigitBytes());
+    (cyc(46), tb_TimeDigitBytes(bank, r));
     cyc(24);
-    cpu.x = rd16(b | 0x0D6B);
+    r->x = rd16(b | 0x0D6B);
     cyc(80);
-    cpu.a = rd16(SIZE_GROW + cpu.x);
-    wr16(GSU_SIZE, cpu.a);
-    (cyc(46), abi_GsuDigitPair0E74());
-    (cyc(70), abi_TimeDigitBytes());
-    cpu.a = 0x0020;
+    r->a = rd16(SIZE_GROW + r->x);
+    wr16(GSU_SIZE, r->a);
+    (cyc(46), tb_GsuDigitPair0E74(bank, r));
+    (cyc(70), tb_TimeDigitBytes(bank, r));
+    r->a = 0x0020;
     cyc(56);
-    wr16(GSU_SIZE, cpu.a);
-    (cyc(46), abi_TimeDigitBytes());
+    wr16(GSU_SIZE, r->a);
+    (cyc(46), tb_TimeDigitBytes(bank, r));
     cyc(46);                            /* JSR */
-    abi_time_digits(56);
-    draw_mirrored();
+    tb_time_digits(bank, r, 56);
+    draw_mirrored(bank, r);
 }
 
 /* The frame: the pieces around ($0D6D, $0D6F) when $0E6C is nonzero,
    else the eleven pieces of GsuPiecesStep10CB ($07:8FBD). */
-static void draw_frame(uint32_t b)
+static void draw_frame(uint8_t bank, TbRegs *r, uint32_t b)
 {
     cyc(24);
-    cpu.a = rd16(b | 0x0E6C);
-    if (cpu.a) {
+    r->a = rd16(b | 0x0E6C);
+    if (r->a) {
         cyc(78);
-        abi_GsuBytes200_BFB7B6();
-        (cyc(118), abi_GsuFA5AThree());
-        (cyc(46), abi_GsuFA5AFromTables());
-        abi_GsuFA5ASix();
-        (cyc(46), abi_GsuFA35FromTables());
+        tb_GsuBytes200_BFB7B6(bank, r);
+        (cyc(118), tb_GsuFA5AThree(bank, r));
+        (cyc(46), tb_GsuFA5AFromTables(bank, r));
+        tb_GsuFA5ASix(bank, r);
+        (cyc(46), tb_GsuFA35FromTables(bank, r));
     } else {
-        abi_GsuPiecesStep10CB();
+        tb_GsuPiecesStep10CB(bank, r);
     }
 }
 
 /* The time at the animation's size, the bonus digits when shown, then the
    frame ($07:8FA6). */
-static void draw_time(uint32_t b, int entry)
+static void draw_time(uint8_t bank, TbRegs *r, uint32_t b, int entry)
 {
-    cpu.a = 0x0030;
+    r->a = 0x0030;
     cyc(entry + 48);
-    wr16(b | 0x0D6D, cpu.a);
-    (cyc(46), abi_GsuTimeDigitsGrow());
+    wr16(b | 0x0D6D, r->a);
+    (cyc(46), tb_GsuTimeDigitsGrow(bank, r));
     cyc(24);
-    cpu.a = rd16(b | 0x0E6C);
-    if (cpu.a)
-        { cyc(62); abi_GsuBonusDigitsGrow(); } else { cyc(22); }
-    cpu.a = 0x0037;
+    r->a = rd16(b | 0x0E6C);
+    if (r->a)
+        { cyc(62); tb_GsuBonusDigitsGrow(bank, r); } else { cyc(22); }
+    r->a = 0x0037;
     cyc(48);
-    wr16(b | 0x0D6D, cpu.a);
-    draw_frame(b);
+    wr16(b | 0x0D6D, r->a);
+    draw_frame(bank, r, b);
 }
 
 /* The pieces of the second screen ($07:9151). */
-static void draw_pieces(uint32_t b)
+static void draw_pieces(uint8_t bank, TbRegs *r, uint32_t b)
 {
-    cpu.a = 0x0030;
+    r->a = 0x0030;
     cyc(48);
-    wr16(b | 0x0D6D, cpu.a);
-    (cyc(46), abi_GsuFA5AThree());
-    (cyc(46), abi_GsuFA5AFromTables());
-    abi_GsuFA5ASix();
-    (cyc(46), abi_GsuFA1BFromTables());
+    wr16(b | 0x0D6D, r->a);
+    (cyc(46), tb_GsuFA5AThree(bank, r));
+    (cyc(46), tb_GsuFA5AFromTables(bank, r));
+    tb_GsuFA5ASix(bank, r);
+    (cyc(46), tb_GsuFA1BFromTables(bank, r));
 }
 
 /* The counting step of state 6: $0E7C at a time from $0E74 into $0E70, in
    decimal; the rest when less is left. */
-static void count_bonus(uint32_t b)
+static void count_bonus(uint8_t bank, TbRegs *r, uint32_t b)
 {
     cyc(108);
     uint16_t v = rd16(b | 0x0E74);
     int c;
 
-    cpu.a = v;
+    r->a = v;
     if (!v)
         { cyc(28); return; }
     c = 1;
@@ -612,25 +854,25 @@ static void count_bonus(uint32_t b)
         v = rd16(b | TIME_BCD);                 /* LDA, then ADC */
         v = adc_decimal16(v, rd16(b | 0x0E74), &c);
         wr16(b | TIME_BCD, v);
-        cpu.a = 0x0000;
+        r->a = 0x0000;
         wr16(b | 0x0E74, 0x0000);
     } else {
         cyc(46);
         wr16(b | 0x0E74, v);
         c = 0;
         cyc(24);
-        cpu.a = rd16(b | TIME_BCD);             /* LDA, then ADC */
+        r->a = rd16(b | TIME_BCD);             /* LDA, then ADC */
         cyc(38);
-        cpu.a = adc_decimal16(cpu.a, rd16(b | 0x0E7C), &c);
+        r->a = adc_decimal16(r->a, rd16(b | 0x0E7C), &c);
         cyc(10);
-        wr16(b | TIME_BCD, cpu.a);
+        wr16(b | TIME_BCD, r->a);
     }
     cyc(6);
 }
 
 /* State 14: moves 3 (1 below 9) from the time to $0E74, in decimal, up to
    $99, with sound $44 when the time reaches 0 or $0E74 reaches $99. */
-static void take_from_time(uint32_t b)
+static void take_from_time(uint8_t bank, TbRegs *r, uint32_t b)
 {
     uint16_t v;
     int c;
@@ -651,9 +893,9 @@ static void take_from_time(uint32_t b)
         cyc(102);
         wr16(b | TIME_BCD, v);
         if (v == 0) {
-            cpu.a = 0x0044;
+            r->a = 0x0044;
             sound_push_decimal(0x44);
-            cpu.p = nz8(cpu.p, cpu.db);
+            r->p = nz8(r->p, bank);
         }
         c = 0;
         cyc(70);
@@ -662,11 +904,11 @@ static void take_from_time(uint32_t b)
     }
     if (v >= 0x0099) {
         cyc(24);
-        cpu.a = 0x0044;
+        r->a = 0x0044;
         sound_push_decimal(0x44);
         v = 0x0099;
     }
-    cpu.a = v;
+    r->a = v;
     cyc(94);
     wr16(b | 0x0E74, v);
 }
@@ -699,44 +941,44 @@ static void take_from_time(uint32_t b)
  * are reached. Exit: P unchanged; A and X as the last call or store left
  * them; Y as the drawing calls leave it.
  */
-void TimeBonusTally(void)
+void TimeBonusTally(uint8_t bank, TbRegs *r)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, state;
     int entry;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.a = 0x0006;
+    r->p &= (uint8_t)~(P_M | P_X);
+    r->a = 0x0006;
     cyc(92);
-    wr16(b | 0x0D6F, cpu.a);
+    wr16(b | 0x0D6F, r->a);
     cyc(24);
     state = rd16(b | 0x0D65);
-    cpu.x = state;
+    r->x = state;
     cyc(46);
     switch (rd16(0x078E9F + state)) {
     case 0x8ED1:                        /* 0: idle */
         return;
     case 0x8EB9:                        /* 2: start */
-        cpu.a = 0x0006;
+        r->a = 0x0006;
         cyc(48);
-        wr16(b | 0x0D6F, cpu.a);
+        wr16(b | 0x0D6F, r->a);
         inc16(b | 0x0D65);
         inc16(b | 0x0D65);
-        cpu.a = 0xFFFE;
+        r->a = 0xFFFE;
         cyc(48);
-        wr16(b | 0x0D6B, cpu.a);
+        wr16(b | 0x0D6B, r->a);
         cyc(24);
-        cpu.a = rd16(b | 0x0E6C);
+        r->a = rd16(b | 0x0E6C);
         cyc(24);
-        wr16(b | 0x0E74, cpu.a);
+        wr16(b | 0x0E74, r->a);
         return;
     case 0x8ED3:                        /* 4: grow the time */
         cyc(24);
         a = rd16(b | 0x0D6B);
         if (a != 0x0008) {
-            cpu.a = (uint16_t)(a + 2);
+            r->a = (uint16_t)(a + 2);
             cyc(98);
-            wr16(b | 0x0D6B, cpu.a);
+            wr16(b | 0x0D6B, r->a);
             entry = 22;                 /* BRA */
         } else {
             entry = 24;                 /* JMP */
@@ -745,16 +987,16 @@ void TimeBonusTally(void)
             inc16(b | 0x0D65);
             cyc(24);
             a = rd16(b | 0x0E74);
-            cpu.a = a;
+            r->a = a;
             if (a) {
                 cyc(46);
-                sound(0x000B);
-                cpu.a = a < 0x0032 ? 1 : (cyc(230), a < 0x0048 ? 2 : a < 0x0064 ? 3 : 4);
+                sound(bank, r, 0x000B);
+                r->a = a < 0x0032 ? 1 : (cyc(230), a < 0x0048 ? 2 : a < 0x0064 ? 3 : 4);
             }
             cyc(46);
-            wr16(b | 0x0E7C, cpu.a);
+            wr16(b | 0x0E7C, r->a);
         }
-        draw_time(b, entry);
+        draw_time(bank, r, b, entry);
         return;
     case 0x8F27:                        /* 6: count the bonus into the time */
         cyc(24);
@@ -762,11 +1004,11 @@ void TimeBonusTally(void)
             int c = 0;
 
             cyc(102);
-            cpu.a = rd16(b | TIME_BCD);         /* LDA, then ADC */
+            r->a = rd16(b | TIME_BCD);         /* LDA, then ADC */
             cyc(38);
-            cpu.a = adc_decimal16(cpu.a, rd16(b | 0x0E74), &c);
+            r->a = adc_decimal16(r->a, rd16(b | 0x0E74), &c);
             cyc(10);
-            wr16(b | TIME_BCD, cpu.a);
+            wr16(b | TIME_BCD, r->a);
             cyc(24);
             wr16(b | 0x0E74, 0x0000);
             cyc(38);
@@ -774,49 +1016,49 @@ void TimeBonusTally(void)
             inc16(b | 0x0D65);
             inc16(b | 0x0D65);
             cyc(24);
-            cpu.a = rd16(b | 0x0E6C);
-            if (cpu.a)
-                { cyc(16); sound(0x0027); } else { cyc(14); }
+            r->a = rd16(b | 0x0E6C);
+            if (r->a)
+                { cyc(16); sound(bank, r, 0x0027); } else { cyc(14); }
         } else {
-            count_bonus(b);
+            count_bonus(bank, r, b);
         }
-        draw_time(b, 30);
+        draw_time(bank, r, b, 30);
         return;
     case 0x8F86:                        /* 8: shrink the bonus digits */
         cyc(24);
-        cpu.a = rd16(b | 0x0D6B);
-        if (!cpu.a) {
+        r->a = rd16(b | 0x0D6B);
+        if (!r->a) {
             cyc(46);
             wr16(b | 0x0D65, 0x0000);
             return;
         }
-        a = (uint16_t)(cpu.a - 2);
+        a = (uint16_t)(r->a - 2);
         cyc(68);
         wr16(b | 0x0D6B, a);
-        bonus_x_from_table(b, a);
-        (cyc(46), abi_GsuBonusDigitsGrow());
+        bonus_x_from_table(bank, r, b, a);
+        (cyc(46), tb_GsuBonusDigitsGrow(bank, r));
         cyc(22);
-        draw_frame(b);
+        draw_frame(bank, r, b);
         return;
     case 0x8FD9:                        /* 10: start taking time back */
-        cpu.a = 0x0006;
+        r->a = 0x0006;
         cyc(48);
-        wr16(b | 0x0D6F, cpu.a);
+        wr16(b | 0x0D6F, r->a);
         inc16(b | 0x0D65);
         inc16(b | 0x0D65);
-        cpu.a = 0xFFFE;
+        r->a = 0xFFFE;
         cyc(48);
-        wr16(b | 0x0D6B, cpu.a);
-        cpu.a = 0x0000;
+        wr16(b | 0x0D6B, r->a);
+        r->a = 0x0000;
         cyc(48);
-        wr16(b | 0x0E74, cpu.a);
+        wr16(b | 0x0E74, r->a);
         cyc(24);
-        cpu.a = rd16(b | TIME_BCD);
-        if (cpu.a)
-            { cyc(40); wr16(b | 0x0E76, cpu.a); }
+        r->a = rd16(b | TIME_BCD);
+        if (r->a)
+            { cyc(40); wr16(b | 0x0E76, r->a); }
         else
             wr16(b | 0x0D65, 0x0000);
-        cpu.a &= 0xFF00;
+        r->a &= 0xFF00;
         cyc(62);
         wr8(b | 0x0D5B, 0x00);
         return;
@@ -827,72 +1069,72 @@ void TimeBonusTally(void)
             cyc(40);
             inc16(b | 0x0D65);
             inc16(b | 0x0D65);
-            sound(0x0040);
+            sound(bank, r, 0x0040);
             cyc(30);                    /* BRA, and 8 the callee lacks */
         } else {
             a = (uint16_t)(a + 2);
             cyc(98);
             wr16(b | 0x0D6B, a);
-            bonus_x_from_table(b, a);
+            bonus_x_from_table(bank, r, b, a);
         }
-        draw_bonus_then_time(b);
+        draw_bonus_then_time(bank, r, b);
         return;
     case 0x904A:                        /* 14: take time into $0E74 */
         cyc(24);
-        cpu.a = rd16(b | TIME_BCD);
-        if (cpu.a) {
+        r->a = rd16(b | TIME_BCD);
+        if (r->a) {
             cyc(46);
-            cpu.a = rd16(b | 0x0E74);
-            if (cpu.a < 0x0099)
-                take_from_time(b); else { cyc(10); }
+            r->a = rd16(b | 0x0E74);
+            if (r->a < 0x0099)
+                take_from_time(bank, r, b); else { cyc(10); }
         } else { cyc(2); }
         cyc(36);
-        draw_bonus_then_time(b);
+        draw_bonus_then_time(bank, r, b);
         return;
     case 0x90A1:                        /* 16: shrink the bonus digits */
         cyc(24);
         a = rd16(b | 0x0D6B);
-        cpu.a = a;
+        r->a = a;
         if (!a) {
             cyc(46);
-            wr16(b | 0x0D65, cpu.x);
+            wr16(b | 0x0D65, r->x);
             return;
         }
         a = (uint16_t)(a - 2);
         cyc(68);
         wr16(b | 0x0D6B, a);
-        cpu.a = 0x0037;
+        r->a = 0x0037;
         cyc(48);
-        wr16(b | 0x0D6D, cpu.a);
-        (cyc(46), abi_TimeDigitBytes());
+        wr16(b | 0x0D6D, r->a);
+        (cyc(46), tb_TimeDigitBytes(bank, r));
         cyc(24);
-        cpu.x = rd16(b | 0x0D6B);
+        r->x = rd16(b | 0x0D6B);
         cyc(80);
-        cpu.a = rd16(SIZE_GROW + cpu.x);
-        wr16(GSU_SIZE, cpu.a);
-        (cyc(46), abi_GsuDigitPair0E74());
-        (cyc(46), abi_GsuTimeDigitsGrow());
-        (cyc(22), draw_mirrored());
+        r->a = rd16(SIZE_GROW + r->x);
+        wr16(GSU_SIZE, r->a);
+        (cyc(46), tb_GsuDigitPair0E74(bank, r));
+        (cyc(46), tb_GsuTimeDigitsGrow(bank, r));
+        (cyc(22), draw_mirrored(bank, r));
         return;
     case 0x9116:                        /* 18: start the second animation */
         cyc(24);
-        cpu.a = rd16(b | 0x19F0);
-        if (!cpu.a) {
+        r->a = rd16(b | 0x19F0);
+        if (!r->a) {
             cyc(40);
             wr16(b | 0x0D65, 0x0000);
             return;
         }
-        cpu.a = 0x0030;
+        r->a = 0x0030;
         cyc(70);
-        wr16(b | 0x0D6F, cpu.a);
+        wr16(b | 0x0D6F, r->a);
         inc16(b | 0x0D65);
         inc16(b | 0x0D65);
-        sound(0x000B);
+        sound(bank, r, 0x000B);
         cyc(32);
         wr16(b | 0x0D6B, 0x0000);
-        cpu.a = 0x0028;
+        r->a = 0x0028;
         cyc(48);
-        wr16(b | 0x0E74, cpu.a);
+        wr16(b | 0x0E74, r->a);
         return;
     case 0x913E:                        /* 20: grow it */
         cyc(24);
@@ -904,15 +1146,15 @@ void TimeBonusTally(void)
         } else { cyc(6); }
         cyc(52);
         wr16(b | 0x0D6B, (uint16_t)(a + 2));
-        draw_pieces(b);
+        draw_pieces(bank, r, b);
         return;
     case 0x9151:                        /* 22: hold it */
-        draw_pieces(b);
+        draw_pieces(bank, r, b);
         return;
     case 0x9165:                        /* 24: shrink it */
         cyc(24);
         a = rd16(b | 0x0D6B);
-        cpu.a = a;
+        r->a = a;
         if (!a) {
             cyc(40);
             wr16(b | 0x0D65, 0x0000);
@@ -920,9 +1162,9 @@ void TimeBonusTally(void)
         }
         cyc(74);
         wr16(b | 0x0D6B, (uint16_t)(a - 2));
-        sound(0x0027);
+        sound(bank, r, 0x0027);
         cyc(30);
-        draw_pieces(b);
+        draw_pieces(bank, r, b);
         return;
     }
 }
@@ -930,8 +1172,12 @@ void TimeBonusTally(void)
 void abi_TimeBonusTally(void)
 {
     uint8_t p = cpu.p;
+    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
 
-    TimeBonusTally();
+    TimeBonusTally(cpu.db, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
     cpu.p = p;
     cyc(70);
 }
@@ -939,113 +1185,113 @@ void abi_TimeBonusTally(void)
 /* Register-level steps for the routines below, whose exit registers and
    flags follow every instruction: each sets A (or X) and the flags as the
    65816 instruction named does. */
-static void lda16(uint32_t addr)
+static void lda16(uint8_t bank, TbRegs *r, uint32_t addr)
 {
     cyc(24);
-    cpu.a = rd16(addr);
-    cpu.p = nz16(cpu.p, cpu.a);
+    r->a = rd16(addr);
+    r->p = nz16(r->p, r->a);
 }
 
-static void lda16_imm(uint16_t v)
+static void lda16_imm(uint8_t bank, TbRegs *r, uint16_t v)
 {
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
+    r->a = v;
+    r->p = nz16(r->p, v);
 }
 
-static void cmp16(uint16_t m)
+static void cmp16(uint8_t bank, TbRegs *r, uint16_t m)
 {
-    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.a - m)) & ~P_C) | (cpu.a >= m ? P_C : (cyc(23), 0)));
+    r->p = (uint8_t)((nz16(r->p, (uint16_t)(r->a - m)) & ~P_C) | (r->a >= m ? P_C : (cyc(23), 0)));
 }
 
-static void and16(uint16_t m)
+static void and16(uint8_t bank, TbRegs *r, uint16_t m)
 {
     cyc(24);
-    cpu.a &= m;
-    cpu.p = nz16(cpu.p, cpu.a);
+    r->a &= m;
+    r->p = nz16(r->p, r->a);
 }
 
-static void lsr16(void)
+static void lsr16(uint8_t bank, TbRegs *r)
 {
     cyc(14);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.a & 1));
-    cpu.a >>= 1;
-    cpu.p = nz16(cpu.p, cpu.a);
+    r->p = (uint8_t)((r->p & ~P_C) | (r->a & 1));
+    r->a >>= 1;
+    r->p = nz16(r->p, r->a);
 }
 
-static void asl16(void)
+static void asl16(uint8_t bank, TbRegs *r)
 {
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.a >> 15));
-    cpu.a = (uint16_t)(cpu.a << 1);
-    cpu.p = nz16(cpu.p, cpu.a);
+    r->p = (uint8_t)((r->p & ~P_C) | (r->a >> 15));
+    r->a = (uint16_t)(r->a << 1);
+    r->p = nz16(r->p, r->a);
 }
 
 /* CLC / ADC # and SEC / SBC #, binary or decimal by D. */
-static void add16(uint16_t m)
+static void add16(uint8_t bank, TbRegs *r, uint16_t m)
 {
-    cpu.p &= (uint8_t)~P_C;
-    cpu.a = adc16p(cpu.a, m, &cpu.p);
+    r->p &= (uint8_t)~P_C;
+    r->a = adc16p(r->a, m, &r->p);
 }
 
-static void sub16(uint16_t m)
+static void sub16(uint8_t bank, TbRegs *r, uint16_t m)
 {
-    cpu.p |= P_C;
-    cpu.a = sbc16p(cpu.a, m, &cpu.p);
+    r->p |= P_C;
+    r->a = sbc16p(r->a, m, &r->p);
 }
 
 /* INC of a work-RAM word, N and Z from the result. */
-static void inc16_nz(uint32_t addr)
+static void inc16_nz(uint8_t bank, TbRegs *r, uint32_t addr)
 {
     cyc(24);
     uint16_t v = (uint16_t)(rd16(addr) + 1);
 
     cyc(14);
     wr16(addr, v);
-    cpu.p = nz16(cpu.p, v);
+    r->p = nz16(r->p, v);
 }
 
 /* SEP #$20 / REP #$10 / LDX #program / LDA #$07 / JSL GsuRun / REP #$20 /
    REP #$10: run Super FX program $07:program. */
-static void gsu_run(uint16_t program)
+static void gsu_run(uint8_t bank, TbRegs *r, uint16_t program)
 {
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    cpu.x = program;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
-    cpu.p = nz8(cpu.p, 0x07);
-    (cyc(146), abi_GsuRun());
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    r->p = (uint8_t)((r->p | P_M) & ~P_X);
+    r->x = program;
+    r->a = (uint16_t)((r->a & 0xFF00) | 0x07);
+    r->p = nz8(r->p, 0x07);
+    (cyc(146), tb_GsuRun(bank, r));
+    r->p &= (uint8_t)~(P_M | P_X);
 }
 
 /* JSR GsuParam216A with A = the digit: $70:0216 = the digit's word. */
-static void param_digit(void)
+static void param_digit(uint8_t bank, TbRegs *r)
 {
     cyc(46);
-    abi_GsuParam216A();
+    tb_GsuParam216A(bank, r);
 }
 
 /* The first bytes of TimeBonusTransfer and TimeLeftDigits: SEP #$20 and the
    byte at $0D5B; 0 when it is 0. */
-static int bonus_flag(uint32_t b)
+static int bonus_flag(uint8_t bank, TbRegs *r, uint32_t b)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
+    r->p |= P_M;
     cyc(46);
     v = rd8(b | 0x0D5B);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    r->a = (uint16_t)((r->a & 0xFF00) | v);
+    r->p = nz8(r->p, v);
     return v;
 }
 
 /* The bonus digits at the size in $0D69 ($07:8C73). */
-static void transfer_digits(uint32_t b)
+static void transfer_digits(uint8_t bank, TbRegs *r, uint32_t b)
 {
     cyc(62);
-    abi_GsuBytes200_BFBAB9();
+    tb_GsuBytes200_BFBAB9(bank, r);
     cyc(72);
-    lda16(b | 0x0D69);
+    lda16(bank, r, b | 0x0D69);
     cyc(32);
-    wr16(GSU_SIZE, cpu.a);
-    (cyc(46), abi_GsuDigitPair0E74());
+    wr16(GSU_SIZE, r->a);
+    (cyc(46), tb_GsuDigitPair0E74(bank, r));
 }
 
 /*
@@ -1067,104 +1313,110 @@ static void transfer_digits(uint32_t b)
  * Z set; otherwise M 16-bit, X 16-bit, D clear, and A, X and the flags as
  * the last step leaves them (GsuDigitPair0E74 when it draws).
  */
-void TimeBonusTransfer(void)
+void TimeBonusTransfer(uint8_t bank, TbRegs *r)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t step;
 
-    if (!bonus_flag(b))
+    if (!bonus_flag(bank, r, b))
         { cyc(16); return; } else { cyc(58); }
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X)) | P_D);
-    lda16(b | 0x19F0);
-    if (!cpu.a) {
+    r->p = (uint8_t)((r->p & ~(P_M | P_X)) | P_D);
+    lda16(bank, r, b | 0x19F0);
+    if (!r->a) {
         cyc(40);
         wr16(b | 0x0E7C, 0x0000);
-        lda16(b | 0x0D65);
-        if (cpu.a) {
-            lda16_imm(0x0018);
+        lda16(bank, r, b | 0x0D65);
+        if (r->a) {
+            lda16_imm(bank, r, 0x0018);
             cyc(64);
-            wr16(b | 0x0D65, cpu.a);
+            wr16(b | 0x0D65, r->a);
         } else { cyc(6); }
         cyc(16);
-        lda16(b | 0x19EE);
+        lda16(bank, r, b | 0x19EE);
         cyc(24);
-        cmp16(rd16(b | 0x0E74));
-        if (!(cpu.p & P_Z)) {
+        cmp16(bank, r, rd16(b | 0x0E74));
+        if (!(r->p & P_Z)) {
             cyc(16);
-            lda16(b | 0x0E74);
-            add16(0x0001);
+            lda16(bank, r, b | 0x0E74);
+            add16(bank, r, 0x0001);
             cyc(48);
-            wr16(b | 0x0E74, cpu.a);
+            wr16(b | 0x0E74, r->a);
         }
     cyc(22);
         } else {
-        cmp16(0x0018);
-        if (cpu.p & P_C) {
+        cmp16(bank, r, 0x0018);
+        if (r->p & P_C) {
             step = 0x0017;
         } else {
-            cmp16(0x0005);
-            step = (cpu.p & P_C) ? (cyc(29), 0x0003) : 0x0001;
+            cmp16(bank, r, 0x0005);
+            step = (r->p & P_C) ? (cyc(29), 0x0003) : 0x0001;
         }
-        sub16(step);
+        sub16(bank, r, step);
         cyc(124);
-        wr16(b | 0x19F0, cpu.a);
+        wr16(b | 0x19F0, r->a);
         cyc(24);
-        wr16(b | 0x0E74, cpu.a);
-        lda16(b | TIME_BCD);
-        add16(step);
+        wr16(b | 0x0E74, r->a);
+        lda16(bank, r, b | TIME_BCD);
+        add16(bank, r, step);
         cyc(48);
-        wr16(b | TIME_BCD, cpu.a);
+        wr16(b | TIME_BCD, r->a);
         if (step != 0x0003)
             cyc(22);                    /* BRA */
-        lda16(b | 0x0D65);
-        if (!cpu.a) {
-            lda16_imm(0x0012);
+        lda16(bank, r, b | 0x0D65);
+        if (!r->a) {
+            lda16_imm(bank, r, 0x0012);
             cyc(64);
-            wr16(b | 0x0D65, cpu.a);
+            wr16(b | 0x0D65, r->a);
         } else { cyc(22); }
     }
-    cpu.p &= (uint8_t)~P_D;
+    r->p &= (uint8_t)~P_D;
     cyc(38);
-    cpu.x = rd16(b | 0x0D67);
-    cpu.p = nz16(cpu.p, cpu.x);
+    r->x = rd16(b | 0x0D67);
+    r->p = nz16(r->p, r->x);
     cyc(46);
-    switch (rd16(0x078C43 + cpu.x)) {
+    switch (rd16(0x078C43 + r->x)) {
     case 0x8C4B:                        /* grow */
-        lda16(b | 0x0D69);
+        lda16(bank, r, b | 0x0D69);
         cyc(23);
-        cmp16(0x0020);
-        if (cpu.p & P_C) {
+        cmp16(bank, r, 0x0020);
+        if (r->p & P_C) {
             cyc(17);
-            inc16_nz(b | 0x0D67);
-            inc16_nz(b | 0x0D67);
+            inc16_nz(bank, r, b | 0x0D67);
+            inc16_nz(bank, r, b | 0x0D67);
         } else {
-            lda16(b | 0x0D69);
-            add16(0x0004);
+            lda16(bank, r, b | 0x0D69);
+            add16(bank, r, 0x0004);
             cyc(48);
-            wr16(b | 0x0D69, cpu.a);
+            wr16(b | 0x0D69, r->a);
         }
         cyc(22);
-        transfer_digits(b);
+        transfer_digits(bank, r, b);
         return;
     case 0x8C73:                        /* draw */
-        transfer_digits(b);
+        transfer_digits(bank, r, b);
         return;
     case 0x8C67:                        /* shrink */
-        lda16(b | 0x0D69);
-        if (!cpu.a) {
+        lda16(bank, r, b | 0x0D69);
+        if (!r->a) {
             wr16(b | 0x0D67, 0x0000);
             return;
         }
-        inc16_nz(b | 0x0D69);
-        transfer_digits(b);
+        inc16_nz(bank, r, b | 0x0D69);
+        transfer_digits(bank, r, b);
         return;
     }
 }
 
 void abi_TimeBonusTransfer(void)
 {
-    TimeBonusTransfer();
+    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+
+    TimeBonusTransfer(cpu.db, &r);
     cyc(42);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = r.p;
 }
 
 /*
@@ -1188,157 +1440,161 @@ void abi_TimeBonusTransfer(void)
  * and the screen mode value, X = the program, N and Z from the data bank).
  */
 /* The clocks to state after the work: the RTS and what precedes it. */
-static uint32_t time_left_digits(void)
+static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
 
-    if (!bonus_flag(b))
+    if (!bonus_flag(bank, r, b))
         return 58;
     cyc(46);
     v = rd8(b | 0x0DD6);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(16), P_C) : (cyc(60), 0)));
+    r->a = (uint16_t)((r->a & 0xFF00) | v);
+    r->p = (uint8_t)((nz8(r->p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(16), P_C) : (cyc(60), 0)));
     if (v == 0x0C)
         return 58;
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    lda16(b | TIME_BCD);
-    if (!cpu.a) {
+    r->p &= (uint8_t)~(P_M | P_X);
+    lda16(bank, r, b | TIME_BCD);
+    if (!r->a) {
         cyc(22);
-        lda16(b | 0x0E78);
-        if (cpu.a) {
+        lda16(bank, r, b | 0x0E78);
+        if (r->a) {
             cyc(40);
             wr16(b | 0x0E78, 0x0000);
             return 42;
         }
         return 64;
     }
-    cmp16(0x0100);
-    if (cpu.p & P_C) {                  /* three digits */
+    cmp16(bank, r, 0x0100);
+    if (r->p & P_C) {                  /* three digits */
         cyc(104);
-        wr16(b | 0x0E78, cpu.a);
-        cpu.a = (uint16_t)(cpu.a << 8 | cpu.a >> 8);
-        cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+        wr16(b | 0x0E78, r->a);
+        r->a = (uint16_t)(r->a << 8 | r->a >> 8);
+        r->p = nz8(r->p, (uint8_t)r->a);
         cyc(20);
-        and16(0x000F);
-        param_digit();
-        (cyc(62), abi_GsuBytes200_BFB5BB());
-        lda16_imm(0x009E);
+        and16(bank, r, 0x000F);
+        param_digit(bank, r);
+        (cyc(62), tb_GsuBytes200_BFB5BB(bank, r));
+        lda16_imm(bank, r, 0x009E);
         cyc(128);
-        wr16(GSU_X, cpu.a);
-        lda16_imm(0x0008);
+        wr16(GSU_X, r->a);
+        lda16_imm(bank, r, 0x0008);
         cyc(56);
-        wr16(GSU_Y, cpu.a);
-        gsu_run(0xF6DF);
-        lda16_imm(0x00AC);
+        wr16(GSU_Y, r->a);
+        gsu_run(bank, r, 0xF6DF);
+        lda16_imm(bank, r, 0x00AC);
         cyc(122);
-        wr16(GSU_X, cpu.a);
-        lda16(b | 0x0E78);
-        and16(0x00FF);
-        lsr16(); lsr16(); lsr16(); lsr16();
-        param_digit();
-        gsu_run(0xF6DF);
+        wr16(GSU_X, r->a);
+        lda16(bank, r, b | 0x0E78);
+        and16(bank, r, 0x00FF);
+        lsr16(bank, r); lsr16(bank, r); lsr16(bank, r); lsr16(bank, r);
+        param_digit(bank, r);
+        gsu_run(bank, r, 0xF6DF);
         cyc(66);
-        lda16(b | 0x0E78);
-        and16(0x000F);
-        param_digit();
-        gsu_run(0xF6DF);
+        lda16(bank, r, b | 0x0E78);
+        and16(bank, r, 0x000F);
+        param_digit(bank, r);
+        gsu_run(bank, r, 0xF6DF);
         cyc(28);
         return 58;
     }
-    cmp16(0x0010);
-    if (cpu.p & P_C) {                  /* two digits */
+    cmp16(bank, r, 0x0010);
+    if (r->p & P_C) {                  /* two digits */
         cyc(109);
-        wr16(b | 0x0E78, cpu.a);
-        lsr16(); lsr16(); lsr16(); lsr16();
-        param_digit();
-        lda16(b | 0x0E78);
+        wr16(b | 0x0E78, r->a);
+        lsr16(bank, r); lsr16(bank, r); lsr16(bank, r); lsr16(bank, r);
+        param_digit(bank, r);
+        lda16(bank, r, b | 0x0E78);
         cyc(79);
-        cmp16(0x0020);
-        if (cpu.p & P_C)
-            { cyc(29); abi_GsuBytes200_BFB5BB(); }
+        cmp16(bank, r, 0x0020);
+        if (r->p & P_C)
+            { cyc(29); tb_GsuBytes200_BFB5BB(bank, r); }
         else
-            abi_GsuBytes200_BFBCBD();
-        lda16_imm(0x00AC);
+            tb_GsuBytes200_BFBCBD(bank, r);
+        lda16_imm(bank, r, 0x00AC);
         cyc(128);
-        wr16(GSU_X, cpu.a);
-        lda16_imm(0x0008);
+        wr16(GSU_X, r->a);
+        lda16_imm(bank, r, 0x0008);
         cyc(56);
-        wr16(GSU_Y, cpu.a);
-        gsu_run(0xF6DF);
+        wr16(GSU_Y, r->a);
+        gsu_run(bank, r, 0xF6DF);
         cyc(66);
-        lda16(b | TIME_BCD);
-        and16(0x000F);
-        param_digit();
-        gsu_run(0xF6DF);
+        lda16(bank, r, b | TIME_BCD);
+        and16(bank, r, 0x000F);
+        param_digit(bank, r);
+        gsu_run(bank, r, 0xF6DF);
         cyc(28);
         return 58;
     }
     cyc(104);
-    cmp16(rd16(b | 0x0E78));            /* one large digit */
-    if (!(cpu.p & P_Z)) {
+    cmp16(bank, r, rd16(b | 0x0E78));            /* one large digit */
+    if (!(r->p & P_Z)) {
         cyc(17);
-        wr16(b | 0x0E78, cpu.a);
+        wr16(b | 0x0E78, r->a);
         cyc(86);
-        lda16_imm(0x0042);
-        abi_SoundPort0QueuePush();
+        lda16_imm(bank, r, 0x0042);
+        tb_SoundPort0QueuePush(bank, r);
     } else { cyc(22); }
-    lda16(b | TIME_BCD);
-    param_digit();
+    lda16(bank, r, b | TIME_BCD);
+    param_digit(bank, r);
     cyc(22);
-    lda16(b | 0x0E69);
-    and16(0x00FF);
-    lsr16(); lsr16(); lsr16(); lsr16();
-    asl16(); asl16(); asl16();
-    cpu.x = cpu.a;
-    cpu.p = nz16(cpu.p, cpu.x);
-    lda16(b | (uint16_t)(0x8DDA + cpu.x));
+    lda16(bank, r, b | 0x0E69);
+    and16(bank, r, 0x00FF);
+    lsr16(bank, r); lsr16(bank, r); lsr16(bank, r); lsr16(bank, r);
+    asl16(bank, r); asl16(bank, r); asl16(bank, r);
+    r->x = r->a;
+    r->p = nz16(r->p, r->x);
+    lda16(bank, r, b | (uint16_t)(0x8DDA + r->x));
     cyc(110);
-    wr16(GSU_STEP, cpu.a);
+    wr16(GSU_STEP, r->a);
     cyc(32);
-    wr16(GSU_SIZE, cpu.a);
-    lda16(b | (uint16_t)(0x8DDC + cpu.x));
+    wr16(GSU_SIZE, r->a);
+    lda16(bank, r, b | (uint16_t)(0x8DDC + r->x));
     cyc(54);
-    wr16(0x700212, cpu.a);
+    wr16(0x700212, r->a);
     cyc(32);
-    wr16(0x700214, cpu.a);
-    lda16(b | (uint16_t)(0x8DDE + cpu.x));
+    wr16(0x700214, r->a);
+    lda16(bank, r, b | (uint16_t)(0x8DDE + r->x));
     cyc(54);
-    wr16(GSU_X, cpu.a);
-    lda16(b | (uint16_t)(0x8DE0 + cpu.x));
+    wr16(GSU_X, r->a);
+    lda16(bank, r, b | (uint16_t)(0x8DE0 + r->x));
     cyc(54);
-    wr16(GSU_Y, cpu.a);
-    (cyc(62), abi_GsuBytes200_BFB7B6());
+    wr16(GSU_Y, r->a);
+    (cyc(62), tb_GsuBytes200_BFB7B6(bank, r));
     cyc(72);
-    gsu_run(0xFAF2);
+    gsu_run(bank, r, 0xFAF2);
     cyc(28);
     return 58;
 }
 
-void TimeLeftDigits(void)
+void TimeLeftDigits(uint8_t bank, TbRegs *r)
 {
-    time_left_digits();
+    cyc(time_left_digits(bank, r));
 }
 
 void abi_TimeLeftDigits(void)
 {
-    cyc(time_left_digits());
-}
+    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
 
-void abi_GsuRun(void);
+    TimeLeftDigits(cpu.db, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = r.p;
+}
 
 /* SEP #$20, REP #$10, LDX #$F15B, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
    program $07:F15B (a digit). */
-static void run_f15b(void)
+static void run_f15b(uint8_t bank, TbRegs *r)
 {
-    op_sep(P_M);
-    op_rep(P_X);
-    cpu.x = 0xF15B;
-    cpu.p = nz16(cpu.p, cpu.x);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
-    cpu.p = nz8(cpu.p, 0x07);
-    (cyc(124), abi_GsuRun());
-    op_rep(P_M | P_X);
+    r_sep(r, P_M);
+    r_rep(r, P_X);
+    r->x = 0xF15B;
+    r->p = nz16(r->p, r->x);
+    r->a = (uint16_t)((r->a & 0xFF00) | 0x07);
+    r->p = nz8(r->p, 0x07);
+    (cyc(124), tb_GsuRun(bank, r));
+    r_rep(r, P_M | P_X);
 }
 
 /*
@@ -1349,32 +1605,43 @@ static void run_f15b(void)
  * Entry: M 16-bit, X 16-bit; A = x. Exit: M 16-bit, X 16-bit; X = $F15B;
  * A as GsuRun leaves it.
  */
-void abi_GsuDigitPair0E74At(void)
+void GsuDigitPair0E74At(uint8_t bank, TbRegs *r)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
 
     cyc(32);
-    wr16(0x70020A, cpu.a);
-    op_lda16_imm(0x0008);
-    op_lda16_imm(0x0008);
+    wr16(0x70020A, r->a);
+    r_lda_imm(r, 0x0008);
+    r_lda_imm(r, 0x0008);
     cyc(4);
     wr16(0x70020C, 0x0008);
     cyc(24);
-    op_lda16(b | 0x0E74);
-    op_lsr16();
-    op_lsr16();
-    op_lsr16();
-    op_lsr16();
-    op_and16(0x000F);
-    (cyc(124), abi_GsuParam216A());
-    run_f15b();
-    op_rep(P_M | P_X);
+    r_lda(r, b | 0x0E74);
+    r_lsr(r);
+    r_lsr(r);
+    r_lsr(r);
+    r_lsr(r);
+    r_and(r, 0x000F);
+    (cyc(124), tb_GsuParam216A(bank, r));
+    run_f15b(bank, r);
+    r_rep(r, P_M | P_X);
     cyc(46);
-    op_lda16(b | 0x0E74);
-    op_and16(0x000F);
-    (cyc(68), abi_GsuParam216A());
-    run_f15b();
+    r_lda(r, b | 0x0E74);
+    r_and(r, 0x000F);
+    (cyc(68), tb_GsuParam216A(bank, r));
+    run_f15b(bank, r);
     cyc(64);
+}
+
+void abi_GsuDigitPair0E74At(void)
+{
+    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+
+    GsuDigitPair0E74At(cpu.db, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = r.p;
 }
 
 /*
@@ -1389,13 +1656,24 @@ void abi_GsuDigitPair0E74At(void)
  * Entry: M 16-bit, X 16-bit; P on the stack above the return address.
  * Exit: P as pulled; A, X, Y as GsuFA1BFromTables leaves them.
  */
+void TimeBonusPiecesMirrored(uint8_t bank, TbRegs *r)
+{
+    (cyc(62), tb_GsuBytes200_BFB7B6(bank, r));
+    (cyc(118), tb_GsuFA5AThree(bank, r));
+    (cyc(46), tb_GsuFA5AFromTables(bank, r));
+    tb_GsuFA5ASix(bank, r);
+    (cyc(46), tb_GsuFA1BFromTables(bank, r));
+}
+
 void abi_TimeBonusPiecesMirrored(void)
 {
-    (cyc(62), abi_GsuBytes200_BFB7B6());
-    (cyc(118), abi_GsuFA5AThree());
-    (cyc(46), abi_GsuFA5AFromTables());
-    abi_GsuFA5ASix();
-    (cyc(46), abi_GsuFA1BFromTables());
+    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+
+    TimeBonusPiecesMirrored(cpu.db, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = r.p;
     cpu.s++;
     cyc(20);
     op_plp(rd8((uint16_t)cpu.s));
