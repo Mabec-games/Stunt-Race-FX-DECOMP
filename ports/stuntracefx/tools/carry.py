@@ -41,7 +41,7 @@ def functions(t):
     return out
 
 REG = re.compile(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_(?!adc16|sbc16|adc8|sbc8)\w+\s*\(|\babi_\w+\s*\(\s*\)')
-GLUE = re.compile(r'\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b|\bcpu\.(s|pc|e|unwound)\b|\babi_\w+\b(?!\s*\()')
+GLUE = re.compile(r'\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b|\bcpu\.(s|pc|e|unwound)\b')
 
 _DEFS = None
 def all_defs():
@@ -137,9 +137,9 @@ for n, b in body.items():
 for n, b in body.items():
     if n in adapter:
         continue
-    if GLUE.search(b) or takes_routine(byname[n][4]):
+    if GLUE.search(b):
         glue.add(n)
-    elif REG.search(b):
+    elif REG.search(b) or takes_routine(byname[n][4]) or re.search(r'\babi_\w+\b(?!\s*\()', b):
         regfn.add(n)
 # transitive: callers of regfn helpers
 changed = True
@@ -311,18 +311,59 @@ def rewrite_body(b):
             b = re.sub(r'(?<![\w>.])%s\s*\((?!cr\b)' % n, '%s(cr, ' % n, b)
     for c in sorted(set(re.findall(r'\babi_(\w+)\s*\(\s*\)', b))):
         b = re.sub(r'\babi_%s\s*\(\s*\)' % c, make_wrapper(c), b)
+    b = routine_values(b)
     b = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
     b = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', b)
     b = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', b)
     b = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', b)
     return b
 
+def rparams(params):
+    """The names of a parameter list's routine parameters."""
+    out = []
+    for p in split_params(params) if params.strip() not in ('void', '') else []:
+        m = re.search(r'\(\s*\*\s*(\w+)\s*\)\s*\(\s*void\s*\)', p)
+        if m:
+            out.append(m.group(1))
+        elif any(re.search(r'\b%s\b' % t, p) for t in fptypes):
+            out.append(re.findall(r'(\w+)\s*$', p)[0])
+    return out
+
+def carried_value(c):
+    """The carried function for routine abi_c used as a value."""
+    return re.sub(r'\(cr\)$', '', make_wrapper(c))
+
+def routine_values(b):
+    # routine types: void (*)(void) and its typedefs become carried routines
+    b = re.sub(r'\(\s*\*\s*(\w*)\s*(\[[^\]]*\])?\s*\)\s*\(\s*void\s*\)', lambda m: '(*%s%s)(Carried *)' % (m.group(1), m.group(2) or ''), b)
+    for t in fptypes:
+        b = re.sub(r'\b%s\b' % t, 'CarriedFn', b)
+    for c in sorted(set(re.findall(r'\babi_(\w+)\b(?!\s*\()', b))):
+        b = re.sub(r'\babi_%s\b(?!\s*\()' % c, carried_value(c), b)
+    return b
+
 def glue_body(b):
     # glue keeps the register file; its calls of converted helpers load and
-    # take back the registers (see the _g variants)
+    # take back the registers (see the _g variants); routines it passes to
+    # them go as carried routines
     for n in regfn:
         if not isroutine[n]:
             b = re.sub(r'(?<![\w>.])%s\s*\(' % n, '%s_g(' % n, b)
+            if rparams(byname[n][4]):
+                out, pos = [], 0
+                for m in re.finditer(r'(?<![\w>.])%s_g\s*\(' % n, b):
+                    depth, i = 1, m.end()
+                    while depth:
+                        depth += {'(': 1, ')': -1}.get(b[i], 0)
+                        i += 1
+                    out.append(b[pos:m.end()])
+                    args = b[m.end():i]
+                    for c in sorted(set(re.findall(r'\babi_(\w+)\b(?!\s*\()', args))):
+                        args = re.sub(r'\babi_%s\b(?!\s*\()' % c, carried_value(c), args)
+                    out.append(args)
+                    pos = i
+                out.append(b[pos:])
+                b = ''.join(out)
     return b
 
 def find_def(t, name, carried):
@@ -378,7 +419,9 @@ void %s(void)
 ''' % (n, nn))
         else:
             p = params.strip()
-            np = 'Carried *cr' if p in ('void', '') else 'Carried *cr, ' + params
+            np = 'Carried *cr' if p in ('void', '') else 'Carried *cr, ' + routine_values(params)
+            for fp in rparams(params):
+                b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % fp, '%s(cr)' % fp, b)
             out.append('%s(%s)\n{\n%s}\n' % (hdr.rstrip(), np, b))
     elif n in glue or n in adapter:
         b = glue_body(body[n])
@@ -440,6 +483,7 @@ for h in sorted(gvariants):
     plist = [] if params.strip() in ('void', '') else split_params(params)
     names = [pname(p) for p in plist]
     call = '%s(&c%s)' % (h, ''.join(', ' + x for x in names))
+    params = routine_values(params)
     isvoid = re.sub(r'\bstatic\b|\binline\b', '', ret).strip() == 'void'
     g = '''%s %s_g(%s)
 {

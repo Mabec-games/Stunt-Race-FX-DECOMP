@@ -10,17 +10,25 @@
 
 #include "audio_calls.h"
 uint16_t BackdropAnglesFromView(uint8_t bank);
+void CgramDmaAll(void);
 void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out);
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 uint16_t GsuScreenFlip(uint8_t bank);
 uint16_t GsuScreenFlipMenu(uint8_t bank);
 uint16_t HandlerSoundIndex(uint16_t handler, uint8_t *p);
+void OamBufferClear(void);
+void RaceScreenSetup(uint8_t bank);
+#include "save_calls.h"
 void Set7EBC2BTrio(uint8_t v);
+#include "audio_calls.h"
+uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x);
 #include "menu_calls.h"
 #include "menu_calls.h"
 #include "video_calls.h"
+void VideoRegsReset(uint8_t bank, uint16_t x);
 uint16_t ViewDefaults(uint8_t bank);
 uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p);
+uint16_t VramNoiseTiles(uint8_t bank);
 void WaitScanline(uint8_t bank);
 uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p);
 
@@ -44,6 +52,7 @@ void RaceFinishPhases10(Carried *cr);
 void RaceFinishSplit(Carried *cr);
 void RaceFrameRunTwoPlayers(Carried *cr);
 void RaceFrameStep(Carried *cr);
+void RaceLoad(Carried *cr);
 void RaceModeSetup(Carried *cr);
 void RaceStart(Carried *cr);
 void RaceVarsReset(Carried *cr);
@@ -64,6 +73,7 @@ static uint8_t race_load_0d63(Carried *cr, uint32_t b);
 static void race_load_copy(Carried *cr, uint16_t dst);
 static void race_load_gsu(Carried *cr, uint16_t y, uint16_t x);
 static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll);
+static void race_load_sound(Carried *cr, void (*load)(Carried *), uint16_t a, uint16_t y, int delay_after);
 static void race_load_views(Carried *cr, uint16_t x);
 static void view_params(Carried *cr, const uint8_t *v);
 static void w_ApuUpload(Carried *cr);
@@ -71,6 +81,7 @@ static void w_BackdropAnglesFromView(Carried *cr);
 static void w_CameraFollowStep(Carried *cr);
 static void w_CarFinishSound(Carried *cr);
 static void w_CarFinishSoundP2(Carried *cr);
+static void w_CgramDmaAll(Carried *cr);
 static void w_CourseScriptRun(Carried *cr);
 static void w_FrameRunGsu8FCA(Carried *cr);
 static void w_FrameRunGsuAB13A(Carried *cr);
@@ -81,20 +92,28 @@ static void w_GsuRun(Carried *cr);
 static void w_GsuScreenFlip(Carried *cr);
 static void w_GsuScreenFlipMenu(Carried *cr);
 static void w_HandlerSoundIndex(Carried *cr);
+static void w_OamBufferClear(Carried *cr);
 static void w_ObjectFaceTied(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
 static void w_PaletteFadeStep(Carried *cr);
 static void w_RaceHudLoad(Carried *cr);
+static void w_RaceScreenSetup(Carried *cr);
 static void w_RaceSoundsPlayer1(Carried *cr);
 static void w_RaceSoundsPlayer2(Carried *cr);
 static void w_RecordsUnpackCourseRunning(Carried *cr);
+static void w_ReturnOnly(Carried *cr);
+static void w_SaveUnlocksCheck(Carried *cr);
 static void w_Set7EBC2BTrio(Carried *cr);
+static void w_SoundDataLoad(Carried *cr);
+static void w_SoundIndicesFromHandlers(Carried *cr);
 static void w_SpeedGauge2Update(Carried *cr);
 static void w_SpeedGaugeUpdate(Carried *cr);
 static void w_SpriteSlotFirstLong(Carried *cr);
+static void w_VideoRegsReset(Carried *cr);
 static void w_ViewDefaults(Carried *cr);
 static void w_ViewFromRecord(Carried *cr);
 static void w_ViewUpdateAndGsuAEF8(Carried *cr);
+static void w_VramNoiseTiles(Carried *cr);
 static void w_WaitScanline(Carried *cr);
 static void w_WordCopyStep(Carried *cr);
 void ObjectLinkBobStart(Carried *cr);
@@ -103,6 +122,7 @@ void ObjectPoolInit_cr(Carried *cr);
 void PlayerControlsFrame(Carried *cr);
 void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
+void SoundReset_cr(Carried *cr);
 
 /*
  * @routine 03:B7C5 RaceFrameStep
@@ -686,19 +706,6 @@ static void delay_4000(Carried *cr)
     cr->p = nz16(cr->p, 0);
 }
 
-static void delay_4000_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    delay_4000(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 03:D8B3 RaceModeSetup
  * WHAT IT DOES: Sets the race up for mode $0D2B. Mode 3 with bits 0-2 of
@@ -999,24 +1006,24 @@ void abi_RaceScreenSetup(void);
 
 /* PHP, REP #$30, 5 on APU port 1 (a word store), a delay, then the load
    with A and Y, PLP. */
-static void race_load_sound(void (*load)(void), uint16_t a, uint16_t y, int delay_after)
+static void race_load_sound(Carried *cr, void (*load)(Carried *), uint16_t a, uint16_t y, int delay_after)
 {
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.a = 0x0005;
+    cr->p &= (uint8_t)~(P_M | P_X);
+    cr->a = 0x0005;
     cyc(38);
     hw_wr16(0x002141, 0x0005);
-    (cyc(40), delay_4000_g());
-    cpu.a = a;
-    cpu.y = y;
-    cpu.p = nz16(cpu.p, y);
-    load();
+    (cyc(40), delay_4000(cr));
+    cr->a = a;
+    cr->y = y;
+    cr->p = nz16(cr->p, y);
+    load(cr);
     if (delay_after) {
-        cpu.p &= (uint8_t)~P_M;
-        delay_4000_g();
+        cr->p &= (uint8_t)~P_M;
+        delay_4000(cr);
     } else { cyc(48); }
-    op_plp(p);
+    r_plp(cr, p);
 }
 
 /* REP #$30, LDY, LDX, JSL GsuCF42ToVram. */
@@ -1027,19 +1034,6 @@ static void race_load_gsu(Carried *cr, uint16_t y, uint16_t x)
     cr->x = x;
     cr->p = nz16(cr->p, x);
     (cyc(132), w_GsuCF42ToVram(cr));
-}
-
-static void race_load_gsu_g(uint16_t y, uint16_t x)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    race_load_gsu(&c, y, x);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* PHB, PHP, REP #$30, MVN $7F,$70 of $1000 bytes from $70:3000 to $7F:dst,
@@ -1070,19 +1064,6 @@ static void race_load_views(Carried *cr, uint16_t x)
     race_load_copy(cr, 0xBBD7);
 }
 
-static void race_load_views_g(uint16_t x)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    race_load_views(&c, x);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* REP #$20, then $0E35, $0E37 (= scroll), $0E31 and $0E33 (word stores). */
 static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
 {
@@ -1103,19 +1084,6 @@ static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
     cyc(24);
 }
 
-static void race_load_scroll_g(uint32_t b, uint16_t scroll)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    race_load_scroll(&c, b, scroll);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* SEP #$20, LDA $0D63: Z when it is clear. */
 static uint8_t race_load_0d63(Carried *cr, uint32_t b)
 {
@@ -1124,20 +1092,6 @@ static uint8_t race_load_0d63(Carried *cr, uint32_t b)
     r_lda8(cr, b | 0x0D63);
     cyc(16);
     return (uint8_t)cr->a;
-}
-
-static uint8_t race_load_0d63_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint8_t ret_ = race_load_0d63(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /*
@@ -1165,91 +1119,91 @@ static uint8_t race_load_0d63_g(uint32_t b)
  * Entry: any widths. Exit: P and the data bank restored; A, X, Y as
  * RaceScreenSetup leaves them.
  */
-void abi_RaceLoad(void)
+void RaceLoad(Carried *cr)
 {
     const uint32_t b = 0x030000;
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint8_t p0 = cr->p, db0 = cr->db, v;
     uint16_t w;
 
-    op_sep(P_M | P_X);
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
-    (cyc(156), abi_VideoRegsReset());
-    (cyc(62), abi_SaveUnlocksCheck());
-    (cyc(62), abi_SoundIndicesFromHandlers());
+    r_sep(cr, P_M | P_X);
+    cr->db = 0x03;
+    cr->p = nz8(cr->p, 0x03);
+    (cyc(156), w_VideoRegsReset(cr));
+    (cyc(62), w_SaveUnlocksCheck(cr));
+    (cyc(62), w_SoundIndicesFromHandlers(cr));
     cyc(62);
-    race_load_sound(abi_SoundDataLoad, 0xE049, 0x001E, 0);
-    race_load_sound(abi_ApuUpload, 0x001B, 0xB8A0, 1);
-    race_load_sound(abi_ApuUpload, 0x001B, 0xD5FC, 1);
-    abi_SoundReset();
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    race_load_sound(cr, w_SoundDataLoad, 0xE049, 0x001E, 0);
+    race_load_sound(cr, w_ApuUpload, 0x001B, 0xB8A0, 1);
+    race_load_sound(cr, w_ApuUpload, 0x001B, 0xD5FC, 1);
+    SoundReset_cr(cr);
+    r_sep(cr, P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     cyc(62);
     hw_wr(b | 0x2140, 0x01);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
-    cpu.p = nz8(cpu.p, 0x03);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
+    cr->p = nz8(cr->p, 0x03);
     cyc(40);
     wr8(b | 0x0374, 0x03);
-    (cyc(46), abi_VramNoiseTiles());
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    (cyc(46), w_VramNoiseTiles(cr));
+    cr->p &= (uint8_t)~(P_M | P_X);
     for (w = 0x01FE;; w = (uint16_t)(w - 2)) {
         cyc(126);
-        cpu.a = rd16(0x1F8200 + w);
-        wr16(0x7EFD65 + w, cpu.a);
+        cr->a = rd16(0x1F8200 + w);
+        wr16(0x7EFD65 + w, cr->a);
         if (!w)
             { cyc(106); break; } else { cyc(4); }
     }
-    cpu.x = 0xFFFE;
-    cpu.p = nz16(cpu.p, 0xFFFE);
-    abi_CgramDmaAll();
-    (cyc(62), abi_OamBufferClear());
-    (cyc(46), abi_ReturnOnly());
-    (cyc(62), abi_VideoRegsReset());
-    (cyc(62), abi_RaceVarsReset());
-    race_load_gsu_g(0xF837, 0xF7E6);
+    cr->x = 0xFFFE;
+    cr->p = nz16(cr->p, 0xFFFE);
+    w_CgramDmaAll(cr);
+    (cyc(62), w_OamBufferClear(cr));
+    (cyc(46), w_ReturnOnly(cr));
+    (cyc(62), w_VideoRegsReset(cr));
+    (cyc(62), RaceVarsReset(cr));
+    race_load_gsu(cr, 0xF837, 0xF7E6);
     cyc(0);
-    race_load_gsu_g(0xF822, 0xF801);
-    op_sep(P_M | P_X);
+    race_load_gsu(cr, 0xF822, 0xF801);
+    r_sep(cr, P_M | P_X);
     cyc(24);
     v = rd8(b | 0x0D2B);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
     v = (uint8_t)(v << 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = v;
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = v;
+    cr->p = nz8(cr->p, v);
     cyc(74);
     w = rd16(b | (uint16_t)(0xF1B2 + v));
     switch (w) {
     case 0xF1EE:
     case 0xF1BC:
-        race_load_views_g(w == 0xF1EE ? 0xF7F2 : 0xF7FB);
+        race_load_views(cr, w == 0xF1EE ? 0xF7F2 : 0xF7FB);
         if (w == 0xF1BC)
             cyc(22);                    /* BRA to $F21E */
-        race_load_gsu_g(0xF83E, 0xF7E9);
+        race_load_gsu(cr, 0xF83E, 0xF7E9);
         cyc(24);
-        race_load_scroll_g(b, race_load_0d63_g(b) ? 0x0000 : (cyc(6), 0x0050));
+        race_load_scroll(cr, b, race_load_0d63(cr, b) ? 0x0000 : (cyc(6), 0x0050));
         break;
     case 0xF256:
-        race_load_views_g(0xF7F5);
-        race_load_gsu_g(0xF83E, 0xF7EF);
+        race_load_views(cr, 0xF7F5);
+        race_load_gsu(cr, 0xF83E, 0xF7EF);
         cyc(0);
-        race_load_scroll_g(b, 0x0000);
-        op_sep(P_M);
+        race_load_scroll(cr, b, 0x0000);
+        r_sep(cr, P_M);
         cyc(22);
         wr8(b | 0x0D48, 0x00);
         cyc(22);                        /* BRA */
         break;
     case 0xF2A7:
-        race_load_views_g(0xF7F8);
-        race_load_gsu_g(0xF83E, 0xF7EC);
+        race_load_views(cr, 0xF7F8);
+        race_load_gsu(cr, 0xF83E, 0xF7EC);
         cyc(0);
-        race_load_scroll_g(b, 0x0000);
-        if (race_load_0d63_g(b))
-            race_load_scroll_g(b, 0x0000);
+        race_load_scroll(cr, b, 0x0000);
+        if (race_load_0d63(cr, b))
+            race_load_scroll(cr, b, 0x0000);
         else {
             cyc(6);
-            race_load_scroll_g(b, 0x0050);
-            op_sep(P_M);
+            race_load_scroll(cr, b, 0x0050);
+            r_sep(cr, P_M);
             cyc(22);
             wr8(b | 0x0D48, 0x00);
             cyc(22);
@@ -1257,12 +1211,25 @@ void abi_RaceLoad(void)
         break;
     }
     cyc(46);
-    abi_RaceScreenSetup();
-    op_sep(P_M);
-    cpu.db = db0;
-    cpu.p = nz8(cpu.p, db0);
-    op_plp(p0);
+    w_RaceScreenSetup(cr);
+    r_sep(cr, P_M);
+    cr->db = db0;
+    cr->p = nz8(cr->p, db0);
+    r_plp(cr, p0);
     cyc(80);
+}
+
+void abi_RaceLoad(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceLoad(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_PlayerControlsFrame(void);
@@ -2245,6 +2212,94 @@ static void w_GsuCF42ToVram(Carried *cr)
     cr->a = 0x0001;
     cr->x = cr->y;
     cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M);
+}
+
+/* CgramDmaAll as its adapter leaves the registers. */
+static void w_CgramDmaAll(Carried *cr)
+{
+    CgramDmaAll();
+    cr->a = 0x2201;
+    cr->x = 0;
+    cr->y = 0;
+}
+
+/* OamBufferClear as its adapter leaves the registers. */
+static void w_OamBufferClear(Carried *cr)
+{
+    OamBufferClear();
+    cr->a = 0x0000;
+    cr->x = (cr->p & P_X) ? 0x00FE : 0xFFFE;
+}
+
+/* RaceScreenSetup as its adapter leaves the registers. */
+static void w_RaceScreenSetup(Carried *cr)
+{
+    RaceScreenSetup(cr->db);
+    cr->a = 0x1001;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M | P_X);
+}
+
+/* ReturnOnly, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_ReturnOnly(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ReturnOnly();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* SaveUnlocksCheck as its adapter leaves the registers. */
+static void w_SaveUnlocksCheck(Carried *cr)
+{
+    cr->a = (uint16_t)(0x0200 | SaveUnlocksCheck());
+    cr->x = 20;
+    cr->y = 4;
+}
+
+/* SoundIndicesFromHandlers as its adapter leaves the registers. */
+static void w_SoundIndicesFromHandlers(Carried *cr)
+{
+    uint8_t x;
+
+    cr->a = SoundIndicesFromHandlers(cr->db, &x);
+    cr->x = x;
+    cr->y &= 0x00FF;
+}
+
+/* VideoRegsReset as its adapter leaves the registers. */
+static void w_VideoRegsReset(Carried *cr)
+{
+    VideoRegsReset(cr->db, cr->x);
+    cr->a = 0x2C00;
+}
+
+/* VramNoiseTiles as its adapter leaves the registers. */
+static void w_VramNoiseTiles(Carried *cr)
+{
+    cr->a = VramNoiseTiles(cr->db);
+    cr->x = 0;
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_M | P_X)) | P_Z);
+}
+
+/* SoundDataLoad as its adapter leaves the registers. */
+static void w_SoundDataLoad(Carried *cr)
+{
+    cr->y = SoundDataLoad(cr->a, cr->y);
+    cr->a = 0x0000;
+    cr->x = 0x0000;
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_M | P_X)) | P_Z | P_C);
 }
 
 /* BackdropAnglesFromView as its adapter leaves the registers. */

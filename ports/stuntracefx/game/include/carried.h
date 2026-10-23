@@ -18,6 +18,9 @@ typedef struct {
     uint8_t p, db;
 } Carried;
 
+/* A routine on carried registers, passed as a value. */
+typedef void (*CarriedFn)(Carried *);
+
 /* LDA (16-bit), from memory or immediate. */
 static inline void r_lda16(Carried *cr, uint32_t addr)
 {
