@@ -259,11 +259,19 @@ void VramDmaQueueAdd(void)
     cyc(108);
 }
 
-void abi_VramDmaQueueAdd(void)
+/* As VramDmaQueueAdd with its whole time: A from `a` on entry as it
+   leaves it. */
+uint16_t VramDmaQueueAddTimed(uint16_t a)
 {
-    cpu.a = VramDmaQueueAddA(cpu.a);
+    a = VramDmaQueueAddA(a);
     if (queue_added)
         cyc(108);
+    return a;
+}
+
+void abi_VramDmaQueueAdd(void)
+{
+    cpu.a = VramDmaQueueAddTimed(cpu.a);
 }
 
 /* Append A to a list of up to eight words; returns X, the new size (the

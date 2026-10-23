@@ -14,8 +14,6 @@ uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p);
 int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 void SoundPort0QueuePush(uint8_t command);
 uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value);
-void abi_MenuActorAnimateFrame(void);
-void abi_MenuSelectConfirm(void);
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -464,7 +462,9 @@ void abi_MenuActorNoStepE0DF(void)
     cyc(42);
 }
 
-void abi_VramDmaQueueAdd(void);
+uint16_t VramDmaQueueAddTimed(uint16_t a);
+uint8_t SaveUnlocksCheck(void);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
 
 /*
  * @routine 0B:DF7C MenuSelectionFramesCycle
@@ -479,14 +479,15 @@ void abi_VramDmaQueueAdd(void);
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: counting:
  * A unchanged, N, Z from the count; a step: X = $11F9 with N, Z from it,
  * A as VramDmaQueueAdd leaves it, C and V from the address add.
+ * From C: *x, *a, *p the registers in and out.
  */
-void abi_MenuSelectionFramesCycle(void)
+void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t obj = cpu.x, n, off, sel;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t obj = *x, n, off, sel, v;
 
     n = dec_field(obj, 0x0A);
-    cpu.p = nz16(cpu.p, n);
+    *p = nz16(*p, n);
     if (!(n & 0x8000))
         { cyc(64); return; }
     cyc(62);
@@ -500,96 +501,91 @@ void abi_MenuSelectionFramesCycle(void)
     wr16(b | 0x11DF, off);
     cyc(32);
     sel = (uint16_t)(rd16(0x0018CB) << 1);
-    cpu.x = sel;
     cyc(114);
-    cpu.a = rd16(0x0BDFD3 + (uint32_t)sel);
-    off = rd16(b | 0x11DF);
-    cpu.p &= (uint8_t)~P_C;
-    cpu.a = op_adc16(cpu.a, off, &cpu.p);
-    cpu.p &= (uint8_t)~P_C;
-    cpu.a = op_adc16(cpu.a, 0x3000, &cpu.p);
+    v = rd16(0x0BDFD3 + (uint32_t)sel);
+    v = adc16(v, rd16(b | 0x11DF), 0, p);
+    v = adc16(v, 0x3000, 0, p);
     cyc(84);
-    wr16(b | 0x16B3, cpu.a);
+    wr16(b | 0x16B3, v);
     cyc(48);
     wr16(b | 0x16B1, 0x0080);
     cyc(48);
     wr16(b | 0x16B5, 0x0070);
-    cpu.a = 0x15C0;
     cyc(48);
-    wr16(b | 0x16B7, cpu.a);
-    (cyc(62), abi_VramDmaQueueAdd());
+    wr16(b | 0x16B7, 0x15C0);
+    *a = (cyc(62), VramDmaQueueAddTimed(0x15C0));
     cyc(68);
-    cpu.x = rd16(b | 0x11F9);
-    cpu.p = nz16(cpu.p, cpu.x);
+    *x = rd16(b | 0x11F9);
+    *p = nz16(*p, *x);
     cyc(42);
 }
 
-void abi_SoundPort0QueuePush(void);
-void abi_SaveUnlocksCheck(void);
+void abi_MenuSelectionFramesCycle(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuSelectionFramesCycle(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
+}
 
 /* The save area MenuEraseConfirm2 clears: $400 bytes of Super FX RAM. */
 #define SAVE_AREA 0x70FC00u
 
 /* SEP #$20, LDA #cmd, JSL SoundPort0QueuePush, REP #$20. */
-static void menu_sound(uint8_t cmd)
+static void menu_sound(uint8_t bank, uint16_t *a, uint8_t *p, uint8_t cmd)
 {
-    cpu.p |= P_M;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cmd);
-    cpu.p = nz8(cpu.p, cmd);
-    (cyc(100), abi_SoundPort0QueuePush());
-    cpu.p &= (uint8_t)~P_M;
+    *p |= P_M;
+    *a = (uint16_t)((*a & 0xFF00) | cmd);
+    cyc(100);
+    SoundPort0QueuePushW(cmd, (*p & P_X) ? 0 : 16);
+    *p = (uint8_t)(nz8(*p, bank) & ~P_M);   /* the last pull restores DB */
 }
 
-/* LDA +$14,X, CMP #a, BEQ; else LDA #a, STA +$14,X, STZ +$16,X, STZ
-   +$18,X: animation a started unless it is the one playing. */
-static int menu_anim(uint16_t a)
+/* LDA +$14,X, CMP #n, BEQ; else LDA #n, STA +$14,X, STZ +$16,X, STZ
+   +$18,X: animation n started unless it is the one playing. */
+static void menu_anim(uint16_t x, uint16_t *a, uint8_t *p, uint16_t n)
 {
     cyc(22);
-    uint16_t x = cpu.x, v = rd16((uint16_t)(x + 0x14));
+    uint16_t v = rd16((uint16_t)(x + 0x14));
 
-    cpu.a = v;
-    cpu.p = cmp16(cpu.p, v, a);
-    if (v == a)
-        return 1;
-    cpu.a = a;
-    cpu.p = nz16(cpu.p, a);
+    *a = v;
+    *p = cmp16(*p, v, n);
+    if (v == n)
+        return;
+    *a = n;
+    *p = nz16(*p, n);
     cyc(86);
-    wr16((uint16_t)(x + 0x14), a);
+    wr16((uint16_t)(x + 0x14), n);
     cyc(22);
     wr16((uint16_t)(x + 0x16), 0x0000);
     cyc(22);
     wr16((uint16_t)(x + 0x18), 0x0000);
-    return 0;
 }
 
 /* LDA $118B, AND #mask: the buttons newly pressed under mask. */
-static uint16_t menu_pressed(uint16_t mask)
+static uint16_t menu_pressed(uint8_t bank, uint16_t *a, uint8_t *p, uint16_t mask)
 {
-    uint16_t v = rd16(cyc_then(24, dbw(cpu.db, 0x118B)));
-
-    cpu.a = (uint16_t)(v & mask);
-    cpu.p = nz16(cpu.p, cpu.a);
-    return cpu.a;
+    *a = (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x118B))) & mask);
+    *p = nz16(*p, *a);
+    return *a;
 }
 
 /* LDA +$0A,X: the choice (0 no, else yes). */
-static uint16_t menu_choice(void)
+static uint16_t menu_choice(uint16_t x, uint16_t *a, uint8_t *p)
 {
     cyc(62);
-    uint16_t v = rd16((uint16_t)(cpu.x + 0x0A));
-
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
-    return v;
+    *a = rd16((uint16_t)(x + 0x0A));
+    *p = nz16(*p, *a);
+    return *a;
 }
 
 /* LDA #h, STA +$08,X: the next handler. */
-static void menu_handler(uint16_t h)
+static void menu_handler(uint16_t x, uint16_t *a, uint8_t *p, uint16_t h)
 {
-    cpu.a = h;
-    cpu.p = nz16(cpu.p, h);
+    *a = h;
+    *p = nz16(*p, h);
     cyc(46);
-    wr16((uint16_t)(cpu.x + 0x08), h);
+    wr16((uint16_t)(x + 0x08), h);
 }
 
 /*
@@ -620,16 +616,18 @@ void abi_MenuSequenceColourOff(void)
 /* B with "no" chosen: back to MenuButtonSequence ($D606) with the colour
    maths off, sound $47 and animation 2 ($0B:D79F, $0B:D84F, $0B:D879
    without the sound). */
-static void menu_erase_cancel(int sound)
+static void menu_erase_cancel(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p, int sound)
 {
     cyc(16);
-    menu_handler(0xD606);
-    (cyc(46), abi_MenuSequenceColourOff());
+    menu_handler(x, a, p, 0xD606);
+    (cyc(46), MenuSequenceColourOff(bank));
+    *a &= 0xFF00;
+    *p = nz16((uint8_t)(*p & ~(P_M | P_X)), x);
     if (sound) {
-        menu_sound(0x47);
+        menu_sound(bank, a, p, 0x47);
         cyc(22);
     }
-    menu_anim(0x0002);
+    menu_anim(x, a, p, 0x0002);
     cyc(42);                            /* RTS */
 }
 
@@ -646,41 +644,50 @@ static void menu_erase_cancel(int sound)
  * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: M 16-bit; A and
  * P from the last load, compare or sound (A low byte = the command, N, Z
  * from the data bank).
+ * From C: *x, *a, *p the registers in and out.
  */
-void abi_MenuEraseConfirm(void)
+void MenuEraseConfirm(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    abi_MenuActorAnimateFrame();
-    if (!menu_pressed(0x0200)) {
+    *a = MenuActorAnimateFrame(bank, x, p);
+    if (!menu_pressed(bank, a, p, 0x0200)) {
         cyc(24);                        /* AND #imm */
-    } else if (!menu_choice()) {
-        cpu.a = 0x0001;
-        cpu.p = nz16(cpu.p, 0x0001);
+    } else if (!menu_choice(*x, a, p)) {
+        *a = 0x0001;
+        *p = nz16(*p, 0x0001);
         cyc(62);
-        wr16((uint16_t)(cpu.x + 0x0A), 0x0001);
-        menu_anim(0x0148);
-        menu_sound(0x45);
+        wr16((uint16_t)(*x + 0x0A), 0x0001);
+        menu_anim(*x, a, p, 0x0148);
+        menu_sound(bank, a, p, 0x45);
     }
     cyc(22);
-    if (menu_pressed(0x0100) && menu_choice()) {
+    if (menu_pressed(bank, a, p, 0x0100) && menu_choice(*x, a, p)) {
         cyc(16);
-        menu_sound(0x45);
+        menu_sound(bank, a, p, 0x45);
         cyc(44);
-        wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
-        menu_anim(0x0152);
+        wr16((uint16_t)(*x + 0x0A), 0x0000);
+        menu_anim(*x, a, p, 0x0152);
     } else { cyc(46); }
-    if (!menu_pressed(0x8000))
+    if (!menu_pressed(bank, a, p, 0x8000))
         { cyc(88); return; }            /* BEQ taken, RTS */
-    if (!menu_choice()) {
+    if (!menu_choice(*x, a, p)) {
         cyc(6);
-        menu_erase_cancel(1);
+        menu_erase_cancel(bank, *x, a, p, 1);
         return;
     } else { cyc(16); }
-    menu_anim(0x0166);
-    menu_handler(0xD7C2);
+    menu_anim(*x, a, p, 0x0166);
+    menu_handler(*x, a, p, 0xD7C2);
     cyc(22);
-    wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
-    menu_sound(0x46);
+    wr16((uint16_t)(*x + 0x0A), 0x0000);
+    menu_sound(bank, a, p, 0x46);
     cyc(64);                            /* REP, RTS */
+}
+
+void abi_MenuEraseConfirm(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuEraseConfirm(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -690,19 +697,30 @@ void abi_MenuEraseConfirm(void)
  * HOW: 16-bit zero stores from X = 0 to $3FE; SaveUnlocksCheck.
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as SaveUnlocksCheck; P from
  * the last CPX (Z and C set, N clear).
+ * From C: returns A; *x, *y, *p as it leaves them.
  */
+uint16_t MenuEraseSave(uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t i;
+
+    for (i = 0; i != 0x0400; i = (uint16_t)(i + 2))
+        { cyc(i == 0 ? 80 : 106); wr16(SAVE_AREA + i, 0x0000); }
+    cyc(130);
+    *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
+    uint16_t a = (uint16_t)(0x0200 | SaveUnlocksCheck());
+
+    *x = 20;
+    *y = 4;
+    cyc(42);                            /* RTS */
+    return a;
+}
+
 void abi_MenuEraseSave(void)
 {
-    uint16_t x;
+    uint8_t p = cpu.p;
 
-    for (x = 0; x != 0x0400; x = (uint16_t)(x + 2))
-        { cyc(x == 0 ? 80 : 106); wr16(SAVE_AREA + x, 0x0000); }
-    cyc(130);
-    cpu.a = 0x0000;
-    cpu.x = 0x0400;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
-    abi_SaveUnlocksCheck();
-    cyc(42);                            /* RTS */
+    cpu.a = MenuEraseSave(&cpu.x, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -716,47 +734,56 @@ void abi_MenuEraseSave(void)
  * HOW: As MenuEraseConfirm; X is reloaded from $11F9 after the erase.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: M 16-bit; erase:
  * A = $40, N, Z clear; otherwise as MenuEraseConfirm.
+ * From C: as MenuEraseConfirm, and *y (the erase leaves Y = 4).
  */
-void abi_MenuEraseConfirm2(void)
+void MenuEraseConfirm2(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a, uint8_t *p)
 {
-    abi_MenuActorAnimateFrame();
-    if (!menu_pressed(0x0200)) {
+    *a = MenuActorAnimateFrame(bank, x, p);
+    if (!menu_pressed(bank, a, p, 0x0200)) {
         cyc(24);                        /* AND #imm */
-    } else if (!menu_choice()) {
-        cpu.a = 0x0001;
-        cpu.p = nz16(cpu.p, 0x0001);
+    } else if (!menu_choice(*x, a, p)) {
+        *a = 0x0001;
+        *p = nz16(*p, 0x0001);
         cyc(62);
-        wr16((uint16_t)(cpu.x + 0x0A), 0x0001);
-        menu_anim(0x015C);
-        menu_sound(0x45);
+        wr16((uint16_t)(*x + 0x0A), 0x0001);
+        menu_anim(*x, a, p, 0x015C);
+        menu_sound(bank, a, p, 0x45);
     }
     cyc(22);
-    if (menu_pressed(0x0100) && menu_choice()) {
+    if (menu_pressed(bank, a, p, 0x0100) && menu_choice(*x, a, p)) {
         cyc(38);
-        wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
-        menu_anim(0x0166);
-        menu_sound(0x45);
+        wr16((uint16_t)(*x + 0x0A), 0x0000);
+        menu_anim(*x, a, p, 0x0166);
+        menu_sound(bank, a, p, 0x45);
     } else { cyc(24); }
     cyc(22);
-    if (!menu_pressed(0x8000))
+    if (!menu_pressed(bank, a, p, 0x8000))
         { cyc(88); return; }            /* BEQ taken, RTS */
-    if (!menu_choice()) {
+    if (!menu_choice(*x, a, p)) {
         cyc(6);
-        menu_erase_cancel(1);
+        menu_erase_cancel(bank, *x, a, p, 1);
         return;
     } else { cyc(62); }
-    abi_MenuEraseSave();
-    cpu.x = rd16(cyc_then(24, dbw(cpu.db, 0x11F9)));
-    cpu.p = nz16(cpu.p, cpu.x);
-    menu_anim(0x0170);
-    menu_sound(0x36);
+    *a = MenuEraseSave(x, y, p);
+    *x = rd16(cyc_then(24, dbw(bank, 0x11F9)));
+    *p = nz16(*p, *x);
+    menu_anim(*x, a, p, 0x0170);
+    menu_sound(bank, a, p, 0x36);
     cyc(22);
-    menu_handler(0xD872);
-    cpu.a = 0x0040;
-    cpu.p = nz16(cpu.p, 0x0040);
+    menu_handler(*x, a, p, 0xD872);
+    *a = 0x0040;
+    *p = nz16(*p, 0x0040);
     cyc(46);
-    wr16((uint16_t)(cpu.x + 0x0A), 0x0040);
+    wr16((uint16_t)(*x + 0x0A), 0x0040);
     cyc(42);                            /* RTS */
+}
+
+void abi_MenuEraseConfirm2(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuEraseConfirm2(cpu.db, &cpu.x, &cpu.y, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -768,17 +795,26 @@ void abi_MenuEraseConfirm2(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: waiting: A as
  * MenuActorAnimateFrame leaves it, N, Z from the count; done: as the
  * animation's compare or start.
+ * From C: as MenuEraseConfirm.
  */
-void abi_MenuEraseDone(void)
+void MenuEraseDone(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     uint16_t c;
 
-    abi_MenuActorAnimateFrame();
-    c = dec_field(cpu.x, 0x0A);
-    cpu.p = nz16(cpu.p, c);
+    *a = MenuActorAnimateFrame(bank, x, p);
+    c = dec_field(*x, 0x0A);
+    *p = nz16(*p, c);
     if (!(c & 0x8000))
         { cyc(64); return; }            /* BPL taken, RTS */
-    menu_erase_cancel(0);
+    menu_erase_cancel(bank, *x, a, p, 0);
+}
+
+void abi_MenuEraseDone(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuEraseDone(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
