@@ -21,6 +21,21 @@ typedef struct {
 /* A routine on carried registers, passed as a value. */
 typedef void (*CarriedFn)(Carried *);
 
+/* A carried routine called from code still on the register file: the
+   registers go in and come back. */
+static inline void cr_call(CarriedFn f)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    f(&c);
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /* LDA (16-bit), from memory or immediate. */
 static inline void r_lda16(Carried *cr, uint32_t addr)
 {

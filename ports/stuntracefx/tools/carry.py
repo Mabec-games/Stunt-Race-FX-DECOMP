@@ -170,6 +170,9 @@ for n in list(regfn):
         if ext:
             left[n] = 'called from %s' % ext; regfn.discard(n); glue.add(n)
 newname = {n: (n[4:] if isroutine[n] else n) for n in regfn}
+# glue that takes routines: its callers pass carried routines, which it
+# calls through cr_call
+cglue = {n for n in glue if not isroutine[n] and takes_routine(byname[n][4])}
 
 # wrappers for calls of other routines' adapters
 def find_adapter(n):
@@ -378,12 +381,14 @@ def glue_body(b):
     # glue keeps the register file; its calls of converted helpers load and
     # take back the registers (see the _g variants); routines it passes to
     # them go as carried routines
-    for n in regfn:
+    for n in sorted(regfn | cglue):
         if not isroutine[n]:
-            b = re.sub(r'(?<![\w>.])%s\s*\(' % n, '%s_g(' % n, b)
+            g = n if n in cglue else n + '_g'
+            if n not in cglue:
+                b = re.sub(r'(?<![\w>.])%s\s*\(' % n, '%s_g(' % n, b)
             if rparams(byname[n][4]):
                 out, pos = [], 0
-                for m in re.finditer(r'(?<![\w>.])%s_g\s*\(' % n, b):
+                for m in re.finditer(r'(?<![\w>.])%s\s*\(' % g, b):
                     depth, i = 1, m.end()
                     while depth:
                         depth += {'(': 1, ')': -1}.get(b[i], 0)
@@ -485,6 +490,10 @@ void %s(void)
             out.append('%s(%s)\n{\n%s}\n' % (hdr.rstrip(), np, b))
     elif n in glue or n in adapter:
         b = glue_body(body[n])
+        if n in cglue:
+            for fp in rparams(params):
+                b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % fp, 'cr_call(%s)' % fp, b)
+            params = routine_values(params)
         if b != body[n]:
             for h in regfn:
                 if not isroutine[h] and re.search(r'(?<![\w>.])%s_g\s*\(' % h, b):
@@ -573,7 +582,7 @@ for h in sorted(cvariants):
     plist = [] if params.strip() in ('void', '') else split_params(params)
     names = [pname(p) for p in plist]
     call = '%s(%s)' % (h, ', '.join(names))
-    np = 'Carried *cr' if not plist else 'Carried *cr, ' + params
+    np = 'Carried *cr' if not plist else 'Carried *cr, ' + (routine_values(params) if h in cglue else params)
     g = '''static %s %s_c(%s)
 {
     cpu.a = cr->a;
@@ -625,6 +634,8 @@ if wrapcode or regfn:
                 return '%s(%s);\n' % (m.group(1).rstrip(), m.group(3))
         raise SystemExit('no definition of %s' % n)
     fwd += ''.join(decl(n) for n in sorted(regfn) if not isroutine[n])
+    for n in cglue:
+        res = re.sub(r'^(?:static )?[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\);\n' % n, lambda m: routine_values(m.group(0)), res, flags=re.M)
     # the file's own forward declarations of converted helpers go
     for n in regfn:
         if not isroutine[n]:
