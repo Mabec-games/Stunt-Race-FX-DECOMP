@@ -134,10 +134,6 @@ static void w_HudSixGlyphs(Carried *cr);
 static void w_LapSplit(Carried *cr);
 static void w_OamHide75Up(Carried *cr);
 static void w_OamHideForHudMode(Carried *cr);
-static void w_OamStagePause(Carried *cr);
-static void w_OamStagePause2(Carried *cr);
-static void w_OamStagePause2Loop(Carried *cr);
-static void w_OamStagePauseLoop(Carried *cr);
 static void w_OverlayFramesUntilFaded(Carried *cr);
 static void w_PaletteDarkenFour(Carried *cr);
 static void w_PauseOnStart(Carried *cr);
@@ -166,6 +162,10 @@ void BigSpritesRow6B_cr(Carried *cr);
 void BigSpritesRow6_cr(Carried *cr);
 void GlyphSlideThree_cr(Carried *cr);
 void GlyphWordAt1C28_cr(Carried *cr);
+void OamStagePause(Carried *cr);
+void OamStagePause2(Carried *cr);
+void OamStagePause2Loop(Carried *cr);
+void OamStagePauseLoop(Carried *cr);
 void RaceFinishSplit(Carried *cr);
 void RecordTimeCompare_cr(Carried *cr);
 void SoundPort0QueuePushRaw_cr(Carried *cr);
@@ -2162,7 +2162,7 @@ void RacePhaseLapP1(Carried *cr)
 
     cyc(46);
     w_GsuF441Player1(cr);
-    (cyc(118), w_OamStagePause(cr));
+    (cyc(118), OamStagePause(cr));
     cyc(22);
     r = race_phase_c(cr);
     if (r)
@@ -2195,7 +2195,7 @@ void RacePhaseLapP2(Carried *cr)
 
     cyc(46);
     w_GsuF441Player2(cr);
-    (cyc(118), w_OamStagePause2(cr));
+    (cyc(118), OamStagePause2(cr));
     cyc(22);
     r = race_phase_c(cr);
     if (r)
@@ -2682,7 +2682,7 @@ void PauseResultsP2(Carried *cr)
         return;
     } else { cyc(22); }
     pause_stage_ten(cr, b);
-    (cyc(24), w_OamStagePause2Loop(cr));
+    (cyc(24), OamStagePause2Loop(cr));
 }
 
 void abi_PauseResultsP2(void)
@@ -2781,7 +2781,7 @@ static void pause_results(Carried *cr)
         } else { cyc(6); }
     } else { cyc(6); }
     pause_stage_ten(cr, b);
-    (cyc(32), w_OamStagePauseLoop(cr));
+    (cyc(32), OamStagePauseLoop(cr));
 }
 
 /*
@@ -3891,25 +3891,6 @@ static void w_GsuF441Player1(Carried *cr)
     cr->x = cr->p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
 }
 
-/* OamStagePause, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamStagePause(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamStagePause();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* GsuF441Player2 as its adapter leaves the registers. */
 static void w_GsuF441Player2(Carried *cr)
 {
@@ -3917,25 +3898,6 @@ static void w_GsuF441Player2(Carried *cr)
     if (cr->p & P_X)
         { cyc(114); cr->y &= 0x00FF; }
     cr->x = cr->p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
-}
-
-/* OamStagePause2, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamStagePause2(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamStagePause2();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* PauseOnStart, still in registers: its call with the registers loaded and taken
@@ -4082,50 +4044,12 @@ static void w_GsuF15BThree(Carried *cr)
     cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X));
 }
 
-/* OamStagePause2Loop, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamStagePause2Loop(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamStagePause2Loop();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* GsuF15BFourB as its adapter leaves the registers. */
 static void w_GsuF15BFourB(Carried *cr)
 {
     cr->a = (uint16_t)(0x9000 | GsuF15BFourB());
     cr->x = 0xF15B;
     cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X));
-}
-
-/* OamStagePauseLoop, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamStagePauseLoop(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamStagePauseLoop();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* GsuF15BFourA as its adapter leaves the registers. */
