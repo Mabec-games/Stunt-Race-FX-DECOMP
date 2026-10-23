@@ -708,13 +708,20 @@ uint8_t GsuDigitPair0E74(uint8_t bank)
     return gsu_digit_pair_0e74(bank, &digit_index);
 }
 
+/* GsuDigitPair0E74 with the A it leaves: the low digit's table word's
+   high byte and the screen mode value (X = $F15B). */
+uint16_t GsuDigitPair0E74A(uint8_t bank)
+{
+    uint8_t mode = GsuDigitPair0E74(bank);
+    cyc(158);
+    uint16_t hi = (uint16_t)(rd16((uint32_t)bank << 16 | (uint16_t)(0x8E3E + digit_index)) & 0xFF00);
+
+    return (uint16_t)(hi | mode);
+}
+
 void abi_GsuDigitPair0E74(void)
 {
-    uint8_t mode = GsuDigitPair0E74(cpu.db);
-    cyc(158);
-    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E3E + digit_index)) & 0xFF00);
-
-    cpu.a = (uint16_t)(hi | mode);
+    cpu.a = GsuDigitPair0E74A(cpu.db);
     cpu.x = 0xF15B;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_C | P_M | P_X));
 }

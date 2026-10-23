@@ -52,15 +52,19 @@ static uint8_t digit(uint8_t bank, uint16_t d, uint16_t pre)
     return GsuRun(0x07, 0xF15B);
 }
 
-/* The registers a digit draw leaves: A = the table word's high byte and the
-   screen mode value, X = $F15B, M 16-bit, X 16-bit, C clear, N and Z from
-   the data bank. */
-static void abi_digit_exit(uint16_t d, uint8_t mode)
+/* A digit draw's end: the digit d's table word read again for A's high
+   byte; returns A (that byte and the screen mode value). */
+static uint16_t digit_a(uint8_t bank, uint16_t d, uint8_t mode)
 {
     cyc(158);
-    uint16_t w = rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E3E + (d << 1)));
+    return (uint16_t)((rd16((uint32_t)bank << 16 | (uint16_t)(0x8E3E + (d << 1))) & 0xFF00) | mode);
+}
 
-    cpu.a = (uint16_t)((w & 0xFF00) | mode);
+/* The registers a digit draw leaves besides A: X = $F15B, M 16-bit, X
+   16-bit, C clear, N and Z from the data bank. */
+static void digit_exit(uint16_t a)
+{
+    cpu.a = a;
     cpu.x = 0xF15B;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_C | P_M | P_X));
 }
@@ -113,26 +117,29 @@ static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8, uint32_t lead)
  * Exit: A = the units digit's table word's high byte and the screen mode
  * value; X = $F15B; Y unchanged; M 16-bit, X 16-bit; C clear; N, Z from the
  * data bank; V unchanged.
+ * From C: x8 with 8-bit index registers; returns A.
  */
-uint8_t GsuTimeDigits(uint8_t bank)
+uint16_t GsuTimeDigits(uint8_t bank, int x8)
 {
     uint8_t mode;
+    uint16_t d = time_digits(bank, &mode, x8, 128);
 
-    time_digits(bank, &mode, 0, 128);
-    return mode;
+    return digit_a(bank, d, mode);
 }
 
+void abi_GsuTimeDigits(void)
+{
+    digit_exit(GsuTimeDigits(cpu.db, cpu.p & P_X));
+}
+
+/* GsuTimeDigits entered after `lead` clocks of a caller still in
+   registers. */
 static void abi_time_digits(uint32_t lead)
 {
     uint8_t mode;
     uint16_t d = time_digits(cpu.db, &mode, cpu.p & P_X, lead);
 
-    abi_digit_exit(d, mode);
-}
-
-void abi_GsuTimeDigits(void)
-{
-    abi_time_digits(128);
+    digit_exit(digit_a(cpu.db, d, mode));
 }
 
 /*
@@ -144,23 +151,22 @@ void abi_GsuTimeDigits(void)
  * GsuTimeDigits, which follows.
  * Entry: M 16-bit, X 16-bit, D = $0000; DB = the bank of the digit table.
  * Exit: as GsuTimeDigits.
+ * From C: as GsuTimeDigits.
  */
-uint8_t GsuTimeDigitsGrow(uint8_t bank)
+uint16_t GsuTimeDigitsGrow(uint8_t bank, int x8)
 {
-    wr16(GSU_SIZE, rd16(SIZE_GROW + rd16((uint32_t)bank << 16 | 0x0D6B)));
-    GsuBytes200_BFB5BB();
-    return GsuTimeDigits(bank);
+    cyc(24);
+    uint16_t x = rd16((uint32_t)bank << 16 | 0x0D6B);
+
+    cyc(102);
+    wr16(GSU_SIZE, rd16(SIZE_GROW + x));
+    (cyc(62), GsuBytes200_BFB5BB());
+    return GsuTimeDigits(bank, x8);
 }
 
 void abi_GsuTimeDigitsGrow(void)
 {
-    cyc(24);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
-    cyc(102);
-    cpu.a = rd16(SIZE_GROW + cpu.x);
-    wr16(GSU_SIZE, cpu.a);
-    (cyc(62), abi_GsuBytes200_BFB5BB());
-    abi_GsuTimeDigits();
+    digit_exit(GsuTimeDigitsGrow(cpu.db, cpu.p & P_X));
 }
 
 /*
@@ -168,49 +174,58 @@ void abi_GsuTimeDigitsGrow(void)
  * WHAT IT DOES: As GsuTimeDigitsGrow, at the full digit size $20.
  * HOW: Enters GsuTimeDigitsGrow's tail with A = $20.
  * Entry: as GsuTimeDigitsGrow. Exit: as GsuTimeDigits.
+ * From C: as GsuTimeDigits.
  */
-uint8_t GsuTimeDigitsFull(uint8_t bank)
+uint16_t GsuTimeDigitsFull(uint8_t bank, int x8)
 {
+    cyc(56);
     wr16(GSU_SIZE, 0x0020);
-    GsuBytes200_BFB5BB();
-    return GsuTimeDigits(bank);
+    (cyc(62), GsuBytes200_BFB5BB());
+    return GsuTimeDigits(bank, x8);
 }
 
 void abi_GsuTimeDigitsFull(void)
 {
-    cpu.a = 0x0020;
-    cyc(56);
-    wr16(GSU_SIZE, cpu.a);
-    (cyc(62), abi_GsuBytes200_BFB5BB());
-    abi_GsuTimeDigits();
+    digit_exit(GsuTimeDigitsFull(cpu.db, cpu.p & P_X));
 }
+
+uint16_t GsuDigitPair0E74A(uint8_t bank);
+
+static int bd_drawn;                    /* the bonus digits were drawn */
 
 /* The tail of the three GsuBonusDigits entries: the size to $70:0210, then
    when $0E6C is nonzero the renderer bytes 0, $BF, $B7, $B6 and the two
-   digits of $0E74 (GsuDigitPair0E74, whose code follows). Returns 1 when
-   it drew. */
-static int bonus_digits(uint8_t bank, uint16_t size)
-{
-    wr16(GSU_SIZE, size);
-    if (!rd16((uint32_t)bank << 16 | 0x0E6C))
-        return 0;
-    GsuBytes200_BFB7B6();
-    GsuDigitPair0E74(bank);
-    return 1;
-}
-
-static void abi_bonus_digits(void)
+   digits of $0E74 (GsuDigitPair0E74, whose code follows). Returns A: 0, or
+   as GsuDigitPair0E74 leaves it when it drew (bd_drawn). */
+static uint16_t bonus_digits(uint8_t bank, uint16_t size)
 {
     cyc(56);
-    wr16(GSU_SIZE, cpu.a);
+    wr16(GSU_SIZE, size);
     cyc(24);
-    cpu.a = rd16((uint32_t)cpu.db << 16 | 0x0E6C);
-    cpu.p = nz16(cpu.p, cpu.a);
-    if (!cpu.a)
-        { cyc(58); return; } else { cyc(84); }
-    abi_GsuBytes200_BFB7B6();
-    (cyc(72), abi_GsuDigitPair0E74());
+    bd_drawn = 0;
+    if (!rd16((uint32_t)bank << 16 | 0x0E6C))
+        { cyc(58); return 0; }
+    cyc(84);
+    GsuBytes200_BFB7B6();
+    bd_drawn = 1;
+    return (cyc(72), GsuDigitPair0E74A(bank));
 }
+
+/* The exit: drawn, as GsuDigitPair0E74; else A = 0, Z set, N clear and
+   X = x (or unchanged when x is negative). */
+static void bonus_exit(uint16_t a, int32_t x)
+{
+    if (bd_drawn) {
+        digit_exit(a);
+        return;
+    }
+    cpu.a = 0x0000;
+    if (x >= 0)
+        cpu.x = (uint16_t)x;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}
+
+static uint16_t bd_x;                   /* the step $0D6B the size came by */
 
 /*
  * @routine 07:922F GsuBonusDigitsGrow
@@ -222,19 +237,21 @@ static void abi_bonus_digits(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; DB = the bank of the digit table.
  * Exit: when $0E6C is 0, A = 0, X = $0D6B, Z set, N clear; otherwise as
  * GsuDigitPair0E74.
+ * From C: returns A; drawn in bd_drawn, X (not drawn) in bd_x.
  */
-void GsuBonusDigitsGrow(uint8_t bank)
+uint16_t GsuBonusDigitsGrow(uint8_t bank)
 {
-    bonus_digits(bank, rd16(SIZE_GROW + rd16((uint32_t)bank << 16 | 0x0D6B)));
+    cyc(24);
+    bd_x = rd16((uint32_t)bank << 16 | 0x0D6B);
+    cyc(46);
+    return bonus_digits(bank, rd16(SIZE_GROW + bd_x));
 }
 
 void abi_GsuBonusDigitsGrow(void)
 {
-    cyc(24);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
-    cyc(46);
-    cpu.a = rd16(SIZE_GROW + cpu.x);
-    abi_bonus_digits();
+    uint16_t a = GsuBonusDigitsGrow(cpu.db);
+
+    bonus_exit(a, bd_x);
 }
 
 /*
@@ -245,18 +262,19 @@ void abi_GsuBonusDigitsGrow(void)
  * in the traces so far.
  * Entry: as GsuBonusDigitsGrow. Exit: as GsuBonusDigitsGrow.
  */
-void GsuBonusDigitsBounce(uint8_t bank)
+uint16_t GsuBonusDigitsBounce(uint8_t bank)
 {
-    bonus_digits(bank, rd16(SIZE_BOUNCE + rd16((uint32_t)bank << 16 | 0x0D6B)));
+    cyc(24);
+    bd_x = rd16((uint32_t)bank << 16 | 0x0D6B);
+    cyc(46);
+    return bonus_digits(bank, rd16(SIZE_BOUNCE + bd_x));
 }
 
 void abi_GsuBonusDigitsBounce(void)
 {
-    cyc(24);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
-    cyc(46);
-    cpu.a = rd16(SIZE_BOUNCE + cpu.x);
-    abi_bonus_digits();
+    uint16_t a = GsuBonusDigitsBounce(cpu.db);
+
+    bonus_exit(a, bd_x);
 }
 
 /*
@@ -267,15 +285,14 @@ void abi_GsuBonusDigitsBounce(void)
  * Entry: as GsuBonusDigitsGrow. Exit: when $0E6C is 0, A = 0, X
  * unchanged, Z set, N clear; otherwise as GsuDigitPair0E74.
  */
-void GsuBonusDigitsFull(uint8_t bank)
+uint16_t GsuBonusDigitsFull(uint8_t bank)
 {
-    bonus_digits(bank, 0x0020);
+    return bonus_digits(bank, 0x0020);
 }
 
 void abi_GsuBonusDigitsFull(void)
 {
-    cpu.a = 0x0020;
-    abi_bonus_digits();
+    bonus_exit(GsuBonusDigitsFull(cpu.db), -1);
 }
 
 /* The 65816's 16-bit ADC and SBC, binary or decimal as the D flag in *p
