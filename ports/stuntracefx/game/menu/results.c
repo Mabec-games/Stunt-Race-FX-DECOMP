@@ -10,81 +10,165 @@
 #include "machine.h"
 #include "cpu_ops.h"
 
-void abi_MenuWaitThenAnimate(void);
-void abi_MenuActorCopyGroup(void);
-void abi_MenuActorFind(void);
-void abi_MenuActorFree(void);
-void abi_FrameByteWritePush(void);
-void abi_SoundPort0QueuePush(void);
-void abi_MenuActorNoStep(void);
+#include "alu.h"
 
-/* A field of object X: direct page (D = 0) + X, bank 0. */
-static uint16_t fld(uint16_t off)
+uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p);
+uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p);
+int MenuActorFindA(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *a);
+void MenuActorFind8(uint8_t bank, uint8_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint8_t *a);
+uint16_t MenuActorFree(uint8_t bank, uint16_t rec, uint16_t slot);
+uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
+
+/* The registers these routines carry: the object (X), A, Y and P, in and
+   out, as the original leaves them for its callers. */
+
+/* A field of object x: direct page (D = 0) + X, bank 0. */
+static uint16_t fld(uint16_t x, uint16_t off)
 {
-    return (uint16_t)(cpu.x + off);
+    return (uint16_t)(x + off);
 }
 
 /* An absolute address through the data bank. */
-static uint32_t abs_db(uint16_t a)
+static uint32_t abs_db(uint8_t bank, uint16_t a)
 {
-    return (uint32_t)cpu.db << 16 | a;
+    return (uint32_t)bank << 16 | a;
+}
+
+/* LDA (16-bit): N, Z from the value. */
+static uint16_t lda(uint16_t *a, uint8_t *p, uint16_t v)
+{
+    *a = v;
+    *p = nz16(*p, v);
+    return v;
+}
+
+/* LDA #v (16-bit). */
+static void lda_imm(uint16_t *a, uint8_t *p, uint16_t v)
+{
+    cyc(38);
+    lda(a, p, v);
+}
+
+/* CLC, ADC m and SEC, SBC m (16-bit). */
+static void add(uint16_t *a, uint8_t *p, uint16_t m)
+{
+    *p &= (uint8_t)~P_C;
+    *a = alu_adc16(*a, m, p);
+}
+
+static void sub(uint16_t *a, uint8_t *p, uint16_t m)
+{
+    *p |= P_C;
+    *a = alu_sbc16(*a, m, p);
+}
+
+/* CMP m (16-bit): C when a >= m; N, Z from a - m. */
+static void cmp(uint16_t a, uint8_t *p, uint16_t m)
+{
+    *p = (uint8_t)((nz16(*p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+/* AND #m (16-bit). */
+static void and_imm(uint16_t *a, uint8_t *p, uint16_t m)
+{
+    cyc(2);
+    lda(a, p, (uint16_t)(*a & m));
+}
+
+/* ASL A, LSR A (16-bit). */
+static void asl(uint16_t *a, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (*a >> 15));
+    lda(a, p, (uint16_t)(*a << 1));
+}
+
+static void lsr(uint16_t *a, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (*a & 1));
+    lda(a, p, (uint16_t)(*a >> 1));
+}
+
+/* TAX, TXA (16-bit). */
+static void tax(uint16_t a, uint16_t *x, uint8_t *p)
+{
+    cyc(30);
+    *x = a;
+    *p = nz16(*p, a);
+}
+
+static void txa(uint16_t x, uint16_t *a, uint8_t *p)
+{
+    cyc(30);
+    lda(a, p, x);
+}
+
+/* MenuActorFind for kind (A): with M set at the call, its 8-bit form. */
+static void find_kind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *a)
+{
+    uint8_t a8 = (uint8_t)*a;
+
+    if (*p & P_M) {
+        MenuActorFind8(bank, (uint8_t)kind, x, y, p, &a8);
+        *a = (uint16_t)((*a & 0xFF00) | a8);
+        return;
+    }
+    MenuActorFindA(bank, kind, x, y, p, a);
 }
 
 /* LDA #v; STA field. */
-static void set_field(uint16_t off, uint16_t v)
+static void set_field(uint16_t x, uint16_t *a, uint8_t *p, uint16_t off, uint16_t v)
 {
-    op_lda16_imm(v);
-    wr16(fld(off), cyc_then(8, v));
+    lda_imm(a, p, v);
+    wr16(fld(x, off), cyc_then(8, v));
 }
 
 /* DEC of a field (16-bit): N, Z from the result. */
-static uint16_t dec_fld(uint16_t off)
+static uint16_t dec_fld(uint16_t x, uint8_t *p, uint16_t off)
 {
-    uint16_t v = (uint16_t)(rd16(cyc_then(22, fld(off))) - 1);
+    uint16_t v = (uint16_t)(rd16(cyc_then(22, fld(x, off))) - 1);
 
-    wr16(fld(off), cyc_then(14, v));
-    cpu.p = nz16(cpu.p, v);
+    wr16(fld(x, off), cyc_then(14, v));
+    *p = nz16(*p, v);
     return v;
 }
 
 /* SEP #$20, LDA #value, (SEP #$20, REP #$10,) PHX, LDX #reg, JSL
    FrameByteWritePush, PLX: a byte for register reg on the frame's write
    list; X and its N, Z back. */
-static void push_reg_byte(uint8_t value, uint16_t reg)
+static void push_reg_byte(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p, uint8_t value, uint16_t reg)
 {
     cyc(176);
-    uint16_t x = cpu.x;
-
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | value);
-    cpu.p = nz8(cpu.p, value);
-    op_rep(P_X);
-    cpu.x = reg;
-    abi_FrameByteWritePush();
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
+    *p |= P_M;
+    *a = (uint16_t)((*a & 0xFF00) | value);
+    cyc(22);
+    *p &= (uint8_t)~P_X;
+    FrameByteWritePush(bank, reg, value);
+    *p = nz16(*p, x);
 }
 
 /* SEP #$20, LDA #$46, JSL SoundPort0QueuePush, REP #$20: the menu's
    select sound. */
-static void sound_46(void)
+static void sound_46(uint8_t bank, uint16_t *a, uint8_t *p)
 {
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x46);
-    cpu.p = nz8(cpu.p, 0x46);
-    (cyc(100), abi_SoundPort0QueuePush());
-    op_rep(P_M);
+    *p |= P_M;
+    *a = (uint16_t)((*a & 0xFF00) | 0x46);
+    cyc(100);
+    SoundPort0QueuePushW(0x46, (*p & P_X) ? 0 : 16);
+    *p = nz8(*p, bank);                 /* the last pull restores DB */
+    cyc(22);
+    *p &= (uint8_t)~P_M;
     cyc(42);
 }
 
 /* LDA.L long, AND #$FF: a byte of bank 0 as a word. */
-static uint16_t byte_of(uint32_t addr)
+static uint16_t byte_of(uint16_t *a, uint8_t *p, uint32_t addr)
 {
     cyc(32);
-    op_lda16(addr);
-    op_and16(0x00FF);
+    lda(a, p, rd16(addr));
+    and_imm(a, p, 0x00FF);
     cyc(4);
-    return cpu.a;
+    return *a;
 }
 
 /*
@@ -94,41 +178,49 @@ static uint16_t byte_of(uint32_t addr)
  * HOW: DEC and the sign.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: counting: N,
  * Z from the count; else A = $D8B5, N set, Z clear.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsWaitThenRise(uint16_t x, uint16_t *a, uint8_t *p)
+{
+    if (!(dec_fld(x, p, 0x0A) & 0x8000))
+        { cyc(64); return; } else { cyc(16); }
+    set_field(x, a, p, 0x08, 0xD8B5);
+    wr16(fld(x, 0x0A), cyc_then(22, 0x0000));
+    cyc(42);
+}
+
 void abi_ResultsWaitThenRise(void)
 {
-    if (!(dec_fld(0x0A) & 0x8000))
-        { cyc(64); return; } else { cyc(16); }
-    set_field(0x08, 0xD8B5);
-    wr16(fld(0x0A), cyc_then(22, 0x0000));
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsWaitThenRise(cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /* The rise shared by ResultsRise and ResultsRiseAgain: +$0A up by 4 to at
    most $66, kept at $1921, the scroll $11EF = $66 - it; 1 when it is $66. */
-static int rise(void)
+static int rise(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
-    op_rep(P_M | P_X);
-    op_lda16(cyc_then(22, fld(0x0A)));
-    op_add16(0x0004);
-    op_cmp16(0x0066);
-    if (cpu.p & P_C)
-        op_lda16_imm(0x0066); else { cyc(20); }
-    wr16(fld(0x0A), cyc_then(86, cpu.a));
-    cyc(32);
-    wr16(0x001921, cpu.a);
-    {
-        uint16_t kept = cpu.a;
+    uint16_t kept;
 
-        op_lda16_imm(0x0066);
-        op_sub16(rd16(cyc_then(52, fld(0x0A))));
-        wr16(abs_db(0x11EF), cyc_then(18, cpu.a));
-        cpu.a = kept;
-        cpu.p = nz16(cpu.p, kept);
-    }
-    op_cmp16(0x0066);
+    cyc(22);
+    *p &= (uint8_t)~(P_M | P_X);
+    lda(a, p, rd16(cyc_then(22, fld(x, 0x0A))));
+    add(a, p, 0x0004);
+    cmp(*a, p, 0x0066);
+    if (*p & P_C)
+        lda_imm(a, p, 0x0066); else { cyc(20); }
+    wr16(fld(x, 0x0A), cyc_then(86, *a));
+    cyc(32);
+    wr16(0x001921, *a);
+    kept = *a;
+    lda_imm(a, p, 0x0066);
+    sub(a, p, rd16(cyc_then(52, fld(x, 0x0A))));
+    wr16(abs_db(bank, 0x11EF), cyc_then(18, *a));
+    lda(a, p, kept);
+    cmp(*a, p, 0x0066);
     cyc(4);
-    return (cpu.p & P_Z) != 0;
+    return (*p & P_Z) != 0;
 }
 
 /*
@@ -142,31 +234,41 @@ static int rise(void)
  * Entry: X = the object, D = $0000. Exit: M 16-bit, X 16-bit; rising: A =
  * +$0A, N, Z, C from the compare with $66; done: X = the object, N, Z from
  * it, A low byte $E8.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsRise(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    if (!rise(bank, x, a, p))
+        { cyc(114); return; } else { cyc(78); }
+    set_field(x, a, p, 0x08, 0xD8FA);
+    set_field(x, a, p, 0x0A, 0x0000);
+    push_reg_byte(bank, x, a, p, 0xE8, 0x420C);
+    cyc(22);
+    *p &= (uint8_t)~P_M;
+    cyc(186);
+}
+
 void abi_ResultsRise(void)
 {
-    if (!rise())
-        { cyc(114); return; } else { cyc(78); }
-    set_field(0x08, 0xD8FA);
-    set_field(0x0A, 0x0000);
-    push_reg_byte(0xE8, 0x420C);
-    op_rep(P_M);
-    cyc(186);
+    uint8_t p = cpu.p;
+
+    ResultsRise(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /* The window opening shared by ResultsOpenTop and ResultsOpenBottom: +$0A
    up by 8; below $100 its low byte goes to the window line at `line`;
    1 at $100. */
-static int open_window(uint32_t line)
+static int open_window(uint16_t x, uint16_t *a, uint8_t *p, uint32_t line)
 {
-    op_lda16(cyc_then(22, fld(0x0A)));
-    op_add16(0x0008);
-    wr16(fld(0x0A), cyc_then(60, cpu.a));
-    op_cmp16(0x0100);
-    if (cpu.p & P_Z)
+    lda(a, p, rd16(cyc_then(22, fld(x, 0x0A))));
+    add(a, p, 0x0008);
+    wr16(fld(x, 0x0A), cyc_then(60, *a));
+    cmp(*a, p, 0x0100);
+    if (*p & P_Z)
         { cyc(46); return 1; }
     cyc(94);
-    wr8(line, (uint8_t)cpu.a);
+    wr8(line, (uint8_t)*a);
     cyc(42);
     return 0;
 }
@@ -179,14 +281,23 @@ static int open_window(uint32_t line)
  * HOW: An 8-bit long store between SEP and REP.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: M 16-bit; A
  * = +$0A (0 when done); N, Z, C from the compare with $100, or from 0.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsOpenTop(uint16_t x, uint16_t *a, uint8_t *p)
+{
+    if (!open_window(x, a, p, 0x7F130D))
+        { cyc(22); return; }
+    set_field(x, a, p, 0x08, 0xD91B);
+    set_field(x, a, p, 0x0A, 0x0000);
+    cyc(42);
+}
+
 void abi_ResultsOpenTop(void)
 {
-    if (!open_window(0x7F130D))
-        { cyc(22); return; }
-    set_field(0x08, 0xD91B);
-    set_field(0x0A, 0x0000);
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsOpenTop(cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -202,34 +313,44 @@ void abi_ResultsOpenTop(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: M 16-bit;
  * opening: as ResultsOpenTop; done: A, X and the flags from the last step
  * (X = the kind $18 object when it was started).
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsOpenBottom(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
+{
+    if (!open_window(*x, a, p, 0x7F130F))
+        { cyc(22); return; }
+    set_field(*x, a, p, 0x08, 0xDA8A);
+    set_field(*x, a, p, 0x0A, 0x0000);
+    push_reg_byte(bank, *x, a, p, 0xE0, 0x420C);
+    *a &= 0xFF00;
+    *p = nz8(*p, 0x00);
+    cyc(122);
+    push_reg_byte(bank, *x, a, p, 0x00, 0x212E);
+    cyc(22);
+    *p &= (uint8_t)~P_M;
+    cyc(144);
+    byte_of(a, p, 0x000FAC);
+    cmp(*a, p, 0x0000);
+    if (*p & P_Z)
+        return; else { cyc(58); }
+    byte_of(a, p, 0x000DD6);
+    cmp(*a, p, 0x0008);
+    if (!(*p & P_Z))
+        return; else { cyc(90); }
+    lda_imm(a, p, 0x0018);
+    find_kind(bank, 0x0018, x, y, p, a);
+    set_field(*x, a, p, 0x08, 0xDA33);
+    wr16(fld(*x, 0x0A), cyc_then(22, 0x0000));
+    wr16(fld(*x, 0x22), cyc_then(22, 0x0000));
+    cyc(42);
+}
+
 void abi_ResultsOpenBottom(void)
 {
-    if (!open_window(0x7F130F))
-        { cyc(22); return; }
-    set_field(0x08, 0xDA8A);
-    set_field(0x0A, 0x0000);
-    push_reg_byte(0xE0, 0x420C);
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    cpu.p = nz8(cpu.p, 0x00);
-    cyc(122);
-    push_reg_byte(0x00, 0x212E);
-    op_rep(P_M);
-    cyc(144);
-    byte_of(0x000FAC);
-    op_cmp16(0x0000);
-    if (cpu.p & P_Z)
-        return; else { cyc(58); }
-    byte_of(0x000DD6);
-    op_cmp16(0x0008);
-    if (!(cpu.p & P_Z))
-        return; else { cyc(90); }
-    op_lda16_imm(0x0018);
-    abi_MenuActorFind();
-    set_field(0x08, 0xDA33);
-    wr16(fld(0x0A), cyc_then(22, 0x0000));
-    wr16(fld(0x22), cyc_then(22, 0x0000));
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsOpenBottom(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -242,29 +363,38 @@ void abi_ResultsOpenBottom(void)
  * after the copy.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: started: X =
  * $11F9; A = $DA33; N, Z from it; otherwise as MenuWaitThenAnimate.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsPlaceWait(void)
+void ResultsPlaceWait(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    byte_of(0x000FAC);
-    op_cmp16(rd16(cyc_then(40, fld(0x22))));
-    if (cpu.p & P_Z) {
+    byte_of(a, p, 0x000FAC);
+    cmp(*a, p, rd16(cyc_then(40, fld(*x, 0x22))));
+    if (*p & P_Z) {
         cyc(16);
-        byte_of(0x000DD6);
-        op_cmp16(0x0008);
-        if (cpu.p & P_Z) {
+        byte_of(a, p, 0x000DD6);
+        cmp(*a, p, 0x0008);
+        if (*p & P_Z) {
             cyc(104);
-            abi_MenuActorCopyGroup();
-            cpu.x = rd16(cyc_then(24, abs_db(0x11F9)));
-            cpu.p = nz16(cpu.p, cpu.x);
-            set_field(0x08, 0xDA33);
-            wr16(fld(0x22), cyc_then(22, 0x0000));
-            wr16(fld(0x0A), cyc_then(22, 0x0000));
+            *a = MenuActorCopyGroup(bank, x, p);
+            *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
+            *p = nz16(*p, *x);
+            set_field(*x, a, p, 0x08, 0xDA33);
+            wr16(fld(*x, 0x22), cyc_then(22, 0x0000));
+            wr16(fld(*x, 0x0A), cyc_then(22, 0x0000));
             cyc(42);
             return;
         } else { cyc(42); }            /* CMP; the BNE taken is in the 46 below */
     }
     cyc(46);
-    abi_MenuWaitThenAnimate();
+    *a = MenuWaitThenAnimate(bank, *a, x, p);
+}
+
+void abi_ResultsPlaceWait(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsPlaceWait(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -274,29 +404,35 @@ void abi_ResultsPlaceWait(void)
  * HOW: Shifts and adds; $11DF and $11E1 hold the parts.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = A = the
  * index; N, Z, C, V from the last add.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsCarIndex(void)
+void ResultsCarIndex(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     uint16_t v;
 
-    cyc(0);
-    byte_of(0x000D4A);
-    wr16(abs_db(0x11DF), cyc_then(42, cpu.a));
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_add16(rd16(cyc_then(80, abs_db(0x11DF))));
-    wr16(abs_db(0x11E1), cyc_then(24, cpu.a));
-    op_lda16(cyc_then(22, fld(0x22)));
-    v = (uint16_t)(cpu.a - 1);
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
-    wr16(abs_db(0x11DF), cyc_then(38, v));
-    op_asl16();
-    op_add16(rd16(cyc_then(52, abs_db(0x11DF))));
-    op_add16(rd16(cyc_then(38, abs_db(0x11E1))));
-    op_tax16();
+    byte_of(a, p, 0x000D4A);
+    wr16(abs_db(bank, 0x11DF), cyc_then(42, *a));
+    asl(a, p);
+    asl(a, p);
+    asl(a, p);
+    add(a, p, rd16(cyc_then(80, abs_db(bank, 0x11DF))));
+    wr16(abs_db(bank, 0x11E1), cyc_then(24, *a));
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
+    v = lda(a, p, (uint16_t)(*a - 1));
+    wr16(abs_db(bank, 0x11DF), cyc_then(38, v));
+    asl(a, p);
+    add(a, p, rd16(cyc_then(52, abs_db(bank, 0x11DF))));
+    add(a, p, rd16(cyc_then(38, abs_db(bank, 0x11E1))));
+    tax(*a, x, p);
     cyc(26);
+}
+
+void abi_ResultsCarIndex(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsCarIndex(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -308,26 +444,35 @@ void abi_ResultsCarIndex(void)
  * HOW: The table read through X, then X reloaded from $11F9.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: as
  * MenuWaitThenAnimate.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsPlaceCar(void)
+void ResultsPlaceCar(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     uint32_t table;
 
-    byte_of(0x000FAC);
-    op_cmp16(rd16(cyc_then(40, fld(0x22))));
-    table = (cpu.p & P_Z) ? (cyc(12), 0x0BDA17) : (cyc(18), 0x0BDA0F);
-    (cyc(50), abi_ResultsCarIndex());
+    byte_of(a, p, 0x000FAC);
+    cmp(*a, p, rd16(cyc_then(40, fld(*x, 0x22))));
+    table = (*p & P_Z) ? (cyc(12), 0x0BDA17) : (cyc(18), 0x0BDA0F);
+    (cyc(50), ResultsCarIndex(bank, x, a, p));
     cyc(32);
-    op_lda16(0x70FC6F + (uint32_t)cpu.x);
-    op_and16(0x0003);
-    op_asl16();
-    op_tax16();
+    lda(a, p, rd16(0x70FC6F + (uint32_t)*x));
+    and_imm(a, p, 0x0003);
+    asl(a, p);
+    tax(*a, x, p);
     cyc(92);
-    op_lda16(table + (uint32_t)cpu.x);
-    cpu.x = rd16(abs_db(0x11F9));
-    cpu.p = nz16(cpu.p, cpu.x);
-    wr16(fld(0x14), cyc_then(22, cpu.a));
-    (cyc(24), abi_MenuWaitThenAnimate());
+    lda(a, p, rd16(table + (uint32_t)*x));
+    *x = rd16(abs_db(bank, 0x11F9));
+    *p = nz16(*p, *x);
+    wr16(fld(*x, 0x14), cyc_then(22, *a));
+    *a = (cyc(24), MenuWaitThenAnimate(bank, *a, x, p));
+}
+
+void abi_ResultsPlaceCar(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsPlaceCar(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -339,34 +484,42 @@ void abi_ResultsPlaceCar(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X as on
  * entry, N, Z from it (PLX); Y = $FFFF; A = the last entry offset + 8;
  * C, V from the last add.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsGroupPalette(void)
+void ResultsGroupPalette(uint8_t bank, uint16_t x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    uint16_t obj = cpu.x;
+    uint16_t obj = x;
 
-    op_lda16(cyc_then(52, fld(0x12)));
-    op_tax16();
+    lda(a, p, rd16(cyc_then(52, fld(x, 0x12))));
+    tax(*a, &x, p);
     cyc(16);
-    op_lda16(0x7F1356 + (uint32_t)cpu.x);
-    op_tay16();
-    cpu.x = (uint16_t)(cpu.x + 2);
+    lda(a, p, rd16(0x7F1356 + (uint32_t)x));
+    *y = *a;
+    *p = nz16(*p, *y);
+    x = (uint16_t)(x + 2);
     do {
         cyc(74);
-        op_lda16(0x7F135A + (uint32_t)cpu.x);
-        op_and16(0xF1FF);
-        cpu.a |= rd16(cyc_then(46, abs_db(0x11DF)));
-        cpu.p = nz16(cpu.p, cpu.a);
+        lda(a, p, rd16(0x7F135A + (uint32_t)x));
+        and_imm(a, p, 0xF1FF);
+        lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, abs_db(bank, 0x11DF)))));
         cyc(32);
-        wr16(0x7F135A + (uint32_t)cpu.x, cpu.a);
-        op_txa16();
-        op_add16(0x0008);
-        op_tax16();
-        cpu.y = (uint16_t)(cpu.y - 1);
-        cpu.p = nz16(cpu.p, cpu.y);
-    } while (!(cpu.y & 0x8000));
+        wr16(0x7F135A + (uint32_t)x, *a);
+        txa(x, a, p);
+        add(a, p, 0x0008);
+        tax(*a, &x, p);
+        *y = (uint16_t)(*y - 1);
+        *p = nz16(*p, *y);
+    } while (!(*y & 0x8000));
     cyc(114);
-    cpu.x = obj;
-    cpu.p = nz16(cpu.p, obj);
+    *p = nz16(*p, obj);
+}
+
+void abi_ResultsGroupPalette(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsGroupPalette(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -378,33 +531,42 @@ void abi_ResultsGroupPalette(void)
  * HOW: The palette word through $11DF; X reloaded from $11F9.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: as
  * ResultsGroupPalette.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsLeaderBlink(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
+{
+    if (dec_fld(*x, p, 0x0A) & 0x8000) {
+        cyc(16);
+        set_field(*x, a, p, 0x0A, 0x0005);
+        lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
+        *a = (uint16_t)(*a + 1);
+        and_imm(a, p, 0x0001);
+        wr16(fld(*x, 0x22), cyc_then(58, *a));
+    } else { cyc(22); }
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
+    asl(a, p);
+    tax(*a, x, p);
+    cyc(70);
+    lda(a, p, rd16(0x0BDA86 + (uint32_t)*x));
+    wr16(abs_db(bank, 0x11DF), *a);
+    *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
+    *p = nz16(*p, *x);
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x0A))));
+    cyc(32);
+    wr16(0x00190F, *a);
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
+    cyc(32);
+    wr16(0x001911, *a);
+    (cyc(46), ResultsGroupPalette(bank, *x, a, y, p));
+    cyc(42);
+}
+
 void abi_ResultsLeaderBlink(void)
 {
-    if (dec_fld(0x0A) & 0x8000) {
-        cyc(16);
-        set_field(0x0A, 0x0005);
-        op_lda16(cyc_then(22, fld(0x22)));
-        cpu.a = (uint16_t)(cpu.a + 1);
-        op_and16(0x0001);
-        wr16(fld(0x22), cyc_then(58, cpu.a));
-    } else { cyc(22); }
-    op_lda16(cyc_then(22, fld(0x22)));
-    op_asl16();
-    op_tax16();
-    cyc(70);
-    op_lda16(0x0BDA86 + (uint32_t)cpu.x);
-    wr16(abs_db(0x11DF), cpu.a);
-    cpu.x = rd16(cyc_then(24, abs_db(0x11F9)));
-    cpu.p = nz16(cpu.p, cpu.x);
-    op_lda16(cyc_then(22, fld(0x0A)));
-    cyc(32);
-    wr16(0x00190F, cpu.a);
-    op_lda16(cyc_then(22, fld(0x22)));
-    cyc(32);
-    wr16(0x001911, cpu.a);
-    (cyc(46), abi_ResultsGroupPalette());
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsLeaderBlink(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -416,40 +578,52 @@ void abi_ResultsLeaderBlink(void)
  * HOW: Falls into ResultsLeaderBlink.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: as
  * ResultsLeaderBlink.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsLeaderBlinkResume(void)
+void ResultsLeaderBlinkResume(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
     cyc(46);
-    abi_MenuActorCopyGroup();
+    *a = MenuActorCopyGroup(bank, x, p);
     cyc(32);
-    op_lda16(0x00190F);
-    wr16(fld(0x0A), cyc_then(22, cpu.a));
+    lda(a, p, rd16(0x00190F));
+    wr16(fld(*x, 0x0A), cyc_then(22, *a));
     cyc(32);
-    op_lda16(0x001911);
-    wr16(fld(0x22), cyc_then(22, cpu.a));
-    set_field(0x08, 0xDA33);
-    abi_ResultsLeaderBlink();
+    lda(a, p, rd16(0x001911));
+    wr16(fld(*x, 0x22), cyc_then(22, *a));
+    set_field(*x, a, p, 0x08, 0xDA33);
+    ResultsLeaderBlink(bank, x, a, y, p);
+}
+
+void abi_ResultsLeaderBlinkResume(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsLeaderBlinkResume(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /* Y = the A, B or Start presses ($118B AND $9000), with N, Z (TYA, AND). */
-static uint16_t pressed(void)
+static uint16_t pressed(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    cpu.y = rd16(cyc_then(24, abs_db(0x118B)));
-    cpu.a = cpu.y;
-    op_and16(0x9000);
-    return cpu.a;
+    *y = rd16(cyc_then(24, abs_db(bank, 0x118B)));
+    *a = *y;
+    and_imm(a, p, 0x9000);
+    return *a;
 }
 
 /* LDA #1, STA $11EB, LDY $11FB, JSR MenuActorFree, then the sound: the
    screen ends and the object is freed. */
-static void end_screen(void)
+static void end_screen(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    op_lda16_imm(0x0001);
-    wr16(abs_db(0x11EB), cyc_then(62, 0x0001));
-    cpu.y = rd16(cyc_then(24, abs_db(0x11FB)));
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(46), abi_MenuActorFree());
-    sound_46();
+    lda_imm(a, p, 0x0001);
+    wr16(abs_db(bank, 0x11EB), cyc_then(62, 0x0001));
+    *y = rd16(cyc_then(24, abs_db(bank, 0x11FB)));
+    *p = nz16(*p, *y);
+    *a = (cyc(46), MenuActorFree(bank, *x, *y));
+    *x = 0xFFFF;
+    *p = (uint8_t)((*p & ~P_Z) | P_N);
+    cyc(42);
+    sound_46(bank, a, p);
 }
 
 /*
@@ -463,24 +637,33 @@ static void end_screen(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: no press: Y
  * = the presses, A = 0, Z set; else M 16-bit, A low byte $46 and the
  * flags as SoundPort0QueuePush leaves them.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsWaitButton(void)
+void ResultsWaitButton(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    if (!pressed())
+    if (!pressed(bank, a, y, p))
         { cyc(100); return; } else { cyc(52); }
-    byte_of(0x000DD6);
-    op_cmp16(0x0008);
-    if (!(cpu.p & P_Z)) {
+    byte_of(a, p, 0x000DD6);
+    cmp(*a, p, 0x0008);
+    if (!(*p & P_Z)) {
         cyc(12);
-        end_screen();
+        end_screen(bank, x, a, y, p);
         return;
     }
-    op_lda16(cyc_then(82, abs_db(0x0FAC)));
-    op_and16(0x00FF);
+    lda(a, p, rd16(cyc_then(82, abs_db(bank, 0x0FAC))));
+    and_imm(a, p, 0x00FF);
     cyc(22);
-    set_field(0x08, 0xDAD1);
-    set_field(0x0A, 0x0066);
-    sound_46();
+    set_field(*x, a, p, 0x08, 0xDAD1);
+    set_field(*x, a, p, 0x0A, 0x0066);
+    sound_46(bank, a, p);
+}
+
+void abi_ResultsWaitButton(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsWaitButton(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -490,14 +673,23 @@ void abi_ResultsWaitButton(void)
  * HOW: As ResultsRise.
  * Entry: X = the object, D = $0000. Exit: M 16-bit, X 16-bit; rising: as
  * ResultsRise; done: A = 0, Z set, N clear.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsRiseAgain(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    if (!rise(bank, x, a, p))
+        { cyc(114); return; } else { cyc(78); }
+    set_field(x, a, p, 0x08, 0xDC9F);
+    set_field(x, a, p, 0x0A, 0x0000);
+    cyc(42);
+}
+
 void abi_ResultsRiseAgain(void)
 {
-    if (!rise())
-        { cyc(114); return; } else { cyc(78); }
-    set_field(0x08, 0xDC9F);
-    set_field(0x0A, 0x0000);
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsRiseAgain(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -507,12 +699,21 @@ void abi_ResultsRiseAgain(void)
  * HOW: As ResultsWaitButton's other case.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: as
  * ResultsWaitButton.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsWaitEnd(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
+{
+    if (!pressed(bank, a, y, p))
+        { cyc(100); return; }
+    end_screen(bank, x, a, y, p);
+}
+
 void abi_ResultsWaitEnd(void)
 {
-    if (!pressed())
-        { cyc(100); return; }
-    end_screen();
+    uint8_t p = cpu.p;
+
+    ResultsWaitEnd(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -525,25 +726,34 @@ void abi_ResultsWaitEnd(void)
  * from $11F9.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: as
  * MenuWaitThenAnimate; hidden: X = $11F9, A = $DF7B, N set, Z clear.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsOverOrHide(void)
+void ResultsOverOrHide(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    byte_of(0x000DD6);
-    op_cmp16(0x0008);
-    if (cpu.p & P_Z) {
+    byte_of(a, p, 0x000DD6);
+    cmp(*a, p, 0x0008);
+    if (*p & P_Z) {
         cyc(82);
-        abi_MenuWaitThenAnimate();
+        *a = MenuWaitThenAnimate(bank, *a, x, p);
         return;
     }
-    cpu.x = rd16(cyc_then(88, abs_db(0x11F9)));
-    cpu.p = nz16(cpu.p, cpu.x);
-    set_field(0x10, 0xFFFF);
-    set_field(0x08, 0xDF7B);
+    *x = rd16(cyc_then(88, abs_db(bank, 0x11F9)));
+    *p = nz16(*p, *x);
+    set_field(*x, a, p, 0x10, 0xFFFF);
+    set_field(*x, a, p, 0x08, 0xDF7B);
     cyc(42);
 }
 
-void abi_MenuActorsSet10(void);
-void abi_MenuActorAnimateFrame(void);
+void abi_ResultsOverOrHide(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsOverOrHide(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
+}
+
+uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p);
+uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p);
 
 /*
  * @routine 0B:DAD1 ResultsLower
@@ -561,108 +771,117 @@ void abi_MenuActorAnimateFrame(void);
  * Entry: X = the object, D = $0000. Exit: M 16-bit, X 16-bit; lowering: A
  * = +$0A, N, Z, C from the compare with 0; done: X = the kind $19 object
  * (or as MenuActorFind left it), A and the flags from the last step.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-static void place_object(uint16_t kind, uint16_t anim0, uint16_t pos, uint16_t handler)
+static void place_object(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p,
+                         uint16_t kind, uint16_t anim0, uint16_t pos, uint16_t handler)
 {
     uint16_t place, anim;
 
-    op_lda16_imm(kind);
-    abi_MenuActorFind();
-    place = byte_of(0x000FAC);
+    lda_imm(a, p, kind);
+    find_kind(bank, kind, x, y, p, a);
+    place = byte_of(a, p, 0x000FAC);
     if (!place)
         return;
-    op_cmp16(0x0001);
+    cmp(*a, p, 0x0001);
     anim = anim0;
-    if (!(cpu.p & P_Z)) {
+    if (!(*p & P_Z)) {
         cyc(42);
-        op_cmp16(0x0002);
-        anim = (cpu.p & P_Z) ? (uint16_t)(anim0 + 6) : (cyc(6), (uint16_t)(anim0 + 12));
+        cmp(*a, p, 0x0002);
+        anim = (*p & P_Z) ? (uint16_t)(anim0 + 6) : (cyc(6), (uint16_t)(anim0 + 12));
     }
-    op_lda16(cyc_then(place == 1 ? 96 : 100, fld(0x14)));
-    op_cmp16(anim);
-    if (!(cpu.p & P_Z)) {
+    lda(a, p, rd16(cyc_then(place == 1 ? 96 : 100, fld(*x, 0x14))));
+    cmp(*a, p, anim);
+    if (!(*p & P_Z)) {
         cyc(40);
-        set_field(0x14, anim);
-        wr16(fld(0x16), cyc_then(22, 0x0000));
-        wr16(fld(0x18), cyc_then(22, 0x0000));
+        set_field(*x, a, p, 0x14, anim);
+        wr16(fld(*x, 0x16), cyc_then(22, 0x0000));
+        wr16(fld(*x, 0x18), cyc_then(22, 0x0000));
     }
-    set_field(0x02, pos);
-    set_field(0x08, handler);
+    set_field(*x, a, p, 0x02, pos);
+    set_field(*x, a, p, 0x08, handler);
     if (place <= 2)
         cyc(22);   /* BRA past the next place's code */
 }
 
-void abi_ResultsLower(void)
+void ResultsLower(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
     static const uint16_t kinds[16] = {0x14, 0x15, 0x16, 0x17, 0x1A, 0x1B, 0x1C, 0x1D,
                                        0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25};
+    uint16_t kept;
     unsigned i;
 
-    op_rep(P_M | P_X);
-    op_lda16(cyc_then(22, fld(0x0A)));
-    op_sub16(0x0004);
-    if (cpu.p & P_N)
-        op_lda16_imm(0x0000); else { cyc(20); }
-    wr16(fld(0x0A), cyc_then(56, cpu.a));
+    cyc(22);
+    *p &= (uint8_t)~(P_M | P_X);
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x0A))));
+    sub(a, p, 0x0004);
+    if (*p & P_N)
+        lda_imm(a, p, 0x0000); else { cyc(20); }
+    wr16(fld(*x, 0x0A), cyc_then(56, *a));
     cyc(32);
-    wr16(0x001921, cpu.a);
-    {
-        uint16_t kept = cpu.a;
-
-        op_lda16_imm(0x0066);
-        op_sub16(rd16(cyc_then(52, fld(0x0A))));
-        wr16(abs_db(0x11EF), cyc_then(18, cpu.a));
-        cpu.a = kept;
-        cpu.p = nz16(cpu.p, kept);
-    }
-    op_cmp16(0x0000);
-    if (!(cpu.p & P_Z))
+    wr16(0x001921, *a);
+    kept = *a;
+    lda_imm(a, p, 0x0066);
+    sub(a, p, rd16(cyc_then(52, fld(*x, 0x0A))));
+    wr16(abs_db(bank, 0x11EF), cyc_then(18, *a));
+    lda(a, p, kept);
+    cmp(*a, p, 0x0000);
+    if (!(*p & P_Z))
         { cyc(118); return; } else { cyc(82); }
-    set_field(0x08, 0xDC6D);
-    set_field(0x0A, 0x0000);
-    op_lda16_imm(0x005F);
+    set_field(*x, a, p, 0x08, 0xDC6D);
+    set_field(*x, a, p, 0x0A, 0x0000);
+    lda_imm(a, p, 0x005F);
     cyc(18);
     wr16(0x001925, 0x005F);
     for (i = 0; cyc_loop(56, i < 16); i++) {
-        op_lda16_imm(kinds[i]);
-        cpu.y = i < 4 ? 0xFFFF : 0x0000;
-        cpu.p = nz16(cpu.p, cpu.y);
-        abi_MenuActorsSet10();
+        lda_imm(a, p, kinds[i]);
+        *y = i < 4 ? 0xFFFF : 0x0000;
+        *p = nz16(*p, *y);
+        *a = MenuActorsSet10(bank, kinds[i], *y, p);
+        *y = 0xFFFE;
+        *p = nz16(*p, *x);
     }
     cyc(32);
-    place_object(0x0018, 0x0262, 0x0088, 0xDA1F);
+    place_object(bank, x, a, y, p, 0x0018, 0x0262, 0x0088, 0xDA1F);
     cyc(32);
-    place_object(0x0019, 0x0250, 0x0058, 0xD5EC);
+    place_object(bank, x, a, y, p, 0x0019, 0x0250, 0x0058, 0xD5EC);
     cyc(42);
+}
+
+void abi_ResultsLower(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsLower(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /* The sprite tile at $11E3 into the next entry of the group, $11E1 or
    $11E5 (`at`) stepping by 8: the attribute word's low 9 bits replaced. */
-static void tile_at(uint16_t at)
+static void tile_at(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
 {
-    cpu.x = rd16(cyc_then(24, abs_db(at)));
-    cpu.p = nz16(cpu.p, cpu.x);
+    *x = rd16(cyc_then(24, abs_db(bank, at)));
+    *p = nz16(*p, *x);
     cyc(32);
-    op_lda16(0x7F135A + (uint32_t)cpu.x);
-    op_and16(0xFE00);
-    cpu.a |= rd16(cyc_then(46, abs_db(0x11E3)));
-    cpu.p = nz16(cpu.p, cpu.a);
+    lda(a, p, rd16(0x7F135A + (uint32_t)*x));
+    and_imm(a, p, 0xFE00);
+    lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, abs_db(bank, 0x11E3)))));
     cyc(32);
-    wr16(0x7F135A + (uint32_t)cpu.x, cpu.a);
-    op_lda16(cyc_then(24, abs_db(at)));
-    op_add16(0x0008);
-    wr16(abs_db(at), cyc_then(62, cpu.a));
+    wr16(0x7F135A + (uint32_t)*x, *a);
+    lda(a, p, rd16(cyc_then(24, abs_db(bank, at))));
+    add(a, p, 0x0008);
+    wr16(abs_db(bank, at), cyc_then(62, *a));
 }
 
 /* A character two sprites high: tile $11E3 and the one $10 on, through
    the entries at `at`. */
-static void tall_tile(uint16_t at)
+static void tall_tile(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
 {
-    tile_at(at);
-    op_lda16(cyc_then(24, abs_db(0x11E3)));
-    op_add16(0x0010);
-    wr16(abs_db(0x11E3), cyc_then(62, cpu.a));
-    tile_at(at);
+    tile_at(bank, x, a, p, at);
+    lda(a, p, rd16(cyc_then(24, abs_db(bank, 0x11E3))));
+    add(a, p, 0x0010);
+    wr16(abs_db(bank, 0x11E3), cyc_then(62, *a));
+    tile_at(bank, x, a, p, at);
     cyc(78);
 }
 
@@ -674,19 +893,27 @@ static void tall_tile(uint16_t at)
  * HOW: The tile through $11E3; X kept on the stack.
  * Entry: M 16-bit, X 16-bit; A = the letter. Exit: X as on entry, N, Z
  * from it; A = the new $11E5; C, V from its add.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
+void ResultsLetterTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    uint16_t x0 = x;
+
+    asl(a, p);
+    tax(*a, &x, p);
+    cyc(100);
+    lda(a, p, rd16(0x0BDDD3 + (uint32_t)x));
+    wr16(abs_db(bank, 0x11E3), *a);
+    tall_tile(bank, &x, a, p, 0x11E5);
+    *p = nz16(*p, x0);
+}
+
 void abi_ResultsLetterTiles(void)
 {
-    uint16_t x = cpu.x;
+    uint8_t p = cpu.p;
 
-    op_asl16();
-    op_tax16();
-    cyc(100);
-    op_lda16(0x0BDDD3 + (uint32_t)cpu.x);
-    wr16(abs_db(0x11E3), cpu.a);
-    tall_tile(0x11E5);
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
+    ResultsLetterTiles(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -696,19 +923,27 @@ void abi_ResultsLetterTiles(void)
  * HOW: As ResultsLetterTiles with the tile computed.
  * Entry: M 16-bit, X 16-bit; A = the digit. Exit: X as on entry, N, Z
  * from it; A = the new $11E1; C, V from its add.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
+void ResultsDigitTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    uint16_t x0 = x;
+
+    cmp(*a, p, 0x000F);
+    if (*p & P_Z)
+        lda_imm(a, p, 0x0044); else { cyc(20); }
+    add(a, p, 0x0050);
+    wr16(abs_db(bank, 0x11E3), cyc_then(118, *a));
+    tall_tile(bank, &x, a, p, 0x11E1);
+    *p = nz16(*p, x0);
+}
+
 void abi_ResultsDigitTiles(void)
 {
-    uint16_t x = cpu.x;
+    uint8_t p = cpu.p;
 
-    op_cmp16(0x000F);
-    if (cpu.p & P_Z)
-        op_lda16_imm(0x0044); else { cyc(20); }
-    op_add16(0x0050);
-    wr16(abs_db(0x11E3), cyc_then(118, cpu.a));
-    tall_tile(0x11E1);
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
+    ResultsDigitTiles(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -718,21 +953,30 @@ void abi_ResultsDigitTiles(void)
  * HOW: The byte kept at $11E5.
  * Entry: M 16-bit, X 16-bit; A low byte = the digits. Exit: as
  * ResultsDigitTiles.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
+void ResultsBcdPair(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    and_imm(a, p, 0x00FF);
+    wr16(abs_db(bank, 0x11E5), cyc_then(46, *a));
+    lsr(a, p);
+    lsr(a, p);
+    lsr(a, p);
+    lsr(a, p);
+    and_imm(a, p, 0x000F);
+    (cyc(124), ResultsDigitTiles(bank, x, a, p));
+    lda(a, p, rd16(cyc_then(24, abs_db(bank, 0x11E5))));
+    and_imm(a, p, 0x000F);
+    (cyc(68), ResultsDigitTiles(bank, x, a, p));
+    cyc(42);
+}
+
 void abi_ResultsBcdPair(void)
 {
-    op_and16(0x00FF);
-    wr16(abs_db(0x11E5), cyc_then(46, cpu.a));
-    op_lsr16();
-    op_lsr16();
-    op_lsr16();
-    op_lsr16();
-    op_and16(0x000F);
-    (cyc(124), abi_ResultsDigitTiles());
-    op_lda16(cyc_then(24, abs_db(0x11E5)));
-    op_and16(0x000F);
-    (cyc(68), abi_ResultsDigitTiles());
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsBcdPair(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -745,63 +989,71 @@ void abi_ResultsBcdPair(void)
  * ($11E1); X reloaded from $11F9.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9; A
  * = $DF7B; N set, Z clear.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsTimeDigits(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+{
+    byte_of(a, p, 0x000DD6);
+    cmp(*a, p, 0x0008);
+    if (*p & P_Z) {
+        cyc(104);
+        *a = MenuActorCopyGroup(bank, x, p);
+        lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
+        lda(a, p, (uint16_t)(*a + 2));
+        wr16(abs_db(bank, 0x11E1), cyc_then(52, *a));
+        cyc(32);
+        lda(a, p, rd16(0x000EEF));
+        (cyc(46), ResultsBcdPair(bank, *x, a, p));
+        cyc(32);
+        lda(a, p, rd16(0x000EEE));
+        (cyc(46), ResultsBcdPair(bank, *x, a, p));
+        cyc(32);
+        lda(a, p, rd16(0x000EED));
+        (cyc(46), ResultsBcdPair(bank, *x, a, p));
+        *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
+        *p = nz16(*p, *x);
+    } else {
+        *x = rd16(cyc_then(88, abs_db(bank, 0x11F9)));
+        *p = nz16(*p, *x);
+        set_field(*x, a, p, 0x10, 0xFFFF);
+    }
+    set_field(*x, a, p, 0x08, 0xDF7B);
+    cyc(42);
+}
+
 void abi_ResultsTimeDigits(void)
 {
-    byte_of(0x000DD6);
-    op_cmp16(0x0008);
-    if (cpu.p & P_Z) {
-        cyc(104);
-        abi_MenuActorCopyGroup();
-        op_lda16(cyc_then(22, fld(0x12)));
-        cpu.a = (uint16_t)(cpu.a + 2);
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(abs_db(0x11E1), cyc_then(52, cpu.a));
-        cyc(32);
-        op_lda16(0x000EEF);
-        (cyc(46), abi_ResultsBcdPair());
-        cyc(32);
-        op_lda16(0x000EEE);
-        (cyc(46), abi_ResultsBcdPair());
-        cyc(32);
-        op_lda16(0x000EED);
-        (cyc(46), abi_ResultsBcdPair());
-        cpu.x = rd16(cyc_then(24, abs_db(0x11F9)));
-        cpu.p = nz16(cpu.p, cpu.x);
-    } else {
-        cpu.x = rd16(cyc_then(88, abs_db(0x11F9)));
-        cpu.p = nz16(cpu.p, cpu.x);
-        set_field(0x10, 0xFFFF);
-    }
-    set_field(0x08, 0xDF7B);
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsTimeDigits(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /* The leader's place test of ResultsInitials and ResultsLapTimes: when
    $0FAC is the object's field `field` and the championship is over, the
    object starts ResultsLeaderBlink; otherwise it stops. */
-static void leader_or_stop(uint16_t field)
+static void leader_or_stop(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t field)
 {
-    cpu.x = rd16(cyc_then(24, abs_db(0x11F9)));
-    cpu.p = nz16(cpu.p, cpu.x);
-    byte_of(0x000FAC);
-    op_cmp16(rd16(cyc_then(40, fld(field))));
-    if (cpu.p & P_Z) {
+    *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
+    *p = nz16(*p, *x);
+    byte_of(a, p, 0x000FAC);
+    cmp(*a, p, rd16(cyc_then(40, fld(*x, field))));
+    if (*p & P_Z) {
         cyc(16);
-        byte_of(0x000DD6);
-        op_cmp16(0x0008);
-        if (cpu.p & P_Z) {
-            cpu.x = rd16(cyc_then(82, abs_db(0x11F9)));
-            cpu.p = nz16(cpu.p, cpu.x);
-            set_field(0x08, 0xDA33);
-            wr16(fld(0x22), cyc_then(22, 0x0000));
-            wr16(fld(0x0A), cyc_then(22, 0x0000));
+        byte_of(a, p, 0x000DD6);
+        cmp(*a, p, 0x0008);
+        if (*p & P_Z) {
+            *x = rd16(cyc_then(82, abs_db(bank, 0x11F9)));
+            *p = nz16(*p, *x);
+            set_field(*x, a, p, 0x08, 0xDA33);
+            wr16(fld(*x, 0x22), cyc_then(22, 0x0000));
+            wr16(fld(*x, 0x0A), cyc_then(22, 0x0000));
             cyc(42);
             return;
         } else { cyc(46); }
     } else { cyc(4); }
     cyc(18);
-    set_field(0x08, 0xDF7B);
+    set_field(*x, a, p, 0x08, 0xDF7B);
     cyc(42);
 }
 
@@ -815,36 +1067,44 @@ static void leader_or_stop(uint16_t field)
  * $11DF; ResultsLetterTiles from the group's first entry ($11E5).
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9;
  * A and the flags from the last step.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsInitials(void)
+void ResultsInitials(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    cyc(46);
     unsigned i;
 
-    abi_MenuActorCopyGroup();
-    op_lda16(cyc_then(22, fld(0x12)));
-    cpu.a = (uint16_t)(cpu.a + 2);
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(abs_db(0x11E5), cyc_then(52, cpu.a));
-    (cyc(46), abi_ResultsCarIndex());
+    cyc(46);
+    *a = MenuActorCopyGroup(bank, x, p);
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
+    lda(a, p, (uint16_t)(*a + 2));
+    wr16(abs_db(bank, 0x11E5), cyc_then(52, *a));
+    (cyc(46), ResultsCarIndex(bank, x, a, p));
     cyc(32);
-    op_lda16(0x70FC6D + (uint32_t)cpu.x);
-    wr16(abs_db(0x11DF), cyc_then(24, cpu.a));
+    lda(a, p, rd16(0x70FC6D + (uint32_t)*x));
+    wr16(abs_db(bank, 0x11DF), cyc_then(24, *a));
     for (i = 0; i < 3; i++) {
         if (i) {
-            op_lda16(cyc_then(24, abs_db(0x11DF)));
-            op_lsr16();
-            op_lsr16();
-            op_lsr16();
-            op_lsr16();
-            op_lsr16();
-            wr16(abs_db(0x11DF), cyc_then(94, cpu.a));
+            lda(a, p, rd16(cyc_then(24, abs_db(bank, 0x11DF))));
+            lsr(a, p);
+            lsr(a, p);
+            lsr(a, p);
+            lsr(a, p);
+            lsr(a, p);
+            wr16(abs_db(bank, 0x11DF), cyc_then(94, *a));
         }
         cyc(68);
-        op_and16(0x001F);
-        abi_ResultsLetterTiles();
+        and_imm(a, p, 0x001F);
+        ResultsLetterTiles(bank, *x, a, p);
     }
-    leader_or_stop(0x22);
+    leader_or_stop(bank, x, a, p, 0x22);
+}
+
+void abi_ResultsInitials(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsInitials(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -852,20 +1112,28 @@ void abi_ResultsInitials(void)
  * WHAT IT DOES: Puts three blank letters (26) in object X's sprite group.
  * HOW: ResultsLetterTiles from the group's first entry ($11E5).
  * Entry: M 16-bit, X 16-bit; X = the object. Exit: as ResultsLetterTiles.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
-void abi_ResultsBlankLetters(void)
+void ResultsBlankLetters(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
     unsigned i;
 
-    op_lda16(cyc_then(22, fld(0x12)));
-    cpu.a = (uint16_t)(cpu.a + 2);
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(abs_db(0x11E5), cyc_then(52, cpu.a));
+    lda(a, p, rd16(cyc_then(22, fld(x, 0x12))));
+    lda(a, p, (uint16_t)(*a + 2));
+    wr16(abs_db(bank, 0x11E5), cyc_then(52, *a));
     for (i = 0; cyc_loop(32, i < 3); i++) {
-        op_lda16_imm(0x001A);
-        abi_ResultsLetterTiles();
+        lda_imm(a, p, 0x001A);
+        ResultsLetterTiles(bank, x, a, p);
     }
     cyc(42);
+}
+
+void abi_ResultsBlankLetters(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsBlankLetters(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -878,41 +1146,49 @@ void abi_ResultsBlankLetters(void)
  * HOW: $11DF and $11E1 kept on the stack.
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: X = the hidden object; A =
  * $11DF; N, Z from it.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsNoTime(void)
+void ResultsNoTime(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    uint16_t k11df = rd16(cyc_then(24, abs_db(0x11DF))), k11e1, letters, other;
+    uint16_t k11df = rd16(cyc_then(24, abs_db(bank, 0x11DF))), k11e1, letters, other;
 
-    cpu.a = k11df;
-    cpu.p = nz16(cpu.p, k11df);
-    k11e1 = rd16(cyc_then(54, abs_db(0x11E1)));
-    cpu.x = rd16(cyc_then(54, abs_db(0x11F9)));
-    cpu.p = nz16(cpu.p, cpu.x);
-    op_lda16(cyc_then(22, fld(0x1A)));
-    op_cmp16(0x0020);
-    if (cpu.p & P_Z) {
+    lda(a, p, k11df);
+    k11e1 = rd16(cyc_then(54, abs_db(bank, 0x11E1)));
+    *x = rd16(cyc_then(54, abs_db(bank, 0x11F9)));
+    *p = nz16(*p, *x);
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x1A))));
+    cmp(*a, p, 0x0020);
+    if (*p & P_Z) {
         letters = 0x0023;
         other = 0x001D;
         cyc(78);
     } else {
         cyc(30);
-        op_cmp16(0x0021);
-        letters = (cpu.p & P_Z) ? (cyc(6), 0x0024) : 0x0025;
-        other = (cpu.p & P_Z) ? 0x001E : 0x001F;
+        cmp(*a, p, 0x0021);
+        letters = (*p & P_Z) ? (cyc(6), 0x0024) : 0x0025;
+        other = (*p & P_Z) ? 0x001E : 0x001F;
         cyc(82);
     }
-    op_lda16_imm(letters);
-    abi_MenuActorFind();
-    (cyc(46), abi_ResultsBlankLetters());
-    op_lda16_imm(other);
-    (cyc(32), abi_MenuActorFind());
-    set_field(0x10, 0xFFFF);
-    set_field(0x02, 0x0200);
-    set_field(0x08, 0xDF7B);
-    wr16(abs_db(0x11E1), cyc_then(60, k11e1));
-    op_lda16_imm(k11df);
-    wr16(abs_db(0x11DF), cyc_then(22, k11df));
+    lda_imm(a, p, letters);
+    find_kind(bank, letters, x, y, p, a);
+    (cyc(46), ResultsBlankLetters(bank, *x, a, p));
+    lda_imm(a, p, other);
+    (cyc(32), find_kind(bank, other, x, y, p, a));
+    set_field(*x, a, p, 0x10, 0xFFFF);
+    set_field(*x, a, p, 0x02, 0x0200);
+    set_field(*x, a, p, 0x08, 0xDF7B);
+    wr16(abs_db(bank, 0x11E1), cyc_then(60, k11e1));
+    lda_imm(a, p, k11df);
+    wr16(abs_db(bank, 0x11DF), cyc_then(22, k11df));
     cyc(42);
+}
+
+void abi_ResultsNoTime(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsNoTime(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -926,40 +1202,45 @@ void abi_ResultsNoTime(void)
  * ($11E1); the place and its first byte kept on the stack.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9;
  * A and the flags from the last step.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
-void abi_ResultsLapTimes(void)
+void ResultsLapTimes(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    cyc(46);
     uint16_t place, first;
 
-    abi_MenuActorCopyGroup();
-    op_lda16(cyc_then(22, fld(0x12)));
-    cpu.a = (uint16_t)(cpu.a + 2);
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(abs_db(0x11E1), cyc_then(52, cpu.a));
-    op_lda16(cyc_then(22, fld(0x22)));
-    op_tax16();
-    place = cpu.x;
+    cyc(46);
+    *a = MenuActorCopyGroup(bank, x, p);
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
+    lda(a, p, (uint16_t)(*a + 2));
+    wr16(abs_db(bank, 0x11E1), cyc_then(52, *a));
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
+    tax(*a, x, p);
+    place = *x;
     cyc(16);
-    op_lda16(0x000F78 + (uint32_t)place);
-    first = cpu.a;
-    op_and16(0x00FF);
-    op_cmp16(0x00FF);
-    if (cpu.p & P_Z)
-        { cyc(168); abi_ResultsNoTime(); } else { cyc(128); }
+    first = lda(a, p, rd16(0x000F78 + (uint32_t)place));
+    and_imm(a, p, 0x00FF);
+    cmp(*a, p, 0x00FF);
+    if (*p & P_Z)
+        { cyc(168); ResultsNoTime(bank, x, a, y, p); } else { cyc(128); }
     cyc(118);
-    cpu.x = place;
-    cpu.a = first;
-    cpu.p = nz16(cpu.p, first);
-    abi_ResultsBcdPair();
+    *x = place;
+    lda(a, p, first);
+    ResultsBcdPair(bank, *x, a, p);
     cyc(32);
-    op_lda16(0x000F77 + (uint32_t)cpu.x);
-    (cyc(46), abi_ResultsBcdPair());
+    lda(a, p, rd16(0x000F77 + (uint32_t)*x));
+    (cyc(46), ResultsBcdPair(bank, *x, a, p));
     cyc(32);
-    op_lda16(0x000F76 + (uint32_t)cpu.x);
-    (cyc(46), abi_ResultsBcdPair());
-    cyc(0);
-    leader_or_stop(0x20);
+    lda(a, p, rd16(0x000F76 + (uint32_t)*x));
+    (cyc(46), ResultsBcdPair(bank, *x, a, p));
+    leader_or_stop(bank, x, a, p, 0x20);
+}
+
+void abi_ResultsLapTimes(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsLapTimes(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
 }
 
 /*
@@ -968,16 +1249,24 @@ void abi_ResultsLapTimes(void)
  * HOW: The tile through $11E3; X kept on the stack.
  * Entry: M 16-bit, X 16-bit; A = the tile. Exit: X as on entry, N, Z from
  * it; A = the new $11E1; C, V from its add.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
+void ResultsPointsTile(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    uint16_t x0 = x;
+
+    wr16(abs_db(bank, 0x11E3), cyc_then(54, *a));
+    tile_at(bank, &x, a, p, 0x11E1);
+    *p = nz16(*p, x0);
+    cyc(78);
+}
+
 void abi_ResultsPointsTile(void)
 {
-    uint16_t x = cpu.x;
+    uint8_t p = cpu.p;
 
-    wr16(abs_db(0x11E3), cyc_then(54, cpu.a));
-    tile_at(0x11E1);
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
-    cyc(78);
+    ResultsPointsTile(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -987,21 +1276,30 @@ void abi_ResultsPointsTile(void)
  * HOW: The byte kept at $11E5.
  * Entry: M 16-bit, X 16-bit; A low byte = the digits. Exit: as
  * ResultsPointsTile.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
+void ResultsPointsPair(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
+{
+    and_imm(a, p, 0x00FF);
+    wr16(abs_db(bank, 0x11E5), cyc_then(46, *a));
+    lsr(a, p);
+    lsr(a, p);
+    lsr(a, p);
+    lsr(a, p);
+    and_imm(a, p, 0x000F);
+    (cyc(124), ResultsPointsTile(bank, x, a, p));
+    lda(a, p, rd16(cyc_then(24, abs_db(bank, 0x11E5))));
+    and_imm(a, p, 0x000F);
+    (cyc(68), ResultsPointsTile(bank, x, a, p));
+    cyc(42);
+}
+
 void abi_ResultsPointsPair(void)
 {
-    op_and16(0x00FF);
-    wr16(abs_db(0x11E5), cyc_then(46, cpu.a));
-    op_lsr16();
-    op_lsr16();
-    op_lsr16();
-    op_lsr16();
-    op_and16(0x000F);
-    (cyc(124), abi_ResultsPointsTile());
-    op_lda16(cyc_then(24, abs_db(0x11E5)));
-    op_and16(0x000F);
-    (cyc(68), abi_ResultsPointsTile());
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsPointsPair(cpu.db, cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1013,38 +1311,45 @@ void abi_ResultsPointsPair(void)
  * digits from the group's first entry ($11E1).
  * Entry: M 16-bit, X 16-bit, D = $0000; A = the car; X = the object. Exit:
  * X = $11F9, N, Z from it; A and C, V from the last step.
+ * From C: *x, *a, *y, *p the registers in and out.
  */
+void ResultsPoints(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+{
+    uint16_t car = *a, at;
+
+    cyc(76);
+    *a = MenuActorCopyGroup(bank, x, p);
+    lda(a, p, car);
+    wr16(abs_db(bank, 0x11DF), cyc_then(60, car));
+    lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
+    lda(a, p, (uint16_t)(*a + 2));
+    wr16(abs_db(bank, 0x11E1), cyc_then(52, *a));
+    lda(a, p, rd16(cyc_then(24, abs_db(bank, 0x11DF))));
+    asl(a, p);
+    add(a, p, rd16(cyc_then(52, abs_db(bank, 0x11DF))));
+    tax(*a, x, p);
+    at = *x;
+    cyc(16);
+    lda(a, p, rd16(0x000EFB + (uint32_t)at));
+    and_imm(a, p, 0x000F);
+    (cyc(68), ResultsPointsTile(bank, *x, a, p));
+    cyc(32);
+    lda(a, p, rd16(0x000EFA + (uint32_t)*x));
+    (cyc(46), ResultsPointsPair(bank, *x, a, p));
+    cyc(32);
+    lda(a, p, rd16(0x000EF9 + (uint32_t)*x));
+    (cyc(46), ResultsPointsPair(bank, *x, a, p));
+    *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
+    *p = nz16(*p, *x);
+    cyc(42);
+}
+
 void abi_ResultsPoints(void)
 {
-    cyc(76);
-    uint16_t car = cpu.a, at;
+    uint8_t p = cpu.p;
 
-    abi_MenuActorCopyGroup();
-    cpu.a = car;
-    cpu.p = nz16(cpu.p, car);
-    wr16(abs_db(0x11DF), cyc_then(60, car));
-    op_lda16(cyc_then(22, fld(0x12)));
-    cpu.a = (uint16_t)(cpu.a + 2);
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(abs_db(0x11E1), cyc_then(52, cpu.a));
-    op_lda16(cyc_then(24, abs_db(0x11DF)));
-    op_asl16();
-    op_add16(rd16(cyc_then(52, abs_db(0x11DF))));
-    op_tax16();
-    at = cpu.x;
-    cyc(16);
-    op_lda16(0x000EFB + (uint32_t)at);
-    op_and16(0x000F);
-    (cyc(68), abi_ResultsPointsTile());
-    cyc(32);
-    op_lda16(0x000EFA + (uint32_t)cpu.x);
-    (cyc(46), abi_ResultsPointsPair());
-    cyc(32);
-    op_lda16(0x000EF9 + (uint32_t)cpu.x);
-    (cyc(46), abi_ResultsPointsPair());
-    cpu.x = rd16(cyc_then(24, abs_db(0x11F9)));
-    cpu.p = nz16(cpu.p, cpu.x);
-    cyc(42);
+    ResultsPoints(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1056,30 +1361,39 @@ void abi_ResultsPoints(void)
  * when it changes.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: A = the
  * animation (or the phase), N, Z, C from the last compare.
+ * From C: x the object (unchanged); *a, *p in and out.
  */
-void abi_ResultsPhaseAnim(void)
+void ResultsPhaseAnim(uint16_t x, uint16_t *a, uint8_t *p)
 {
     static const uint16_t phase[5] = {0x0006, 0x000A, 0x000C, 0x000E, 0x0010};
     static const uint16_t anim[5] = {0x01A4, 0x017C, 0x019A, 0x0190, 0x0186};
     unsigned i;
 
-    byte_of(0x000DD6);
+    byte_of(a, p, 0x000DD6);
     for (i = 0; i < 5; i++) {
         cyc(40);
-        op_cmp16(phase[i]);
-        if (cpu.p & P_Z)
+        cmp(*a, p, phase[i]);
+        if (*p & P_Z)
             break;
     }
     if (i == 5)
         { cyc(60); return; }
-    op_lda16(cyc_then(46, fld(0x14)));
-    op_cmp16(anim[i]);
-    if (cpu.p & P_Z)
+    lda(a, p, rd16(cyc_then(46, fld(x, 0x14))));
+    cmp(*a, p, anim[i]);
+    if (*p & P_Z)
         { cyc(64); return; } else { cyc(40); }
-    set_field(0x14, anim[i]);
-    wr16(fld(0x16), cyc_then(22, 0x0000));
-    wr16(fld(0x18), cyc_then(22, 0x0000));
+    set_field(x, a, p, 0x14, anim[i]);
+    wr16(fld(x, 0x16), cyc_then(22, 0x0000));
+    wr16(fld(x, 0x18), cyc_then(22, 0x0000));
     cyc(42);
+}
+
+void abi_ResultsPhaseAnim(void)
+{
+    uint8_t p = cpu.p;
+
+    ResultsPhaseAnim(cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /* ResultsPlace0-3: place n's points object: after its count +$0A runs
@@ -1089,35 +1403,34 @@ void abi_ResultsPhaseAnim(void)
    (ResultsPhaseAnim); before it, it hides again. The $0D48 cases are
    reached by unit tests (unit_menus), except place 0's hiding: $0D48 is
    never below 0, so the BCC after CMP #0 never branches. */
-static void place_points(uint16_t n, uint16_t handler)
+static void place_points(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t n, uint16_t handler)
 {
-    if (!(dec_fld(0x0A) & 0x8000))
+    if (!(dec_fld(*x, p, 0x0A) & 0x8000))
         { cyc(64); return; }
-    wr16(fld(0x10), cyc_then(38, 0x0000));
-    set_field(0x08, handler);
-    byte_of(0x000DD6);
-    op_cmp16(0x0008);
-    if (!(cpu.p & P_Z)) {
+    wr16(fld(*x, 0x10), cyc_then(38, 0x0000));
+    set_field(*x, a, p, 0x08, handler);
+    byte_of(a, p, 0x000DD6);
+    cmp(*a, p, 0x0008);
+    if (!(*p & P_Z)) {
         cyc(58);
-        byte_of(0x000D48);
-        op_cmp16(n);
-        if (cpu.p & P_Z) {
+        byte_of(a, p, 0x000D48);
+        cmp(*a, p, n);
+        if (*p & P_Z) {
             cyc(110);
-            abi_ResultsPhaseAnim();
+            ResultsPhaseAnim(*x, a, p);
             cyc(42);
             return;
-        } else { cyc(cpu.p & P_C ? 50 : 80); }
-        if (!(cpu.p & P_C)) {
-            set_field(0x10, 0xFFFF);
+        } else { cyc(*p & P_C ? 50 : 80); }
+        if (!(*p & P_C)) {
+            set_field(*x, a, p, 0x10, 0xFFFF);
             cyc(42);
             return;
         }
     } else { cyc(18); }
     cyc(78);
-    op_lda16_imm(n);
-    abi_ResultsPoints();
-    cyc(0);
-    set_field(0x08, 0xE0DF);
+    lda_imm(a, p, n);
+    ResultsPoints(bank, x, a, p);
+    set_field(*x, a, p, 0x08, 0xE0DF);
     cyc(42);
 }
 
@@ -1132,9 +1445,17 @@ static void place_points(uint16_t n, uint16_t handler)
  * Z from the count; else as ResultsPoints, ResultsPhaseAnim or the hiding
  * store (A = $FFFF).
  */
+void ResultsPlace0(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+{
+    place_points(bank, x, a, p, 0x0000, 0xE018);
+}
+
 void abi_ResultsPlace0(void)
 {
-    place_points(0x0000, 0xE018);
+    uint8_t p = cpu.p;
+
+    ResultsPlace0(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1145,10 +1466,18 @@ void abi_ResultsPlace0(void)
  * Entry: M 16-bit, D = $0000; X = the object. Exit: A = $FFFF; N set, Z
  * clear.
  */
+void ResultsPlace0Hide(uint16_t x, uint16_t *a, uint8_t *p)
+{
+    set_field(x, a, p, 0x10, 0xFFFF);
+    cyc(42);
+}
+
 void abi_ResultsPlace0Hide(void)
 {
-    set_field(0x10, 0xFFFF);
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    ResultsPlace0Hide(cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1157,9 +1486,17 @@ void abi_ResultsPlace0Hide(void)
  * HOW: As ResultsPlace0, with 1.
  * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
  */
+void ResultsPlace1(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+{
+    place_points(bank, x, a, p, 0x0001, 0xE059);
+}
+
 void abi_ResultsPlace1(void)
 {
-    place_points(0x0001, 0xE059);
+    uint8_t p = cpu.p;
+
+    ResultsPlace1(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1168,9 +1505,17 @@ void abi_ResultsPlace1(void)
  * HOW: As ResultsPlace0, with 2.
  * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
  */
+void ResultsPlace2(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+{
+    place_points(bank, x, a, p, 0x0002, 0xE09A);
+}
+
 void abi_ResultsPlace2(void)
 {
-    place_points(0x0002, 0xE09A);
+    uint8_t p = cpu.p;
+
+    ResultsPlace2(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1179,9 +1524,17 @@ void abi_ResultsPlace2(void)
  * HOW: As ResultsPlace0, with 3.
  * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
  */
+void ResultsPlace3(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+{
+    place_points(bank, x, a, p, 0x0003, 0xE0DB);
+}
+
 void abi_ResultsPlace3(void)
 {
-    place_points(0x0003, 0xE0DB);
+    uint8_t p = cpu.p;
+
+    ResultsPlace3(cpu.db, &cpu.x, &cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1191,10 +1544,20 @@ void abi_ResultsPlace3(void)
  * HOW: JSR, RTS.
  * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
  */
+uint16_t ResultsPlace0Animate(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a = MenuActorAnimateFrame(bank, x, p);
+
+    cyc(42);
+    return a;
+}
+
 void abi_ResultsPlace0Animate(void)
 {
-    abi_MenuActorAnimateFrame();
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    cpu.a = ResultsPlace0Animate(cpu.db, &cpu.x, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1203,10 +1566,20 @@ void abi_ResultsPlace0Animate(void)
  * HOW: JSR, RTS.
  * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
  */
+uint16_t ResultsPlace1Animate(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a = MenuActorAnimateFrame(bank, x, p);
+
+    cyc(42);
+    return a;
+}
+
 void abi_ResultsPlace1Animate(void)
 {
-    abi_MenuActorAnimateFrame();
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    cpu.a = ResultsPlace1Animate(cpu.db, &cpu.x, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1215,10 +1588,20 @@ void abi_ResultsPlace1Animate(void)
  * HOW: JSR, RTS.
  * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
  */
+uint16_t ResultsPlace2Animate(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a = MenuActorAnimateFrame(bank, x, p);
+
+    cyc(42);
+    return a;
+}
+
 void abi_ResultsPlace2Animate(void)
 {
-    abi_MenuActorAnimateFrame();
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    cpu.a = ResultsPlace2Animate(cpu.db, &cpu.x, &p);
+    cpu.p = p;
 }
 
 /*
@@ -1227,8 +1610,18 @@ void abi_ResultsPlace2Animate(void)
  * HOW: JSR, RTS.
  * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
  */
+uint16_t ResultsPlace3Animate(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a = MenuActorAnimateFrame(bank, x, p);
+
+    cyc(42);
+    return a;
+}
+
 void abi_ResultsPlace3Animate(void)
 {
-    abi_MenuActorAnimateFrame();
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    cpu.a = ResultsPlace3Animate(cpu.db, &cpu.x, &p);
+    cpu.p = p;
 }

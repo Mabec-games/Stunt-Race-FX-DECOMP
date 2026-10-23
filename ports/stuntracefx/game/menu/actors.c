@@ -218,6 +218,15 @@ void MenuActorFind8(uint8_t bank, uint8_t kind, uint16_t *x, uint16_t *y, uint8_
     *y = i;
 }
 
+/* MenuActorFind with the A it leaves (*a: the kind last loaded). */
+int MenuActorFindA(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *a)
+{
+    int r = MenuActorFind(bank, kind, x, y, p);
+
+    *a = find_last_kind;
+    return r;
+}
+
 void abi_MenuActorFind(void)
 {
     uint16_t x = cpu.x, y = cpu.y;
