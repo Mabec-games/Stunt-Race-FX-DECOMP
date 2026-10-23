@@ -69,6 +69,7 @@ void GsuDigitPair0E74At_cr(Carried *cr);
 void GsuTimeDigits_cr(Carried *cr);
 void GsuTimeDigitsFull_cr(Carried *cr);
 void GsuTimeDigitsGrow_cr(Carried *cr);
+void TimeBonusPiecesMirrored_cr(Carried *cr);
 void TimeBonusTally_cr(Carried *cr);
 void TimeBonusTransfer_cr(Carried *cr);
 void TimeDigitBytes_cr(Carried *cr);
@@ -1824,18 +1825,31 @@ void TimeBonusPiecesMirrored(uint8_t bank, TbRegs *r)
     (cyc(46), tb_GsuFA1BFromTables(bank, r));
 }
 
+void TimeBonusPiecesMirrored_cr(Carried *cr)
+{
+    TbRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    TimeBonusPiecesMirrored(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+    cpu.s++;
+    cyc(20);
+    r_plp(cr, rd8((uint16_t)cpu.s));
+}
+
 void abi_TimeBonusPiecesMirrored(void)
 {
-    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    TimeBonusPiecesMirrored(cpu.db, &r);
+    TimeBonusPiecesMirrored_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
-    cpu.s++;
-    cyc(20);
-    op_plp(rd8((uint16_t)cpu.s));
+    cpu.db = r.db;
 }
 
 

@@ -55,7 +55,15 @@ def carried_p(b):
 p_left = []
 
 REG = re.compile(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_(?!adc16|sbc16|adc8|sbc8)\w+\s*\(|\babi_\w+\s*\(\s*\)')
-GLUE = re.compile(r'\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b|\bcpu\.(s|pc|e|unwound)\b')
+# what keeps a function on the register file: the PC the C keeps (an RTS
+# or RTL through the stack). The stack pointer (cpu.s) and the C's
+# left-through-the-caller's-frame flag (cpu.unwound) are the machine's and
+# stay as they are in carried code until the work RAM step; the emulation
+# flag goes through cpu_mode; the ends no C follows, and the computed calls
+# and jumps, go through their carried forms (system/computed.c)
+GLUE = re.compile(r'\bcpu\.pc\b')
+# what keeps another file's adapter from being copied as carried code
+NOCOPY = re.compile(r'\bcpu\.(pc|e)\b|\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b')
 
 _DEFS = None
 def all_defs():
@@ -86,7 +94,7 @@ def touches_any(f, b, skip):
         for (fx, cb, params) in cands:
             if 'Carried *cr' in params:
                 continue
-            if REG.search(cb) or GLUE.search(cb):
+            if REG.search(cb) or GLUE.search(cb) or NOCOPY.search(cb):
                 return True
             todo += [(fx, x) for x in set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', cb))]
     return False
@@ -161,6 +169,12 @@ if decl:
 # in registers keeps call_routine and jump_routine (put back at the end)
 text = re.sub(r'\bcall_routine\(', 'dispatch_call_(', text)
 text = re.sub(r'\bjump_routine\(', 'dispatch_jump_(', text)
+text = re.sub(r'\bjump_routine_pushed\(', 'dispatch_pushed_(', text)
+text = re.sub(r'\bcpu_restart\(', 'dispatch_restart_(', text)
+text = re.sub(r'\bcpu_loop_forever\(', 'dispatch_forever_(', text)
+# the emulation flag: the CPU's mode, through cpu_mode (machine.h)
+text = re.sub(r'\bcpu\.e\s*=\s*([^;]+);', r'cpu_mode_set(\1);', text)
+text = re.sub(r'\bcpu\.e\b', 'cpu_mode()', text)
 src[FILE] = text
 if resolved:
     print('constant calls resolved: %s' % ', '.join(sorted(resolved)))
@@ -287,7 +301,7 @@ exports = {}
 def export_into(f, n, b):
     """Write n's carried form beside abi_n in file f, when nothing it
     reaches uses the register file; True when it is there."""
-    if re.search(r'\bcpu\.(s|pc|e|unwound)\b|call_routine|jump_routine|\babi_\w+\s*\(', b):
+    if NOCOPY.search(b) or re.search(r'\babi_\w+\s*\(', b):
         return False
     # a helper's register form X_g (its carried form X with the registers
     # loaded and taken back) is X itself on carried registers
@@ -322,7 +336,7 @@ def _old_touches_regs(f, b):
         cb = fl[c]
         if f == FILE and c in regfn:
             continue                    # converted here: called carried
-        if REG.search(cb) or GLUE.search(cb):
+        if REG.search(cb) or GLUE.search(cb) or NOCOPY.search(cb):
             return True
         todo |= set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', cb))
     return False
@@ -379,7 +393,7 @@ def make_wrapper(n):
                 carried_ext.add(n + '_cr')
                 return wrap[n]
             ok = False
-    if ok and GLUE.search(b):
+    if ok and (GLUE.search(b) or NOCOPY.search(b)):
         ok = False
     if ok and touches_regs(f, b):
         ok = False
@@ -478,7 +492,10 @@ def rewrite_body(b):
             b = re.sub(r'(?<![\w>.])%s\s*\((?!cr\b)' % n, '%s(cr, ' % n, b)
     for c in sorted(set(re.findall(r'\babi_(\w+)\s*\(\s*\)', b))):
         b = re.sub(r'\babi_%s\s*\(\s*\)' % c, make_wrapper(c), b)
+    # a restart's entry is the routine's adapter, started on the registers
+    b = re.sub(r'(\bdispatch_restart_\([^,]*,\s*)abi_(\w+)', r'\1KEEPABI_\2', b)
     b = routine_values(b)
+    b = b.replace('KEEPABI_', 'abi_')
     # tables of converted helpers (any return type): carried pointers
     for m in list(re.finditer(r'\(\s*\*\s*(?:const\s+)?(\w+)(\[[^\]]*\])?\s*\)\s*\(\s*void\s*\)(\s*=\s*\{([^}]*)\})', b)):
         names = [x.strip() for x in m.group(4).split(',') if x.strip()]
@@ -488,6 +505,9 @@ def rewrite_body(b):
             b = re.sub(r'\b%s(\[[^\]]*\])\s*\(\s*\)' % v, r'%s\1(cr)' % v, b)
     b = re.sub(r'\bdispatch_call_\(', 'carried_call(cr, ', b)
     b = re.sub(r'\bdispatch_jump_\(', 'carried_jump(cr, ', b)
+    b = re.sub(r'\bdispatch_pushed_\(', 'carried_jump_pushed(cr, ', b)
+    b = re.sub(r'\bdispatch_restart_\(', 'carried_restart(cr, ', b)
+    b = re.sub(r'\bdispatch_forever_\(', 'carried_loop_forever(cr, ', b)
     b = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
     b = carried_p(b)
     b = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', b)
@@ -859,6 +879,9 @@ if stops:
     sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))
 res = re.sub(r'\bdispatch_call_\(', 'call_routine(', res)
 res = re.sub(r'\bdispatch_jump_\(', 'jump_routine(', res)
+res = re.sub(r'\bdispatch_pushed_\(', 'jump_routine_pushed(', res)
+res = re.sub(r'\bdispatch_restart_\(', 'cpu_restart(', res)
+res = re.sub(r'\bdispatch_forever_\(', 'cpu_loop_forever(', res)
 # a carried copy (X_cr written beside a routine still in registers) that the
 # conversion has replaced with the routine's own carried form goes
 for m in list(re.finditer(r'\n/\* (\w+) on carried registers, as abi_\1 leaves them\. \*/\nvoid \1_cr\(Carried \*cr\)\n\{\n.*?^\}\n', res, re.M | re.S)):

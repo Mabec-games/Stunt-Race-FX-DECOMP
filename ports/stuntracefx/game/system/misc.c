@@ -52,7 +52,6 @@ static void demo_lda8(Carried *cr, uint8_t v);
 static void demo_next(Carried *cr, uint16_t n);
 static void demo_next_before(Carried *cr, uint16_t n);
 static uint32_t dp_addr(Carried *cr, uint8_t a);
-static void w_BootSoftRestart(Carried *cr);
 static void w_CourseDataPointer(Carried *cr);
 static void w_GsuRun(Carried *cr);
 static void w_KeepRegisters(Carried *cr);
@@ -60,8 +59,8 @@ static void w_ObjectLinkedSet1A(Carried *cr);
 static void w_ObjectPlaceAll(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
 static void w_PlayerStatsAndPaletteAnimate(Carried *cr);
-static void w_SoftResetToBootWarm(Carried *cr);
 void AttractCourseSetup(Carried *cr);
+void BootSoftRestart(Carried *cr);
 void CameraFollowStep_cr(Carried *cr);
 void ChampionScreenRun(Carried *cr);
 void CourseScriptRun(Carried *cr);
@@ -71,6 +70,7 @@ void RaceFrameRun(Carried *cr);
 void RaceVideoInit_cr(Carried *cr);
 void RecordTimeInsert_cr(Carried *cr);
 void RecordsUnpackCourseRunning(Carried *cr);
+void SoftResetToBootWarm(Carried *cr);
 void WindowsInit_cr(Carried *cr);
 
 void DataBankTest_cr(Carried *cr)
@@ -359,9 +359,9 @@ void ChampionshipFinish(Carried *cr)
     set_p(cr, nz8(cr->p, (uint8_t)(v - 0x02)));
     set_p(cr, (uint8_t)(v >= 0x02 ? (cyc(64), cr->p | P_C) : (cyc(62), cr->p & ~P_C)));
     if (v == 0x02)
-        w_BootSoftRestart(cr);
+        BootSoftRestart(cr);
     else
-        w_SoftResetToBootWarm(cr);
+        SoftResetToBootWarm(cr);
 }
 
 void abi_ChampionshipFinish(void)
@@ -1165,44 +1165,6 @@ void abi_DemoRun(void)
     cpu.d = r.d;
     cpu.p = r.p;
     cpu.db = r.db;
-}
-
-/* BootSoftRestart, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_BootSoftRestart(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_BootSoftRestart();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SoftResetToBootWarm(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SoftResetToBootWarm();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* CourseDataPointer as its adapter leaves the registers. */

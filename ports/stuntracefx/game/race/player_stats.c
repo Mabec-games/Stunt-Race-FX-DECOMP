@@ -144,8 +144,10 @@ void TimeUpPhaseStep(Carried *cr);
 void PlayerStatsAndPaletteAnimate(Carried *cr);
 void PlayerStatsFromRecord(Carried *cr);
 static void hud_car_word(Carried *cr, uint16_t set, uint16_t clear);
+static void hud_end(Carried *cr, int both, int inner, uint8_t p0, uint8_t db0);
 static void hud_mode_one(Carried *cr, uint8_t p0, uint8_t db0);
 static void hud_mode_two(Carried *cr, int inner, uint8_t p0, uint8_t db0);
+static void hud_mode_zero(Carried *cr, uint8_t p0, uint8_t db0);
 static void p1_cmp8(Carried *cr, uint8_t m);
 static void p1_digit_glyph(Carried *cr, uint32_t b, unsigned shift, uint16_t at);
 static void p1_lda8(Carried *cr, uint8_t v);
@@ -157,6 +159,7 @@ static void race_end_go_on(Carried *cr, uint32_t b);
 static void race_end_vblank(Carried *cr, uint32_t b, uint32_t branch);
 static void race_flag_p1(Carried *cr, uint32_t b);
 static void race_flag_p2(Carried *cr, uint32_t b);
+static void race_frame_end(Carried *cr, uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0);
 static void race_stats(Carried *cr, uint16_t player, uint32_t rec);
 static void race_x_block(Carried *cr, uint32_t b, uint8_t stage, void (*flag)(Carried *, uint32_t), void (*park)(Carried *));
 static void race_x_test(Carried *cr, uint32_t b, uint16_t pressed);
@@ -170,9 +173,7 @@ static void w_GsuF15BTwoLines(Carried *cr);
 static void w_GsuRecordBits60(Carried *cr);
 static void w_PhaseNothingEBDC(Carried *cr);
 static void w_PlayerStatsFromRecord(Carried *cr);
-static void w_RaceRestart(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
-static void w_SoftResetToBootWarm(Carried *cr);
 void CarFinishSound(Carried *cr);
 void ChampionshipScreenLoop(Carried *cr);
 void CoursePaletteCycle_cr(Carried *cr);
@@ -184,6 +185,7 @@ void GlyphSpritesSlideOut_cr(Carried *cr);
 void GsuBytes200_BFBAB9_cr(Carried *cr);
 void GsuDigitPair0E74At_cr(Carried *cr);
 void HudBlankDraw_cr(Carried *cr);
+void HudHoldDraw_cr(Carried *cr);
 void HudLapDigitsDraw_cr(Carried *cr);
 void HudLeadWordDraw_cr(Carried *cr);
 void HudTimesDraw_cr(Carried *cr);
@@ -198,6 +200,7 @@ void PlayerTwoFrameWork(Carried *cr);
 void RaceEndLeave(Carried *cr);
 void RaceEndVideoReset(Carried *cr);
 void RaceEndWaitBigSprites(Carried *cr);
+void RaceRestart(Carried *cr);
 void RaceStartCountdown(Carried *cr);
 void RaceStartCountdownStunt(Carried *cr);
 void RaceStartGlyphsSteps(Carried *cr);
@@ -205,6 +208,7 @@ void RaceStartSteps(Carried *cr);
 void RecordsLoadSpecialCourseLong_cr(Carried *cr);
 void ResultsPanelSteps(Carried *cr);
 void SoftResetCheck_cr(Carried *cr);
+void SoftResetToBootWarm(Carried *cr);
 void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
@@ -530,7 +534,7 @@ void PlayerStatsThenPhaseDD35(Carried *cr)
             r_lda8(cr, b | 0x0D61);
             if (!((uint8_t)cr->a & 0x80))
                 { cyc(64); return; } else { cyc(40); }
-            w_SoftResetToBootWarm(cr);
+            SoftResetToBootWarm(cr);
             return;
         }
     } else { cyc(22); }                 /* BEQ taken */
@@ -581,7 +585,7 @@ static void race_x_block(Carried *cr, uint32_t b, uint8_t stage, void (*flag)(Ca
 
 /* The end of a player's frame: `pressed` cleared, then the data bank and
    P pulled: from the stack for an inner entry, else as kept. */
-static void race_frame_end(uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0)
+static void race_frame_end(Carried *cr, uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0)
 {
     cyc(inner ? 24 : 56);
     wr16(b | pressed, 0x0000);
@@ -594,26 +598,9 @@ static void race_frame_end(uint32_t b, uint16_t pressed, int inner, uint8_t p0, 
         p0 = rd8((uint16_t)cpu.s);
     } else { cyc(56); }
     cyc(2);
-    cpu.db = db0;
-    cpu.p = nz8(cpu.p, db0);
-    op_plp(p0);
-}
-
-static void race_frame_end_c(Carried *cr, uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    race_frame_end(b, pressed, inner, p0, db0);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    cr->db = db0;
+    set_p(cr, nz8(cr->p, db0));
+    r_plp(cr, p0);
 }
 
 /* The test before the X-press block: LDA pressed, BIT #$40, LDA #0. */
@@ -685,7 +672,7 @@ void RaceSoundsPlayer1(Carried *cr)
     (cyc(62), EngineSoundsPlayer1_cr(cr));
     (cyc(46), PhaseDispatchE24F(cr));
     race_x_test(cr, b, 0x0D1A);
-    race_frame_end_c(cr, b, 0x0D1A, 0, p0, db0);
+    race_frame_end(cr, b, 0x0D1A, 0, p0, db0);
 }
 
 void abi_RaceSoundsPlayer1(void)
@@ -726,7 +713,7 @@ void RaceSoundsPlayer2(Carried *cr)
     cyc(46);
     PlayerTwoFrameWork(cr);
     race_x_test(cr, b, 0x0D1C);
-    race_frame_end_c(cr, b, 0x0D1C, 0, p0, db0);
+    race_frame_end(cr, b, 0x0D1C, 0, p0, db0);
 }
 
 void abi_RaceSoundsPlayer2(void)
@@ -758,7 +745,7 @@ void RaceXPressPlayer1(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     race_x_block(cr, b, 0x0C, race_flag_p1, OamHighBits18Park48_cr);
-    race_frame_end_c(cr, b, 0x0D1A, 1, 0, 0);
+    race_frame_end(cr, b, 0x0D1A, 1, 0, 0);
 }
 
 void abi_RaceXPressPlayer1(void)
@@ -788,7 +775,7 @@ void RaceXPressPlayer2(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     race_x_block(cr, b, 0x0E, race_flag_p2, OamHighBits58Park112_cr);
-    race_frame_end_c(cr, b, 0x0D1C, 1, 0, 0);
+    race_frame_end(cr, b, 0x0D1C, 1, 0, 0);
 }
 
 void abi_RaceXPressPlayer2(void)
@@ -1147,7 +1134,7 @@ void PlayerOnePhaseEnd(Carried *cr)
             cyc(32);
             wr16(0x0018DB, cr->a);
             cyc(24);
-            w_RaceRestart(cr);
+            RaceRestart(cr);
             return;
         }
     }
@@ -1524,7 +1511,7 @@ void StuntPhaseEnd(Carried *cr)
     cyc(46);
     r_lda8(cr, b | 0x0DD4);
     if ((uint8_t)cr->a)
-        { cyc(40); w_RaceRestart(cr); }
+        { cyc(40); RaceRestart(cr); }
     else
         { cyc(46); RaceEndVideoReset(cr); }
 }
@@ -1795,27 +1782,14 @@ static void hud_car_word(Carried *cr, uint16_t set, uint16_t clear)
     set_p(cr, nz8(cr->p, cr->db));
 }
 
-static void hud_car_word_g(uint16_t set, uint16_t clear)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    hud_car_word(&c, set, clear);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The end of a HUD mode's frame: REP #$20, the presses cleared ($0D1A,
    and $0D1C with both), then the data bank and P pulled: from the stack
    for an inner entry, else as kept. */
-static void hud_end(int both, int inner, uint8_t p0, uint8_t db0)
+static void hud_end(Carried *cr, int both, int inner, uint8_t p0, uint8_t db0)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(4);
     wr16(b | 0x0D1A, 0x0000);
     if (both)
@@ -1828,27 +1802,10 @@ static void hud_end(int both, int inner, uint8_t p0, uint8_t db0)
         cyc(20);
         p0 = rd8((uint16_t)cpu.s);
     }
-    cpu.db = db0;
-    cpu.p = nz8(cpu.p, db0);
-    op_plp(p0);
+    cr->db = db0;
+    set_p(cr, nz8(cr->p, db0));
+    r_plp(cr, p0);
     cyc(inner ? 2 : 58);                        /* RTL; PLB, RTL */
-}
-
-static void hud_end_c(Carried *cr, int both, int inner, uint8_t p0, uint8_t db0)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    hud_end(both, inner, p0, db0);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /*
@@ -1880,7 +1837,7 @@ static void hud_mode_two(Carried *cr, int inner, uint8_t p0, uint8_t db0)
     (cyc(46), HudTimesDraw_cr(cr));
     (cyc(62), CoursePaletteCycle_cr(cr));
     cyc(20);
-    hud_end_c(cr, 1, inner, p0, db0);
+    hud_end(cr, 1, inner, p0, db0);
 }
 
 void RaceHudModeTwo(Carried *cr)
@@ -1907,81 +1864,64 @@ void abi_RaceHudModeTwo(void)
    time bonus and digits and its transfer, else the stats and phase
    (PlayerStatsThenPhaseE232), the time bonus and digits, the hold rows and
    the palette cycle; then player 1's presses cleared. */
-static void hud_mode_zero(uint8_t p0, uint8_t db0)
+static void hud_mode_zero(Carried *cr, uint8_t p0, uint8_t db0)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t db = cpu.db, v;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint8_t db = cr->db, v;
     static const uint8_t pushed_none = 0;
 
     (void)pushed_none;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7E);
-    cpu.db = 0x7E;
-    hud_car_word_g(0x0177, 0x0166);
-    cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x7E);
+    cr->db = 0x7E;
+    hud_car_word(cr, 0x0177, 0x0166);
+    cr->db = db;
+    set_p(cr, nz8(cr->p, db));
     cyc(52);
-    op_lda8(b | 0x0D24);
-    v = (uint8_t)cpu.a;
+    r_lda8(cr, b | 0x0D24);
+    v = (uint8_t)cr->a;
     if (v == 0x03) {
         cyc(56);
-        op_lda8(b | 0x0DD6);
-        if ((uint8_t)cpu.a >= 0x08) {
+        r_lda8(cr, b | 0x0DD6);
+        if ((uint8_t)cr->a >= 0x08) {
             uint8_t pushed[2];
 
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
             cyc(72);
             wr8(b | 0x0E3A, 0x01);
             cyc(24);
-            op_lda8(b | 0x0D61);
-            if (!((uint8_t)cpu.a & 0x80)) {
+            r_lda8(cr, b | 0x0D61);
+            if (!((uint8_t)cr->a & 0x80)) {
                 cyc(42);                /* BPL taken, and the 20 the others state before */
-                hud_end(0, 0, p0, db0);
+                hud_end(cr, 0, 0, p0, db0);
                 return;
             }
             pushed[0] = p0;
             pushed[1] = db0;
-            jump_routine_pushed(0x07EC6B, pushed, 2);
+            carried_jump_pushed(cr, 0x07EC6B, pushed, 2);
             return;
         }
     }
-    cpu.x = 0x0000;
-    cpu.p = nz8(cpu.p, 0);
+    cr->x = 0x0000;
+    set_p(cr, nz8(cr->p, 0));
     cyc(78);
-    op_lda8(b | 0x0D4C);
-    if ((uint8_t)cpu.a) {
+    r_lda8(cr, b | 0x0D4C);
+    if ((uint8_t)cr->a) {
         cyc(68);
-        abi_PlayerOnePhaseStep();
-        (cyc(46), abi_TimeBonusTally());
-        (cyc(46), abi_TimeLeftDigits());
-        (cyc(46), abi_TimeBonusTransfer());
+        PlayerOnePhaseStep(cr);
+        (cyc(46), TimeBonusTally_cr(cr));
+        (cyc(46), TimeLeftDigits_cr(cr));
+        (cyc(46), TimeBonusTransfer_cr(cr));
         cyc(42);
     } else {
         cyc(62);
-        abi_PlayerStatsThenPhaseE232();
-        (cyc(88), abi_TimeBonusTally());
-        (cyc(46), abi_TimeLeftDigits());
-        (cyc(46), abi_HudHoldDraw());
-        (cyc(62), abi_CoursePaletteCycle());
+        PlayerStatsThenPhaseE232(cr);
+        (cyc(88), TimeBonusTally_cr(cr));
+        (cyc(46), TimeLeftDigits_cr(cr));
+        (cyc(46), HudHoldDraw_cr(cr));
+        (cyc(62), CoursePaletteCycle_cr(cr));
         cyc(20);
     }
-    hud_end(0, 0, p0, db0);
-}
-
-static void hud_mode_zero_c(Carried *cr, uint8_t p0, uint8_t db0)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    hud_mode_zero(p0, db0);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    hud_end(cr, 0, 0, p0, db0);
 }
 
 void abi_TimeUpPhaseStep(void);
@@ -2006,7 +1946,7 @@ static void hud_mode_one(Carried *cr, uint8_t p0, uint8_t db0)
         cyc(46);
         HudBlankDraw_cr(cr);
         cyc(20);
-        hud_end_c(cr, 1, 0, p0, db0);
+        hud_end(cr, 1, 0, p0, db0);
         return;
     } else { cyc(78); }
     cr->y = 0x0000;
@@ -2022,7 +1962,7 @@ static void hud_mode_one(Carried *cr, uint8_t p0, uint8_t db0)
         (cyc(46), TimeBonusTransfer_cr(cr));
     } else { cyc(22); }
     cyc(20);
-    hud_end_c(cr, 1, 0, p0, db0);
+    hud_end(cr, 1, 0, p0, db0);
 }
 
 /*
@@ -2056,7 +1996,7 @@ void RaceSoundsAndHud(Carried *cr)
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(52);
     switch (rd16(0x07DABE + cr->x)) {
-    case 0xDAC6: hud_mode_zero_c(cr, p0, db0); break;
+    case 0xDAC6: hud_mode_zero(cr, p0, db0); break;
     case 0xDB36: hud_mode_one(cr, p0, db0); break;
     case 0xDC47: cyc(22); hud_mode_two(cr, 0, p0, db0); break;
     }
@@ -2278,7 +2218,7 @@ static void race_end_go_on(Carried *cr, uint32_t b)
     cyc(46);
     r_lda8(cr, b | 0x0DD4);
     if ((uint8_t)cr->a)
-        { cyc(40); w_RaceRestart(cr); }
+        { cyc(40); RaceRestart(cr); }
     else
         { cyc(46); RaceEndVideoReset(cr); }
 }
@@ -2583,44 +2523,6 @@ static void w_GsuRecordBits60(Carried *cr)
 static void w_PlayerStatsFromRecord(Carried *cr)
 {
     PlayerStatsFromRecord(cr);
-}
-
-/* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SoftResetToBootWarm(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SoftResetToBootWarm();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RaceRestart, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceRestart(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceRestart();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* SaveChecksum as its adapter leaves the registers. */

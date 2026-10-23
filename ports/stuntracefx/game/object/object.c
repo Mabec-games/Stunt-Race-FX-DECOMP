@@ -72,6 +72,7 @@ void ObjectFlag40IfMatch_cr(Carried *cr);
 void ObjectFree_cr(Carried *cr);
 void ObjectFreeLong_cr(Carried *cr);
 void ObjectGroupsActivate_cr(Carried *cr);
+void ObjectGroupsActivateClear08(Carried *cr);
 void ObjectInit_cr(Carried *cr);
 void ObjectLinkBobStart(Carried *cr);
 void ObjectLinkEventTrigger_cr(Carried *cr);
@@ -1830,27 +1831,40 @@ void abi_ObjectGroupsActivate(void)
  * and data bank pushed above the return (PHP, PHB). Exit: as
  * ObjectGroupsActivate, P and the data bank those pushed.
  */
-void abi_ObjectGroupsActivateClear08(void)
+void ObjectGroupsActivateClear08(Carried *cr)
 {
     cyc(52);
-    uint8_t v = (uint8_t)(rd8(0x7E2008 + cpu.y) & 0xFD), db, p;
+    uint8_t v = (uint8_t)(rd8(0x7E2008 + cr->y) & 0xFD), db, p;
 
     cyc(46);
-    wr8(0x7E2008 + cpu.y, v);
+    wr8(0x7E2008 + cr->y, v);
     cyc(96);
-    cpu.y = rd16(0x7E203C + cpu.y);
-    if (cpu.y)
-        groups_chain(&cpu.y, 82);
+    cr->y = rd16(0x7E203C + cr->y);
+    if (cr->y)
+        groups_chain(&cr->y, 82);
     cyc(46);
-    wr16(0x00003E, cpu.x);
+    wr16(0x00003E, cr->x);
     cyc(24);                            /* JMP */
-    cpu.x = groups_list(&cpu.y);
-    cpu.a = 0;
+    cr->x = groups_list(&cr->y);
+    cr->a = 0;
     db = rd8((uint16_t)(cpu.s + 1));
     cyc(20);
     p = rd8((uint16_t)(cpu.s + 2));
-    cpu.db = db;
-    op_plp(p);
+    cr->db = db;
+    r_plp(cr, p);
+}
+
+void abi_ObjectGroupsActivateClear08(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectGroupsActivateClear08(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 typedef struct {

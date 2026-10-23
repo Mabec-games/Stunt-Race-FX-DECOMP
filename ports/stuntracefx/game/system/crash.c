@@ -20,9 +20,13 @@
 #define CRASH_CODE 0x000717u
 #define CRASH_SCROLL 0x000719u
 
+void CrashGreen_cr(Carried *cr);
+void CrashWhite_cr(Carried *cr);
+static void crash_body(Carried *cr, uint8_t bank, uint16_t code);
+
 /* The shared body ($00:805C). The data bank is the caller's until the PLB,
    then 0. Never returns. */
-static void crash_body(uint8_t bank, uint16_t code)
+static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
 {
     uint16_t a, step;
 
@@ -34,7 +38,7 @@ static void crash_body(uint8_t bank, uint16_t code)
     hw_wr((uint32_t)bank << 16 | (uint16_t)NMITIMEN, 0x00);
     cyc(24);
     hdmaen_wr((uint32_t)bank << 16 | (uint16_t)HDMAEN, 0x00);
-    cpu.p |= P_I;
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(38);
     ppu_wr((uint32_t)bank << 16 | (uint16_t)TM, 0x00);
     cyc(24);
@@ -109,11 +113,11 @@ static void crash_body(uint8_t bank, uint16_t code)
         if (a == rd16(CRASH_SCROLL)) {
             /* As the loop leaves them: 16-bit, IRQs masked, Z and C from
                the compare, X the HDMA table, Y the delay's end. */
-            cpu.a = a;
-            cpu.x = 0x812E;
-            cpu.y = 0x0000;
-            cpu.p = (uint8_t)((cpu.p & (P_V | P_D)) | P_I | P_Z | P_C);
-            cpu_loop_forever(0x00812C);
+            cr->a = a;
+            cr->x = 0x812E;
+            cr->y = 0x0000;
+            set_p(cr, (uint8_t)((cr->p & (P_V | P_D)) | P_I | P_Z | P_C));
+            carried_loop_forever(cr, 0x00812C);
         }
         cyc(54);
         step = (uint16_t)((uint16_t)(a - rd16(CRASH_SCROLL)) >> 3);
@@ -130,6 +134,19 @@ static void crash_body(uint8_t bank, uint16_t code)
     }
 }
 
+static void crash_body_g(uint8_t bank, uint16_t code)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    crash_body(&c, bank, code);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /*
  * @routine 00:8014 CrashWhite
  * WHAT IT DOES: Stops the game on the stop screen with a white backdrop,
@@ -143,15 +160,29 @@ void CrashWhite(uint8_t bank)
 {
     cyc(70);
     wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x7FFF);
-    crash_body(bank, 0x00AA);
+    crash_body_g(bank, 0x00AA);
 }
 
-void CrashGreen_cr(Carried *cr);
-void CrashWhite_cr(Carried *cr);
+static void CrashWhite_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    CrashWhite(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
 
 void CrashWhite_cr(Carried *cr)
 {
-    CrashWhite(cr->db);
+    CrashWhite_c(cr, cr->db);
 }
 
 void abi_CrashWhite(void)
@@ -179,12 +210,29 @@ void CrashGreen(uint8_t bank)
 {
     cyc(70);
     wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x03E0);
-    crash_body(bank, 0x00E2);
+    crash_body_g(bank, 0x00E2);
+}
+
+static void CrashGreen_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    CrashGreen(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 void CrashGreen_cr(Carried *cr)
 {
-    CrashGreen(cr->db);
+    CrashGreen_c(cr, cr->db);
 }
 
 void abi_CrashGreen(void)

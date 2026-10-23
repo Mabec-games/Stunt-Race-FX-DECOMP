@@ -415,6 +415,7 @@ static void breakable_gate2_frame(Carried *cr);
 static void breakable_gate_frame(Carried *cr);
 static void breakable_put(Carried *cr, uint16_t dy, uint16_t dz, uint16_t dx, uint8_t s);
 static void breakable_record(Carried *cr);
+static void brk_09(Carried *cr, uint16_t next);
 static void bump_post_frame(Carried *cr);
 static void bump_post_record(Carried *cr);
 static void bumper_frame(Carried *cr);
@@ -12384,38 +12385,21 @@ void abi_ObjectWindowResetGateStep(void)
 /* BRK in bank $09 with the next instruction at `next`: PB, PC and P
    pushed, I set and D clear, and the vector's handler (InterruptReturn,
    00:FE90) at once returns by RTI: P, PC and PB pulled back. */
-static void brk_09(uint16_t next)
+static void brk_09(Carried *cr, uint16_t next)
 {
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
     wr8((uint16_t)cpu.s, 0x09);
     wr8((uint16_t)(cpu.s - 1), (uint8_t)(next >> 8));
     wr8((uint16_t)(cpu.s - 2), (uint8_t)next);
     wr8((uint16_t)(cpu.s - 3), p);
     cpu.s = (uint16_t)(cpu.s - 4);
-    cpu.p = (uint8_t)((cpu.p | P_I) & ~P_D);
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    set_p(cr, (uint8_t)((cr->p | P_I) & ~P_D));
+    r_plp(cr, rd8((uint16_t)(cpu.s + 1)));
     rd8((uint16_t)(cpu.s + 2));
     rd8((uint16_t)(cpu.s + 3));
     rd8((uint16_t)(cpu.s + 4));
     cpu.s = (uint16_t)(cpu.s + 4);
-}
-
-static void brk_09_c(Carried *cr, uint16_t next)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    brk_09(next);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 void abi_RasterIrq(void);
@@ -12498,7 +12482,7 @@ static void slide_gate_out_m8(Carried *cr)
 
     a = ld8(cr, F_c(0x2025, cr->x));
     lda8(cr, (uint8_t)(a & 0x02));
-    brk_09_c(cr, 0xECC0);
+    brk_09(cr, 0xECC0);
     cyc(86);
     m = rd8((uint16_t)(cr->d + 0x5C));
     set_p(cr, (uint8_t)((cr->p & ~P_Z) | (((uint8_t)cr->a & m) ? 0 : P_Z)));
@@ -12511,7 +12495,7 @@ static void slide_gate_out_m8(Carried *cr)
     cyc(16);
     lda8(cr, (uint8_t)(a & rd8((uint16_t)(cr->d + 0x20))));
     lda8(cr, (uint8_t)((uint8_t)cr->a | 0x02));
-    brk_09_c(cr, 0xECCC);
+    brk_09(cr, 0xECCC);
     cyc(66);
     lda8(cr, cyc_then(2, (uint8_t)((uint8_t)cr->a & rd8((uint16_t)(cr->d + 0x20)))));
     a = ld8(cr, F_c(0x2025, cr->x));

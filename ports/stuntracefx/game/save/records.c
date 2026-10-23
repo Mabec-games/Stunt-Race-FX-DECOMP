@@ -762,28 +762,11 @@ void SaveBlocksFourthBad(uint8_t bank, uint8_t *p)
     save_blocks_validate(bank, p, 1);
 }
 
-static void SaveBlocksFourthBad_c(Carried *cr, uint8_t bank, uint8_t *p)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    SaveBlocksFourthBad(bank, p);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 void SaveBlocksFourthBad_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    SaveBlocksFourthBad_c(cr, cr->db, &p);
+    SaveBlocksFourthBad(cr->db, &p);
     cr->a = 0x020C;
     cr->x = 0x000B;
     cr->y = 0x0000;

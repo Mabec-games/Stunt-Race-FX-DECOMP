@@ -41,6 +41,13 @@ CarriedFn carried_at(uint32_t addr);
 void carried_call(Carried *cr, uint32_t addr, int long_call);
 void carried_jump(Carried *cr, uint32_t addr);
 
+/* machine.h's ends no C follows, and a jump with bytes pushed for the
+   routine reached, from carried code: the registers loaded first, as the
+   code reached (or the interrupts taken meanwhile) finds them. */
+void carried_jump_pushed(Carried *cr, uint32_t addr, const uint8_t *pushed, int n);
+void carried_loop_forever(Carried *cr, uint32_t at);
+void carried_restart(Carried *cr, uint32_t at, void (*entry)(void));
+
 /* A carried routine called from code still on the register file: the
    registers go in and come back. */
 static inline void cr_call(CarriedFn f)
