@@ -247,17 +247,9 @@ void abi_VideoStartUploads(void)
     cpu.y = 0x00FF;
 }
 
-void abi_VideoRegsReset(void);
 void abi_SoundIndicesFromHandlers(void);
 void abi_GsuCF42ToVram(void);
 void abi_GsuCF42To3000(void);
-void abi_PaletteCourseLoad(void);
-void abi_CgramDmaAll(void);
-void abi_GradientBuildColours(void);
-void abi_CoursePictureToVram(void);
-void abi_ScreenFrameAndPictures(void);
-void abi_TilemapRowFromGsuRam(void);
-void abi_MenuCourseGraphics(void);
 
 /* REP #$30, LDY, LDX, JSL GsuCF42ToVram. */
 static void video_gsu_vram(uint16_t y, uint16_t x)
@@ -309,43 +301,6 @@ static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
     cyc(28);
 }
 
-/* The data bank $7F (PHB, PHA, PLB), then the course tilemap from the
-   Super FX picture: rows from TilemapRowFromGsuRam (sources 0, $800,
-   $1000, $1800 and 0 again), direct page $F1 up by $40 to $800, Y from
-   y0. */
-static void video_tilemap_rows(uint16_t y0)
-{
-    static const uint16_t src[5] = {0x0000, 0x0800, 0x1000, 0x1800, 0x0000};
-    uint16_t a;
-    unsigned i;
-
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
-    cpu.db = 0x7F;
-    cpu.p = nz8(cpu.p, 0x7F);
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.y = y0;
-    cpu.p = nz16(cpu.p, y0);
-    cyc(288);
-    wr16(0x0000F1, 0x0000);
-    do {
-        for (i = 0; i < 5; i++) {
-            cpu.a = src[i];
-            cpu.p = nz16(cpu.p, src[i]);
-            (cyc(70), abi_TilemapRowFromGsuRam());
-        }
-        cyc(16);
-        a = rd16(0x0000F1);
-        cpu.p &= (uint8_t)~P_C;
-        a = op_adc16(a, 0x0040, &cpu.p);
-        cyc(54);
-        wr16(0x0000F1, a);
-        cpu.a = a;
-        op_cmp16(0x0800);
-    } while (cyc_loop(46, !(cpu.p & P_C)));
-    cyc(112);
-}
-
 /* MVN within bank $7F or from $70 to $7F: n bytes from src to dst, a
    byte at a time (read, then write), with M and X 16-bit and P restored
    after (the caller's PHB, PHP, REP #$30 ... PLP, PLB). */
@@ -362,6 +317,94 @@ static void video_mvn(uint32_t src, uint32_t dst, uint16_t n)
     cpu.x = (uint16_t)(src + n);
     cpu.y = (uint16_t)(dst + n);
     op_plp(p);
+}
+
+uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x);
+void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out);
+uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
+uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p);
+void CgramDmaAll(void);
+uint16_t GradientBuildColours(uint16_t x, int *carry);
+uint16_t CoursePictureToVram(uint8_t bank);
+void ScreenFrameAndPictures(uint8_t bank);
+uint16_t TilemapRowFromGsuRam(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p);
+uint16_t MenuCourseGraphics(uint8_t bank);
+
+/* REP #$30, LDY, LDX, JSL GsuCF42ToVram. */
+static void rv_gsu_vram(uint16_t out, uint16_t in)
+{
+    cyc(116);
+    GsuCF42ToVram(0x03, in, out);
+}
+
+/* REP #$30, LDA and LDX (x_first: LDA first), JSL GsuCF42To3000; the
+   typed call states 98 of the clocks after it. */
+static void rv_gsu_3000(uint16_t a, uint16_t x, int x_first)
+{
+    cyc(28);
+    if (!x_first)
+        cyc(40);
+    cyc(46);
+    GsuCF42To3000(a, x);
+}
+
+/* PHP, REP #$20: DMA channel 0 in mode 1 of `size` bytes from $70:src to
+   VRAM `vram` (VMAIN $80), started at once; PLP. */
+static void rv_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
+{
+    cyc(80);
+    dma_wr16(DMAP0, 0x1801);
+    cyc(56);
+    dma_wr16(A1T0L, src);
+    cyc(56);
+    ppu_wr16(VMADDL, vram);
+    cyc(56);
+    dma_wr16(DAS0L, size);
+    cyc(70);
+    ppu_wr(VMAIN, 0x80);
+    cyc(48);
+    dma_wr(A1B0, 0x70);
+    cyc(48);
+    mdmaen_wr(MDMAEN, 0x01);
+    cyc(42 + 28);
+}
+
+/* The course tilemap from the Super FX picture into $7F:93D7 + y0 (lead:
+   the clocks before the first store): rows from TilemapRowFromGsuRam
+   (sources 0, $800, $1000, $1800 and 0 again), direct page $F1 up by $40
+   to $800. Returns A; X and Y as the last row leaves them. */
+static uint16_t rv_tilemap_rows(uint16_t y0, uint32_t lead, uint16_t *x, uint16_t *y)
+{
+    static const uint16_t src[5] = {0x0000, 0x0800, 0x1000, 0x1800, 0x0000};
+    uint16_t a;
+    uint8_t p = 0;
+    unsigned i;
+
+    *y = y0;
+    cyc(lead);
+    wr16(0x0000F1, 0x0000);
+    do {
+        for (i = 0; i < 5; i++)
+            (cyc(70), TilemapRowFromGsuRam(0x7F, src[i], x, y, &p));
+        cyc(16);
+        a = (uint16_t)(rd16(0x0000F1) + 0x0040);
+        cyc(54);
+        wr16(0x0000F1, a);
+    } while (cyc_loop(46, a < 0x0800));
+    cyc(112);
+    return a;
+}
+
+/* MVN of n bytes from src to dst, a byte at a time (read, then write),
+   with the caller's PHB, PHP, REP #$30 ... PLP. */
+static void rv_mvn(uint32_t src, uint32_t dst, uint16_t n)
+{
+    unsigned i;
+
+    cyc(60);
+    for (i = 0; i < n; i++)
+        { cyc(36); wr8(dst + i, rd8(src + i)); }
+    cyc(42);
 }
 
 /*
@@ -395,110 +438,66 @@ static void video_mvn(uint32_t src, uint32_t dst, uint16_t n)
  * tilemap: $800); X = $800; Y = course * 3 (the second tilemap: $5000); P
  * and the data bank unchanged. With $0D62 set: A = $0401; X = $CF42; Y =
  * $9BD7; P and the data bank swapped as above.
+ * From C: x = X at entry; returns 1 on the $0D62 path (P and the data bank
+ * swapped), with A, X, Y in *a, *x, *y.
  */
-void abi_RaceVideoSetup(void)
+int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
 {
     const uint32_t b = 0x030000;
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
-    uint16_t k3, a, w, y;
+    uint16_t k3, w, ra, rx, ry;
+    uint8_t v, p = 0, x8;
+    int carry;
 
-    op_sep(P_M);
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
-    cpu.p &= (uint8_t)~P_M;
-    (cyc(200), abi_VideoRegsReset());
-    (cyc(62), abi_VideoStartUploads());
-    (cyc(62), abi_SoundIndicesFromHandlers());
+    (cyc(200), VideoRegsReset(0x03, x_in));
+    (cyc(62), VideoStartUploads(0x03));
+    (cyc(62), SoundIndicesFromHandlers(0x03, &x8));
     cyc(16);
-    video_gsu_vram(0xF80D, 0xF7DA);
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    rv_gsu_vram(0xF80D, 0xF7DA);
     cyc(46);
-    a = rd16(b | 0x0E3D);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
-    a = (uint16_t)(a << 1);
-    cpu.p &= (uint8_t)~P_C;
+    w = (uint16_t)(rd16(b | 0x0E3D) << 1);
     cyc(52);
-    a = op_adc16(a, rd16(b | 0x0E3D), &cpu.p);
-    k3 = (uint16_t)(a & 0x00FF);
-    cpu.a = k3;
-    cpu.p = nz16(cpu.p, k3);
-    (cyc(100), abi_PaletteCourseLoad());
-    (cyc(62), abi_CgramDmaAll());
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.x = k3;
+    k3 = (uint16_t)((w + rd16(b | 0x0E3D)) & 0x00FF);
+    (cyc(100), PaletteCourseLoad(0x03, &rx, &ry, &p));
+    cyc(64);
+    (cyc(62), CgramDmaAll());
     cyc(268);
-    op_lda16(b + 0xF807 + k3);
-    op_sep(P_M);
-    cpu.x = k3;
-    cpu.p = nz16(cpu.p, k3);
-    abi_GradientBuildColours();
-    op_sep(P_M);
-    cyc(46);
-    op_lda8(b | 0x0D62);
-    if ((uint8_t)cpu.a) {
+    rd16(b + 0xF807 + k3);                          /* read and not used */
+    GradientBuildColours(k3, &carry);
+    cyc(104 + 46);
+    if (rd8(b | 0x0D62)) {
         cyc(138);
-        cpu.y = k3;
-        cpu.p = nz16(cpu.p, k3);
-        abi_MenuCourseGraphics();
-        {
-            uint8_t p1 = cpu.p;
-
-            cpu.p &= (uint8_t)~(P_M | P_X);
-            cpu.a = 0x0000;
-            cyc(122);
-            wr16(0x7F9BD7, 0x0000);
-            video_mvn(0x7F9BD7, 0x7F9BD8, 0x2000);
-            op_plp(p1);
-        }
-        video_gsu_vram(0xF84C, 0xF7E3);
+        MenuCourseGraphics(0x03);
+        cyc(112 + 122);
+        wr16(0x7F9BD7, 0x0000);
+        rv_mvn(0x7F9BD7, 0x7F9BD8, 0x2000);
+        cyc(42);                                    /* PLP */
+        rv_gsu_vram(0xF84C, 0xF7E3);
         cyc(88);
-        video_mvn(0x703000, 0x7F93D7, 0x0800);
+        rv_mvn(0x703000, 0x7F93D7, 0x0800);
         cyc(44);
-        video_gsu_3000(0xC770, 0x0018, 0);
-        cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(158);
-        video_gsu_ram_dma(0x3000, 0x7C00, 0x0800);
-        cpu.p &= (uint8_t)~(P_M | P_X);
-        video_gsu_ram_dma(0x3600, 0x6600, 0x0400);
-        cyc(16);
-        op_plp(db0);
-        cpu.db = p0;
-        cpu.p = nz8(cpu.p, p0);
-        return;
-    } else { cyc(248); }
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.p &= (uint8_t)~P_C;
-    cpu.a = op_adc16(k3, 0xF4F9, &cpu.p);
-    cpu.x = cpu.a;
-    cpu.y = 0xF853;
-    cpu.p = nz16(cpu.p, 0xF853);
-    abi_GsuCF42ToVram();
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.x = k3;
-    cyc(156);
-    op_lda16(b + 0xF54D + k3);
-    if (cpu.a) {
-        cyc(146);
-        cpu.p &= (uint8_t)~P_C;
-        cpu.a = op_adc16(k3, 0xF54D, &cpu.p);
-        cpu.x = cpu.a;
-        cpu.y = 0xF85A;
-        cpu.p = nz16(cpu.p, 0xF85A);
-        abi_GsuCF42ToVram();
+        rv_gsu_3000(0xC770, 0x0018, 0);
+        cyc(158 - 98);
+        rv_gsu_ram_dma(0x3000, 0x7C00, 0x0800);
+        rv_gsu_ram_dma(0x3600, 0x6600, 0x0400);
+        cyc(16 + 42);                               /* ..., PLP */
+        *a = 0x0401;
+        *x = 0xCF42;
+        *y = 0x9BD7;
+        return 1;
     }
+    cyc(248);
+    GsuCF42ToVram(0x03, (uint16_t)(k3 + 0xF4F9), 0xF853);
+    cyc(156);
+    if (rd16(b + 0xF54D + k3))
+        { cyc(146); GsuCF42ToVram(0x03, (uint16_t)(k3 + 0xF54D), 0xF85A); }
     cyc(16);
-    video_gsu_vram(0xF814, 0xF7DD);
+    rv_gsu_vram(0xF814, 0xF7DD);
     cyc(18);
-    video_gsu_3000(0xD970, 0x001D, 0);
-    (cyc(62), abi_CoursePictureToVram());
-    op_sep(P_M | P_X);
-    cyc(24);
-    v = rd8(b | 0x0D2B);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
-    v = (uint8_t)(v << 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = v;
-    cpu.p = nz8(cpu.p, v);
+    rv_gsu_3000(0xD970, 0x001D, 0);
+    cyc(62 + 98 - 98);                              /* JSL; CoursePictureToVram's PHP ... */
+    ra = CoursePictureToVram(0x03);
+    cyc(22 + 24);                                   /* SEP #$30, LDA */
+    v = (uint8_t)(rd8(b | 0x0D2B) << 1);
     cyc(66);
     w = rd16(b | (uint16_t)(0xDA53 + v));
     if (w == 0xDB23)
@@ -507,102 +506,117 @@ void abi_RaceVideoSetup(void)
         goto mode3;
     if (w == 0xDB66)
         { cyc(8); goto mode2; }
-    if (w != 0xDAC0)
+    if (w != 0xDAC0) {
+        *a = (uint16_t)((ra & 0xFF00) | v);
+        *x = v;
+        *y = 0x00FF;
         goto done;
-    op_sep(P_M);
+    }
     cyc(54);
-    op_lda8(b | 0x0D4E);
-    if (!(uint8_t)cpu.a) {
+    if (!rd8(b | 0x0D4E)) {
         cyc(32);
-        video_gsu_vram(0xF830, 0xF7D4);
+        rv_gsu_vram(0xF830, 0xF7D4);
         cyc(58);
-        video_gsu_3000(0xFA38, 0x0018, 1);
-        cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(158);
-        video_gsu_ram_dma(0x3000, 0x5AC0, 0x0180);
+        rv_gsu_3000(0xFA38, 0x0018, 1);
+        cyc(158 - 98);
+        rv_gsu_ram_dma(0x3000, 0x5AC0, 0x0180);
         cyc(16);
-        video_gsu_3000(0xFB90, 0x0018, 1);
-        cyc(138);                               /* the Super FX call's return, BRA */
+        rv_gsu_3000(0xFB90, 0x0018, 1);
+        cyc(138 - 98);                              /* the Super FX call's return, BRA */
         goto mode2;
     } else { cyc(14); }
 mode3:
     cyc(32);
-    op_lda8(b | 0x10CD);
+    v = rd8(b | 0x10CD);
     cyc(38);
-    if (!(uint8_t)cpu.a) {
-        video_gsu_vram(0xF830, 0xF7D4);
+    if (!v) {
+        rv_gsu_vram(0xF830, 0xF7D4);
         cyc(58);
-        video_gsu_3000(0xFA38, 0x0018, 1);
-        cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(158);
-        video_gsu_ram_dma(0x3180, 0x5AC0, 0x0100);
+        rv_gsu_3000(0xFA38, 0x0018, 1);
+        cyc(158 - 98);
+        rv_gsu_ram_dma(0x3180, 0x5AC0, 0x0100);
         cyc(16);
-        video_gsu_3000(0xFC20, 0x0018, 1);
-        cyc(140);                               /* the Super FX call's return, JMP */
+        rv_gsu_3000(0xFC20, 0x0018, 1);
+        cyc(140 - 98);                              /* the Super FX call's return, JMP */
         goto mode2;
     }
 mode0:
     cyc(24);
-    video_gsu_vram(0xF829, 0xF7D1);
+    rv_gsu_vram(0xF829, 0xF7D1);
     cyc(18);
-    video_gsu_3000(0x9228, 0x001D, 0);
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(162);
-    cpu.a = (uint16_t)(rd16(b | 0x0D8B) & 0x000F);
-    op_xba();
-    cpu.x = cpu.a;
-    cpu.p = nz16(cpu.p, cpu.x);
-    cpu.a = 0x5B40;
+    rv_gsu_3000(0x9228, 0x001D, 0);
+    cyc(162 - 98);
+    rx = (uint16_t)((rd16(b | 0x0D8B) & 0x000F) << 8);  /* XBA */
     cyc(130);
     ppu_wr16(b | 0x2116, 0x5B40);
-    for (y = 0x0080; y; y--) {
+    for (w = 0x0080; w; w--) {
         cyc(32);
-        cpu.a = rd16(0x703000 + cpu.x);
+        ra = rd16(0x703000 + rx);
         cyc(24);
-        ppu_wr16(b | 0x2118, cpu.a);
-        cpu.x = (uint16_t)(cpu.x + 2);
+        ppu_wr16(b | 0x2118, ra);
+        rx = (uint16_t)(rx + 2);
         cyc(64);
     }
     cyc(52);
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-    video_gsu_3000(0xFAE8, 0x0018, 1);
-    cyc(116);                                   /* the Super FX call's return */
+    rv_gsu_3000(0xFAE8, 0x0018, 1);
+    cyc(116 - 98);                                  /* the Super FX call's return */
 mode2:
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    (cyc(68), abi_ScreenFrameAndPictures());
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.y = k3;
+    (cyc(68), ScreenFrameAndPictures(0x03));
     cyc(256);
-    cpu.a = rd16(b + 0xF5A3 + k3);
-    cpu.x = cpu.a;
-    op_lda16(b + 0xF5A1 + k3);
-    abi_GsuCF42To3000();
-    video_tilemap_rows(0x0000);
-    op_sep(P_M);
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.y = k3;
+    w = rd16(b + 0xF5A3 + k3);
+    GsuCF42To3000(rd16(b + 0xF5A1 + k3), w);
+    *a = rv_tilemap_rows(0x0000, 288 - 98, x, y);
+    *y = k3;
     cyc(172);
-    cpu.a = (uint16_t)(rd16(b + 0xF5F7 + k3) & 0x00FF);
-    cpu.p = nz16(cpu.p, cpu.a);
-    if (cpu.a) {
+    w = (uint16_t)(rd16(b + 0xF5F7 + k3) & 0x00FF);
+    *a = w;
+    if (w) {
         cyc(72);
-        cpu.x = cpu.a;
-        op_lda16(b + 0xF5F5 + k3);
-        abi_GsuCF42To3000();
-        video_tilemap_rows(0x2800);
-        cpu.db = 0x03;
-        cpu.p = nz8(cpu.p, 0x03);
+        GsuCF42To3000(rd16(b + 0xF5F5 + k3), w);
+        *a = rv_tilemap_rows(0x2800, 288 - 98, x, y);
     }
-cyc(36);
+    cyc(36);
 done:
-    op_sep(P_M);
-    cpu.db = db0;
-    cpu.p = nz8(cpu.p, db0);
-    op_plp(p0);
+    cyc(42);                                        /* PLP */
+    return 0;
 }
+
+/* PLP's register effects (its time stated by the typed function). */
+static void pull_p(uint8_t p)
+{
+    cpu.p = p;
+    if (p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/* RaceVideoSetup's exit from P p0 and data bank db0 at its entry. */
+static void race_video_exit(int swapped, uint8_t p0, uint8_t db0, uint16_t a, uint16_t x, uint16_t y)
+{
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    if (swapped) {
+        pull_p(db0);
+        cpu.db = p0;
+        cpu.p = nz8(cpu.p, p0);
+    } else {
+        cpu.db = db0;
+        pull_p(p0);
+    }
+}
+
+void abi_RaceVideoSetup(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+    uint16_t a, x, y;
+    int swapped = RaceVideoSetup(cpu.x, &a, &x, &y);
+
+    race_video_exit(swapped, p0, db0, a, x, y);
+}
+
+static uint8_t rvi_v;                   /* RaceVideoInit's $0D24 */
 
 /*
  * @routine 03:D996 RaceVideoInit
@@ -613,37 +627,48 @@ done:
  * Entry: M 8-bit, D = $0000. Exit: as RaceVideoSetup; the data bank
  * unchanged, N and Z from it (as RaceVideoSetup's swapped return leaves P
  * otherwise).
+ * From C: as RaceVideoSetup.
  */
-void abi_RaceVideoInit(void)
+int RaceVideoInit(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
 {
     const uint32_t b = 0x030000;
-    uint8_t db0 = cpu.db, v;
+    int r;
 
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
-    op_sep(P_M);
     cyc(118);
-    op_lda8(b | 0x0D24);
-    v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : (cyc(38), 0)));
-    if (v >= 0x03) {
+    rvi_v = rd8(b | 0x0D24);
+    if (rvi_v >= 0x03) {
         cyc(56);
         wr8(b | 0x0EED, 0x00);
         cyc(24);
         wr8(b | 0x0EEE, 0x00);
         cyc(24);
         wr8(b | 0x0EEF, 0x00);
-        op_rep(P_M);
-        cyc(24);
+        cyc(22 + 24);
         wr16(b | 0x0E6C, 0x0000);
         cyc(24);
         wr16(b | 0x0E6E, 0x0000);
-    }
+    } else { cyc(38); }
     cyc(62);
-    abi_RaceVideoSetup();
+    r = RaceVideoSetup(x_in, a, x, y);
+    cyc(72);
+    return r;
+}
+
+void abi_RaceVideoInit(void)
+{
+    uint8_t db0 = cpu.db, p1;
+    uint16_t a, x, y;
+    int swapped = RaceVideoInit(cpu.x, &a, &x, &y);
+
+    /* P as RaceVideoSetup found it: M set, N and Z from the compare of
+       $0D24 with 3, C from it, M clear again on the clearing path. */
+    p1 = (uint8_t)(nz8(cpu.p, (uint8_t)(rvi_v - 0x03)) | P_M);
+    p1 = (uint8_t)((p1 & ~P_C) | (rvi_v >= 0x03 ? P_C : 0));
+    if (rvi_v >= 0x03)
+        p1 &= (uint8_t)~P_M;
+    race_video_exit(swapped, p1, 0x03, a, x, y);
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
-    cyc(72);
 }
 
 void abi_SoundReset(void);
