@@ -156,7 +156,7 @@ game's own code as plain C over native parts, with no console model, no
 processor registers and nothing drawn in software, at the original's
 pacing.
 
-Where it stands (2026-10-23):
+Where it stands (2026-10-23, evening):
 
 - **Plays the whole game** on macOS (a Windows target builds from the same
   tree), with the player's own ROM checked by SHA-1 and built into the
@@ -177,11 +177,12 @@ Where it stands (2026-10-23):
   whole game against the previous commit's from random states (every
   memory access, every clock, every exit register), every play byte for
   byte against the reference port, and the decomp's full gate. References
-  to the register file left: 1,591, from 17,415 when the conversion began
-  (`python3 ports/stuntracefx/tools/plainc.py`). What remains is code that
-  works the stack directly (boot, the race loop, restarts, frames a callee
-  pulls for its caller) and typed functions that still hand results back
-  in registers; it is converted by hand.
+  to the register file left: 949, from 17,415 when the conversion began
+  (`python3 ports/stuntracefx/tools/plainc.py`). The boot, race and
+  attract loops and the restart paths are converted. What remains is code
+  that returns through its caller's frame (an RTS or RTL taken from the
+  stack), typed functions that still hand results back in registers, and
+  a handful of files and wrappers; it is converted by hand.
 - **Still to do:** the rest of that phase (typed work RAM, a frame loop
   with no interrupts, the Super FX programs and the sound drivers as
   native code); removing the console model (`ports/common/snes`) and every
