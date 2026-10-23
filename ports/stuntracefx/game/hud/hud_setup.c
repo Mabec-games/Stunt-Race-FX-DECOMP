@@ -15,6 +15,12 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
+#include "carried.h"
+
+void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out);
+uint16_t MenuCourseScreenSetup(uint8_t bank);
+#include "video_palette_calls.h"
+#include "hud_calls.h"
 
 void abi_SoundFromTableD89(void);
 void abi_OamBufferClear(void);
@@ -100,64 +106,100 @@ static const HudByte battle_p2_sprites[6] = {
     {0x046A, 0xC0}, {0x046C, 0x36},
 };
 
+void HudBestTimeDigits(Carried *cr);
+void HudBestTimeSprites(Carried *cr);
+void RaceHudSpritesHide(Carried *cr);
+void RecordOffsetAllCourses(Carried *cr);
+static void digit_tiles(Carried *cr, uint32_t at, uint8_t d);
+static void flags(Carried *cr);
+static void hud_bytes(Carried *cr, const HudByte *t, unsigned n, int x8);
+static void hud_end(Carried *cr);
+static void lda8(Carried *cr, uint8_t v);
+static int mode_all(Carried *cr, uint32_t b);
+static void mode_speed_battle(Carried *cr, uint32_t b, int speed);
+static void mode_stunt(Carried *cr, uint32_t b);
+static void no_time(Carried *cr);
+static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at);
+static void race_hud_setup_two(Carried *cr);
+static void slide_word(Carried *cr, uint16_t v);
+static void time_tiles(Carried *cr, uint8_t min, uint8_t sec, uint8_t hund);
+static void w_GsuCF42ToVram(Carried *cr);
+static void w_MenuCourseScreenSetup(Carried *cr);
+static void w_PaletteCourseLoad(Carried *cr);
+static void w_TimeUnpackBcdLong(Carried *cr);
+void RaceVarsReset(Carried *cr);
+
 /* LDA #v with M 8-bit. */
-static void lda8(uint8_t v)
+static void lda8(Carried *cr, uint8_t v)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+static void lda8_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    lda8(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* A run of sprite macros: each byte LDA # / STA.L to $00:addr, the index
    registers 8-bit (SEP #$10) or 16-bit (REP #$10) after each. */
-static void hud_bytes(const HudByte *t, unsigned n, int x8)
+static void hud_bytes(Carried *cr, const HudByte *t, unsigned n, int x8)
 {
     unsigned i;
 
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(22);
     for (i = 0; i < n; i++) {
-        lda8(t[i].v);
+        lda8(cr, t[i].v);
         /* a new sprite macro (its bytes lie in one 4-byte group) comes after
            SEP #$20, SEP/REP #$10 and its own SEP #$20 */
         cyc(48 + (i && ((t[i].a - 0x465) >> 2) != ((t[i - 1].a - 0x465) >> 2) ? 66 : 0));
         wr8(t[i].a, t[i].v);
     }
     if (x8)
-        { cyc(40); op_sep(P_X); }
+        { cyc(40); r_sep(cr, P_X); }
     else
-        op_rep(P_X);
+        r_rep(cr, P_X);
 }
 
 /* A digit's two tiles (ASL, STA.L at, INC, STA.L at + 4): the digit's top
    tile d * 2 and its bottom tile d * 2 + 1. */
-static void digit_tiles(uint32_t at, uint8_t d)
+static void digit_tiles(Carried *cr, uint32_t at, uint8_t d)
 {
     uint8_t v = (uint8_t)(d << 1);
 
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (d >> 7));
-    lda8(v);
+    cr->p = (uint8_t)((cr->p & ~P_C) | (d >> 7));
+    lda8(cr, v);
     cyc(62);
     wr8(at, v);
     v++;
-    lda8(v);
+    lda8(cr, v);
     cyc(46);
     wr8(at + 4, v);
 }
 
 /* The five digits of a BCD time (minutes, seconds, hundredths) into the
    best time's sprites. */
-static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
+static void time_tiles(Carried *cr, uint8_t min, uint8_t sec, uint8_t hund)
 {
     cyc(min == 0xFF ? 86 : 0);          /* no time ($FFFF) or the unpacked BCD, after TimeUnpackBcdLong's RTL */
-    digit_tiles(0x000467, (uint8_t)(min & 0x0F));
+    digit_tiles(cr, 0x000467, (uint8_t)(min & 0x0F));
     cyc(54);
-    digit_tiles(0x00046F, (uint8_t)(sec >> 4));
+    digit_tiles(cr, 0x00046F, (uint8_t)(sec >> 4));
     cyc(14);
-    digit_tiles(0x0004D7, (uint8_t)(sec & 0x0F));
+    digit_tiles(cr, 0x0004D7, (uint8_t)(sec & 0x0F));
     cyc(54);
-    digit_tiles(0x0004DF, (uint8_t)(hund >> 4));
+    digit_tiles(cr, 0x0004DF, (uint8_t)(hund >> 4));
     cyc(14);
-    digit_tiles(0x0004E7, (uint8_t)(hund & 0x0F));
+    digit_tiles(cr, 0x0004E7, (uint8_t)(hund & 0x0F));
 }
 
 /*
@@ -167,11 +209,24 @@ static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
  * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte $F0; N set, Z
  * clear.
  */
-void abi_RaceHudSpritesHide(void)
+void RaceHudSpritesHide(Carried *cr)
 {
     cyc(0);
-    hud_bytes(hide_sprites, 12, 1);
+    hud_bytes(cr, hide_sprites, 12, 1);
     cyc(28);
+}
+
+void abi_RaceHudSpritesHide(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceHudSpritesHide(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -181,10 +236,23 @@ void abi_RaceHudSpritesHide(void)
  * HOW: Ten sprite macros.
  * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte $36; N, Z clear.
  */
-void abi_HudBestTimeSprites(void)
+void HudBestTimeSprites(Carried *cr)
 {
     cyc(62);
-    hud_bytes(best_time_sprites, 30, 1);
+    hud_bytes(cr, best_time_sprites, 30, 1);
+}
+
+void abi_HudBestTimeSprites(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudBestTimeSprites(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -197,16 +265,29 @@ void abi_HudBestTimeSprites(void)
  * entry; A low byte $36; X = the seconds, Y = the hundredths (BCD, 8
  * bits).
  */
+void HudBestTimeDigits(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    (cyc(84), w_TimeUnpackBcdLong(cr));
+    r_sep(cr, P_M | P_X);
+    time_tiles(cr, (uint8_t)cr->a, (uint8_t)cr->x, (uint8_t)cr->y);
+    HudBestTimeSprites(cr);
+    r_plp(cr, p);
+    cyc(56);                            /* the rest of the SEPs, RTL and the RTL */
+}
+
 void abi_HudBestTimeDigits(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    (cyc(84), abi_TimeUnpackBcdLong());
-    op_sep(P_M | P_X);
-    time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
-    abi_HudBestTimeSprites();
-    op_plp(p);
-    cyc(56);                            /* the rest of the SEPs, RTL and the RTL */
+    HudBestTimeDigits(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -217,45 +298,58 @@ void abi_HudBestTimeDigits(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = X = the offset; N
  * clear, Z from it; C, V from the add.
  */
-void abi_RecordOffsetAllCourses(void)
+void RecordOffsetAllCourses(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p;
 
     cyc(86);
-    op_lda16(b | 0x0E3D);
-    op_sub16(0x0014);
+    r_lda16(cr, b | 0x0E3D);
+    r_sub16(cr, 0x0014);
     cyc(48);
-    wr16((uint16_t)(cpu.d + 0xF1), cpu.a);
-    op_asl16();
-    op_asl16();
-    p = (uint8_t)(cpu.p & ~P_C);
+    wr16((uint16_t)(cr->d + 0xF1), cr->a);
+    r_asl16(cr);
+    r_asl16(cr);
+    p = (uint8_t)(cr->p & ~P_C);
     cyc(58);
-    cpu.a = op_adc16(cpu.a, rd16((uint16_t)(cpu.d + 0xF1)), &p);
-    cpu.p = p;
-    op_and16(0x00FF);
-    op_tax16();
+    cr->a = alu_adc16(cr->a, rd16((uint16_t)(cr->d + 0xF1)), &p);
+    cr->p = p;
+    r_and16(cr, 0x00FF);
+    r_tax16(cr);
+}
+
+void abi_RecordOffsetAllCourses(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordOffsetAllCourses(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The best time's ten sprites with no time: tile $3F (blank) at Y $BC. */
-static void no_time(void)
+static void no_time(Carried *cr)
 {
     cyc(68);
-    hud_bytes(no_time_sprites, 40, 0);
+    hud_bytes(cr, no_time_sprites, 40, 0);
 }
 
 /* The two flag sprites (tiles $14, $15 at Y $B8). */
-static void flags(void)
+static void flags(Carried *cr)
 {
     cyc(22);
-    hud_bytes(flag_sprites, 8, 0);
+    hud_bytes(cr, flag_sprites, 8, 0);
 }
 
 /* $7F:3470 = v (16-bit). */
-static void slide_word(uint16_t v)
+static void slide_word(Carried *cr, uint16_t v)
 {
-    op_rep(P_M);
-    op_lda16_imm(v);
+    r_rep(cr, P_M);
+    r_lda16_imm(cr, v);
     wr16(0x7F3470, v);
 }
 
@@ -265,82 +359,96 @@ static void slide_word(uint16_t v)
    RecordOffsetAllCourses, HudBestTimeDigits), else the best time at
    $0F61-$0F63 when $0F2B holds one; no time shows the dashes. Returns 1
    to go on as mode 0. */
-static int mode_all(uint32_t b)
+static int mode_all(Carried *cr, uint32_t b)
 {
     cyc(24);
-    op_lda8(b | 0x10CD);
-    if ((uint8_t)cpu.a)
+    r_lda8(cr, b | 0x10CD);
+    if ((uint8_t)cr->a)
         { cyc(46); return 1; }
-    lda8(0xEC);
+    lda8(cr, 0xEC);
     cyc(62);
     wr8(b | 0x0E16, 0xEC);
-    lda8(0xE8);
+    lda8(cr, 0xE8);
     cyc(40);
     wr8(b | 0x0E18, 0xE8);
-    op_rep(P_M | P_X);
-    op_lda16_imm(0x7FFF);
+    r_rep(cr, P_M | P_X);
+    r_lda16_imm(cr, 0x7FFF);
     cyc(18);
     wr16(0x7F3470, 0x7FFF);
     cyc(24);
-    op_lda16(b | 0x0D4C);
-    op_and16(0x00FF);
-    if (cpu.a) {
+    r_lda16(cr, b | 0x0D4C);
+    r_and16(cr, 0x00FF);
+    if (cr->a) {
         cyc(38);
-        abi_RecordOffsetAllCourses();
+        RecordOffsetAllCourses(cr);
         cyc(82);
-        op_lda16(0x70FC5E + cpu.x);
-        op_cmp16(0xFFFF);
-        if (cpu.a == 0xFFFF) {
-            no_time();
+        r_lda16(cr, 0x70FC5E + cr->x);
+        r_cmp16(cr, 0xFFFF);
+        if (cr->a == 0xFFFF) {
+            no_time(cr);
         } else {
             cyc(102);
-            abi_HudBestTimeDigits();
+            HudBestTimeDigits(cr);
             cyc(2);             /* JMP RaceHudFlags */
         }
-        flags();
+        flags(cr);
         return 0;
     }
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(68);
-    op_lda16(b | 0x0F2B);
-    op_cmp16(0xFFFF);
-    if (cpu.a == 0xFFFF) {
+    r_lda16(cr, b | 0x0F2B);
+    r_cmp16(cr, 0xFFFF);
+    if (cr->a == 0xFFFF) {
         cyc(18);
-        no_time();
-        flags();
+        no_time(cr);
+        flags(cr);
         return 0;
     }
-    op_sep(P_M);
+    r_sep(cr, P_M);
     {
         uint8_t m, s, h;
 
         cyc(92);
-        op_lda8(b | 0x0F63);
-        m = (uint8_t)cpu.a;
-        digit_tiles(0x000467, (uint8_t)(m & 0x0F));
+        r_lda8(cr, b | 0x0F63);
+        m = (uint8_t)cr->a;
+        digit_tiles(cr, 0x000467, (uint8_t)(m & 0x0F));
         cyc(24);
-        op_lda8(b | 0x0F62);
-        s = (uint8_t)cpu.a;
+        r_lda8(cr, b | 0x0F62);
+        s = (uint8_t)cr->a;
         cyc(40);
-        digit_tiles(0x00046F, (uint8_t)(s >> 4));
+        digit_tiles(cr, 0x00046F, (uint8_t)(s >> 4));
         cyc(24);
-        op_lda8(b | 0x0F62);
-        s = (uint8_t)cpu.a;
-        digit_tiles(0x0004D7, (uint8_t)(s & 0x0F));
+        r_lda8(cr, b | 0x0F62);
+        s = (uint8_t)cr->a;
+        digit_tiles(cr, 0x0004D7, (uint8_t)(s & 0x0F));
         cyc(24);
-        op_lda8(b | 0x0F61);
-        h = (uint8_t)cpu.a;
+        r_lda8(cr, b | 0x0F61);
+        h = (uint8_t)cr->a;
         cyc(40);
-        digit_tiles(0x0004DF, (uint8_t)(h >> 4));
+        digit_tiles(cr, 0x0004DF, (uint8_t)(h >> 4));
         cyc(24);
-        op_lda8(b | 0x0F61);
-        h = (uint8_t)cpu.a;
-        digit_tiles(0x0004E7, (uint8_t)(h & 0x0F));
+        r_lda8(cr, b | 0x0F61);
+        h = (uint8_t)cr->a;
+        digit_tiles(cr, 0x0004E7, (uint8_t)(h & 0x0F));
     }
-    abi_HudBestTimeSprites();
+    HudBestTimeSprites(cr);
     cyc(28);                    /* its SEPs and RTL, then JMP RaceHudFlags */
-    flags();
+    flags(cr);
     return 0;
+}
+
+static int mode_all_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = mode_all(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* HUD mode 1 (Stunt Trax). With $0D4E set (a course's records run):
@@ -349,81 +457,94 @@ static int mode_all(uint32_t b)
    as the best time (or the dashes).
    Otherwise: $0E18 = $F0, sprites 116-127 hidden, the score's sprites and
    $7F:3470 = $2127. */
-static void mode_stunt(uint32_t b)
+static void mode_stunt(Carried *cr, uint32_t b)
 {
     uint16_t x;
     uint8_t p;
 
     cyc(24);
-    op_lda8(b | 0x0D4E);
-    if ((uint8_t)cpu.a) {
+    r_lda8(cr, b | 0x0D4E);
+    if ((uint8_t)cr->a) {
         cyc(40);
-        slide_word(0x7FFF);
-        op_lda16_imm(0x00AC);
+        slide_word(cr, 0x7FFF);
+        r_lda16_imm(cr, 0x00AC);
         cyc(10);
         wr16(b | 0x0E16, 0x00AC);
-        op_lda16_imm(0x008C);
+        r_lda16_imm(cr, 0x008C);
         cyc(10);
         wr16(b | 0x0E18, 0x008C);
         cyc(22);
-        hud_bytes(stunt_record_sprites, 12, 0);
-        op_rep(P_M | P_X);
+        hud_bytes(cr, stunt_record_sprites, 12, 0);
+        r_rep(cr, P_M | P_X);
         cyc(46);
-        op_lda16(b | 0x0E3D);
-        op_and16(0x00FF);
-        op_sub16(0x0017);
+        r_lda16(cr, b | 0x0E3D);
+        r_and16(cr, 0x00FF);
+        r_sub16(cr, 0x0017);
         cyc(70);
-        wr16((uint16_t)(cpu.d + 0xF1), cpu.a);
-        op_asl16();
-        op_asl16();
-        p = (uint8_t)(cpu.p & ~P_C);
+        wr16((uint16_t)(cr->d + 0xF1), cr->a);
+        r_asl16(cr);
+        r_asl16(cr);
+        p = (uint8_t)(cr->p & ~P_C);
         cyc(58);
-        cpu.a = op_adc16(cpu.a, rd16((uint16_t)(cpu.d + 0xF1)), &p);
-        cpu.p = p;
-        op_tax16();
-        x = cpu.x;
+        cr->a = alu_adc16(cr->a, rd16((uint16_t)(cr->d + 0xF1)), &p);
+        cr->p = p;
+        r_tax16(cr);
+        x = cr->x;
         cyc(16);
-        op_lda16(0x70FC4A + x);
-        op_cmp16(0xFFFF);
-        if (cpu.a == 0xFFFF) {
+        r_lda16(cr, 0x70FC4A + x);
+        r_cmp16(cr, 0xFFFF);
+        if (cr->a == 0xFFFF) {
             cyc(24);
-            no_time();
+            no_time(cr);
         } else {
             cyc(108);
-            abi_TimeUnpackBcdLong();
-            op_sep(P_M | P_X);
-            time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
-            abi_HudBestTimeSprites();
+            w_TimeUnpackBcdLong(cr);
+            r_sep(cr, P_M | P_X);
+            time_tiles(cr, (uint8_t)cr->a, (uint8_t)cr->x, (uint8_t)cr->y);
+            HudBestTimeSprites(cr);
             cyc(28);            /* its SEPs and RTL, then JMP RaceHudFlags */
         }
-        flags();
+        flags(cr);
         cyc(22);
         return;
     }
-    lda8(0xF0);
+    lda8(cr, 0xF0);
     cyc(86);
     wr8(b | 0x0E18, 0xF0);
-    (cyc(46), abi_RaceHudSpritesHide());
+    (cyc(46), RaceHudSpritesHide(cr));
     cyc(18);
-    hud_bytes(stunt_score_sprites, 42, 1);
-    slide_word(0x2127);
+    hud_bytes(cr, stunt_score_sprites, 42, 1);
+    slide_word(cr, 0x2127);
+}
+
+static void mode_stunt_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    mode_stunt(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDA $addr, ASL, STA.W at, INC, STA.W at + 4: a player's number as its
    two tiles. */
-static void player_tiles(uint32_t b, uint16_t from, uint16_t at)
+static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at)
 {
     uint8_t v;
 
-    op_lda8(b | from);
-    v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    r_lda8(cr, b | from);
+    v = (uint8_t)cr->a;
+    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
     v = (uint8_t)(v << 1);
-    lda8(v);
+    lda8(cr, v);
     cyc(38);
     wr8(b | at, v);
     v++;
-    lda8(v);
+    lda8(cr, v);
     cyc(38);
     wr8(b | (uint16_t)(at + 4), v);
 }
@@ -433,59 +554,85 @@ static void player_tiles(uint32_t b, uint16_t from, uint16_t at)
    hidden, $7F:3470 = $7FFF. Otherwise the players' tiles from $0DF4 and
    $0DF8 with their sprites, and $7F:3470 = $3947 with $0D4C set, else
    $7FFF. */
-static void mode_speed_battle(uint32_t b, int speed)
+static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
 {
     if (speed) {
-        lda8(0x8C);
+        lda8(cr, 0x8C);
         cyc(40);
         wr8(b | 0x0E18, 0x8C);
-        lda8(0xEC);
+        lda8(cr, 0xEC);
         cyc(40);
         wr8(b | 0x0E16, 0xEC);
     }
     cyc(24);
-    op_lda8(b | 0x10CD);
-    if ((uint8_t)cpu.a) {
-        lda8(0x3F);
+    r_lda8(cr, b | 0x10CD);
+    if ((uint8_t)cr->a) {
+        lda8(cr, 0x3F);
         cyc(56);
         wr8(b | 0x046F, 0x3F);
         cyc(24);
         wr8(b | 0x0467, 0x3F);
-        hud_bytes(battle_alt_sprites, 6, 1);
-        op_sep(P_M);
-        (cyc(50), abi_RaceHudSpritesHide());
+        hud_bytes(cr, battle_alt_sprites, 6, 1);
+        r_sep(cr, P_M);
+        (cyc(50), RaceHudSpritesHide(cr));
     } else {
         cyc(46);
-        player_tiles(b, 0x0DF4, 0x046F);
-        hud_bytes(battle_p1_sprites, 6, 1);
+        player_tiles(cr, b, 0x0DF4, 0x046F);
+        hud_bytes(cr, battle_p1_sprites, 6, 1);
         cyc(6);
-        player_tiles(b, 0x0DF8, 0x0467);
-        hud_bytes(battle_p2_sprites, 6, 1);
-        op_sep(P_M);
+        player_tiles(cr, b, 0x0DF8, 0x0467);
+        hud_bytes(cr, battle_p2_sprites, 6, 1);
+        r_sep(cr, P_M);
         cyc(28);
-        op_lda8(b | 0x0D4C);
-        if ((uint8_t)cpu.a) {
+        r_lda8(cr, b | 0x0D4C);
+        if ((uint8_t)cr->a) {
             cyc(34);
-            slide_word(0x3947);
+            slide_word(cr, 0x3947);
             cyc(6);                     /* BRA */
             return;
         } else { cyc(2); }
     }
     cyc(38);
-    slide_word(0x7FFF);
-    op_sep(P_M);
+    slide_word(cr, 0x7FFF);
+    r_sep(cr, P_M);
     cyc(46);
-    op_lda8(b | 0x10CD);
-    if (!(uint8_t)cpu.a)
+    r_lda8(cr, b | 0x10CD);
+    if (!(uint8_t)cr->a)
         cyc(6);                         /* BEQ taken */
 }
 
-/* The end of both set-ups: RaceVarsReset, SEP #$20. */
-static void hud_end(void)
+static void mode_speed_battle_g(uint32_t b, int speed)
 {
-    (cyc(62), abi_RaceVarsReset());
-    op_sep(P_M);
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    mode_speed_battle(&c, b, speed);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
+/* The end of both set-ups: RaceVarsReset, SEP #$20. */
+static void hud_end(Carried *cr)
+{
+    (cyc(62), RaceVarsReset(cr));
+    r_sep(cr, P_M);
     cyc(8);
+}
+
+static void hud_end_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    hud_end(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The one-player HUD (from $03:DECA up to the end's PLB, PLP). */
@@ -525,12 +672,12 @@ static void race_hud_setup(void)
     h = rd16(0x030000 | (uint16_t)(0xE052 + cpu.x));
     switch (h) {
     case 0xE05A:
-        if (mode_all(b))
-            mode_speed_battle(b, 1); else { cyc(30); }
+        if (mode_all_g(b))
+            mode_speed_battle_g(b, 1); else { cyc(30); }
         break;
-    case 0xE263: mode_stunt(b); cyc(8); break;
-    case 0xE4DD: mode_speed_battle(b, 1); break;
-    case 0xE4E7: mode_speed_battle(b, 0); break;
+    case 0xE263: mode_stunt_g(b); cyc(8); break;
+    case 0xE4DD: mode_speed_battle_g(b, 1); break;
+    case 0xE4E7: mode_speed_battle_g(b, 0); break;
     default: jump_routine(0x030000 | h); return;
     }
     /* $03:E5C4: the sprite tables out, scrolls, HUD positions, HDMA. */
@@ -544,7 +691,7 @@ static void race_hud_setup(void)
     ppu_wr(b | BG1HOFS, 0x00);
     cyc(24);
     ppu_wr(b | BG1HOFS, 0x00);
-    lda8(0xEF);
+    lda8_g(0xEF);
     cyc(40);
     ppu_wr(b | BG1VOFS, 0xEF);
     cpu.x = 0xFF;
@@ -555,55 +702,55 @@ static void race_hud_setup(void)
     ppu_wr(b | BG2HOFS, 0x00);
     cyc(24);
     ppu_wr(b | BG2HOFS, 0x00);
-    lda8(0x80);
+    lda8_g(0x80);
     cyc(40);
     ppu_wr(b | BG2VOFS, 0x80);
     cyc(24);
     ppu_wr(b | BG2VOFS, 0x00);
-    lda8(0x04);
+    lda8_g(0x04);
     cyc(40);
     wr8(b | 0x0D3F, 0x04);
-    lda8(0xFF);
+    lda8_g(0xFF);
     cyc(40);
     wr8(b | 0x0E46, 0xFF);
     cyc(24);
     wr8(b | 0x0E45, 0xFF);
     cyc(24);
     wr8(b | 0x0D7D, 0x00);
-    lda8(0xC4);
+    lda8_g(0xC4);
     cyc(40);
     wr8(b | 0x0E12, 0xC4);
-    lda8(0x93);
+    lda8_g(0x93);
     cyc(40);
     wr8(b | 0x0E14, 0x93);
-    lda8(0x2A);
+    lda8_g(0x2A);
     cyc(40);
     wr8(b | 0x0E09, 0x2A);
-    lda8(0x7A);
+    lda8_g(0x7A);
     cyc(56);
     wr8(b | 0x0E0C, 0x7A);
-    lda8(0x00);
+    lda8_g(0x00);
     cyc(40);
     wr8(b | 0x0E0B, 0x00);
-    lda8(0xE0);
+    lda8_g(0xE0);
     cyc(40);
     wr8(b | 0x0D57, 0xE0);
-    lda8(0x20);
+    lda8_g(0x20);
     cyc(40);
     wr8(b | 0x0D58, 0x20);
-    lda8(0x50);
+    lda8_g(0x50);
     cyc(40);
     wr8(b | 0x0E0E, 0x50);
-    lda8(0xB8);
+    lda8_g(0xB8);
     cyc(40);
     wr8(b | 0x0E10, 0xB8);
-    lda8(0x00);
+    lda8_g(0x00);
     cyc(62);
     dma_wr(b | DMAP1, 0x00);
-    lda8(0x2C);
+    lda8_g(0x2C);
     cyc(40);
     dma_wr(b | BBAD1, 0x2C);
-    lda8(0x7F);
+    lda8_g(0x7F);
     cyc(40);
     dma_wr(b | A1B1, 0x7F);
     op_rep(P_M);
@@ -613,17 +760,17 @@ static void race_hud_setup(void)
     op_sep(P_M);
     cyc(22);
     for (i = 0; i < 9; i++) {
-        lda8((uint8_t)hdma_bytes[i]);
+        lda8_g((uint8_t)hdma_bytes[i]);
         cyc(48);
         wr8(0x7F3480 + i, (uint8_t)hdma_bytes[i]);
     }
-    lda8(0x00);
+    lda8_g(0x00);
     cyc(40);
     dma_wr(b | DMAP2, 0x00);
-    lda8(0x21);
+    lda8_g(0x21);
     cyc(40);
     dma_wr(b | BBAD2, 0x21);
-    lda8(0x7F);
+    lda8_g(0x7F);
     cyc(40);
     dma_wr(b | A1B2, 0x7F);
     op_rep(P_M);
@@ -657,26 +804,26 @@ static void race_hud_setup(void)
     cyc(18);
     wr16(0x7F348A, 0xEC57);
     op_sep(P_M);
-    lda8(0x20);
+    lda8_g(0x20);
     cyc(70);
     wr8(0x7F3489, 0x20);
-    lda8(0xFF);
+    lda8_g(0xFF);
     cyc(48);
     wr8(0x7F348C, 0xFF);
-    lda8(0x00);
+    lda8_g(0x00);
     cyc(48);
     wr8(0x7F348F, 0x00);
-    lda8(0x7F);
+    lda8_g(0x7F);
     cyc(40);
     dma_wr(b | DASB3, 0x7F);
-    lda8(0x03);
+    lda8_g(0x03);
     cyc(40);
     wr8(b | 0x0374, 0x03);
     op_rep(P_M);
     op_lda16_imm(0x0001);
     cyc(18);
     wr16(0x7001C4, 0x0001);
-    (cyc(24), hud_end());
+    (cyc(24), hud_end_g());
 }
 
 /* The two-player HUD (from $03:E6FA up to the end's PLB, PLP): the Super
@@ -688,45 +835,45 @@ static void race_hud_setup(void)
    from $03:E80F at offsets $2C28 and $9476, the size bits from $03:E80A
    (five bytes into $0580 and $0590); the Super FX blocks $F845/$F804 to
    VRAM (GsuCF42ToVram). */
-static void race_hud_setup_two(void)
+static void race_hud_setup_two(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t v;
 
-    op_rep(P_M | P_X);
-    op_lda16_imm(0xA545);
+    r_rep(cr, P_M | P_X);
+    r_lda16_imm(cr, 0xA545);
     cyc(18);
     wr16(0x70004E, 0xA545);
-    op_sep(P_M);
-    lda8(0x01);
+    r_sep(cr, P_M);
+    lda8(cr, 0x01);
     cyc(62);
     wr8(b | 0x0374, 0x01);
-    op_rep(P_M);
-    op_lda16_imm(0x0002);
+    r_rep(cr, P_M);
+    r_lda16_imm(cr, 0x0002);
     cyc(18);
     wr16(0x7001C4, 0x0002);
-    (cyc(62), abi_MenuCourseScreenSetup());
-    (cyc(46), abi_PaletteCourseLoad());
-    op_rep(P_M | P_X);
-    b = (uint32_t)cpu.db << 16;
-    cpu.x = 0x00BC;
-    for (cpu.y = 0x0000; cpu.y < 0x0020; ) {
+    (cyc(62), w_MenuCourseScreenSetup(cr));
+    (cyc(46), w_PaletteCourseLoad(cr));
+    r_rep(cr, P_M | P_X);
+    b = (uint32_t)cr->db << 16;
+    cr->x = 0x00BC;
+    for (cr->y = 0x0000; cr->y < 0x0020; ) {
         cyc(164);
-        v = (uint16_t)(rd16(b | (uint16_t)(0xE7EA + cpu.y)) - 0x0800);
-        wr16(0x000375 + cpu.x, v);
+        v = (uint16_t)(rd16(b | (uint16_t)(0xE7EA + cr->y)) - 0x0800);
+        wr16(0x000375 + cr->x, v);
         v = (uint16_t)(v + 0x6850);
         cyc(70);
-        wr16(0x000475 + cpu.x, v);
+        wr16(0x000475 + cr->x, v);
         cyc(78);
-        v = rd16(b | (uint16_t)(0xE7EC + cpu.y));
-        wr16(0x000377 + cpu.x, v);
+        v = rd16(b | (uint16_t)(0xE7EC + cr->y));
+        wr16(0x000377 + cr->x, v);
         cyc(32);
-        wr16(0x000477 + cpu.x, v);
-        cpu.x = (uint16_t)(cpu.x + 4);
-        cpu.y = (uint16_t)(cpu.y + 4);
+        wr16(0x000477 + cr->x, v);
+        cr->x = (uint16_t)(cr->x + 4);
+        cr->y = (uint16_t)(cr->y + 4);
         cyc(110);
     }
-    op_lda16_imm(0x0000);
+    r_lda16_imm(cr, 0x0000);
     cyc(52);
     wr16(b | 0x0425, 0x0000);
     cyc(24);
@@ -739,7 +886,7 @@ static void race_hud_setup_two(void)
     wr16(b | 0x0529, 0x0000);
     cyc(24);
     wr16(b | 0x052D, 0x0000);
-    op_lda16_imm(0x26A0);
+    r_lda16_imm(cr, 0x26A0);
     cyc(10);
     wr16(b | 0x0427, 0x26A0);
     cyc(24);
@@ -752,50 +899,63 @@ static void race_hud_setup_two(void)
     wr16(b | 0x052B, 0x26A0);
     cyc(24);
     wr16(b | 0x052F, 0x26A0);
-    cpu.x = 0x00DC;
-    for (cpu.y = 0x0000; cpu.y < 0x0024; ) {
+    cr->x = 0x00DC;
+    for (cr->y = 0x0000; cr->y < 0x0024; ) {
         cyc(162);
-        wr16(b | (uint16_t)(0x0375 + cpu.x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cpu.y)) + 0x2C28));
+        wr16(b | (uint16_t)(0x0375 + cr->x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cr->y)) + 0x2C28));
         cyc(76);
-        wr16(b | (uint16_t)(0x0377 + cpu.x), rd16(b | (uint16_t)(0xE811 + cpu.y)));
-        cpu.x = (uint16_t)(cpu.x + 4);
-        cpu.y = (uint16_t)(cpu.y + 4);
+        wr16(b | (uint16_t)(0x0377 + cr->x), rd16(b | (uint16_t)(0xE811 + cr->y)));
+        cr->x = (uint16_t)(cr->x + 4);
+        cr->y = (uint16_t)(cr->y + 4);
         cyc(110);
     }
-    cpu.x = 0x01DC;
-    for (cpu.y = 0x0000; cpu.y < 0x0024; ) {
+    cr->x = 0x01DC;
+    for (cr->y = 0x0000; cr->y < 0x0024; ) {
         cyc(204);
-        wr16(b | (uint16_t)(0x0375 + cpu.x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cpu.y)) + 0x9476));
+        wr16(b | (uint16_t)(0x0375 + cr->x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cr->y)) + 0x9476));
         cyc(76);
-        v = rd16(b | (uint16_t)(0xE811 + cpu.y));
-        cpu.a = v;
-        wr16(b | (uint16_t)(0x0377 + cpu.x), v);
-        cpu.x = (uint16_t)(cpu.x + 4);
-        cpu.y = (uint16_t)(cpu.y + 4);
+        v = rd16(b | (uint16_t)(0xE811 + cr->y));
+        cr->a = v;
+        wr16(b | (uint16_t)(0x0377 + cr->x), v);
+        cr->x = (uint16_t)(cr->x + 4);
+        cr->y = (uint16_t)(cr->y + 4);
         cyc(68);
     }
     cyc(80);
-    op_sep(P_M);
-    cpu.x = 0x000B;
-    for (cpu.y = 0x0000; cpu.y < 0x0005; ) {
+    r_sep(cr, P_M);
+    cr->x = 0x000B;
+    for (cr->y = 0x0000; cr->y < 0x0005; ) {
         cyc(142);
-        uint8_t s = rd8(b | (uint16_t)(0xE80A + cpu.y));
+        uint8_t s = rd8(b | (uint16_t)(0xE80A + cr->y));
 
-        lda8(s);
-        wr8(b | (uint16_t)(0x0575 + cpu.x), s);
+        lda8(cr, s);
+        wr8(b | (uint16_t)(0x0575 + cr->x), s);
         cyc(30);
-        wr8(b | (uint16_t)(0x0585 + cpu.x), s);
-        cpu.x++;
-        cpu.y++;
+        wr8(b | (uint16_t)(0x0585 + cr->x), s);
+        cr->x++;
+        cr->y++;
     }
     cyc(178);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_Z | P_C);
-    op_rep(P_M | P_X);
-    cpu.y = 0xF845;
-    cpu.x = 0xF804;
-    cpu.p = nz16(cpu.p, 0xF804);
-    abi_GsuCF42ToVram();
-    (cyc(0), hud_end());
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_Z | P_C);
+    r_rep(cr, P_M | P_X);
+    cr->y = 0xF845;
+    cr->x = 0xF804;
+    cr->p = nz16(cr->p, 0xF804);
+    w_GsuCF42ToVram(cr);
+    (cyc(0), hud_end(cr));
+}
+
+static void race_hud_setup_two_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    race_hud_setup_two(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* PLB, PLP (the data bank and P RaceHudLoad pushed), RTL: for an entry
@@ -873,7 +1033,7 @@ void abi_RaceHudSetup(void)
  */
 void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
 {
-    race_hud_setup_two();
+    race_hud_setup_two_g();
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);
@@ -881,6 +1041,44 @@ void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
 
 void abi_RaceHudSetupTwoPlayers(void)
 {
-    race_hud_setup_two();
+    race_hud_setup_two_g();
     hud_leave_stack();
+}
+
+/* TimeUnpackBcdLong as its adapter leaves the registers. */
+static void w_TimeUnpackBcdLong(Carried *cr)
+{
+    uint16_t min, sec, hund;
+    uint8_t p = cr->p;
+
+    TimeUnpackBcdLong(cr->a, &min, &sec, &hund, &p);
+    cr->a = min;
+    cr->x = sec;
+    cr->y = hund;
+    cr->p = p;
+}
+
+/* GsuCF42ToVram as its adapter leaves the registers. */
+static void w_GsuCF42ToVram(Carried *cr)
+{
+    GsuCF42ToVram(cr->db, cr->x, cr->y);
+    cr->a = 0x0001;
+    cr->x = cr->y;
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M);
+}
+
+/* MenuCourseScreenSetup as its adapter leaves the registers. */
+static void w_MenuCourseScreenSetup(Carried *cr)
+{
+    cyc(106);
+    cr->a = MenuCourseScreenSetup(cr->db);
+    cr->x = 0x0020;
+    cr->y = 0x0020;
+}
+
+/* PaletteCourseLoad as its adapter leaves the registers. */
+static void w_PaletteCourseLoad(Carried *cr)
+{
+    cr->a = PaletteCourseLoad(cr->db, &cr->x, &cr->y, &cr->p);
+    cyc(64);
 }
