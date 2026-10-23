@@ -111,6 +111,9 @@ if EXPORT:
     print('exported %d: %s' % (len(made), ', '.join(made)))
     sys.exit(0)
 
+if re.search(r'^[^\n]*\(Carried \*cr[,)]', text, re.M) and re.search(r'^\s*Carried r = \{cpu\.a', text, re.M):
+    sys.exit('%s is converted already: run it on its register version' % FILE)
+
 fns = functions(text)
 byname = {f[2]: f for f in fns}
 isroutine = {f[2]: f[2].startswith('abi_') and f[4].strip() in ('void', '') for f in fns}
