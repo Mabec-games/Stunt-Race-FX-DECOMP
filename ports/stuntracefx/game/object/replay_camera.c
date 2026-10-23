@@ -130,12 +130,6 @@ static void tail(Carried *cr);
 static void track_half_frame(Carried *cr);
 static void view(Carried *cr, uint8_t v);
 static void zoom_frame(Carried *cr, uint16_t to, uint16_t (*fn)(uint16_t, int *));
-static void w_CameraApproachTarget(Carried *cr);
-static void w_CameraDirectorSkip2(Carried *cr);
-static void w_CameraDirectorTable(Carried *cr);
-static void w_CameraFollowLink(Carried *cr);
-static void w_CameraPointFromTable(Carried *cr);
-static void w_GsuRecordNewCamera(Carried *cr);
 static void w_GsuTableEntryNext(Carried *cr);
 static void w_GsuTableEntryTo1F4C(Carried *cr);
 static void w_ObjectPathStart(Carried *cr);
@@ -144,7 +138,13 @@ static void w_ObjectSyncToRecord(Carried *cr);
 static void w_ObjectVelocityFromRecordOf(Carried *cr);
 static void w_RecordContactSummary(Carried *cr);
 static void w_ScaleThreeQuarters(Carried *cr);
+void CameraApproachTarget(Carried *cr);
+void CameraDirectorSkip2(Carried *cr);
+void CameraDirectorTable(Carried *cr);
+void CameraFollowLink(Carried *cr);
 void CameraFollowStep_cr(Carried *cr);
+void CameraPointFromTable(Carried *cr);
+void GsuRecordNewCamera_cr(Carried *cr);
 void ObjectFaceTied_cr(Carried *cr);
 void ObjectGsu80BCThen81E3_cr(Carried *cr);
 void ObjectGsu81E3_cr(Carried *cr);
@@ -256,7 +256,7 @@ static void mode(Carried *cr, uint16_t v)
 /* 08:8EF9: the director's tail: CameraFollowLink, +$36 = 3. */
 static void tail(Carried *cr)
 {
-    (cyc(62), w_CameraFollowLink(cr));
+    (cyc(62), CameraFollowLink(cr));
     st8i(cr, F(0x2036, cr->x), cyc_then(6, 0x03));
     cyc(44);
 }
@@ -274,7 +274,7 @@ static void table_start(Carried *cr)
     and8(cr, F(0x2025, cr->x), 0xFE);
     and8(cr, F(0x2025, cr->x), 0xFD);
     handler(cr, cr->x, 0x8EF5);
-    w_CameraDirectorTable(cr);
+    CameraDirectorTable(cr);
 }
 
 /* The camera put back on its car: mode 1, its turn words +$26-$30
@@ -301,7 +301,7 @@ static void snap(Carried *cr)
     copy16(cr, cam(cr, 0x001C), cam(cr, 0x0022));
     cyc(28);
     copy16(cr, cam(cr, 0x001E), cam(cr, 0x0024));
-    (cyc(84), w_CameraFollowLink(cr));
+    (cyc(84), CameraFollowLink(cr));
 }
 
 /*
@@ -538,7 +538,7 @@ void CameraOverhead(Carried *cr)
     copy16(cr, cam(cr, 0x000C), db(cr) | 0x1F50);
     cyc(22);
     mode(cr, 0x0003);
-    (cyc(84), w_CameraFollowLink(cr));
+    (cyc(84), CameraFollowLink(cr));
     handler(cr, cr->x, 0x8FFE);
     st8i(cr, F(0x2048, cr->x), cyc_then(6, 0x0A));
     overhead_frame(cr);
@@ -566,7 +566,7 @@ void abi_CameraOverhead(void)
  */
 void CameraTableStep(Carried *cr)
 {
-    (cyc(62), w_CameraPointFromTable(cr));
+    (cyc(62), CameraPointFromTable(cr));
     (cyc(24), tail(cr));
 }
 
@@ -620,7 +620,7 @@ void abi_CameraSnapToTable(void)
    $70:273C bit 0 set and back to the table; else the tail. */
 static void path_frame(Carried *cr)
 {
-    w_CameraApproachTarget(cr);
+    CameraApproachTarget(cr);
     if (!(cr->p & P_C)) {
         cyc(46);
         tail(cr);
@@ -644,7 +644,7 @@ static void path_shot(Carried *cr, uint16_t path)
     cr->y = path;
     set_p(cr, nz16(cr->p, cr->y));
     (cyc(100), w_ObjectPathStart(cr));
-    (cyc(62), w_CameraFollowLink(cr));
+    (cyc(62), CameraFollowLink(cr));
     path_frame(cr);
 }
 
@@ -805,7 +805,7 @@ static void drift_shot(Carried *cr, uint16_t f, uint8_t n, int flat)
  */
 void CameraDriftStep(Carried *cr)
 {
-    drift_frame(cr, 0x0000, w_CameraDirectorSkip2);
+    drift_frame(cr, 0x0000, CameraDirectorSkip2);
 }
 
 void abi_CameraDriftStep(void)
@@ -856,7 +856,7 @@ void abi_CameraDrift(void)
  */
 void CameraDriftLongStep(Carried *cr)
 {
-    drift_frame(cr, 0x0000, w_CameraDirectorSkip2);
+    drift_frame(cr, 0x0000, CameraDirectorSkip2);
 }
 
 void abi_CameraDriftLongStep(void)
@@ -1223,7 +1223,7 @@ void abi_CameraZoomOut(void)
  */
 void CameraOrbitStep(Carried *cr)
 {
-    w_CameraApproachTarget(cr);
+    CameraApproachTarget(cr);
     if (cr->p & P_C) {
         cyc(22);
         CameraZoomOut(cr);
@@ -1399,7 +1399,7 @@ void CameraStillStep(Carried *cr)
         wr8(F(0x2048, cr->x), cyc_then(6, n));
         set_p(cr, nz8(cr->p, n));
     }
-    (cyc(62), w_CameraPointFromTable(cr));
+    (cyc(62), CameraPointFromTable(cr));
     (cyc(24), tail(cr));
 }
 
@@ -1596,7 +1596,7 @@ void CameraFollowCar(Carried *cr)
 {
     view(cr, 0x05);
     handler(cr, cr->x, 0x95C7);
-    (cyc(62), w_GsuRecordNewCamera(cr));
+    (cyc(62), GsuRecordNewCamera_cr(cr));
     follow_step(cr);
     (cyc(148), w_ObjectSyncToRecord(cr));
     cyc(44); /* RTL */
@@ -1693,7 +1693,7 @@ void CameraReturnStep(Carried *cr)
     set_p(cr, nz8(cr->p, n));
     if (n) {
         cyc(48);
-        w_CameraDirectorTable(cr);
+        CameraDirectorTable(cr);
         return;
     } else { cyc(22); }
     car_y(cr, 0);
@@ -2058,8 +2058,8 @@ void abi_CameraLiftOff(void)
 void CameraPathFollowStep(Carried *cr)
 {
     st8i(cr, F(0x2036, cr->x), cyc_then(6, 0x03));
-    w_CameraApproachTarget(cr);
-    (cyc(62), w_CameraFollowLink(cr));
+    CameraApproachTarget(cr);
+    (cyc(62), CameraFollowLink(cr));
     cyc(44); /* RTL */
 }
 
@@ -2091,7 +2091,7 @@ void CameraPathFollow(Carried *cr)
     (cyc(86), w_ObjectPathStart(cr));
     handler(cr, cr->x, 0x9888);
     mode(cr, 0x0001);
-    (cyc(84), w_CameraFollowLink(cr));
+    (cyc(84), CameraFollowLink(cr));
     CameraPathFollowStep(cr);
 }
 
@@ -2117,7 +2117,7 @@ void abi_CameraPathFollow(void)
  */
 void CameraPathGoStep(Carried *cr)
 {
-    w_CameraApproachTarget(cr);
+    CameraApproachTarget(cr);
     (cyc(24), tail(cr));
 }
 
@@ -2170,7 +2170,7 @@ static void path_go(Carried *cr, uint16_t p, int set_mode)
     w_ObjectPathStart(cr);
     if (set_mode)
         { cyc(0); mode(cr, 0x0001); cyc(84); } else { cyc(62); }
-    w_CameraFollowLink(cr);
+    CameraFollowLink(cr);
     (cyc(24), CameraPathGo(cr));
 }
 
@@ -2451,7 +2451,7 @@ void CameraLowBehind(Carried *cr)
     cyc(22);
     handler(cr, cr->x, 0x9A25);
     low_frame(cr);
-    (cyc(84), w_CameraFollowLink(cr));
+    (cyc(84), CameraFollowLink(cr));
     (cyc(24), CameraLowHoldStep(cr));
 }
 
@@ -2503,7 +2503,7 @@ void abi_CameraLowHold(void)
  */
 void CameraPathLowStep(Carried *cr)
 {
-    w_CameraApproachTarget(cr);
+    CameraApproachTarget(cr);
     if (cr->p & P_C) {
         cyc(22);
         CameraLowHold(cr);
@@ -2535,7 +2535,7 @@ static void path_low(Carried *cr, uint16_t p, int jmp)
     if (jmp)
         cyc(24); /* JMP into the shared part */
     mode(cr, 0x0001);
-    (cyc(84), w_CameraFollowLink(cr));
+    (cyc(84), CameraFollowLink(cr));
     handler(cr, cr->x, 0x9A0D);
     CameraPathLowStep(cr);
 }
@@ -2589,44 +2589,6 @@ void abi_CameraPathLow875B(void)
     cpu.db = r.db;
 }
 
-/* CameraFollowLink, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CameraFollowLink(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CameraFollowLink();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* CameraDirectorTable, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CameraDirectorTable(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CameraDirectorTable();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* ScaleThreeQuarters, still in registers: its call with the registers loaded and taken
    back. */
 static void w_ScaleThreeQuarters(Carried *cr)
@@ -2638,44 +2600,6 @@ static void w_ScaleThreeQuarters(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_ScaleThreeQuarters();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* CameraPointFromTable, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CameraPointFromTable(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CameraPointFromTable();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* CameraApproachTarget, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CameraApproachTarget(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CameraApproachTarget();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
@@ -2700,25 +2624,6 @@ static void w_ObjectVelocityFromRecordOf(Carried *cr)
 
     cr->a = ObjectVelocityFromRecordOf(cr->db, cr->x, cr->y, &p);
     set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
-}
-
-/* CameraDirectorSkip2, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CameraDirectorSkip2(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CameraDirectorSkip2();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* GsuTableEntryNext as its adapter leaves the registers. */
@@ -2754,25 +2659,6 @@ static void w_RecordContactSummary(Carried *cr)
     cr->a = RecordContactSummary(cr->db, cr->x, &cr->y);
     set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
     cyc(66);
-}
-
-/* GsuRecordNewCamera, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuRecordNewCamera(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuRecordNewCamera();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* ObjectSyncToRecord as its adapter leaves the registers. */

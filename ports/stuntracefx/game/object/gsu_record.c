@@ -153,6 +153,14 @@ void abi_GsuRecordSetFlags(void)
     exit_record_g(rec, a);
 }
 
+/* GsuRecordSetFlags on carried registers, as abi_GsuRecordSetFlags leaves them. */
+void GsuRecordSetFlags_cr(Carried *cr)
+{
+    uint16_t a = 0, rec = GsuRecordSetFlags(cr->db, cr->x, &a);
+
+    exit_record(cr, rec, a);
+}
+
 /*
  * @routine 08:CCA3 GsuRecordFlag10
  * WHAT IT DOES: In object X's record flags (+$16), sets bit 4 and clears

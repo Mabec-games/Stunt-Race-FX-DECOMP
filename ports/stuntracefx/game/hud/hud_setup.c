@@ -137,9 +137,9 @@ static void w_OamBufferClear(Carried *cr);
 static void w_OamDmaAll(Carried *cr);
 static void w_OamFromList(Carried *cr);
 static void w_PaletteCourseLoad(Carried *cr);
-static void w_RaceVarsReset(Carried *cr);
 static void w_SoundFromTableD89(Carried *cr);
 static void w_TimeUnpackBcdLong(Carried *cr);
+void RaceVarsReset(Carried *cr);
 
 /* LDA #v with M 8-bit. */
 static void lda8(Carried *cr, uint8_t v)
@@ -576,7 +576,7 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
 /* The end of both set-ups: RaceVarsReset, SEP #$20. */
 static void hud_end(Carried *cr)
 {
-    (cyc(62), w_RaceVarsReset(cr));
+    (cyc(62), RaceVarsReset(cr));
     r_sep(cr, P_M);
     cyc(8);
 }
@@ -1058,25 +1058,6 @@ static void w_TimeUnpackBcdLong(Carried *cr)
     cr->x = sec;
     cr->y = hund;
     set_p(cr, p);
-}
-
-/* RaceVarsReset, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceVarsReset(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceVarsReset();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* GradientFillCgadd as its adapter leaves the registers. */

@@ -377,10 +377,10 @@ static void w_OamHide75Up(Carried *cr);
 static void w_OamHighBits18(Carried *cr);
 static void w_OamHighBits58(Carried *cr);
 static void w_OamLargeColumns(Carried *cr);
-static void w_OverlaySpritesStep(Carried *cr);
-static void w_PauseReplayStages(Carried *cr);
 static void w_PictureTurnStep(Carried *cr);
-static void w_ResultsScreenStep(Carried *cr);
+void OverlaySpritesStep_cr(Carried *cr);
+void PauseReplayStages(Carried *cr);
+void ResultsScreenStep(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
 
 /* The common exit of the three attribute fills. */
@@ -1393,17 +1393,6 @@ void abi_MetaspriteDraw(void)
     cpu.p = p;
 }
 
-/* MetaspriteDraw on carried registers, as abi_MetaspriteDraw leaves them. */
-void MetaspriteDraw_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MetaspriteDraw(cr->db, cr->x, cr->y, &p);
-    cr->x = md_x;
-    cr->y = md_y;
-    set_p(cr, p);
-}
-
 /* The cycled palette (attribute bits 1-3) for phase 1 and for phase 2 or
    more: by which of bits 3 and 1 the piece's own attributes have set (bit 3,
    else bit 1, else neither). */
@@ -1831,12 +1820,6 @@ void abi_SpritePiecesAtLeft(void)
     pieces_exit_g(SpritePiecesAtLeft(cpu.db, cpu.a, cpu.y));
 }
 
-/* SpritePiecesAtLeft on carried registers, as abi_SpritePiecesAtLeft leaves them. */
-void SpritePiecesAtLeft_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAtLeft(cr->db, cr->a, cr->y));
-}
-
 /*
  * @routine 02:FD4D SpritePiecesAtRight
  * WHAT IT DOES: As SpritePiecesAtLeft at screen X = $A5.
@@ -1851,12 +1834,6 @@ uint16_t SpritePiecesAtRight(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAtRight(void)
 {
     pieces_exit_g(SpritePiecesAtRight(cpu.db, cpu.a, cpu.y));
-}
-
-/* SpritePiecesAtRight on carried registers, as abi_SpritePiecesAtRight leaves them. */
-void SpritePiecesAtRight_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAtRight(cr->db, cr->a, cr->y));
 }
 
 /* The position (x, y) of the piece set in $10C3 (Y stored first when
@@ -1911,12 +1888,6 @@ void abi_SpritePiecesAt46Y71(void)
     pieces_exit_g(SpritePiecesAt46Y71(cpu.db, cpu.a, cpu.y));
 }
 
-/* SpritePiecesAt46Y71 on carried registers, as abi_SpritePiecesAt46Y71 leaves them. */
-void SpritePiecesAt46Y71_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAt46Y71(cr->db, cr->a, cr->y));
-}
-
 /*
  * @routine 02:FCA9 SpritePiecesAt46Y82
  * WHAT IT DOES: As SpritePiecesAt46Y71 at Y = $82 (the second row).
@@ -1932,12 +1903,6 @@ uint16_t SpritePiecesAt46Y82(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAt46Y82(void)
 {
     pieces_exit_g(SpritePiecesAt46Y82(cpu.db, cpu.a, cpu.y));
-}
-
-/* SpritePiecesAt46Y82 on carried registers, as abi_SpritePiecesAt46Y82 leaves them. */
-void SpritePiecesAt46Y82_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAt46Y82(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -1957,12 +1922,6 @@ void abi_SpritePiecesAt46Y93(void)
     pieces_exit_g(SpritePiecesAt46Y93(cpu.db, cpu.a, cpu.y));
 }
 
-/* SpritePiecesAt46Y93 on carried registers, as abi_SpritePiecesAt46Y93 leaves them. */
-void SpritePiecesAt46Y93_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAt46Y93(cr->db, cr->a, cr->y));
-}
-
 /*
  * @routine 02:FCD6 SpritePiecesAt62Y71
  * WHAT IT DOES: As SpritePiecesAt46Y71 at X = $62.
@@ -1978,12 +1937,6 @@ uint16_t SpritePiecesAt62Y71(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAt62Y71(void)
 {
     pieces_exit_g(SpritePiecesAt62Y71(cpu.db, cpu.a, cpu.y));
-}
-
-/* SpritePiecesAt62Y71 on carried registers, as abi_SpritePiecesAt62Y71 leaves them. */
-void SpritePiecesAt62Y71_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAt62Y71(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -2003,12 +1956,6 @@ void abi_SpritePiecesAt62Y83(void)
     pieces_exit_g(SpritePiecesAt62Y83(cpu.db, cpu.a, cpu.y));
 }
 
-/* SpritePiecesAt62Y83 on carried registers, as abi_SpritePiecesAt62Y83 leaves them. */
-void SpritePiecesAt62Y83_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAt62Y83(cr->db, cr->a, cr->y));
-}
-
 /*
  * @routine 02:FCF4 SpritePiecesAt62Y95
  * WHAT IT DOES: As SpritePiecesAt62Y71 at Y = $95.
@@ -2024,12 +1971,6 @@ uint16_t SpritePiecesAt62Y95(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAt62Y95(void)
 {
     pieces_exit_g(SpritePiecesAt62Y95(cpu.db, cpu.a, cpu.y));
-}
-
-/* SpritePiecesAt62Y95 on carried registers, as abi_SpritePiecesAt62Y95 leaves them. */
-void SpritePiecesAt62Y95_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesAt62Y95(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -2062,12 +2003,6 @@ uint16_t SpritePiecesCarAt51(uint8_t bank, uint16_t car, uint16_t slot)
 void abi_SpritePiecesCarAt51(void)
 {
     pieces_exit_g(SpritePiecesCarAt51(cpu.db, cpu.a, cpu.y));
-}
-
-/* SpritePiecesCarAt51 on carried registers, as abi_SpritePiecesCarAt51 leaves them. */
-void SpritePiecesCarAt51_cr(Carried *cr)
-{
-    pieces_exit(cr, SpritePiecesCarAt51(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -2193,12 +2128,6 @@ void abi_SpritePiecesTwoCarsTop(void)
     two_cars_exit_g(SpritePiecesTwoCarsTop(cpu.db));
 }
 
-/* SpritePiecesTwoCarsTop on carried registers, as abi_SpritePiecesTwoCarsTop leaves them. */
-void SpritePiecesTwoCarsTop_cr(Carried *cr)
-{
-    two_cars_exit(cr, SpritePiecesTwoCarsTop(cr->db));
-}
-
 /*
  * @routine 07:C22B SpritePiecesTwoCars
  * WHAT IT DOES: Shows the two players' cars as three-piece sprites: every
@@ -2233,12 +2162,6 @@ uint16_t SpritePiecesTwoCars(uint8_t bank)
 void abi_SpritePiecesTwoCars(void)
 {
     two_cars_exit_g(SpritePiecesTwoCars(cpu.db));
-}
-
-/* SpritePiecesTwoCars on carried registers, as abi_SpritePiecesTwoCars leaves them. */
-void SpritePiecesTwoCars_cr(Carried *cr)
-{
-    two_cars_exit(cr, SpritePiecesTwoCars(cr->db));
 }
 
 /* PLP's register effects (its clocks stated by the typed function):
@@ -2385,17 +2308,6 @@ void abi_OamDirectStage(void)
     pull_p_g(p0);
 }
 
-/* OamDirectStage on carried registers, as abi_OamDirectStage leaves them. */
-void OamDirectStage_cr(Carried *cr)
-{
-    uint8_t p0 = cr->p, v = OamDirectStage(cr->db);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x = ods_x;
-    cr->y = 0;
-    pull_p(cr, p0);
-}
-
 /*
  * @routine 07:AC08 OamFillEvery4
  * WHAT IT DOES: Stores the byte A at $0376 + X and every fourth byte after
@@ -2517,16 +2429,6 @@ void abi_OamPaletteForD75(void)
     pull_p_g(p0);
 }
 
-/* OamPaletteForD75 on carried registers, as abi_OamPaletteForD75 leaves them. */
-void OamPaletteForD75_cr(Carried *cr)
-{
-    uint8_t p0 = cr->p, v = OamPaletteForD75(cr->db, &cr->y);
-
-    cr->a = v;
-    cr->x = 0;
-    pull_p(cr, p0);
-}
-
 /*
  * @routine 07:D576 OamWordRow5
  * WHAT IT DOES: Puts the five-letter word from the table at $D5AD (in the
@@ -2575,18 +2477,6 @@ void abi_OamWordRow5(void)
     cpu.x = 0x0014;
     cpu.y = 0x0005;
     pull_p_g(p0);
-}
-
-/* OamWordRow5 on carried registers, as abi_OamWordRow5 leaves them. */
-void OamWordRow5_cr(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-
-    OamWordRow5(cr->db);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x38);
-    cr->x = 0x0014;
-    cr->y = 0x0005;
-    pull_p(cr, p0);
 }
 
 void abi_SoundPort1QueuePush(void);
@@ -2915,17 +2805,6 @@ void abi_OamHideForHudMode(void)
     pull_p_g(p0);
 }
 
-/* OamHideForHudMode on carried registers, as abi_OamHideForHudMode leaves them. */
-void OamHideForHudMode_cr(Carried *cr)
-{
-    uint8_t p0 = cr->p, v = OamHideForHudMode(cr->db);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x = hud_x;
-    cr->y = 0;
-    pull_p(cr, p0);
-}
-
 /*
  * @routine 07:BB4C OamStagePause2
  * WHAT IT DOES: As OamStagePause for pad 2: when its Select was pressed
@@ -3223,17 +3102,6 @@ void abi_OverlaySpritesStep(void)
     pull_p_g(p0);
 }
 
-/* OverlaySpritesStep on carried registers, as abi_OverlaySpritesStep leaves them. */
-void OverlaySpritesStep_cr(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-
-    cr->a = OverlaySpritesStep();
-    cr->x = ov_x;
-    cr->y = 0x00C0;
-    pull_p(cr, p0);
-}
-
 /*
  * @routine 04:E06E OverlaySpritesState0
  * WHAT IT DOES: OverlaySpritesStep's state 0 entered from its jump table:
@@ -3292,8 +3160,8 @@ void OverlayFramesUntilFaded(Carried *cr)
         r_sep(cr, P_M | P_X);
         oam_wait_tick(cr, b, 0);
         cyc(46);
-        w_ResultsScreenStep(cr);
-        (cyc(62), w_OverlaySpritesStep(cr));
+        ResultsScreenStep(cr);
+        (cyc(62), OverlaySpritesStep_cr(cr));
         r_rep(cr, P_M);
         cyc(24);
         wr16(b | 0x0D1A, 0x0000);
@@ -3405,7 +3273,7 @@ void PauseOnStart(Carried *cr)
         cyc(22);
         oam_wait_tick(cr, b, 22);
         cyc(46);
-        w_PauseReplayStages(cr);
+        PauseReplayStages(cr);
         (cyc(46), w_PictureTurnStep(cr));
         r_rep(cr, P_M);
         cyc(24);
@@ -3522,36 +3390,6 @@ static void w_OamHighBits58(Carried *cr)
     cr->y &= 0x00FF;
 }
 
-/* OverlaySpritesStep as its adapter leaves the registers. */
-static void w_OverlaySpritesStep(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-
-    cr->a = OverlaySpritesStep();
-    cr->x = ov_x;
-    cr->y = 0x00C0;
-    pull_p(cr, p0);
-}
-
-/* ResultsScreenStep, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ResultsScreenStep(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ResultsScreenStep();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* OamHide75Up as its adapter leaves the registers. */
 static void w_OamHide75Up(Carried *cr)
 {
@@ -3570,25 +3408,6 @@ static void w_OamLargeColumns(Carried *cr)
     cr->y = 0x0000;
 }
 
-/* PauseReplayStages, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_PauseReplayStages(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_PauseReplayStages();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* PictureTurnStep as its adapter leaves the registers. */
 static void w_PictureTurnStep(Carried *cr)
 {
@@ -3601,5 +3420,137 @@ static void w_PictureTurnStep(Carried *cr)
     } else {
         cr->a = (uint16_t)((cr->a & 0xFF00) | pt_a);
     }
+    pull_p(cr, p0);
+}
+
+/* MetaspriteDraw on carried registers, as abi_MetaspriteDraw leaves them. */
+void MetaspriteDraw_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MetaspriteDraw(cr->db, cr->x, cr->y, &p);
+    cr->x = md_x;
+    cr->y = md_y;
+    set_p(cr, p);
+}
+
+/* SpritePiecesAtLeft on carried registers, as abi_SpritePiecesAtLeft leaves them. */
+void SpritePiecesAtLeft_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAtLeft(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAtRight on carried registers, as abi_SpritePiecesAtRight leaves them. */
+void SpritePiecesAtRight_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAtRight(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAt46Y71 on carried registers, as abi_SpritePiecesAt46Y71 leaves them. */
+void SpritePiecesAt46Y71_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt46Y71(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAt46Y82 on carried registers, as abi_SpritePiecesAt46Y82 leaves them. */
+void SpritePiecesAt46Y82_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt46Y82(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAt46Y93 on carried registers, as abi_SpritePiecesAt46Y93 leaves them. */
+void SpritePiecesAt46Y93_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt46Y93(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAt62Y71 on carried registers, as abi_SpritePiecesAt62Y71 leaves them. */
+void SpritePiecesAt62Y71_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt62Y71(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAt62Y83 on carried registers, as abi_SpritePiecesAt62Y83 leaves them. */
+void SpritePiecesAt62Y83_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt62Y83(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesAt62Y95 on carried registers, as abi_SpritePiecesAt62Y95 leaves them. */
+void SpritePiecesAt62Y95_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt62Y95(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesCarAt51 on carried registers, as abi_SpritePiecesCarAt51 leaves them. */
+void SpritePiecesCarAt51_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesCarAt51(cr->db, cr->a, cr->y));
+}
+
+/* SpritePiecesTwoCarsTop on carried registers, as abi_SpritePiecesTwoCarsTop leaves them. */
+void SpritePiecesTwoCarsTop_cr(Carried *cr)
+{
+    two_cars_exit(cr, SpritePiecesTwoCarsTop(cr->db));
+}
+
+/* SpritePiecesTwoCars on carried registers, as abi_SpritePiecesTwoCars leaves them. */
+void SpritePiecesTwoCars_cr(Carried *cr)
+{
+    two_cars_exit(cr, SpritePiecesTwoCars(cr->db));
+}
+
+/* OamDirectStage on carried registers, as abi_OamDirectStage leaves them. */
+void OamDirectStage_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v = OamDirectStage(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = ods_x;
+    cr->y = 0;
+    pull_p(cr, p0);
+}
+
+/* OamPaletteForD75 on carried registers, as abi_OamPaletteForD75 leaves them. */
+void OamPaletteForD75_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v = OamPaletteForD75(cr->db, &cr->y);
+
+    cr->a = v;
+    cr->x = 0;
+    pull_p(cr, p0);
+}
+
+/* OamWordRow5 on carried registers, as abi_OamWordRow5 leaves them. */
+void OamWordRow5_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    OamWordRow5(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x38);
+    cr->x = 0x0014;
+    cr->y = 0x0005;
+    pull_p(cr, p0);
+}
+
+/* OamHideForHudMode on carried registers, as abi_OamHideForHudMode leaves them. */
+void OamHideForHudMode_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v = OamHideForHudMode(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = hud_x;
+    cr->y = 0;
+    pull_p(cr, p0);
+}
+
+/* OverlaySpritesStep on carried registers, as abi_OverlaySpritesStep leaves them. */
+void OverlaySpritesStep_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    cr->a = OverlaySpritesStep();
+    cr->x = ov_x;
+    cr->y = 0x00C0;
     pull_p(cr, p0);
 }

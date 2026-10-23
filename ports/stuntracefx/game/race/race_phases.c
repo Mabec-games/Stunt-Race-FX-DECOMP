@@ -116,7 +116,6 @@ static int time_up_wait(Carried *cr, uint32_t b);
 static int window_closed_overlay(Carried *cr, uint32_t b, int beq);
 static void window_up(Carried *cr, uint32_t b);
 static void w_ApuUpload(Carried *cr);
-static void w_ChampionScreenRun(Carried *cr);
 static void w_Countdown0DF8(Carried *cr);
 static void w_GlyphSpritesGrowAndTimes(Carried *cr);
 static void w_GlyphSpritesInit(Carried *cr);
@@ -135,12 +134,7 @@ static void w_LapSplit(Carried *cr);
 static void w_OamHide75Up(Carried *cr);
 static void w_PaletteDarkenFour(Carried *cr);
 static void w_PlayerSound35(Carried *cr);
-static void w_RaceEndCountdown(Carried *cr);
-static void w_RaceEndCountdownFade(Carried *cr);
 static void w_RaceEndToAttract(Carried *cr);
-static void w_RaceFinishPhases0E(Carried *cr);
-static void w_RaceFinishPhases10(Carried *cr);
-static void w_RaceFinishSplit(Carried *cr);
 static void w_RaceRestart(Carried *cr);
 static void w_RaceTimeAddD814(Carried *cr);
 static void w_RaceTimeAddD815(Carried *cr);
@@ -156,6 +150,7 @@ void BigSpritesNine_cr(Carried *cr);
 void BigSpritesRow5_cr(Carried *cr);
 void BigSpritesRow6B_cr(Carried *cr);
 void BigSpritesRow6_cr(Carried *cr);
+void ChampionScreenRun(Carried *cr);
 void GlyphSlideThree_cr(Carried *cr);
 void GlyphWordAt1C28_cr(Carried *cr);
 void GsuTimeDigitsFull_cr(Carried *cr);
@@ -168,6 +163,11 @@ void OamStagePause2Loop(Carried *cr);
 void OamStagePauseLoop(Carried *cr);
 void OverlayFramesUntilFaded(Carried *cr);
 void PauseOnStart(Carried *cr);
+void RaceEndCountdown(Carried *cr);
+void RaceEndCountdownFade(Carried *cr);
+void RaceFinishPhases0E(Carried *cr);
+void RaceFinishPhases10(Carried *cr);
+void RaceFinishSplit(Carried *cr);
 void RaceVideoInit_cr(Carried *cr);
 void RecordOffsetAllCourses(Carried *cr);
 void RecordTimeCompare_cr(Carried *cr);
@@ -1533,7 +1533,7 @@ static void lap_finish(Carried *cr, uint32_t b)
         lda8_imm(cr, 0xFF);
         cyc(32);
         wr8(b | 0x0D53, 0xFF);
-        (cyc(46), w_RaceFinishSplit(cr));
+        (cyc(46), RaceFinishSplit(cr));
         cyc(42);
         return;
     }
@@ -1939,7 +1939,7 @@ progress:
         cyc(16);
         lda8_imm(cr, 0xFF);
         wr8(b | 0x0D53, 0xFF);
-        (cyc(46), w_RaceFinishPhases10(cr));
+        (cyc(46), RaceFinishPhases10(cr));
         cyc(16);
         return 1;
     }
@@ -1956,7 +1956,7 @@ progress:
     lda8_imm(cr, 0xFF);
     cyc(16);
     wr8(b | 0x0D53, 0xFF);
-    (cyc(30), w_RaceFinishPhases0E(cr));
+    (cyc(30), RaceFinishPhases0E(cr));
     cyc(8);
     return 1;
 }
@@ -2163,7 +2163,7 @@ static void race_end_wait(Carried *cr, void (*draw)(Carried *))
     wr8(b | 0x0E56, 0x78);
     cyc(24);
     wr8(b | 0x0D55, 0x00);
-    (cyc(46), w_RaceEndCountdownFade(cr));
+    (cyc(46), RaceEndCountdownFade(cr));
 }
 
 void abi_BigSpritesRow6B(void);
@@ -2977,7 +2977,7 @@ void RaceEndLeave(Carried *cr)
         w_RaceEndToAttract(cr);
         return;
     }
-    w_ChampionScreenRun(cr);
+    ChampionScreenRun(cr);
     w_SoftResetToBootWarm(cr);
 }
 
@@ -3012,7 +3012,7 @@ static void time_up_end(Carried *cr, uint32_t b, uint8_t t)
     lda8_imm(cr, 0x30);
     w_SoundPort0QueuePushRaw(cr);
     cyc(8);                             /* the push's pulls at this caller's widths */
-    (cyc(24), w_RaceEndCountdown(cr));
+    (cyc(24), RaceEndCountdown(cr));
 }
 
 /*
@@ -3503,25 +3503,6 @@ static void w_LapSplit(Carried *cr)
     set_p(cr, p);
 }
 
-/* RaceFinishSplit, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceFinishSplit(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceFinishSplit();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* RaceTimeKeep as its adapter leaves the registers. */
 static void w_RaceTimeKeep(Carried *cr)
 {
@@ -3595,44 +3576,6 @@ static void w_LapBannerNone(Carried *cr)
     cyc(42);
 }
 
-/* RaceFinishPhases0E, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceFinishPhases0E(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceFinishPhases0E();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RaceFinishPhases10, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceFinishPhases10(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceFinishPhases10();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* GsuF441Player1 as its adapter leaves the registers. */
 static void w_GsuF441Player1(Carried *cr)
 {
@@ -3665,25 +3608,6 @@ static void w_HudSixGlyphs(Carried *cr)
     cr->a = (uint16_t)(0x8800 | HudSixGlyphs());
     cr->x = 0xF15B;
     set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
-}
-
-/* RaceEndCountdownFade, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceEndCountdownFade(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceEndCountdownFade();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* WindowSlideUpSound as its adapter leaves the registers. */
@@ -3795,44 +3719,6 @@ static void w_RaceEndToAttract(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_RaceEndToAttract();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* ChampionScreenRun, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ChampionScreenRun(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ChampionScreenRun();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RaceEndCountdown, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceEndCountdown(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceEndCountdown();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;

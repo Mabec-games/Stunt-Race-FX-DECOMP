@@ -42,7 +42,7 @@ static void boot_lda8(Carried *cr, uint8_t v);
 static void boot_ldx(Carried *cr, uint16_t v);
 static void boot_ldy(Carried *cr, uint16_t v);
 static void w_WramFillZero(Carried *cr);
-static void w_WramFillZeroLong(Carried *cr);
+void WramFillZeroLong(Carried *cr);
 
 /*
  * @routine 03:89B4 HardwareRegsInit
@@ -582,7 +582,7 @@ soft_rest:
     hdmaen_wr(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear_g(w_WramFillZeroLong, 86, 64, 62);
+    boot_clear_g(WramFillZeroLong, 86, 64, 62);
     abi_SoftResetApuLong();
     b = (uint32_t)cpu.db << 16;
     cyc(24); /* JMP */
@@ -704,23 +704,4 @@ static void w_WramFillZero(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     cr->x = 0x8008;
     set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z)));
-}
-
-/* WramFillZeroLong, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_WramFillZeroLong(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_WramFillZeroLong();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }

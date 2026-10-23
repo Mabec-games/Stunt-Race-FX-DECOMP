@@ -229,7 +229,6 @@ static void menu_screen_start(Carried *cr, uint16_t list, uint8_t p);
 static void w_ApproachTargetFull(Carried *cr);
 static void w_ApproachTargetZero(Carried *cr);
 static void w_ApuUpload(Carried *cr);
-static void w_GsuCF42To3000(Carried *cr);
 static void w_MenuActorPoolInit(Carried *cr);
 static void w_MenuActorSpawnList(Carried *cr);
 static void w_MenuActorsRun(Carried *cr);
@@ -246,6 +245,7 @@ static void w_SoundDataLoad(Carried *cr);
 static void w_SoundReset(Carried *cr);
 static void w_TitleScreenLoop(Carried *cr);
 static void w_WindowHdmaChannelsSetup(Carried *cr);
+void GsuCF42To3000_cr(Carried *cr);
 
 /*
  * @routine 0B:F664 MenuVramClear
@@ -1391,7 +1391,7 @@ void ChampionScreenOpen(Carried *cr)
     cr->a = 0x9068;
     cr->x = 0x001D;
     set_p(cr, nz16(cr->p, 0x001D));
-    (cyc(132), w_GsuCF42To3000(cr));
+    (cyc(132), GsuCF42To3000_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(88);
     for (x = 0x0000; x != 0x2000; x = (uint16_t)(x + 2)) {
@@ -1406,7 +1406,7 @@ void ChampionScreenOpen(Carried *cr)
     cr->a = 0xDC8C;
     cr->x = 0x001C;
     set_p(cr, nz16(cr->p, 0x001C));
-    w_GsuCF42To3000(cr);
+    GsuCF42To3000_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->a = 0x6000;
     cyc(186);
@@ -1429,7 +1429,7 @@ void ChampionScreenOpen(Carried *cr)
     cr->a = 0xE87B;
     cr->x = 0x0004;
     set_p(cr, nz16(cr->p, 0x0004));
-    (cyc(150), w_GsuCF42To3000(cr));
+    (cyc(150), GsuCF42To3000_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(170);
     a = (uint16_t)(rd16(0x000D4A) & 0x00FF);
@@ -1531,7 +1531,7 @@ void ChampionScreenOpen(Carried *cr)
     cr->a = 0xEBCB;
     cr->x = 0x0004;
     set_p(cr, nz16(cr->p, 0x0004));
-    w_GsuCF42To3000(cr);
+    GsuCF42To3000_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(162);
     wr16(0x00162D, 0x0000);
@@ -1922,25 +1922,6 @@ static void w_MenuActorsRun(Carried *cr)
 static void w_MenuPictureToVram(Carried *cr)
 {
     cr->a = MenuPictureToVram(cr->db, cr->a, cr->x, &cr->x);
-}
-
-/* GsuCF42To3000, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuCF42To3000(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuCF42To3000();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* MenuActorPoolInit as its adapter leaves the registers. */

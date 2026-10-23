@@ -264,13 +264,13 @@ static void video_gsu_3000(Carried *cr, uint16_t a, uint16_t x, int x_first);
 static void video_gsu_ram_dma(Carried *cr, uint16_t src, uint16_t vram, uint16_t size);
 static void video_gsu_vram(Carried *cr, uint16_t y, uint16_t x);
 static void video_mvn(Carried *cr, uint32_t src, uint32_t dst, uint16_t n);
-static void w_GsuCF42To3000(Carried *cr);
 static void w_GsuCF42ToVram(Carried *cr);
 static void w_RaceTimeInit(Carried *cr);
 static void w_SoundIndicesFromHandlers(Carried *cr);
 static void w_SoundReset(Carried *cr);
 static void w_VramDmaTileFromGsuRam(Carried *cr);
 void CourseSoundLoad_cr(Carried *cr);
+void GsuCF42To3000_cr(Carried *cr);
 static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db);
 static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db);
 
@@ -292,7 +292,7 @@ static void video_gsu_3000(Carried *cr, uint16_t a, uint16_t x, int x_first)
     cr->a = a;
     cr->x = x;
     set_p(cr, nz16(cr->p, x_first ? a : (cyc(40), x)));
-    (cyc(46), w_GsuCF42To3000(cr));
+    (cyc(46), GsuCF42To3000_cr(cr));
 }
 
 /* PHP, REP #$20: DMA channel 0 in mode 1 of `size` bytes from $70:src to
@@ -707,24 +707,6 @@ void abi_RaceVideoInit(void)
     cpu.p = nz8(cpu.p, db0);
 }
 
-/* RaceVideoInit on carried registers, as abi_RaceVideoInit leaves them. */
-void RaceVideoInit_cr(Carried *cr)
-{
-    uint8_t db0 = cr->db, p1;
-    uint16_t a, x, y;
-    int swapped = RaceVideoInit(cr->x, &a, &x, &y);
-
-    /* P as RaceVideoSetup found it: M set, N and Z from the compare of
-       $0D24 with 3, C from it, M clear again on the clearing path. */
-    p1 = (uint8_t)(nz8(cr->p, (uint8_t)(rvi_v - 0x03)) | P_M);
-    p1 = (uint8_t)((p1 & ~P_C) | (rvi_v >= 0x03 ? P_C : 0));
-    if (rvi_v >= 0x03)
-        p1 &= (uint8_t)~P_M;
-    race_video_exit(cr, swapped, p1, 0x03, a, x, y);
-    cr->db = db0;
-    set_p(cr, nz8(cr->p, db0));
-}
-
 void abi_SoundReset(void);
 void abi_CourseSoundLoad(void);
 void abi_VramDmaTileFromGsuRam(void);
@@ -879,25 +861,6 @@ static void w_GsuCF42ToVram(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M));
 }
 
-/* GsuCF42To3000, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuCF42To3000(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuCF42To3000();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* VramDmaTileFromGsuRam as its adapter leaves the registers. */
 static void w_VramDmaTileFromGsuRam(Carried *cr)
 {
@@ -978,4 +941,22 @@ static void w_SoundReset(Carried *cr)
     cr->a &= 0xFF00;
     cr->x &= 0x00FF;
     cr->y &= 0x00FF;
+}
+
+/* RaceVideoInit on carried registers, as abi_RaceVideoInit leaves them. */
+void RaceVideoInit_cr(Carried *cr)
+{
+    uint8_t db0 = cr->db, p1;
+    uint16_t a, x, y;
+    int swapped = RaceVideoInit(cr->x, &a, &x, &y);
+
+    /* P as RaceVideoSetup found it: M set, N and Z from the compare of
+       $0D24 with 3, C from it, M clear again on the clearing path. */
+    p1 = (uint8_t)(nz8(cr->p, (uint8_t)(rvi_v - 0x03)) | P_M);
+    p1 = (uint8_t)((p1 & ~P_C) | (rvi_v >= 0x03 ? P_C : 0));
+    if (rvi_v >= 0x03)
+        p1 &= (uint8_t)~P_M;
+    race_video_exit(cr, swapped, p1, 0x03, a, x, y);
+    cr->db = db0;
+    set_p(cr, nz8(cr->p, db0));
 }

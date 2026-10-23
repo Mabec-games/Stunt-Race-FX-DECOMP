@@ -106,12 +106,12 @@ static void w_SelectionCommit(Carried *cr);
 static void w_SelectionSave(Carried *cr);
 static void w_SoundPort0QueuePushRaw(Carried *cr);
 static void w_SoundReset(Carried *cr);
-static void w_TitleScreenRun(Carried *cr);
 void MenuActorFind_cr(Carried *cr);
 void RaceFrameStep(Carried *cr);
 void RaceStart(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
+void TitleScreenRun(Carried *cr);
 
 /* The preview's frame: the fixed colour stepped down `n` times
    (MenuFixedColourDown), a race frame shown (RaceFrameStep with A = 0)
@@ -1058,7 +1058,7 @@ void CourseMenuRun(Carried *cr)
     cyc(32);
     r_lda16(cr, 0x001917);
     if (!cr->a) {
-        w_TitleScreenRun(cr);
+        TitleScreenRun(cr);
         r_rep(cr, P_M);
         r_cmp16(cr, 0x0000);
         if (cr->p & P_Z) {
@@ -1625,23 +1625,4 @@ static void w_SelectionSave(Carried *cr)
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
     }
-}
-
-/* TitleScreenRun, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TitleScreenRun(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TitleScreenRun();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }

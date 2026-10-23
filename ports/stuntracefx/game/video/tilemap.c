@@ -454,13 +454,13 @@ static void bg2_scroll_corner(Carried *cr, uint32_t b);
 static void palette_cycle_exit(Carried *cr, int r);
 static void stage_next(Carried *cr, uint32_t b);
 static void w_DigitTiles1184(Carried *cr);
-static void w_GsuCF42To3000(Carried *cr);
 static void w_OamHide36And96(Carried *cr);
-static void w_RaceEndLeave(Carried *cr);
 static void w_RaceRestart(Carried *cr);
 static void w_TimesKeepAndAdvance(Carried *cr);
 static void w_WindowSlideUpSound(Carried *cr);
+void GsuCF42To3000_cr(Carried *cr);
 void OverlaySpritesStep_cr(Carried *cr);
+void RaceEndLeave(Carried *cr);
 
 /* TilemapPaletteCycle's exit flags from its result. */
 static void palette_cycle_exit(Carried *cr, int r)
@@ -488,12 +488,6 @@ static void palette_cycle_exit_g(int r)
 void abi_TilemapPaletteCycle(void)
 {
     palette_cycle_exit_g(TilemapPaletteCycle(cpu.db, &cpu.x, &cpu.y, &cpu.a));
-}
-
-/* TilemapPaletteCycle on carried registers, as abi_TilemapPaletteCycle leaves them. */
-void TilemapPaletteCycle_cr(Carried *cr)
-{
-    palette_cycle_exit(cr, TilemapPaletteCycle(cr->db, &cr->x, &cr->y, &cr->a));
 }
 
 /*
@@ -930,13 +924,6 @@ void abi_TilemapPaletteCycle87(void)
     palette_cycle_exit_g(TilemapPaletteCycle87(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
-/* TilemapPaletteCycle87 on carried registers, as abi_TilemapPaletteCycle87 leaves them. */
-void TilemapPaletteCycle87_cr(Carried *cr)
-{
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
-    palette_cycle_exit(cr, TilemapPaletteCycle87(cr->db, &cr->x, &cr->y, &cr->a));
-}
-
 /*
  * @routine 07:C29F TilemapPaletteCycle107
  * WHAT IT DOES: TilemapPaletteCycle on 13 entries from entry offset $107.
@@ -962,13 +949,6 @@ void abi_TilemapPaletteCycle107(void)
     palette_cycle_exit_g(TilemapPaletteCycle107(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
-/* TilemapPaletteCycle107 on carried registers, as abi_TilemapPaletteCycle107 leaves them. */
-void TilemapPaletteCycle107_cr(Carried *cr)
-{
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
-    palette_cycle_exit(cr, TilemapPaletteCycle107(cr->db, &cr->x, &cr->y, &cr->a));
-}
-
 /*
  * @routine 07:C2AB TilemapPaletteCycle187
  * WHAT IT DOES: TilemapPaletteCycle on 10 entries from entry offset $187.
@@ -992,13 +972,6 @@ void abi_TilemapPaletteCycle187(void)
 {
     cpu.p &= (uint8_t)~P_X;
     palette_cycle_exit_g(TilemapPaletteCycle187(cpu.db, &cpu.x, &cpu.y, &cpu.a));
-}
-
-/* TilemapPaletteCycle187 on carried registers, as abi_TilemapPaletteCycle187 leaves them. */
-void TilemapPaletteCycle187_cr(Carried *cr)
-{
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
-    palette_cycle_exit(cr, TilemapPaletteCycle187(cr->db, &cr->x, &cr->y, &cr->a));
 }
 
 /* Fill a row with palette `bits`, then give the entry at `mark` (an
@@ -1321,7 +1294,7 @@ void WindowClosedDigitStep(Carried *cr)
     r_lda8(cr, b | 0x0D4C);
     if (!(uint8_t)cr->a) {
         cyc(46);
-        w_RaceEndLeave(cr);
+        RaceEndLeave(cr);
         return;
     }
     cyc(40);
@@ -1479,7 +1452,7 @@ void ChampionshipScreenStep(Carried *cr)
         r_rep(cr, P_M | P_X);
         cr->x = 0x001F;
         r_lda16_imm(cr, 0xFB99);
-        (cyc(72), w_GsuCF42To3000(cr));
+        (cyc(72), GsuCF42To3000_cr(cr));
         db1 = cr->db;
         p1 = cr->p;
         r_rep(cr, P_M | P_X);
@@ -1599,25 +1572,6 @@ void abi_ChampionshipScreenLoop(void)
     cpu.db = r.db;
 }
 
-/* RaceEndLeave, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceEndLeave(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceEndLeave();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* RaceRestart, still in registers: its call with the registers loaded and taken
    back. */
 static void w_RaceRestart(Carried *cr)
@@ -1644,25 +1598,6 @@ static void w_DigitTiles1184(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
 }
 
-/* GsuCF42To3000, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuCF42To3000(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuCF42To3000();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* OamHide36And96 as its adapter leaves the registers. */
 static void w_OamHide36And96(Carried *cr)
 {
@@ -1684,4 +1619,31 @@ static void w_TimesKeepAndAdvance(Carried *cr)
 static void w_WindowSlideUpSound(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
+}
+
+/* TilemapPaletteCycle on carried registers, as abi_TilemapPaletteCycle leaves them. */
+void TilemapPaletteCycle_cr(Carried *cr)
+{
+    palette_cycle_exit(cr, TilemapPaletteCycle(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
+/* TilemapPaletteCycle87 on carried registers, as abi_TilemapPaletteCycle87 leaves them. */
+void TilemapPaletteCycle87_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle87(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
+/* TilemapPaletteCycle107 on carried registers, as abi_TilemapPaletteCycle107 leaves them. */
+void TilemapPaletteCycle107_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle107(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
+/* TilemapPaletteCycle187 on carried registers, as abi_TilemapPaletteCycle187 leaves them. */
+void TilemapPaletteCycle187_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle187(cr->db, &cr->x, &cr->y, &cr->a));
 }

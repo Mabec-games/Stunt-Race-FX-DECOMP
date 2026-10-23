@@ -163,8 +163,6 @@ static void wipe_in_body(Carried *cr);
 static void wipe_out_body(Carried *cr);
 static void zoom_in_body(Carried *cr);
 static void zoom_out_body(Carried *cr);
-static void w_AllRecordsScreen(Carried *cr);
-static void w_BattleRecordsScreen(Carried *cr);
 static void w_BlendStepDown(Carried *cr);
 static void w_BlendStepUp(Carried *cr);
 static void w_ColourMathA3(Carried *cr);
@@ -177,10 +175,10 @@ static void w_PreviewRowDrawAll(Carried *cr);
 static void w_PreviewRowDrawStunt(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
 static void w_Set0D37FromTable(Carried *cr);
-static void w_SpeedRecordsScreen(Carried *cr);
-static void w_StuntRecordsScreen(Carried *cr);
 static void w_TilemapLevelColumns(Carried *cr);
 static void w_WindowEdgesStep(Carried *cr);
+void AllRecordsScreen(Carried *cr);
+void BattleRecordsScreen(Carried *cr);
 void ColourMathA3Long_cr(Carried *cr);
 void ColourMathOffLong_cr(Carried *cr);
 void FixedColourFromStep_cr(Carried *cr);
@@ -189,6 +187,8 @@ void OamBufferHideLargeLong_cr(Carried *cr);
 void RecordsLoadForCourse_cr(Carried *cr);
 void RecordsUnpackCourseTotals(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
+void SpeedRecordsScreen(Carried *cr);
+void StuntRecordsScreen(Carried *cr);
 void WindowTable7FLong(Carried *cr);
 
 void CourseFromSelectionLong_cr(Carried *cr)
@@ -2800,11 +2800,11 @@ static void screen_state(Carried *cr, uint32_t b, uint16_t table)
     case 0xE44B: CourseScreenWipeIn(cr); break;
     case 0xE5B4: CourseScreenZoomIn(cr); break;
     case 0xED98: CourseScreenFadeBack(cr); break;
-    case 0xEDD2: w_SpeedRecordsScreen(cr); cyc(0); break;
+    case 0xEDD2: SpeedRecordsScreen(cr); cyc(0); break;
     case 0xED75: CourseScreenFadeLeave(cr); break;
-    case 0xF148: w_StuntRecordsScreen(cr); break;
-    case 0xF30A: w_BattleRecordsScreen(cr); break;
-    case 0xF37A: w_AllRecordsScreen(cr); break;
+    case 0xF148: StuntRecordsScreen(cr); break;
+    case 0xF30A: BattleRecordsScreen(cr); break;
+    case 0xF37A: AllRecordsScreen(cr); break;
     default: carried_jump(cr, 0x020000 | rd16(0x020000 | (uint16_t)(table + cr->x))); break;
     }
 }
@@ -3237,86 +3237,10 @@ static void w_PreviewRowDrawStunt(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* AllRecordsScreen, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_AllRecordsScreen(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_AllRecordsScreen();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* BattleRecordsScreen, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_BattleRecordsScreen(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_BattleRecordsScreen();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* CourseScreenNothing as its adapter leaves the registers. */
 static void w_CourseScreenNothing(Carried *cr)
 {
     cyc(42);
-}
-
-/* SpeedRecordsScreen, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpeedRecordsScreen(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpeedRecordsScreen();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* StuntRecordsScreen, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_StuntRecordsScreen(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_StuntRecordsScreen();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* SaveChecksum as its adapter leaves the registers. */
