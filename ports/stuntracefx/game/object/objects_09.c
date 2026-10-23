@@ -10,6 +10,27 @@
 #include "machine.h"
 #include "math_calls.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
+uint16_t GsuRecordLower82(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
+uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
+uint16_t GsuRecordSet2AHigh(uint8_t bank, uint16_t obj, uint8_t value, uint8_t *p);
+uint16_t GsuRecordVelocity(uint8_t bank, uint16_t obj, int *has, uint8_t *p);
+uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p);
+uint16_t ObjectRebucket(uint16_t obj);
+uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p);
+int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y);
+void ObjectSpawnPuff(Carried *cr);
+uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p);
+uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
+uint16_t ObjectSyncToRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
+uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y);
+int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16_t x);
+uint8_t RotateXY(uint8_t angle);
+uint8_t RotateXZ(uint8_t angle);
+uint8_t RotateXZFrom08(uint8_t angle);
+void approach_regs(uint16_t (*f)(uint16_t, int *));
+void approach_regs_byte(uint8_t (*f)(uint8_t, int *));
 
 void abi_ObjectSpawn(void);
 void abi_ObjectCopyPositionTo(void);
@@ -23,178 +44,886 @@ void abi_GsuRecordPosition(void);
 void abi_GsuRecordVelocity(void);
 void abi_SoundPort0QueuePush(void);
 
-static uint32_t db(void)
+void BreakablePairA(Carried *cr);
+void BreakablePairB(Carried *cr);
+void BreakablePairC(Carried *cr);
+void BreakablePairD(Carried *cr);
+void GateFadeUp(Carried *cr);
+void GateFlashOnClock(Carried *cr);
+void GateSlideStep(Carried *cr);
+void LampPostBurst(Carried *cr);
+void LampPostHit(Carried *cr);
+void LapCrowdMove0(Carried *cr);
+void LapCrowdMove1(Carried *cr);
+void LapCrowdMove2(Carried *cr);
+void LapCrowdSpawn0(Carried *cr);
+void LapCrowdSpawn1(Carried *cr);
+void LapCrowdSpawn2(Carried *cr);
+void LapCrowdStep0(Carried *cr);
+void LapCrowdStep1(Carried *cr);
+void LapCrowdStep2(Carried *cr);
+void LapSignSpawn0(Carried *cr);
+void LapSignSpawn1(Carried *cr);
+void LapSignSpawn2(Carried *cr);
+void LapSignStep0(Carried *cr);
+void LapSignStep1(Carried *cr);
+void LapSignStep2(Carried *cr);
+void MarkerBounceX(Carried *cr);
+void MarkerBounceY(Carried *cr);
+void ObjectBallDrop(Carried *cr);
+void ObjectBallDropRecord(Carried *cr);
+void ObjectBallDropStep(Carried *cr);
+void ObjectBallFollowPlayer(Carried *cr);
+void ObjectBeepGate10(Carried *cr);
+void ObjectBeepGate10Record(Carried *cr);
+void ObjectBeepGate10Step(Carried *cr);
+void ObjectBeepGate11(Carried *cr);
+void ObjectBeepGate11Record(Carried *cr);
+void ObjectBeepGate11Step(Carried *cr);
+void ObjectBellGate(Carried *cr);
+void ObjectBellGateRecord(Carried *cr);
+void ObjectBellGateStep(Carried *cr);
+void ObjectBob(Carried *cr);
+void ObjectBobStep(Carried *cr);
+void ObjectBonusEndGate(Carried *cr);
+void ObjectBonusEndGateRecord(Carried *cr);
+void ObjectBonusGate(Carried *cr);
+void ObjectBonusGateRecord(Carried *cr);
+void ObjectBonusGateStep(Carried *cr);
+void ObjectBonusMarker(Carried *cr);
+void ObjectBonusMarkerRecord(Carried *cr);
+void ObjectBonusMarkerStep(Carried *cr);
+void ObjectBreakable(Carried *cr);
+void ObjectBreakableBurst(Carried *cr);
+void ObjectBreakableBurst2(Carried *cr);
+void ObjectBreakableGate(Carried *cr);
+void ObjectBreakableGate2(Carried *cr);
+void ObjectBreakableGate2Record(Carried *cr);
+void ObjectBreakableGate2Step(Carried *cr);
+void ObjectBreakableGateRecord(Carried *cr);
+void ObjectBreakableGateStep(Carried *cr);
+void ObjectBreakablePiece(Carried *cr);
+void ObjectBreakablePieceStep(Carried *cr);
+void ObjectBreakableRecord(Carried *cr);
+void ObjectBreakableStep(Carried *cr);
+void ObjectBrightGate(Carried *cr);
+void ObjectBrightGateRecord(Carried *cr);
+void ObjectBrightGateStep(Carried *cr);
+void ObjectBumpPost(Carried *cr);
+void ObjectBumpPostRecord(Carried *cr);
+void ObjectBumpPostStep(Carried *cr);
+void ObjectBumper(Carried *cr);
+void ObjectBumperRecord(Carried *cr);
+void ObjectBumperStep(Carried *cr);
+void ObjectBurstGate(Carried *cr);
+void ObjectBurstGateRecord(Carried *cr);
+void ObjectBurstGateStep(Carried *cr);
+void ObjectCannonBallFlyLeft(Carried *cr);
+void ObjectCannonBallFlyRight(Carried *cr);
+void ObjectCannonBallHome(Carried *cr);
+void ObjectCannonBallLeft(Carried *cr);
+void ObjectCannonBallRight(Carried *cr);
+void ObjectCannonBallsLeft(Carried *cr);
+void ObjectCannonBallsRight(Carried *cr);
+void ObjectCannonGate(Carried *cr);
+void ObjectCannonGateRecord(Carried *cr);
+void ObjectCannonGateStep(Carried *cr);
+void ObjectCarFlagOffGate(Carried *cr);
+void ObjectCarFlagOffGateRecord(Carried *cr);
+void ObjectCarFlagOnGate(Carried *cr);
+void ObjectCarFlagOnGateRecord(Carried *cr);
+void ObjectChimeGate(Carried *cr);
+void ObjectChimeGateRecord(Carried *cr);
+void ObjectChimeGateStep(Carried *cr);
+void ObjectClear25Bit0(Carried *cr);
+void ObjectColour0(Carried *cr);
+void ObjectColour1(Carried *cr);
+void ObjectColour2(Carried *cr);
+void ObjectColour3(Carried *cr);
+void ObjectColour4(Carried *cr);
+void ObjectColour5(Carried *cr);
+void ObjectColour6(Carried *cr);
+void ObjectColour7(Carried *cr);
+void ObjectCountGate(Carried *cr);
+void ObjectCountGateRecord(Carried *cr);
+void ObjectCountGateStep(Carried *cr);
+void ObjectCountMarker(Carried *cr);
+void ObjectCountMarkerRecord(Carried *cr);
+void ObjectCountMarkerStep(Carried *cr);
+void ObjectCountTrigger(Carried *cr);
+void ObjectCountTriggerRecord(Carried *cr);
+void ObjectCountTriggerStep(Carried *cr);
+void ObjectCountUpTo2(Carried *cr);
+void ObjectDarkGate(Carried *cr);
+void ObjectDarkGateRecord(Carried *cr);
+void ObjectDarkGateStep(Carried *cr);
+void ObjectDuoGate(Carried *cr);
+void ObjectDuoGateRecord(Carried *cr);
+void ObjectDuoGateStep(Carried *cr);
+void ObjectFadeGate0(Carried *cr);
+void ObjectFadeGate0Record(Carried *cr);
+void ObjectFadeGate0Step(Carried *cr);
+void ObjectFadeGate1(Carried *cr);
+void ObjectFadeGate1Record(Carried *cr);
+void ObjectFadeGate1Step(Carried *cr);
+void ObjectFadeGate2(Carried *cr);
+void ObjectFadeGate2Record(Carried *cr);
+void ObjectFadeGate2Step(Carried *cr);
+void ObjectFan(Carried *cr);
+void ObjectFanCentreStep(Carried *cr);
+void ObjectFanStep(Carried *cr);
+void ObjectFanStepXSign(Carried *cr);
+void ObjectFanStepYSign(Carried *cr);
+void ObjectFanStepZSign(Carried *cr);
+void ObjectFinaleGate(Carried *cr);
+void ObjectFinaleGateRecord(Carried *cr);
+void ObjectFinaleGateStep(Carried *cr);
+void ObjectFinishGate(Carried *cr);
+void ObjectFinishGateRecord(Carried *cr);
+void ObjectFinishGateStep(Carried *cr);
+void ObjectFireworkBurst(Carried *cr);
+void ObjectFireworkShell(Carried *cr);
+void ObjectFireworkShellPair(Carried *cr);
+void ObjectFireworkShellStep(Carried *cr);
+void ObjectFloaterSpawner(Carried *cr);
+void ObjectFloaterSpawnerStep(Carried *cr);
+void ObjectFloaterStep(Carried *cr);
+void ObjectFlyingPieceRelease(Carried *cr);
+void ObjectFlyingPieceStep(Carried *cr);
+void ObjectLampLow(Carried *cr);
+void ObjectLampPost(Carried *cr);
+void ObjectLampPostLight(Carried *cr);
+void ObjectLampPostRecord(Carried *cr);
+void ObjectLampPostStep(Carried *cr);
+void ObjectLampTower(Carried *cr);
+void ObjectLantern(Carried *cr);
+void ObjectLanternBurst(Carried *cr);
+void ObjectLanternRecord(Carried *cr);
+void ObjectLanternStep(Carried *cr);
+void ObjectLapBallDown(Carried *cr);
+void ObjectLapBallDownRecord(Carried *cr);
+void ObjectLapBallDownStep(Carried *cr);
+void ObjectLapBallUp(Carried *cr);
+void ObjectLapBallUpRecord(Carried *cr);
+void ObjectLapBallUpStep(Carried *cr);
+void ObjectLapCrowdGate(Carried *cr);
+void ObjectLapCrowdGateRecord(Carried *cr);
+void ObjectLapCrowdGateStep(Carried *cr);
+void ObjectLapFlashGate(Carried *cr);
+void ObjectLapFlashGateRecord(Carried *cr);
+void ObjectLapFlashGateStep(Carried *cr);
+void ObjectLapLight(Carried *cr);
+void ObjectLapLightLeft(Carried *cr);
+void ObjectLapLightRecord(Carried *cr);
+void ObjectLapLightRight(Carried *cr);
+void ObjectLapLightStep(Carried *cr);
+void ObjectLapSignGate(Carried *cr);
+void ObjectLapSignGateRecord(Carried *cr);
+void ObjectLapSignGateStep(Carried *cr);
+void ObjectPlatform(Carried *cr);
+void ObjectPlatformRecord(Carried *cr);
+void ObjectPlatformStep(Carried *cr);
+void ObjectPopMarker(Carried *cr);
+void ObjectPopMarkerStep(Carried *cr);
+void ObjectPostA(Carried *cr);
+void ObjectPostARecord(Carried *cr);
+void ObjectPostAStep(Carried *cr);
+void ObjectPostB(Carried *cr);
+void ObjectPostBRecord(Carried *cr);
+void ObjectPostBStep(Carried *cr);
+void ObjectPuffFollow(Carried *cr);
+void ObjectRiderSpawn(Carried *cr);
+void ObjectRiderStep(Carried *cr);
+void ObjectRing(Carried *cr);
+void ObjectRingCentreStep(Carried *cr);
+void ObjectRingStep(Carried *cr);
+void ObjectRingStepXSign(Carried *cr);
+void ObjectRingStepYSign(Carried *cr);
+void ObjectRingStepZSign(Carried *cr);
+void ObjectRisingSpark(Carried *cr);
+void ObjectScale20(Carried *cr);
+void ObjectScale40(Carried *cr);
+void ObjectScaleA0(Carried *cr);
+void ObjectScaleE0(Carried *cr);
+void ObjectScaleUp6(Carried *cr);
+void ObjectScoreCounterSlide(Carried *cr);
+void ObjectScoreCounterStep(Carried *cr);
+void ObjectScoreCounterTick(Carried *cr);
+void ObjectScoreGate(Carried *cr);
+void ObjectScoreGateRecord(Carried *cr);
+void ObjectScoreGateStep(Carried *cr);
+void ObjectShardStep(Carried *cr);
+void ObjectShatter(Carried *cr);
+void ObjectShatter2(Carried *cr);
+void ObjectShatter2Shard1XSign(Carried *cr);
+void ObjectShatter2Shard1YSign(Carried *cr);
+void ObjectShatter2Shard2XSign(Carried *cr);
+void ObjectShatter2Shard2YSign(Carried *cr);
+void ObjectShatter2Shard3XSign(Carried *cr);
+void ObjectShatter2Shard3YSign(Carried *cr);
+void ObjectShatter2Shard4XSign(Carried *cr);
+void ObjectShatter2Shard4YSign(Carried *cr);
+void ObjectShatter2Shard5XSign(Carried *cr);
+void ObjectShatter2Shard5YSign(Carried *cr);
+void ObjectShatter2Shard6XSign(Carried *cr);
+void ObjectShatter2Shard6YSign(Carried *cr);
+void ObjectShatterMarker(Carried *cr);
+void ObjectShatterMarkerRecord(Carried *cr);
+void ObjectShatterMarkerStep(Carried *cr);
+void ObjectShatterShard1XSign(Carried *cr);
+void ObjectShatterShard1YSign(Carried *cr);
+void ObjectShatterShard2XSign(Carried *cr);
+void ObjectShatterShard2YSign(Carried *cr);
+void ObjectShatterShard3XSign(Carried *cr);
+void ObjectShatterShard3YSign(Carried *cr);
+void ObjectShatterShard4XSign(Carried *cr);
+void ObjectShatterShard4YSign(Carried *cr);
+void ObjectShatterShard5XSign(Carried *cr);
+void ObjectShatterShard5YSign(Carried *cr);
+void ObjectShatterShard6XSign(Carried *cr);
+void ObjectShatterShard6YSign(Carried *cr);
+void ObjectSkyBallFall(Carried *cr);
+void ObjectSkyBallLaunch(Carried *cr);
+void ObjectSkyBallRise(Carried *cr);
+void ObjectSkyBallStep(Carried *cr);
+void ObjectSlideBitGate(Carried *cr);
+void ObjectSlideBitGateRecord(Carried *cr);
+void ObjectSlideBitGateStep(Carried *cr);
+void ObjectSlideBitsGate(Carried *cr);
+void ObjectSlideBitsGateRecord(Carried *cr);
+void ObjectSlideBitsGateStep(Carried *cr);
+void ObjectSlideChimeGate(Carried *cr);
+void ObjectSlideChimeGateRecord(Carried *cr);
+void ObjectSlideChimeGateStep(Carried *cr);
+void ObjectSlideGate(Carried *cr);
+void ObjectSlideGateRecord(Carried *cr);
+void ObjectSlideGateUp(Carried *cr);
+void ObjectSlideGateUpRecord(Carried *cr);
+void ObjectSlideGateUpStep(Carried *cr);
+void ObjectSlideLapGate(Carried *cr);
+void ObjectSlideLapGateRecord(Carried *cr);
+void ObjectSlideLapGateStep(Carried *cr);
+void ObjectSlideMeter(Carried *cr);
+void ObjectSlideMeterStep(Carried *cr);
+void ObjectSlideZone(Carried *cr);
+void ObjectSlideZoneRecord(Carried *cr);
+void ObjectSlideZoneStep(Carried *cr);
+void ObjectSparkFollow(Carried *cr);
+void ObjectSpinner(Carried *cr);
+void ObjectSpinnerCentreStep(Carried *cr);
+void ObjectSpinnerStep(Carried *cr);
+void ObjectSpinnerStepXSign(Carried *cr);
+void ObjectSpinnerStepYSign(Carried *cr);
+void ObjectSpinnerStepZSign(Carried *cr);
+void ObjectStarSparkleSpawn(Carried *cr);
+void ObjectStarSparkleStep(Carried *cr);
+void ObjectSweepGate(Carried *cr);
+void ObjectSweepGateRecord(Carried *cr);
+void ObjectSweepGateStep(Carried *cr);
+void ObjectSwing(Carried *cr);
+void ObjectSwingStep(Carried *cr);
+void ObjectSwitch(Carried *cr);
+void ObjectSwitchB(Carried *cr);
+void ObjectSwitchBRecord(Carried *cr);
+void ObjectSwitchBStep(Carried *cr);
+void ObjectSwitchC(Carried *cr);
+void ObjectSwitchCRecord(Carried *cr);
+void ObjectSwitchCStep(Carried *cr);
+void ObjectSwitchLampB(Carried *cr);
+void ObjectSwitchLampBRecord(Carried *cr);
+void ObjectSwitchLampBStep(Carried *cr);
+void ObjectSwitchLampC(Carried *cr);
+void ObjectSwitchLampCRecord(Carried *cr);
+void ObjectSwitchLampCStep(Carried *cr);
+void ObjectSwitchRecord(Carried *cr);
+void ObjectSwitchStep(Carried *cr);
+void ObjectTimeGate(Carried *cr);
+void ObjectTimeGateRecord(Carried *cr);
+void ObjectTimeGateSmall(Carried *cr);
+void ObjectTimeGateSmallRecord(Carried *cr);
+void ObjectTimeGateStep(Carried *cr);
+void ObjectTrailLeftStep(Carried *cr);
+void ObjectTrailMidStep(Carried *cr);
+void ObjectTrailRightStep(Carried *cr);
+void ObjectTrailZone(Carried *cr);
+void ObjectTrailZoneRecord(Carried *cr);
+void ObjectTrailZoneStep(Carried *cr);
+void ObjectWaveBallBig(Carried *cr);
+void ObjectWaveBallBigRecord(Carried *cr);
+void ObjectWaveBallBigSetup(Carried *cr);
+void ObjectWaveBallBigStep(Carried *cr);
+void ObjectWaveBallHome(Carried *cr);
+void ObjectWaveBallLaunchA(Carried *cr);
+void ObjectWaveBallLaunchB(Carried *cr);
+void ObjectWaveBallLaunchC(Carried *cr);
+void ObjectWaveBallStep(Carried *cr);
+void ObjectWaveGateA(Carried *cr);
+void ObjectWaveGateAStep(Carried *cr);
+void ObjectWaveGateB(Carried *cr);
+void ObjectWaveGateBStep(Carried *cr);
+void ObjectWaveGateC(Carried *cr);
+void ObjectWaveGateCStep(Carried *cr);
+void ObjectWaveGateRecord(Carried *cr);
+void ObjectWheel(Carried *cr);
+void ObjectWheelCentreStep(Carried *cr);
+void ObjectWheelStep(Carried *cr);
+void ObjectWheelStepXSign(Carried *cr);
+void ObjectWheelStepYSign(Carried *cr);
+void ObjectWheelStepZSign(Carried *cr);
+void ObjectWindowOffGate(Carried *cr);
+void ObjectWindowOffGateRecord(Carried *cr);
+void ObjectWindowOffGateStep(Carried *cr);
+void ObjectWindowOnGate(Carried *cr);
+void ObjectWindowOnGateRecord(Carried *cr);
+void ObjectWindowOnGateStep(Carried *cr);
+void ObjectWindowResetGate(Carried *cr);
+void ObjectWindowResetGateRecord(Carried *cr);
+void ObjectWindowResetGateStep(Carried *cr);
+void ObjectWindowSetGate(Carried *cr);
+void ObjectWindowSetGateRecord(Carried *cr);
+void ObjectWindowSetGateStep(Carried *cr);
+void RailDrop(Carried *cr);
+void RailDropStep(Carried *cr);
+void RailRise(Carried *cr);
+void RailRiseStep(Carried *cr);
+void RailStep(Carried *cr);
+void RailStop(Carried *cr);
+void RailsSpawn(Carried *cr);
+void TrailFlip(Carried *cr);
+static void add16(Carried *cr, uint32_t addr, uint16_t v);
+static void add16_via(Carried *cr, uint32_t dst, uint32_t src);
+static void add8(Carried *cr, uint32_t addr, uint8_t v);
+static void and8(Carried *cr, uint32_t addr, uint8_t m);
+static void andor8(Carried *cr, uint32_t addr, uint8_t a, uint8_t o);
+static void asl5(Carried *cr, uint32_t at);
+static void axis_from(Carried *cr, uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi);
+static void ball_down_frame(Carried *cr);
+static void ball_drop(Carried *cr, uint16_t dz, uint16_t dy, uint8_t t);
+static void ball_fly(Carried *cr, uint16_t dx);
+static void ball_follow(Carried *cr);
+static void ball_home(Carried *cr);
+static void ball_rise(Carried *cr);
+static void ball_up_frame(Carried *cr);
+static void beep_frame(Carried *cr, uint8_t snd);
+static void bell_frame(Carried *cr);
+static void big_ball_frame(Carried *cr);
+static void big_ball_record(Carried *cr);
+static void big_ball_setup(Carried *cr);
+static int bit25(Carried *cr, uint8_t m);
+static void bob_frame(Carried *cr);
+static void bonus_gate_frame(Carried *cr);
+static void bonus_marker2_init(Carried *cr);
+static void bonus_marker_frame(Carried *cr);
+static void bounce_colour(Carried *cr, uint16_t lim, uint16_t pos);
+static void breakable_frame(Carried *cr);
+static void breakable_gate2_frame(Carried *cr);
+static void breakable_gate_frame(Carried *cr);
+static void breakable_put(Carried *cr, uint16_t dy, uint16_t dz, uint16_t dx, uint8_t s);
+static void breakable_record(Carried *cr);
+static void bump_post_frame(Carried *cr);
+static void bump_post_record(Carried *cr);
+static void bumper_frame(Carried *cr);
+static void bumper_record(Carried *cr);
+static void burst_gate_frame(Carried *cr);
+static void burst_piece(Carried *cr, uint16_t vx, uint16_t vy, uint16_t vz);
+static void burst_piece_frame(Carried *cr);
+static void burst_piece_k(Carried *cr, uint16_t kind, uint16_t dy, uint16_t vx, uint16_t vy, uint16_t vz);
+static void cannon_ball(Carried *cr, uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
+                        uint16_t rise, uint16_t drift, uint8_t life, uint8_t home);
+static void cannon_ball_frame(Carried *cr, uint16_t dx);
+static void cannon_balls_left(Carried *cr);
+static void cannon_balls_right(Carried *cr);
+static void chime_frame(Carried *cr);
+static void cmp8(Carried *cr, uint8_t m);
+static void colour_cycle(Carried *cr, uint8_t n);
+static void colour_cycle6(Carried *cr);
+static void colour_from_dp0(Carried *cr, uint32_t at);
+static int colour_step(Carried *cr, uint8_t n);
+static void copy16(Carried *cr, uint32_t dst, uint32_t src);
+static void count_gate_frame(Carried *cr);
+static void count_marker_frame(Carried *cr);
+static void count_marker_record(Carried *cr);
+static void count_trigger_frame(Carried *cr);
+static void count_trigger_record(Carried *cr);
+static void counter_show(Carried *cr, uint16_t o);
+static void counter_slide(Carried *cr);
+static void counter_tick(Carried *cr);
+static void crowd_gate_frame(Carried *cr);
+static void crowd_spawn(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s15, uint8_t t, uint16_t h);
+static uint32_t db(Carried *cr);
+static uint8_t dec8(Carried *cr, uint32_t addr);
+static uint32_t dp(Carried *cr, uint8_t off);
+static void drop_frame(Carried *cr);
+static void drop_record(Carried *cr);
+static void duo_frame(Carried *cr);
+static void ease16(Carried *cr, uint32_t addr, uint32_t target, uint16_t (*to)(uint16_t, int *));
+static int ease8(Carried *cr, uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *));
+static int ease8p(Carried *cr, uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *), unsigned pre);
+static void eor8(Carried *cr, uint32_t addr, uint8_t m);
+static void fade_frame(Carried *cr, uint8_t lap, uint16_t step, uint16_t end);
+static void fade_set(Carried *cr, uint16_t step, uint16_t end);
+static void fan_frame(Carried *cr, int arm, int xz, uint16_t lit, uint8_t snd);
+static void finale_frame(Carried *cr);
+static void finish_gate_frame(Carried *cr);
+static void finish_gate_record(Carried *cr);
+static void firework_burst(Carried *cr);
+static void flash_frame(Carried *cr, uint16_t flash, uint16_t step, uint16_t end, int rep2);
+static void gate42d(Carried *cr, uint16_t s);
+static void gate_frame(Carried *cr);
+static void gate_record(Carried *cr);
+static void handler(Carried *cr, uint16_t o, uint16_t h);
+static void handler_none(Carried *cr, uint16_t o);
+static void handlers2(Carried *cr, uint16_t r, uint16_t f);
+static int hit(Carried *cr);
+static void hit_lamp(Carried *cr, uint16_t rec, uint16_t step);
+static void hit_lamp_frame(Carried *cr, uint16_t flag);
+static void hit_lamp_record(Carried *cr);
+static void hit_switch_frame(Carried *cr, uint16_t flag);
+static void hit_switch_record(Carried *cr);
+static int hit_to(Carried *cr);
+static int hit_to_n(Carried *cr, int *late);
+static void inc8(Carried *cr, uint32_t addr);
+static void lamp(Carried *cr, uint16_t o, uint8_t t);
+static void lamp_post_frame(Carried *cr);
+static void lantern_frame(Carried *cr);
+static void lantern_record(Carried *cr);
+static void lap1_fade_frame(Carried *cr);
+static void lap_ball_record(Carried *cr, uint16_t kind);
+static int lap_eq(Carried *cr, uint16_t f);
+static void lap_flash_frame(Carried *cr);
+static void lap_gate_frame(Carried *cr);
+static void lap_gate_record(Carried *cr);
+static int lap_is(Carried *cr, uint8_t lap);
+static int lap_is_next(Carried *cr, uint8_t lap);
+static int lap_is_x(Carried *cr, uint8_t lap, unsigned pre, unsigned eq, unsigned ne);
+static void lap_light(Carried *cr, uint8_t ds);
+static void lap_light_frame(Carried *cr);
+static int lap_matches_0a(Carried *cr);
+static void lap_store(Carried *cr, uint16_t f);
+static void lap_take_0a(Carried *cr);
+static uint8_t ld8(Carried *cr, uint32_t addr);
+static void lda8(Carried *cr, uint8_t v);
+static void life_down(Carried *cr, unsigned next);
+static void meter_frame(Carried *cr);
+static int next_contact(Carried *cr);
+static int next_contact_t(Carried *cr, unsigned tail);
+static void or8(Carried *cr, uint32_t addr, uint8_t m);
+static void or8l(Carried *cr, uint32_t addr, uint8_t m, unsigned more);
+static void or8x(Carried *cr, uint32_t addr, uint8_t m, unsigned more);
+static void orbit(Carried *cr, int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz);
+static void orbit_add(Carried *cr, uint16_t f, uint32_t by, uint32_t adc);
+static void orbit_again(Carried *cr);
+static void orbit_axis(Carried *cr, uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi, uint32_t abs8);
+static void orbit_scale_done(Carried *cr);
+static void orbiter(Carried *cr, uint16_t h, uint16_t f);
+static void piece_frame(Carried *cr);
+static void platform_record(Carried *cr);
+static void post1_frame(Carried *cr);
+static void post2_frame(Carried *cr);
+static void post_record(Carried *cr, uint16_t v);
+static void rail(Carried *cr, uint16_t dx, uint16_t dz, uint16_t t);
+static void rail_drop_frame(Carried *cr);
+static int rail_slide(Carried *cr, uint16_t step);
+static void record424alt(Carried *cr, uint8_t h);
+static void record_at(Carried *cr, uint16_t x, uint16_t y, uint16_t z);
+static int released_by_hud(Carried *cr);
+static void ring_frame(Carried *cr, int arm);
+static void shard(Carried *cr, uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t vx, uint8_t vy);
+static void shard_from_z(Carried *cr);
+static void shatter_from_x(Carried *cr, const uint16_t *kinds, int k, int neg);
+static void shatter_from_y(Carried *cr, const uint16_t *kinds, int k, int neg);
+static void shatter_marker_frame(Carried *cr);
+static void shatter_marker_record(Carried *cr);
+static void shatter_rest(Carried *cr, const uint16_t *kinds, int from);
+static void shell(Carried *cr, uint16_t dx, uint8_t s14, uint8_t s15, uint8_t s16);
+static void shell_frame(Carried *cr);
+static void shell_pair(Carried *cr);
+static void show48(Carried *cr);
+static void sign_arm(Carried *cr, uint32_t hi, int neg);
+static void sign_frame(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz);
+static void sign_gate_frame(Carried *cr);
+static void sign_spawn(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz, uint16_t h);
+static void sky_ball(Carried *cr);
+static void slide_bits_frame(Carried *cr, uint8_t and_m, uint8_t or_m, uint8_t snd);
+static void slide_chime_frame(Carried *cr);
+static void slide_gate_frame(Carried *cr);
+static void slide_gate_out_m8(Carried *cr);
+static void slide_hold(Carried *cr);
+static void slide_lap_frame(Carried *cr);
+static void slide_set(Carried *cr, uint16_t step, uint16_t target, uint16_t dir);
+static void slide_zone_frame(Carried *cr);
+static void sound0(Carried *cr, uint8_t v);
+static void sound1(Carried *cr, uint8_t v);
+static void spark(Carried *cr, uint8_t t, uint16_t vx, uint16_t vy, uint16_t vz);
+static void spark_follow(Carried *cr, uint16_t kind);
+static void sparkle(Carried *cr);
+static void sparkle_frame(Carried *cr);
+static int spawn(Carried *cr, uint16_t kind);
+static void spinner_frame(Carried *cr, int arm);
+static void st16i(Carried *cr, uint32_t addr, uint16_t v);
+static void st16w(Carried *cr, uint32_t addr, uint16_t v);
+static void st8i(Carried *cr, uint32_t addr, uint8_t v);
+static void st8i_hi(Carried *cr, uint32_t addr, uint8_t v);
+static void swap_xy(Carried *cr);
+static void swap_xy_less(Carried *cr, unsigned less);
+static void sweep0_frame(Carried *cr);
+static void swing_frame(Carried *cr);
+static void switch_frame(Carried *cr);
+static void switch_record(Carried *cr);
+static int synced(Carried *cr);
+static void time_gate(Carried *cr, uint16_t r, unsigned released, unsigned tail);
+static void time_gate_frame(Carried *cr);
+static void trail_frame(Carried *cr, uint16_t dz, uint16_t dx, uint16_t mx);
+static void trail_zone_frame(Carried *cr);
+static void wave_ball(Carried *cr, uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
+                      uint16_t rise, uint16_t gx, uint16_t gz, uint8_t life);
+static void wave_ball_a(Carried *cr);
+static void wave_ball_b(Carried *cr);
+static void wave_ball_c(Carried *cr);
+static void wave_gate_frame(Carried *cr, int which);
+static void wave_gate_record(Carried *cr);
+static void wave_home(Carried *cr);
+static void window_gate_frame(Carried *cr, int on);
+static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1, uint8_t a2, uint8_t o2,
+                             int store2);
+static void w_GsuRecordFlag10(Carried *cr);
+static void w_GsuRecordFlags8ASet(Carried *cr);
+static void w_GsuRecordLower82(Carried *cr);
+static void w_GsuRecordMode2(Carried *cr);
+static void w_GsuRecordNew424(Carried *cr);
+static void w_GsuRecordNew424Alt(Carried *cr);
+static void w_GsuRecordNew424Piece(Carried *cr);
+static void w_GsuRecordNew42D(Carried *cr);
+static void w_GsuRecordPosition(Carried *cr);
+static void w_GsuRecordRaise6A(Carried *cr);
+static void w_GsuRecordSet2AHigh(Carried *cr);
+static void w_GsuRecordVelocity(Carried *cr);
+static void w_HudCountMove19EE(Carried *cr);
+static void w_HudCountMove19EECopy(Carried *cr);
+static void w_ObjectCopy14To(Carried *cr);
+static void w_ObjectCopyPositionFrom(Carried *cr);
+static void w_ObjectCopyPositionTo(Carried *cr);
+static void w_ObjectRebucket(Carried *cr);
+static void w_ObjectRelease(Carried *cr);
+static void w_ObjectSpawn(Carried *cr);
+static void w_ObjectSpawnPuff(Carried *cr);
+static void w_ObjectStep48To8(Carried *cr);
+static void w_ObjectSyncFromRecord(Carried *cr);
+static void w_ObjectSyncToRecord(Carried *cr);
+static void w_RecordContactSummary(Carried *cr);
+static void w_RecordNextContact(Carried *cr);
+static void w_RotateXY(Carried *cr);
+static void w_RotateXZ(Carried *cr);
+static void w_RotateXZFrom08(Carried *cr);
+static void w_SoundPort0QueuePush(Carried *cr);
+static void w_SoundPort1QueuePush(Carried *cr);
+
+static uint32_t db(Carried *cr)
 {
-    return (uint32_t)cpu.db << 16;
+    return (uint32_t)cr->db << 16;
+}
+
+static uint32_t db_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    uint32_t ret_ = db(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* Object field `f` ($20xx) of object `o`, through the data bank. */
-#define F(f, o) (db() | (uint16_t)((f) + (o)))
+#define F(f, o) (db_g() | (uint16_t)((f) + (o)))
+#define F_c(f, o) (db(cr) | (uint16_t)((f) + (o)))
 
 /* LDA #v with M 8-bit. */
-static void lda8(uint8_t v)
+static void lda8(Carried *cr, uint8_t v)
 {
     cyc(20);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+static void lda8_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    lda8(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDA addr, 8-bit; returns the byte. */
-static uint8_t ld8(uint32_t addr)
+static uint8_t ld8(Carried *cr, uint32_t addr)
 {
     cyc(8);
-    op_lda8(addr);
-    return (uint8_t)cpu.a;
+    r_lda8(cr, addr);
+    return (uint8_t)cr->a;
+}
+
+static uint8_t ld8_g(uint32_t addr)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    uint8_t ret_ = ld8(&c, addr);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* LDA #v, STA addr, 8-bit. */
-static void st8i(uint32_t addr, uint8_t v)
+static void st8i(Carried *cr, uint32_t addr, uint8_t v)
 {
-    lda8(v);
+    lda8(cr, v);
     cyc(20);
     wr8(addr, v);
 }
 
-/* REP #$20, LDA #v, STA addr, SEP #$20. */
-static void st16i(uint32_t addr, uint16_t v)
+static void st8i_g(uint32_t addr, uint8_t v)
 {
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16_imm(v);
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    st8i(&c, addr, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
+/* REP #$20, LDA #v, STA addr, SEP #$20. */
+static void st16i(Carried *cr, uint32_t addr, uint16_t v)
+{
+    cr->p &= (uint8_t)~P_M;
+    r_lda16_imm(cr, v);
     cyc(16);
     wr16(addr, v);
-    cpu.p |= P_M;
+    cr->p |= P_M;
+}
+
+static void st16i_g(uint32_t addr, uint16_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    st16i(&c, addr, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDA addr, ORA #m, STA addr (8-bit); `more` is the time of any further ORA
    before the store. */
-static void or8x(uint32_t addr, uint8_t m, unsigned more)
+static void or8x(Carried *cr, uint32_t addr, uint8_t m, unsigned more)
 {
     cyc(22);
-    uint8_t v = (uint8_t)(ld8(addr) | m);
+    uint8_t v = (uint8_t)(ld8(cr, addr) | m);
 
-    lda8(v);
+    lda8(cr, v);
     cyc(((addr & 0xFFFF) >= 0x2000 ? 26 : 20) + more);   /* STA abs,X (an object field) or abs */
     wr8(addr, v);
 }
 
-static void or8(uint32_t addr, uint8_t m)
+static void or8(Carried *cr, uint32_t addr, uint8_t m)
 {
-    or8x(addr, m, 0);
+    or8x(cr, addr, m, 0);
+}
+
+static void or8_g(uint32_t addr, uint8_t m)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    or8(&c, addr, m);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDA long, ORA #m, STA long (8-bit): the stores are 8 more than or8's;
    `more` is the time of any further ORA before the store. */
-static void or8l(uint32_t addr, uint8_t m, unsigned more)
+static void or8l(Carried *cr, uint32_t addr, uint8_t m, unsigned more)
 {
     cyc(22);
-    uint8_t v = (uint8_t)(ld8(addr) | m);
+    uint8_t v = (uint8_t)(ld8(cr, addr) | m);
 
-    lda8(v);
+    lda8(cr, v);
     cyc(28 + more);
     wr8(addr, v);
 }
 
+static void or8l_g(uint32_t addr, uint8_t m, unsigned more)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    or8l(&c, addr, m, more);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /* LDA addr, AND #m, STA addr (8-bit). */
-static void and8(uint32_t addr, uint8_t m)
+static void and8(Carried *cr, uint32_t addr, uint8_t m)
 {
     cyc(22);
-    uint8_t v = (uint8_t)(ld8(addr) & m);
+    uint8_t v = (uint8_t)(ld8(cr, addr) & m);
 
-    lda8(v);
+    lda8(cr, v);
     cyc((addr & 0xFFFF) >= 0x2000 ? 26 : 20);
     wr8(addr, v);
 }
 
-/* REP #$20, LDA addr, CLC, ADC #v, STA addr, SEP #$20. */
-static void add16(uint32_t addr, uint16_t v)
+static void and8_g(uint32_t addr, uint8_t m)
 {
-    cpu.p &= (uint8_t)~P_M;
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    and8(&c, addr, m);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
+/* REP #$20, LDA addr, CLC, ADC #v, STA addr, SEP #$20. */
+static void add16(Carried *cr, uint32_t addr, uint16_t v)
+{
+    cr->p &= (uint8_t)~P_M;
     cyc(30);
-    op_lda16(addr);
-    op_add16(v);
+    r_lda16(cr, addr);
+    r_add16(cr, v);
     cyc(68);
-    wr16(addr, cpu.a);
-    cpu.p |= P_M;
+    wr16(addr, cr->a);
+    cr->p |= P_M;
 }
 
 /* DEC addr (8-bit); returns the new value. */
-static uint8_t dec8(uint32_t addr)
+static uint8_t dec8(Carried *cr, uint32_t addr)
 {
     cyc(8);
     uint8_t v = (uint8_t)(rd8(addr) - 1);
 
     cyc(6);
     wr8(addr, v);
-    cpu.p = nz8(cpu.p, v);
+    cr->p = nz8(cr->p, v);
     return v;
 }
 
 /* INC addr (8-bit). */
-static void inc8(uint32_t addr)
+static void inc8(Carried *cr, uint32_t addr)
 {
     cyc(46);
     uint8_t v = (uint8_t)(rd8(addr) + 1);
 
     cyc(6);
     wr8(addr, v);
-    cpu.p = nz8(cpu.p, v);
+    cr->p = nz8(cr->p, v);
 }
 
 /* CMP #m (8-bit). */
-static void cmp8(uint8_t m)
+static void cmp8(Carried *cr, uint8_t m)
 {
-    uint8_t a = (uint8_t)cpu.a;
+    uint8_t a = (uint8_t)cr->a;
 
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
 }
 
 /* The handler of object o: +$1A = h, +$1C = $09. */
-static void handler(uint16_t o, uint16_t h)
+static void handler(Carried *cr, uint16_t o, uint16_t h)
 {
-    st16i(F(0x201A, o), h);
-    st8i(F(0x201C, o), cyc_then(28, 0x09));
+    st16i(cr, F_c(0x201A, o), h);
+    st8i(cr, F_c(0x201C, o), cyc_then(28, 0x09));
+}
+
+static void handler_g(uint16_t o, uint16_t h)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    handler(&c, o, h);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The handler cleared: +$1A = 0, +$1C = 0. */
-static void handler_none(uint16_t o)
+static void handler_none(Carried *cr, uint16_t o)
 {
-    st16i(F(0x201A, o), cyc_then(22, 0x0000));
-    st8i(F(0x201C, o), cyc_then(28, 0x00));
+    st16i(cr, F_c(0x201A, o), cyc_then(22, 0x0000));
+    st8i(cr, F_c(0x201C, o), cyc_then(28, 0x00));
     cyc(44);
 }
 
 /* A new object of `kind` ($1F2B, ObjectSpawn): 1 when one was made (C
    set), Y = it. */
-static int spawn(uint16_t kind)
+static int spawn(Carried *cr, uint16_t kind)
 {
-    st16i((cyc(16), db()) | 0x1F2B, kind);
-    (cyc(84), abi_ObjectSpawn());
+    st16i(cr, (cyc(16), db(cr)) | 0x1F2B, kind);
+    (cyc(84), w_ObjectSpawn(cr));
     cyc(22);
-    return (cpu.p & P_C) != 0;
+    return (cr->p & P_C) != 0;
+}
+
+static int spawn_g(uint16_t kind)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = spawn(&c, kind);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* PHX, TYX, PLY: X and Y swapped, N and Z from Y. */
-static void swap_xy_less(unsigned less)
+static void swap_xy_less(Carried *cr, unsigned less)
 {
     cyc(164 - less);
-    uint16_t t = cpu.x;
+    uint16_t t = cr->x;
 
-    cpu.x = cpu.y;
-    cpu.y = t;
-    cpu.p = nz16(cpu.p, cpu.y);
+    cr->x = cr->y;
+    cr->y = t;
+    cr->p = nz16(cr->p, cr->y);
 }
 
-static void swap_xy(void)
+static void swap_xy(Carried *cr)
 {
-    swap_xy_less(0);
+    swap_xy_less(cr, 0);
 }
 
 /* +$24 |= 8, +$3A = 0, +$5F = t: an object lit by its own light ($5D). */
-static void lamp(uint16_t o, uint8_t t)
+static void lamp(Carried *cr, uint16_t o, uint8_t t)
 {
-    or8(F(0x2024, o), 0x08);
-    st8i(F(0x203A, o), cyc_then(6, 0x00));
-    st8i(F(0x205F, o), cyc_then(6, t));
+    or8(cr, F_c(0x2024, o), 0x08);
+    st8i(cr, F_c(0x203A, o), cyc_then(6, 0x00));
+    st8i(cr, F_c(0x205F, o), cyc_then(6, t));
 }
 
 /*
@@ -208,24 +937,37 @@ static void lamp(uint16_t o, uint8_t t)
  * swapped round it. Without a free object the second light is not made.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 0.
  */
+void ObjectLampTower(Carried *cr)
+{
+    add16(cr, F_c(0x200E, cr->x), cyc_then(36, 0xFF74));
+    st16i(cr, F_c(0x205D, cr->x), cyc_then(44, 0x9971));
+    cyc(22);
+    lamp(cr, cr->x, 0x3C);
+    st16i(cr, F_c(0x2004, cr->x), cyc_then(22, 0xA104));
+    and8(cr, F_c(0x2009, cr->x), cyc_then(22, 0xFE));
+    if (spawn(cr, 0xA120)) {
+        lamp(cr, cr->y, 0x64);
+        st16i(cr, F_c(0x205D, cr->y), cyc_then(22, 0x9973));
+        (cyc(84), w_ObjectCopyPositionTo(cr));
+        add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0xFA88));
+        swap_xy(cr);
+        w_ObjectRebucket(cr);
+        (cyc(10), swap_xy_less(cr, 94));
+    } else { cyc(26); }                 /* BCS not taken, JML */
+    handler_none(cr, cr->x);
+}
+
 void abi_ObjectLampTower(void)
 {
-    add16(F(0x200E, cpu.x), cyc_then(36, 0xFF74));
-    st16i(F(0x205D, cpu.x), cyc_then(44, 0x9971));
-    cyc(22);
-    lamp(cpu.x, 0x3C);
-    st16i(F(0x2004, cpu.x), cyc_then(22, 0xA104));
-    and8(F(0x2009, cpu.x), cyc_then(22, 0xFE));
-    if (spawn(0xA120)) {
-        lamp(cpu.y, 0x64);
-        st16i(F(0x205D, cpu.y), cyc_then(22, 0x9973));
-        (cyc(84), abi_ObjectCopyPositionTo());
-        add16(F(0x200E, cpu.y), cyc_then(22, 0xFA88));
-        swap_xy();
-        abi_ObjectRebucket();
-        (cyc(10), swap_xy_less(94));
-    } else { cyc(26); }                 /* BCS not taken, JML */
-    handler_none(cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLampTower(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -236,14 +978,27 @@ void abi_ObjectLampTower(void)
  * HOW: Byte and word stores.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 0.
  */
-void abi_ObjectLampLow(void)
+void ObjectLampLow(Carried *cr)
 {
     cyc(14);
-    lamp(cpu.x, 0x50);
-    st16i(F(0x205D, cpu.x), cyc_then(22, 0x9973));
-    add16(F(0x200E, cpu.x), cyc_then(44, 0xFE84));
+    lamp(cr, cr->x, 0x50);
+    st16i(cr, F_c(0x205D, cr->x), cyc_then(22, 0x9973));
+    add16(cr, F_c(0x200E, cr->x), cyc_then(44, 0xFE84));
     cyc(22);
-    handler_none(cpu.x);
+    handler_none(cr, cr->x);
+}
+
+void abi_ObjectLampLow(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLampLow(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -252,52 +1007,65 @@ void abi_ObjectLampLow(void)
  * HOW: One store.
  * Entry: M 8-bit; X = object. Exit: A low byte = $40.
  */
+void ObjectScale40(Carried *cr)
+{
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(20, 0x40));
+    cyc(44);
+}
+
 void abi_ObjectScale40(void)
 {
-    st8i(F(0x2015, cpu.x), cyc_then(20, 0x40));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScale40(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:8CD6: the gate's frame: synced from its record; +$25 bit 0 = the
    sync's bit 0 and the record's contact summary's bit 0 together. */
-static void gate_frame(void)
+static void gate_frame(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if ((uint8_t)cpu.a) {
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if ((uint8_t)cr->a) {
         cyc(12);
-        (cyc(62), abi_RecordContactSummary());
-        lda8((uint8_t)(cpu.a & 0x01));
-        if ((uint8_t)cpu.a) {
+        (cyc(62), w_RecordContactSummary(cr));
+        lda8(cr, (uint8_t)(cr->a & 0x01));
+        if ((uint8_t)cr->a) {
             cyc(12);
-            or8(F(0x2025, cpu.x), 0x01);
+            or8(cr, F_c(0x2025, cr->x), 0x01);
             { cyc(44); return; }
         } else {
             cyc(18);
-            and8(F(0x2025, cpu.x), 0xFE);
+            and8(cr, F_c(0x2025, cr->x), 0xFE);
             cyc(44);
             return;
         }
     }
     cyc(18);
-    and8(F(0x2025, cpu.x), 0xFE);
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
     cyc(44);
 }
 
 /* 09:8CAF: the gate's record: a new one ($42D: GsuRecordNew42D) with flag
    bit 4, at (+$F00, +$F00, +$F00) (GsuRecordPosition); then its frame. */
-static void gate_record(void)
+static void gate_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew42D());
-    abi_GsuRecordFlag10();
+    (cyc(62), w_GsuRecordNew42D(cr));
+    w_GsuRecordFlag10(cr);
     cyc(8);
-    st16i(0x000002, 0x0F00);
+    st16i(cr, 0x000002, 0x0F00);
     cyc(30);
-    st16i(0x000008, 0x0F00);
+    st16i(cr, 0x000008, 0x0F00);
     cyc(30);
-    st16i(0x000094, 0x0F00);
-    (cyc(84), abi_GsuRecordPosition());
-    gate_frame();
+    st16i(cr, 0x000094, 0x0F00);
+    (cyc(84), w_GsuRecordPosition(cr));
+    gate_frame(cr);
 }
 
 /*
@@ -313,37 +1081,50 @@ static void gate_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectScoreGateStep.
  */
-void abi_ObjectScoreGate(void)
+void ObjectScoreGate(Carried *cr)
 {
-    st16i(F(0x201D, cpu.x), cyc_then(22, 0x8CAF));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, 0x8CAF));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
     cyc(22);
-    handler(cpu.x, 0x8CD6);
-    if (spawn(0xA040)) {
+    handler(cr, cr->x, 0x8CD6);
+    if (spawn(cr, 0xA040)) {
         uint8_t a;
 
-        (cyc(62), abi_ObjectCopyPositionTo());
-        a = (uint8_t)cpu.a;                     /* PHA */
-        cpu.p &= (uint8_t)~P_M;
-        cpu.a = cpu.x;
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2027, cpu.y), cyc_then(88, cpu.x));
-        cpu.p |= P_M;
+        (cyc(62), w_ObjectCopyPositionTo(cr));
+        a = (uint8_t)cr->a;                     /* PHA */
+        cr->p &= (uint8_t)~P_M;
+        cr->a = cr->x;
+        cr->p = nz16(cr->p, cr->a);
+        wr16(F_c(0x2027, cr->y), cyc_then(88, cr->x));
+        cr->p |= P_M;
         cyc(52);
-        lda8(a);                                /* PLA */
-        handler(cpu.y, 0x8CF8);
-        st8i(F(0x2049, cpu.y), cyc_then(6, 0x02));
-        add16(F(0x200C, cpu.y), cyc_then(22, 0xF920));
-        add16(F(0x200E, cpu.y), cyc_then(44, 0x00A0));
-        add16(F(0x2010, cpu.y), cyc_then(44, 0x0F00));
-        st16i(F(0x2015, cpu.y), cyc_then(44, 0x0020));
-        lda8(0x00);
-        lda8(0x80);
-        wr8(F(0x205A, cpu.y), cyc_then(44, 0x80));
-        st8i(F(0x2048, cpu.y), cyc_then(6, 0x00));
-        st8i(F(0x200A, cpu.y), cyc_then(6, 0x50));
+        lda8(cr, a);                                /* PLA */
+        handler(cr, cr->y, 0x8CF8);
+        st8i(cr, F_c(0x2049, cr->y), cyc_then(6, 0x02));
+        add16(cr, F_c(0x200C, cr->y), cyc_then(22, 0xF920));
+        add16(cr, F_c(0x200E, cr->y), cyc_then(44, 0x00A0));
+        add16(cr, F_c(0x2010, cr->y), cyc_then(44, 0x0F00));
+        st16i(cr, F_c(0x2015, cr->y), cyc_then(44, 0x0020));
+        lda8(cr, 0x00);
+        lda8(cr, 0x80);
+        wr8(F_c(0x205A, cr->y), cyc_then(44, 0x80));
+        st8i(cr, F_c(0x2048, cr->y), cyc_then(6, 0x00));
+        st8i(cr, F_c(0x200A, cr->y), cyc_then(6, 0x50));
     } else { cyc(26); }
-    gate_record();
+    gate_record(cr);
+}
+
+void abi_ObjectScoreGate(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScoreGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -354,9 +1135,22 @@ void abi_ObjectScoreGate(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectScoreGateStep.
  */
+void ObjectScoreGateRecord(Carried *cr)
+{
+    gate_record(cr);
+}
+
 void abi_ObjectScoreGateRecord(void)
 {
-    gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScoreGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -368,73 +1162,86 @@ void abi_ObjectScoreGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte the new
  * +$25.
  */
+void ObjectScoreGateStep(Carried *cr)
+{
+    gate_frame(cr);
+}
+
 void abi_ObjectScoreGateStep(void)
 {
-    gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScoreGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:8D94: the count +$48 down (not below 0), shown at +$5A with bit 7
    ($1F58 = the count). */
-static void counter_show(uint16_t o)
+static void counter_show(Carried *cr, uint16_t o)
 {
     uint8_t v;
 
-    v = ld8(cyc_then(22, F(0x2048, o)));
-    cmp8(0x00);
+    v = ld8(cr, cyc_then(22, F_c(0x2048, o)));
+    cmp8(cr, 0x00);
     if (v)
-        { cyc(60); dec8(F(0x2048, o)); } else { cyc(64); }
+        { cyc(60); dec8(cr, F_c(0x2048, o)); } else { cyc(64); }
     cyc(22);
-    v = ld8(F(0x2048, o));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = (uint8_t)(ld8((cyc(16), db()) | 0x1F58) | 0x80);
-    lda8(v);
-    wr8(F(0x205A, o), cyc_then(26, v));
+    v = ld8(cr, F_c(0x2048, o));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = (uint8_t)(ld8(cr, (cyc(16), db(cr)) | 0x1F58) | 0x80);
+    lda8(cr, v);
+    wr8(F_c(0x205A, o), cyc_then(26, v));
 }
 
 /* 09:8D34: every third frame (+$49 counting down from 2), by its gate's
    +$25 bit 0 (+$27): passing it sets +$25 bit 0, sound $32 and counts
    +$48 up to 9; else clears it and counts down; shown at +$5A. */
-static void counter_tick(void)
+static void counter_tick(Carried *cr)
 {
-    uint16_t o = cpu.x;
+    uint16_t o = cr->x;
     uint8_t v;
 
-    v = ld8(cyc_then(90, F(0x2049, o)));
-    cmp8(0x00);
+    v = ld8(cr, cyc_then(90, F_c(0x2049, o)));
+    cmp8(cr, 0x00);
     if (v) {
         cyc(60);
-        dec8(F(0x2049, o));
+        dec8(cr, F_c(0x2049, o));
         return;
     } else { cyc(70); }
-    st8i(F(0x2049, o), 0x02);
-    cpu.y = rd16(cyc_then(30, F(0x2027, o)));
-    cpu.p = nz16(cpu.p, cpu.y);
-    lda8((uint8_t)(ld8(cyc_then(22, F(0x2025, cpu.y))) & 0x01));
-    if (!(uint8_t)cpu.a) {
+    st8i(cr, F_c(0x2049, o), 0x02);
+    cr->y = rd16(cyc_then(30, F_c(0x2027, o)));
+    cr->p = nz16(cr->p, cr->y);
+    lda8(cr, (uint8_t)(ld8(cr, cyc_then(22, F_c(0x2025, cr->y))) & 0x01));
+    if (!(uint8_t)cr->a) {
         cyc(44);
-        and8(F(0x2025, o), 0xFE);
-        counter_show(o);
+        and8(cr, F_c(0x2025, o), 0xFE);
+        counter_show(cr, o);
         return;
     } else { cyc(40); }
-    lda8((uint8_t)(ld8(F(0x2025, o)) & 0x01));
-    if (!(uint8_t)cpu.a) {
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, o)) & 0x01));
+    if (!(uint8_t)cr->a) {
         cyc(18);
-        or8(F(0x2025, o), 0x01);
+        or8(cr, F_c(0x2025, o), 0x01);
         cyc(58);
-        lda8(0x32);
-        abi_SoundPort0QueuePush();
+        lda8(cr, 0x32);
+        w_SoundPort0QueuePush(cr);
     } else { cyc(44); }
     cyc(22);
-    v = ld8(F(0x2048, o));
-    cmp8(0x09);
+    v = ld8(cr, F_c(0x2048, o));
+    cmp8(cr, 0x09);
     if (v != 0x09)
-        { cyc(22); inc8(F(0x2048, o)); } else { cyc(64); }
+        { cyc(22); inc8(cr, F_c(0x2048, o)); } else { cyc(64); }
     cyc(22);
-    v = ld8(F(0x2048, o));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = (uint8_t)(ld8((cyc(16), db()) | 0x1F58) | 0x80);
-    lda8(v);
-    wr8(F(0x205A, o), cyc_then(26, v));
+    v = ld8(cr, F_c(0x2048, o));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = (uint8_t)(ld8(cr, (cyc(16), db(cr)) | 0x1F58) | 0x80);
+    lda8(cr, v);
+    wr8(F_c(0x205A, o), cyc_then(26, v));
 }
 
 /*
@@ -448,33 +1255,46 @@ static void counter_tick(void)
  * = the shown count with bit 7, or the countdown's value when it only
  * counted down; N, Z from that.
  */
+void ObjectScoreCounterTick(Carried *cr)
+{
+    counter_tick(cr);
+}
+
 void abi_ObjectScoreCounterTick(void)
 {
-    counter_tick();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScoreCounterTick(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:8DB1: while +$0A runs down, the scale +$15 eased toward $40
    (ApproachQuarterMin4Byte via $3E) and the object $5A further right;
    then the tick. */
-static void counter_slide(void)
+static void counter_slide(Carried *cr)
 {
-    uint16_t o = cpu.x;
+    uint16_t o = cr->x;
     uint8_t v;
 
-    v = ld8(F(0x200A, o));
-    cmp8(0x00);
+    v = ld8(cr, F_c(0x200A, o));
+    cmp8(cr, 0x00);
     if (v) {
         cyc(60);
-        dec8(F(0x200A, o));
-        v = ld8(cyc_then(22, F(0x2015, o)));
+        dec8(cr, F_c(0x200A, o));
+        v = ld8(cr, cyc_then(22, F_c(0x2015, o)));
         cyc(16);
         wr8(0x00003E, v);
-        lda8(0x40);
-        (cyc(58), approach_regs_byte(ApproachQuarterMin4Byte));
-        wr8(F(0x2015, o), cyc_then(30, (uint8_t)cpu.a));
-        add16(F(0x200C, o), cyc_then(22, 0x005A));
+        lda8(cr, 0x40);
+        (cyc(58), r_approach_byte(cr, ApproachQuarterMin4Byte));
+        wr8(F_c(0x2015, o), cyc_then(30, (uint8_t)cr->a));
+        add16(cr, F_c(0x200C, o), cyc_then(22, 0x005A));
     } else { cyc(42); }
-    counter_tick();
+    counter_tick(cr);
 }
 
 /*
@@ -486,9 +1306,22 @@ static void counter_slide(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectScoreCounterTick.
  */
+void ObjectScoreCounterSlide(Carried *cr)
+{
+    counter_slide(cr);
+}
+
 void abi_ObjectScoreCounterSlide(void)
 {
-    counter_slide();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScoreCounterSlide(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -501,43 +1334,69 @@ void abi_ObjectScoreCounterSlide(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectRebucket.
  */
-void abi_ObjectScoreCounterStep(void)
+void ObjectScoreCounterStep(Carried *cr)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
-    v = ld8((cyc(52), db()) | 0x0DEA);
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(52), db(cr)) | 0x0DEA);
     if (v) {
         cyc(18);
-        cmp8(0x01);
+        cmp8(cr, 0x01);
         if (v == 0x01) {
             cyc(58);
-            lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x02));
-            if (!(uint8_t)cpu.a) {
+            lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x02));
+            if (!(uint8_t)cr->a) {
                 cyc(18);
-                or8(F(0x2025, cpu.x), 0x02);
-                st16i(F(0x2004, cpu.x), cyc_then(22, 0xB754));
+                or8(cr, F_c(0x2025, cr->x), 0x02);
+                st16i(cr, F_c(0x2004, cr->x), cyc_then(22, 0xB754));
             } else { cyc(22); }
-            counter_tick();
+            counter_tick(cr);
         } else {
-            cmp8(0x02);
+            cmp8(cr, 0x02);
             if (v == 0x02)
-                { cyc(136); counter_slide(); }
+                { cyc(136); counter_slide(cr); }
             cyc(20);
         }
         cyc(42);
     }
     cyc(84);
-    abi_ObjectRebucket();
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
-/* 09:8DF8: synced from its record; released when +$0A has run down. */
-static void piece_frame(void)
+void abi_ObjectScoreCounterStep(void)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    if (dec8(cyc_then(22, F(0x200A, cpu.x))) == 0)
-        { cyc(84); abi_ObjectRelease(); cyc(44); } else { cyc(92); }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScoreCounterStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* 09:8DF8: synced from its record; released when +$0A has run down. */
+static void piece_frame(Carried *cr)
+{
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
+        { cyc(84); w_ObjectRelease(cr); cyc(44); } else { cyc(92); }
+}
+
+static void piece_frame_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    piece_frame(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -552,7 +1411,7 @@ static void piece_frame(void)
 void abi_ObjectFlyingPiece(void)
 {
     cyc(22);
-    handler(cpu.x, 0x8DF8);
+    handler_g(cpu.x, 0x8DF8);
     cyc(62);
     call_routine(0x08CBCC, 1);
     if (cpu.p & P_N) {
@@ -560,7 +1419,7 @@ void abi_ObjectFlyingPiece(void)
         { cyc(44); return; }
     } else { cyc(16); }
     (cyc(62), abi_GsuRecordVelocity());
-    piece_frame();
+    piece_frame_g();
 }
 
 /*
@@ -570,9 +1429,22 @@ void abi_ObjectFlyingPiece(void)
  * HOW: DEC of the byte.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
  */
+void ObjectFlyingPieceStep(Carried *cr)
+{
+    piece_frame(cr);
+}
+
 void abi_ObjectFlyingPieceStep(void)
 {
-    piece_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFlyingPieceStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -582,55 +1454,81 @@ void abi_ObjectFlyingPieceStep(void)
  * HOW: JSL ObjectRelease, RTL.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRelease.
  */
+void ObjectFlyingPieceRelease(Carried *cr)
+{
+    (cyc(62), w_ObjectRelease(cr));
+    cyc(44);
+}
+
 void abi_ObjectFlyingPieceRelease(void)
 {
-    (cyc(62), abi_ObjectRelease());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFlyingPieceRelease(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_GsuRecordSet2AHigh(void);
 
 /* REP #$20, X/Y/Z to direct page $02, $08, $94 (each a word), SEP #$20,
    GsuRecordPosition. */
-static void record_at(uint16_t x, uint16_t y, uint16_t z)
+static void record_at(Carried *cr, uint16_t x, uint16_t y, uint16_t z)
 {
     cyc(8);
-    st16i(0x000002, x);
+    st16i(cr, 0x000002, x);
     cyc(30);
-    st16i(0x000008, y);
+    st16i(cr, 0x000008, y);
     cyc(30);
-    st16i(0x000094, z);
-    (cyc(84), abi_GsuRecordPosition());
+    st16i(cr, 0x000094, z);
+    (cyc(84), w_GsuRecordPosition(cr));
+}
+
+static void record_at_g(uint16_t x, uint16_t y, uint16_t z)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    record_at(&c, x, y, z);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* 09:8EAF: a spark: a new object of kind $A0CC lit by $996B (+$5F = t) at
    object X's position, handler $09:8DDF (ObjectFlyingPiece), velocity
    (vx, vy, vz), +$0A = $0F; nothing without a free object. */
-static void spark(uint8_t t, uint16_t vx, uint16_t vy, uint16_t vz)
+static void spark(Carried *cr, uint8_t t, uint16_t vx, uint16_t vy, uint16_t vz)
 {
-    if (!spawn(0xA0CC))
+    if (!spawn(cr, 0xA0CC))
         { cyc(26); return; } else { cyc(22); }
-    st16i(F(0x205D, cpu.y), 0x996B);
+    st16i(cr, F_c(0x205D, cr->y), 0x996B);
     cyc(22);
-    lamp(cpu.y, t);
-    (cyc(62), abi_ObjectCopyPositionTo());
+    lamp(cr, cr->y, t);
+    (cyc(62), w_ObjectCopyPositionTo(cr));
     cyc(22);
-    handler(cpu.y, 0x8DDF);
-    st16i(F(0x202E, cpu.y), cyc_then(22, vx));
-    st16i(F(0x2030, cpu.y), cyc_then(44, vy));
-    st16i(F(0x2032, cpu.y), cyc_then(44, vz));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x0F));
+    handler(cr, cr->y, 0x8DDF);
+    st16i(cr, F_c(0x202E, cr->y), cyc_then(22, vx));
+    st16i(cr, F_c(0x2030, cr->y), cyc_then(44, vy));
+    st16i(cr, F_c(0x2032, cr->y), cyc_then(44, vz));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x0F));
 }
 
 /* 09:8EAF: the shell's burst: four sparks flying out left, right, back and
    on. */
-static void firework_burst(void)
+static void firework_burst(Carried *cr)
 {
     cyc(46);
-    spark(0x14, 0x0028, 0xFFAB, 0x0000);
-    spark(0x03, 0xFFD8, 0xFFAB, 0x0000);
-    spark(0x0A, 0x0000, 0xFFA6, 0x0028);
-    spark(0x01, 0x0000, 0xFFA6, 0xFFD8);
+    spark(cr, 0x14, 0x0028, 0xFFAB, 0x0000);
+    spark(cr, 0x03, 0xFFD8, 0xFFAB, 0x0000);
+    spark(cr, 0x0A, 0x0000, 0xFFA6, 0x0028);
+    spark(cr, 0x01, 0x0000, 0xFFA6, 0xFFD8);
 }
 
 /*
@@ -643,36 +1541,62 @@ static void firework_burst(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
  * the last spark leaves them.
  */
+void ObjectFireworkBurst(Carried *cr)
+{
+    firework_burst(cr);
+}
+
 void abi_ObjectFireworkBurst(void)
 {
-    firework_burst();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFireworkBurst(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:8E5A: the shell's frame: released when +$0A runs down (and goes on);
    its size bytes +$14-$16 grow ($0C added to the words at +$14, +$15 and
    +$16); synced from its record; on a hit (sync and contact bit 0) it is
    released with sound $56 and bursts into four sparks. */
-static void shell_frame(void)
+static void shell_frame(Carried *cr)
 {
-    if (dec8(cyc_then(22, F(0x200A, cpu.x))) == 0)
-        { cyc(84); abi_ObjectRelease(); cyc(22); } else { cyc(70); }
-    add16(F(0x2014, cpu.x), 0x000C);
-    add16(F(0x2015, cpu.x), cyc_then(44, 0x000C));
-    add16(F(0x2016, cpu.x), cyc_then(44, 0x000C));
-    (cyc(84), abi_ObjectSyncFromRecord());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
+        { cyc(84); w_ObjectRelease(cr); cyc(22); } else { cyc(70); }
+    add16(cr, F_c(0x2014, cr->x), 0x000C);
+    add16(cr, F_c(0x2015, cr->x), cyc_then(44, 0x000C));
+    add16(cr, F_c(0x2016, cr->x), cyc_then(44, 0x000C));
+    (cyc(84), w_ObjectSyncFromRecord(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(62); return; } else { cyc(12); }
-    (cyc(62), abi_RecordContactSummary());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    (cyc(62), w_RecordContactSummary(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         return; else { cyc(74); }
-    abi_ObjectRelease();
+    w_ObjectRelease(cr);
     cyc(58);
-    lda8(0x56);
-    abi_SoundPort0QueuePush();
-    firework_burst();
+    lda8(cr, 0x56);
+    w_SoundPort0QueuePush(cr);
+    firework_burst(cr);
     cyc(86);
+}
+
+static void shell_frame_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    shell_frame(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* 09:8E2D: the shell's record (08:CBCC), velocity, +$2A high byte 8
@@ -682,11 +1606,28 @@ static void shell_record(void)
     cyc(62);
     call_routine(0x08CBCC, 1);
     (cyc(62), abi_GsuRecordVelocity());
-    lda8(0x08);
+    lda8_g(0x08);
     (cyc(58), abi_GsuRecordSet2AHigh());
     cyc(102);
-    record_at(0x0190, 0x0190, 0x0190);
-    shell_frame();
+    record_at_g(0x0190, 0x0190, 0x0190);
+    shell_frame_g();
+}
+
+static void shell_record_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    shell_record();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /*
@@ -699,13 +1640,26 @@ static void shell_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
-void abi_ObjectFireworkShell(void)
+void ObjectFireworkShell(Carried *cr)
 {
     cyc(22);
-    handler(cpu.x, 0x8E5A);
-    st16i(F(0x201D, cpu.x), cyc_then(22, 0x8E2D));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
-    shell_record();
+    handler(cr, cr->x, 0x8E5A);
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, 0x8E2D));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
+    shell_record_c(cr);
+}
+
+void abi_ObjectFireworkShell(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFireworkShell(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -733,40 +1687,53 @@ void abi_ObjectFireworkShellRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path
  * leaves it.
  */
+void ObjectFireworkShellStep(Carried *cr)
+{
+    shell_frame(cr);
+}
+
 void abi_ObjectFireworkShellStep(void)
 {
-    shell_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFireworkShellStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:90C3: a firework shell: a new object of kind $B6E4 at object X's
    position, handler $09:8E0F (ObjectFireworkShell), moved (dx, -$500,
    -$1900), velocity (0, 0, $15E), size bytes (s14, s15, s16), +$0A = $1E. */
-static void shell(uint16_t dx, uint8_t s14, uint8_t s15, uint8_t s16)
+static void shell(Carried *cr, uint16_t dx, uint8_t s14, uint8_t s15, uint8_t s16)
 {
-    if (!spawn(0xB6E4))
+    if (!spawn(cr, 0xB6E4))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
+    (cyc(62), w_ObjectCopyPositionTo(cr));
     cyc(22);
-    handler(cpu.y, 0x8E0F);
-    add16(F(0x200E, cpu.y), cyc_then(22, 0xFB00));
-    add16(F(0x2010, cpu.y), cyc_then(44, 0xE700));
-    add16(F(0x200C, cpu.y), cyc_then(44, dx));
-    st16i(F(0x202E, cpu.y), cyc_then(44, 0x0000));
-    st16i(F(0x2030, cpu.y), cyc_then(44, 0x0000));
-    st16i(F(0x2032, cpu.y), cyc_then(44, 0x015E));
-    st8i(F(0x2014, cpu.y), cyc_then(28, s14));
-    st8i(F(0x2015, cpu.y), cyc_then(6, s15));
-    st8i(F(0x2016, cpu.y), cyc_then(6, s16));
-    st8i(F(0x200A, cpu.y), cyc_then(6, 0x1E));
+    handler(cr, cr->y, 0x8E0F);
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0xFB00));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, 0xE700));
+    add16(cr, F_c(0x200C, cr->y), cyc_then(44, dx));
+    st16i(cr, F_c(0x202E, cr->y), cyc_then(44, 0x0000));
+    st16i(cr, F_c(0x2030, cr->y), cyc_then(44, 0x0000));
+    st16i(cr, F_c(0x2032, cr->y), cyc_then(44, 0x015E));
+    st8i(cr, F_c(0x2014, cr->y), cyc_then(28, s14));
+    st8i(cr, F_c(0x2015, cr->y), cyc_then(6, s15));
+    st8i(cr, F_c(0x2016, cr->y), cyc_then(6, s16));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(6, 0x1E));
 }
 
 /* 09:90C3: the finish gate's two firework shells, $3C0 right and $3C0
    left. */
-static void shell_pair(void)
+static void shell_pair(Carried *cr)
 {
     cyc(46);
-    shell(0x03C0, 0x3C, 0x32, 0x23);
-    shell(0xFC40, 0x78, 0x3C, 0x0C);
+    shell(cr, 0x03C0, 0x3C, 0x32, 0x23);
+    shell(cr, 0xFC40, 0x78, 0x3C, 0x0C);
 }
 
 /*
@@ -778,48 +1745,61 @@ static void shell_pair(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
  * the second shell leaves them.
  */
+void ObjectFireworkShellPair(Carried *cr)
+{
+    shell_pair(cr);
+}
+
 void abi_ObjectFireworkShellPair(void)
 {
-    shell_pair();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFireworkShellPair(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:908D: the finish gate's frame: synced from its record; on a hit
    (sync and contact bit 0) on the second lap ($0DEA = 2), the first time
    (+$25 bit 0), sound $11 and two firework shells. */
-static void finish_gate_frame(void)
+static void finish_gate_frame(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(62); return; } else { cyc(12); }
-    (cyc(62), abi_RecordContactSummary());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    (cyc(62), w_RecordContactSummary(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(62); return; } else { cyc(50); }
-    cpu.p |= P_M;
-    ld8(db() | 0x0DEA);
-    cmp8(0x02);
-    if ((uint8_t)cpu.a != 0x02)
+    cr->p |= P_M;
+    ld8(cr, db(cr) | 0x0DEA);
+    cmp8(cr, 0x02);
+    if ((uint8_t)cr->a != 0x02)
         { cyc(82); return; } else { cyc(54); }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-    if ((uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+    if ((uint8_t)cr->a)
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
     cyc(58);
-    lda8(0x11);
-    abi_SoundPort0QueuePush();
-    shell_pair();
+    lda8(cr, 0x11);
+    w_SoundPort0QueuePush(cr);
+    shell_pair(cr);
     cyc(86);
 }
 
 /* 09:9066: the finish gate's record ($42D) with flag bit 4 at ($1680,
    $1680, $1680); then its frame. */
-static void finish_gate_record(void)
+static void finish_gate_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew42D());
-    abi_GsuRecordFlag10();
-    record_at(0x1680, 0x1680, 0x1680);
-    finish_gate_frame();
+    (cyc(62), w_GsuRecordNew42D(cr));
+    w_GsuRecordFlag10(cr);
+    record_at(cr, 0x1680, 0x1680, 0x1680);
+    finish_gate_frame(cr);
 }
 
 /*
@@ -831,13 +1811,26 @@ static void finish_gate_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectFinishGate(Carried *cr)
+{
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, 0x9066));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
+    cyc(22);
+    handler(cr, cr->x, 0x908D);
+    finish_gate_record(cr);
+}
+
 void abi_ObjectFinishGate(void)
 {
-    st16i(F(0x201D, cpu.x), cyc_then(22, 0x9066));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
-    cyc(22);
-    handler(cpu.x, 0x908D);
-    finish_gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFinishGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -848,9 +1841,22 @@ void abi_ObjectFinishGate(void)
  * by unit_objects_09.
  * Entry: as ObjectFinishGate. Exit: as ObjectFinishGate.
  */
+void ObjectFinishGateRecord(Carried *cr)
+{
+    finish_gate_record(cr);
+}
+
 void abi_ObjectFinishGateRecord(void)
 {
-    finish_gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFinishGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -864,9 +1870,22 @@ void abi_ObjectFinishGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectFinishGateStep(Carried *cr)
+{
+    finish_gate_frame(cr);
+}
+
 void abi_ObjectFinishGateStep(void)
 {
-    finish_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFinishGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_GsuRecordNew424(void);
@@ -876,14 +1895,14 @@ void abi_RecordNextContact(void);
 void abi_GsuRecordRaise6A(void);
 
 /* LDA addr, CLC, ADC #v, STA addr (8-bit). */
-static void add8(uint32_t addr, uint8_t v)
+static void add8(Carried *cr, uint32_t addr, uint8_t v)
 {
     cyc(22);
-    uint8_t r = ld8(addr);
+    uint8_t r = ld8(cr, addr);
 
-    cpu.p &= (uint8_t)~P_C;
-    r = op_adc8(r, v, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+    cr->p &= (uint8_t)~P_C;
+    r = alu_adc8(r, v, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | r);
     cyc(60);
     wr8(addr, r);
 }
@@ -891,96 +1910,109 @@ static void add8(uint32_t addr, uint8_t v)
 /* LDA addr, STA $3E, LDA #target, JSL to; STA addr: a byte eased toward
    the target by the routine at `to`; `pre` is the time before the LDA's
    read. Returns C. */
-static int ease8p(uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *), unsigned pre)
+static int ease8p(Carried *cr, uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *), unsigned pre)
 {
     cyc(pre);
-    wr8(0x00003E, cyc_then(16, ld8(addr)));
+    wr8(0x00003E, cyc_then(16, ld8(cr, addr)));
     cyc(58);
-    lda8(target);
-    approach_regs_byte(to);
+    lda8(cr, target);
+    r_approach_byte(cr, to);
     cyc(30);
-    wr8(addr, (uint8_t)cpu.a);
-    return (cpu.p & P_C) != 0;
+    wr8(addr, (uint8_t)cr->a);
+    return (cr->p & P_C) != 0;
 }
 
-static int ease8(uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *))
+static int ease8(Carried *cr, uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *))
 {
-    return ease8p(addr, target, to, 40);
+    return ease8p(cr, addr, target, to, 40);
 }
 
 /* The two set-up stores of a two-handler object: restart +$1D/+$1F = r,
    frame +$1A/+$1C = f. */
-static void handlers2(uint16_t r, uint16_t f)
+static void handlers2(Carried *cr, uint16_t r, uint16_t f)
 {
-    st16i(F(0x201D, cpu.x), cyc_then(22, r));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, r));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
     cyc(22);
-    handler(cpu.x, f);
+    handler(cr, cr->x, f);
+}
+
+static void handlers2_g(uint16_t r, uint16_t f)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    handlers2(&c, r, f);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* Hit by a car: the record's sync and contact summary both with bit 0
    (ObjectSyncFromRecord, RecordContactSummary, each AND #1). */
-static int hit(void)
+static int hit(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         return 0; else { cyc(38); }
     cyc(36);
-    abi_RecordContactSummary();
+    w_RecordContactSummary(cr);
     cyc(0);
-    lda8((uint8_t)(cpu.a & 0x01));
-    return (uint8_t)cpu.a != 0;
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    return (uint8_t)cr->a != 0;
 }
 
 /* 09:91F6: the bumper's frame: while +$48 counts down, it bulges (+$15 by
    6, +$14 and +$16 by $0A); after, +$14 eases back (ApproachHalfMin2Byte)
    and, once that holds, +$16 too while +$15 grows by $0C; then a hit sets
    +$25 bit 0 the first time (sound $54, +$48 = 6), no hit clears it. */
-static void bumper_frame(void)
+static void bumper_frame(Carried *cr)
 {
-    uint8_t v = ld8(cyc_then(22, F(0x2048, cpu.x)));
+    uint8_t v = ld8(cr, cyc_then(22, F_c(0x2048, cr->x)));
 
     if (v) {
         cyc(22);
-        add8(F(0x2015, cpu.x), 0x06);
-        add8(F(0x2014, cpu.x), 0x0A);
-        add8(F(0x2016, cpu.x), 0x0A);
-        add8(F(0x2048, cpu.x), 0xFF);
+        add8(cr, F_c(0x2015, cr->x), 0x06);
+        add8(cr, F_c(0x2014, cr->x), 0x0A);
+        add8(cr, F_c(0x2016, cr->x), 0x0A);
+        add8(cr, F_c(0x2048, cr->x), 0xFF);
         cyc(24);                        /* JMP */
-    } else if (!(cyc(30), ease8(F(0x2014, cpu.x), 0x00, ApproachHalfMin2Byte))) {
+    } else if (!(cyc(30), ease8(cr, F_c(0x2014, cr->x), 0x00, ApproachHalfMin2Byte))) {
         cyc(4);
-        ease8(F(0x2016, cpu.x), 0x00, ApproachHalfMin2Byte);
-        add8(F(0x2015, cpu.x), 0x0C);
+        ease8(cr, F_c(0x2016, cr->x), 0x00, ApproachHalfMin2Byte);
+        add8(cr, F_c(0x2015, cr->x), 0x0C);
     } else { cyc(48); }
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         cyc(44);
         return;
     } else { cyc(34); }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-    if ((uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+    if ((uint8_t)cr->a)
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
     cyc(58);
-    lda8(0x54);
-    abi_SoundPort0QueuePush();
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x06));
+    lda8(cr, 0x54);
+    w_SoundPort0QueuePush(cr);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x06));
     cyc(44);
 }
 
 /* 09:91E8: the bumper's record ($424) with flag bit 4 and +$2A high 1;
    then its frame. */
-static void bumper_record(void)
+static void bumper_record(Carried *cr)
 {
     cyc(62);
-    abi_GsuRecordNew424();
-    (cyc(62), abi_GsuRecordFlag10());
+    w_GsuRecordNew424(cr);
+    (cyc(62), w_GsuRecordFlag10(cr));
     cyc(58);
-    lda8(0x01);
-    abi_GsuRecordSet2AHigh();
-    (cyc(102), bumper_frame());
+    lda8(cr, 0x01);
+    w_GsuRecordSet2AHigh(cr);
+    (cyc(102), bumper_frame(cr));
 }
 
 /*
@@ -991,10 +2023,23 @@ static void bumper_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBumper(Carried *cr)
+{
+    handlers2(cr, 0x91E8, 0x91F6);
+    bumper_record(cr);
+}
+
 void abi_ObjectBumper(void)
 {
-    handlers2(0x91E8, 0x91F6);
-    bumper_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBumper(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1004,9 +2049,22 @@ void abi_ObjectBumper(void)
  * HOW: GsuRecordNew424, GsuRecordFlag10, GsuRecordSet2AHigh.
  * Entry: as ObjectBumper. Exit: as ObjectBumper.
  */
+void ObjectBumperRecord(Carried *cr)
+{
+    bumper_record(cr);
+}
+
 void abi_ObjectBumperRecord(void)
 {
-    bumper_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBumperRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1019,51 +2077,64 @@ void abi_ObjectBumperRecord(void)
  * HOW: ObjectSyncFromRecord, RecordContactSummary.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
  */
+void ObjectBumperStep(Carried *cr)
+{
+    bumper_frame(cr);
+}
+
 void abi_ObjectBumperStep(void)
 {
-    bumper_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBumperStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:92BC: the switch's frame: when on (+$25 bit 0), +$48 eased toward 3
    (03:D07C); +$48 shown at +$5A with bit 7; off, a hit turns it on (+$15
    by $0C, sound $55). */
-static void switch_frame(void)
+static void switch_frame(Carried *cr)
 {
     uint8_t v;
 
-    lda8((uint8_t)(ld8(cyc_then(22, F(0x2025, cpu.x))) & 0x01));
-    if ((uint8_t)cpu.a)
-        cyc(ease8(F(0x2048, cpu.x), 0x03, ApproachSixteenthMin16Byte) ? 70 : 44);   /* BCC taken or not, JML */
+    lda8(cr, (uint8_t)(ld8(cr, cyc_then(22, F_c(0x2025, cr->x))) & 0x01));
+    if ((uint8_t)cr->a)
+        cyc(ease8(cr, F_c(0x2048, cr->x), 0x03, ApproachSixteenthMin16Byte) ? 70 : 44);   /* BCC taken or not, JML */
     else
         cyc(66);
-    v = ld8(F(0x2048, cpu.x));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = (uint8_t)(ld8((cyc(16), db()) | 0x1F58) | 0x80);
-    lda8(v);
-    wr8(F(0x205A, cpu.x), cyc_then(26, v));
-    lda8((uint8_t)(ld8(cyc_then(22, F(0x2025, cpu.x))) & 0x01));
-    if ((uint8_t)cpu.a)
+    v = ld8(cr, F_c(0x2048, cr->x));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = (uint8_t)(ld8(cr, (cyc(16), db(cr)) | 0x1F58) | 0x80);
+    lda8(cr, v);
+    wr8(F_c(0x205A, cr->x), cyc_then(26, v));
+    lda8(cr, (uint8_t)(ld8(cr, cyc_then(22, F_c(0x2025, cr->x))) & 0x01));
+    if ((uint8_t)cr->a)
         { cyc(88); return; } else { cyc(18); }
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(12); }
-    or8(F(0x2025, cpu.x), 0x01);
-    add8(F(0x2015, cpu.x), 0x0C);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    add8(cr, F_c(0x2015, cr->x), 0x0C);
     cyc(58);
-    lda8(0x55);
-    abi_SoundPort0QueuePush();
+    lda8(cr, 0x55);
+    w_SoundPort0QueuePush(cr);
     cyc(44);
 }
 
 /* 09:92AE: the switch's record ($424) with flag bit 4 and +$2A high 1;
    then its frame. */
-static void switch_record(void)
+static void switch_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew424());
-    (cyc(62), abi_GsuRecordFlag10());
+    (cyc(62), w_GsuRecordNew424(cr));
+    (cyc(62), w_GsuRecordFlag10(cr));
     cyc(58);
-    lda8(0x01);
-    abi_GsuRecordSet2AHigh();
-    (cyc(102), switch_frame());
+    lda8(cr, 0x01);
+    w_GsuRecordSet2AHigh(cr);
+    (cyc(102), switch_frame(cr));
 }
 
 /*
@@ -1074,13 +2145,26 @@ static void switch_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSwitch(Carried *cr)
+{
+    handlers2(cr, 0x92AE, 0x92BC);
+    lda8(cr, 0x00);
+    lda8(cr, 0x80);
+    wr8(F_c(0x205A, cr->x), cyc_then(22, 0x80));
+    switch_record(cr);
+}
+
 void abi_ObjectSwitch(void)
 {
-    handlers2(0x92AE, 0x92BC);
-    lda8(0x00);
-    lda8(0x80);
-    wr8(F(0x205A, cpu.x), cyc_then(22, 0x80));
-    switch_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitch(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1090,9 +2174,22 @@ void abi_ObjectSwitch(void)
  * HOW: GsuRecordNew424, GsuRecordFlag10, GsuRecordSet2AHigh.
  * Entry: as ObjectSwitch. Exit: as ObjectSwitch.
  */
+void ObjectSwitchRecord(Carried *cr)
+{
+    switch_record(cr);
+}
+
 void abi_ObjectSwitchRecord(void)
 {
-    switch_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1105,9 +2202,22 @@ void abi_ObjectSwitchRecord(void)
  * ApproachSixteenthMin16Byte (03:D07C).
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
  */
+void ObjectSwitchStep(Carried *cr)
+{
+    switch_frame(cr);
+}
+
 void abi_ObjectSwitchStep(void)
 {
-    switch_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1117,23 +2227,36 @@ void abi_ObjectSwitchStep(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the new +$25;
  * N, Z from it.
  */
+void ObjectClear25Bit0(Carried *cr)
+{
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
+    cyc(44);
+}
+
 void abi_ObjectClear25Bit0(void)
 {
-    and8(F(0x2025, cpu.x), 0xFE);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectClear25Bit0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:934D: the platform's record ($424, +$0A $90E8) in mode 2 with +$2A
    high $50 at ($500, $1180, $500); then its frame (synced). */
-static void platform_record(void)
+static void platform_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew424Alt());
-    (cyc(62), abi_GsuRecordMode2());
-    lda8(0x50);
-    (cyc(58), abi_GsuRecordSet2AHigh());
+    (cyc(62), w_GsuRecordNew424Alt(cr));
+    (cyc(62), w_GsuRecordMode2(cr));
+    lda8(cr, 0x50);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
     cyc(102);
-    record_at(0x0500, 0x1180, 0x0500);
-    (cyc(62), abi_ObjectSyncFromRecord());
+    record_at(cr, 0x0500, 0x1180, 0x0500);
+    (cyc(62), w_ObjectSyncFromRecord(cr));
     cyc(44);
 }
 
@@ -1146,12 +2269,25 @@ static void platform_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectSyncFromRecord.
  */
+void ObjectPlatform(Carried *cr)
+{
+    st16i(cr, F_c(0x2020, cr->x), cyc_then(22, 0xEC60));
+    cyc(22);
+    handlers2(cr, 0x934D, 0x937A);
+    platform_record(cr);
+}
+
 void abi_ObjectPlatform(void)
 {
-    st16i(F(0x2020, cpu.x), cyc_then(22, 0xEC60));
-    cyc(22);
-    handlers2(0x934D, 0x937A);
-    platform_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPlatform(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1161,9 +2297,22 @@ void abi_ObjectPlatform(void)
  * HOW: As ObjectPlatform. Reached only by unit_objects_09.
  * Entry: as ObjectPlatform. Exit: as ObjectPlatform.
  */
+void ObjectPlatformRecord(Carried *cr)
+{
+    platform_record(cr);
+}
+
 void abi_ObjectPlatformRecord(void)
 {
-    platform_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPlatformRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1172,31 +2321,44 @@ void abi_ObjectPlatformRecord(void)
  * HOW: ObjectSyncFromRecord. Reached only by unit_objects_09.
  * Entry: as ObjectSyncFromRecord. Exit: as ObjectSyncFromRecord.
  */
+void ObjectPlatformStep(Carried *cr)
+{
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    cyc(44);
+}
+
 void abi_ObjectPlatformStep(void)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPlatformStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:93C4: the first switch post's frame: a hit squashes +$14 toward $33
    and sets bit 0 of $1A07. */
-static void post1_frame(void)
+static void post1_frame(Carried *cr)
 {
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; }
-    ease8p(F(0x2014, cpu.x), 0x33, ApproachHalfMin2Byte, 34);
-    cpu.p |= P_M;
-    or8((cyc(16), db()) | 0x1A07, 0x01);
+    ease8p(cr, F_c(0x2014, cr->x), 0x33, ApproachHalfMin2Byte, 34);
+    cr->p |= P_M;
+    or8(cr, (cyc(16), db(cr)) | 0x1A07, 0x01);
     cyc(44);
 }
 
 /* 09:939D: a post's record ($42D) with flag bit 4 at (v, v, v). */
-static void post_record(uint16_t v)
+static void post_record(Carried *cr, uint16_t v)
 {
     cyc(62);
-    abi_GsuRecordNew42D();
-    abi_GsuRecordFlag10();
-    record_at(v, v, v);
+    w_GsuRecordNew42D(cr);
+    w_GsuRecordFlag10(cr);
+    record_at(cr, v, v, v);
 }
 
 /*
@@ -1208,11 +2370,24 @@ static void post_record(uint16_t v)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectPostA(Carried *cr)
+{
+    handlers2(cr, 0x939D, 0x93C4);
+    post_record(cr, 0x01E0);
+    post1_frame(cr);
+}
+
 void abi_ObjectPostA(void)
 {
-    handlers2(0x939D, 0x93C4);
-    post_record(0x01E0);
-    post1_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPostA(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1222,10 +2397,23 @@ void abi_ObjectPostA(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectPostA. Exit: as ObjectPostA.
  */
+void ObjectPostARecord(Carried *cr)
+{
+    post_record(cr, 0x01E0);
+    post1_frame(cr);
+}
+
 void abi_ObjectPostARecord(void)
 {
-    post_record(0x01E0);
-    post1_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPostARecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1235,9 +2423,22 @@ void abi_ObjectPostARecord(void)
  * HOW: ObjectSyncFromRecord, RecordContactSummary.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
  */
+void ObjectPostAStep(Carried *cr)
+{
+    post1_frame(cr);
+}
+
 void abi_ObjectPostAStep(void)
 {
-    post1_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPostAStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectSkyBallStep(void);
@@ -1246,35 +2447,35 @@ void abi_ObjectSkyBallStep(void);
    (+$27), handler $09:9520 (ObjectSkyBallStep), $C0 above and $2BC0 on,
    scale $80, +$48 = 0, +$29 and +$2B cleared, +$0A = +$49 = $0A, sound
    $0E; nothing without a free object. */
-static void sky_ball(void)
+static void sky_ball(Carried *cr)
 {
     uint8_t a;
 
     cyc(46);
-    if (!spawn(0xAA34))
+    if (!spawn(cr, 0xAA34))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    a = (uint8_t)cpu.a;
-    cpu.p &= (uint8_t)~P_M;
-    cpu.a = cpu.x;
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(F(0x2027, cpu.y), cyc_then(88, cpu.x));
-    cpu.p |= P_M;
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    a = (uint8_t)cr->a;
+    cr->p &= (uint8_t)~P_M;
+    cr->a = cr->x;
+    cr->p = nz16(cr->p, cr->a);
+    wr16(F_c(0x2027, cr->y), cyc_then(88, cr->x));
+    cr->p |= P_M;
     cyc(52);
-    lda8(a);
-    handler(cpu.y, 0x9520);
-    add16(F(0x200C, cpu.y), cyc_then(22, 0x0000));
-    add16(F(0x200E, cpu.y), cyc_then(44, 0xFF40));
-    add16(F(0x2010, cpu.y), cyc_then(44, 0x2BC0));
-    st8i(F(0x2015, cpu.y), cyc_then(28, 0x80));
-    st8i(F(0x2048, cpu.y), cyc_then(6, 0x00));
-    st16i(F(0x2029, cpu.y), cyc_then(22, 0x0000));
-    st16i(F(0x202B, cpu.y), cyc_then(44, 0x0000));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x0A));
-    st8i(F(0x2049, cpu.y), cyc_then(6, 0x0A));
+    lda8(cr, a);
+    handler(cr, cr->y, 0x9520);
+    add16(cr, F_c(0x200C, cr->y), cyc_then(22, 0x0000));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(44, 0xFF40));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, 0x2BC0));
+    st8i(cr, F_c(0x2015, cr->y), cyc_then(28, 0x80));
+    st8i(cr, F_c(0x2048, cr->y), cyc_then(6, 0x00));
+    st16i(cr, F_c(0x2029, cr->y), cyc_then(22, 0x0000));
+    st16i(cr, F_c(0x202B, cr->y), cyc_then(44, 0x0000));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x0A));
+    st8i(cr, F_c(0x2049, cr->y), cyc_then(6, 0x0A));
     cyc(58);
-    lda8(0x0E);
-    abi_SoundPort0QueuePush();
+    lda8(cr, 0x0E);
+    w_SoundPort0QueuePush(cr);
 }
 
 /*
@@ -1286,39 +2487,52 @@ static void sky_ball(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
  * new object; A low byte as the sound push leaves it.
  */
+void ObjectSkyBallLaunch(Carried *cr)
+{
+    sky_ball(cr);
+}
+
 void abi_ObjectSkyBallLaunch(void)
 {
-    sky_ball();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSkyBallLaunch(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9432: the second post's frame: a hit sets its +$25 bit 0 and bit 1 of
    $1A07 the first time; with both posts hit ($1A07 = 3), the first time
    (+$25 bit 1) the sky ball, its target +$27 = this post's +$10 - $2300. */
-static void post2_frame(void)
+static void post2_frame(Carried *cr)
 {
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(40); }
-    lda8(cyc_then(18, (uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01)));
-    if (!(uint8_t)cpu.a) {
-        or8(F(0x2025, cpu.x), 0x01);
-        cpu.p |= P_M;
-        or8((cyc(16), db()) | 0x1A07, 0x02);
+    lda8(cr, cyc_then(18, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01)));
+    if (!(uint8_t)cr->a) {
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        cr->p |= P_M;
+        or8(cr, (cyc(16), db(cr)) | 0x1A07, 0x02);
     } else { cyc(26); }
     cyc(16);
-    ld8(db() | 0x1A07);
-    cmp8(0x03);
-    if ((uint8_t)cpu.a != 0x03)
+    ld8(cr, db(cr) | 0x1A07);
+    cmp8(cr, 0x03);
+    if ((uint8_t)cr->a != 0x03)
         { cyc(82); return; } else { cyc(54); }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x02));
-    if ((uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x02));
+    if ((uint8_t)cr->a)
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x02);
-    sky_ball();
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(94, F(0x2010, cpu.x)));
-    wr16(F(0x2027, cpu.y), cyc_then(30, cpu.a));
-    cpu.p |= P_M;
-    add16(F(0x2027, cpu.y), cyc_then(44, 0xDD00));
+    or8(cr, F_c(0x2025, cr->x), 0x02);
+    sky_ball(cr);
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(94, F_c(0x2010, cr->x)));
+    wr16(F_c(0x2027, cr->y), cyc_then(30, cr->a));
+    cr->p |= P_M;
+    add16(cr, F_c(0x2027, cr->y), cyc_then(44, 0xDD00));
     cyc(66);
 }
 
@@ -1331,11 +2545,24 @@ static void post2_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectPostB(Carried *cr)
+{
+    handlers2(cr, 0x940B, 0x9432);
+    post_record(cr, 0x0F00);
+    post2_frame(cr);
+}
+
 void abi_ObjectPostB(void)
 {
-    handlers2(0x940B, 0x9432);
-    post_record(0x0F00);
-    post2_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPostB(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1345,10 +2572,23 @@ void abi_ObjectPostB(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectPostB. Exit: as ObjectPostB.
  */
+void ObjectPostBRecord(Carried *cr)
+{
+    post_record(cr, 0x0F00);
+    post2_frame(cr);
+}
+
 void abi_ObjectPostBRecord(void)
 {
-    post_record(0x0F00);
-    post2_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPostBRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1362,9 +2602,22 @@ void abi_ObjectPostBRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path
  * leaves it.
  */
+void ObjectPostBStep(Carried *cr)
+{
+    post2_frame(cr);
+}
+
 void abi_ObjectPostBStep(void)
 {
-    post2_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPostBStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 03:CDC1 (ApproachHalfMin2): a word eased toward A. */
@@ -1375,31 +2628,31 @@ static uint16_t ease_cdc1(uint16_t target, int *moved)
 }
 
 /* REP #$20, LDA addr, STA $3E, LDA target, JSL to, STA addr, SEP #$20. */
-static void ease16(uint32_t addr, uint32_t target, uint16_t (*to)(uint16_t, int *))
+static void ease16(Carried *cr, uint32_t addr, uint32_t target, uint16_t (*to)(uint16_t, int *))
 {
-    cpu.p &= (uint8_t)~P_M;
+    cr->p &= (uint8_t)~P_M;
     cyc(52);
-    op_lda16(addr);
+    r_lda16(cr, addr);
     cyc(16);
-    wr16(0x00003E, cpu.a);
+    wr16(0x00003E, cr->a);
     cyc(30);
-    op_lda16(target);
-    approach_regs(to);
+    r_lda16(cr, target);
+    r_approach(cr, to);
     cyc(30);
-    wr16(addr, cpu.a);
-    cpu.p |= P_M;
+    wr16(addr, cr->a);
+    cr->p |= P_M;
 }
 
 /* 09:9599: the ball follows the player ($0346): its X eased toward the
    player's (ApproachQuarterMin4), its Z toward the player's (03:CDC1),
    then $380 back. */
-static void ball_follow(void)
+static void ball_follow(Carried *cr)
 {
-    cpu.y = rd16(cyc_then(70, db() | 0x0346));
-    cpu.p = nz16(cpu.p, cpu.y);
-    ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), ApproachQuarterMin4);
-    (cyc(22), ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), ease_cdc1));
-    add16(F(0x2010, cpu.x), cyc_then(44, 0xFC80));
+    cr->y = rd16(cyc_then(70, db(cr) | 0x0346));
+    cr->p = nz16(cr->p, cr->y);
+    ease16(cr, F_c(0x200C, cr->x), F_c(0x200C, cr->y), ApproachQuarterMin4);
+    (cyc(22), ease16(cr, F_c(0x2010, cr->x), F_c(0x2010, cr->y), ease_cdc1));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(44, 0xFC80));
 }
 
 /*
@@ -1411,27 +2664,40 @@ static void ball_follow(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
  * player's object; A as the last add leaves it.
  */
+void ObjectBallFollowPlayer(Carried *cr)
+{
+    ball_follow(cr);
+}
+
 void abi_ObjectBallFollowPlayer(void)
 {
-    ball_follow();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBallFollowPlayer(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:95D1 / 95FC: the ball drops (dz, dy) with +$14 eased toward t
    (03:D07C). */
-static void ball_drop(uint16_t dz, uint16_t dy, uint8_t t)
+static void ball_drop(Carried *cr, uint16_t dz, uint16_t dy, uint8_t t)
 {
-    add16(F(0x2010, cpu.x), cyc_then(72, dz));
-    add16(F(0x200E, cpu.x), cyc_then(44, dy));
-    (cyc(4), ease8(F(0x2014, cpu.x), t, ApproachSixteenthMin16Byte));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(72, dz));
+    add16(cr, F_c(0x200E, cr->x), cyc_then(44, dy));
+    (cyc(4), ease8(cr, F_c(0x2014, cr->x), t, ApproachSixteenthMin16Byte));
 }
 
 /* 09:95FC: the rising ball's step, its life +$0A counted down and the
    ball released when it runs out. */
-static void ball_rise(void)
+static void ball_rise(Carried *cr)
 {
-    ball_drop(0xFFB0, 0xFF10, 0xC0);
-    if (dec8(cyc_then(22, F(0x200A, cpu.x))) == 0)
-        { cyc(84); abi_ObjectRelease(); cyc(42); } else { cyc(90); }   /* RTS */
+    ball_drop(cr, 0xFFB0, 0xFF10, 0xC0);
+    if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
+        { cyc(84); w_ObjectRelease(cr); cyc(42); } else { cyc(90); }   /* RTS */
 }
 
 /*
@@ -1442,9 +2708,22 @@ static void ball_rise(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectSkyBallFall.
  */
+void ObjectSkyBallRise(Carried *cr)
+{
+    ball_rise(cr);
+}
+
 void abi_ObjectSkyBallRise(void)
 {
-    ball_rise();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSkyBallRise(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1455,9 +2734,22 @@ void abi_ObjectSkyBallRise(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low byte
  * = the new +$14.
  */
+void ObjectSkyBallFall(Carried *cr)
+{
+    ball_drop(cr, 0xFE80, 0xFFE2, 0xF8);
+}
+
 void abi_ObjectSkyBallFall(void)
 {
-    ball_drop(0xFE80, 0xFFE2, 0xF8);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSkyBallFall(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1473,57 +2765,70 @@ void abi_ObjectSkyBallFall(void)
  * unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
  */
-void abi_ObjectSkyBallStep(void)
+void ObjectSkyBallStep(Carried *cr)
 {
     uint16_t z, t;
 
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(66, F(0x2010, cpu.x)));
-    wr16(db() | 0x1F4C, cyc_then(24, cpu.a));
-    cpu.p |= P_M;
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(74, F(0x2027, cpu.x)));
-    t = cpu.a;
-    z = rd16(cyc_then(24, db() | 0x1F4C));
-    op_cmp16(z);
-    cpu.p |= P_M;
-    if (t == z || (cyc(78), (cpu.p & P_N) ? (cyc(4), 1) : 0)) {
-        uint8_t v = ld8(F(0x2049, cpu.x));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(66, F_c(0x2010, cr->x)));
+    wr16(db(cr) | 0x1F4C, cyc_then(24, cr->a));
+    cr->p |= P_M;
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(74, F_c(0x2027, cr->x)));
+    t = cr->a;
+    z = rd16(cyc_then(24, db(cr) | 0x1F4C));
+    r_cmp16(cr, z);
+    cr->p |= P_M;
+    if (t == z || (cyc(78), (cr->p & P_N) ? (cyc(4), 1) : 0)) {
+        uint8_t v = ld8(cr, F_c(0x2049, cr->x));
 
         if (v) {
             cyc(44);
-            dec8(F(0x2049, cpu.x));
-            ball_follow();
+            dec8(cr, F_c(0x2049, cr->x));
+            ball_follow(cr);
             cyc(86);                    /* SEP, RTS, BRA */
         } else {
             cyc(70);
-            lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-            if (!(uint8_t)cpu.a) {
+            lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+            if (!(uint8_t)cr->a) {
                 cyc(18);
-                uint16_t sx = cpu.x, sy = cpu.y;
+                uint16_t sx = cr->x, sy = cr->y;
 
-                or8(F(0x2025, cpu.x), 0x01);
+                or8(cr, F_c(0x2025, cr->x), 0x01);
                 cyc(60);
-                if (spawn(0xB7A8)) {
-                    (cyc(62), abi_ObjectCopyPositionTo());
+                if (spawn(cr, 0xB7A8)) {
+                    (cyc(62), w_ObjectCopyPositionTo(cr));
                     cyc(22);
-                    handler(cpu.y, 0x9634);
+                    handler(cr, cr->y, 0x9634);
                 } else { cyc(26); }
                 cyc(28);
-                cpu.y = sy;
-                cpu.x = sx;
-                cpu.p = nz16(cpu.p, sx);
+                cr->y = sy;
+                cr->x = sx;
+                cr->p = nz16(cr->p, sx);
             }
             cyc(40);
-            ball_drop(0xFE80, 0xFFE2, 0xF8);
+            ball_drop(cr, 0xFE80, 0xFFE2, 0xF8);
             cyc(64);                    /* RTS, BRA */
         }
     } else {
         cyc(4);
-        ball_rise();
+        ball_rise(cr);
     }
-    (cyc(62), abi_ObjectRebucket());
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
+}
+
+void abi_ObjectSkyBallStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSkyBallStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectBallDropStep(void);
@@ -1533,72 +2838,72 @@ void abi_ObjectBallDropStep(void);
    raises that record's +$6A by $40 (GsuRecordRaise6A), sound $25, leaves
    a spark (kind $B7A8 at the player $0346's position, +$0A = $0A, +$27 =
    0, +$29 = the player, handler $09:AE60) and is released. */
-static void drop_frame(void)
+static void drop_frame(Carried *cr)
 {
     uint16_t sx;
 
-    add8(F(0x2015, cpu.x), 0x10);
-    add8(F(0x2014, cpu.x), 0x10);
-    (cyc(62), abi_ObjectSyncFromRecord());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    add8(cr, F_c(0x2015, cr->x), 0x10);
+    add8(cr, F_c(0x2014, cr->x), 0x10);
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(62); return; }
     cyc(74);
     for (;;) {
-        abi_RecordNextContact();
-        if (!(cpu.p & P_C))
+        w_RecordNextContact(cr);
+        if (!(cr->p & P_C))
             return; else { cyc(16); }
-        lda8((uint8_t)(cpu.a & 0x01));
-        if ((uint8_t)cpu.a)
+        lda8(cr, (uint8_t)(cr->a & 0x01));
+        if ((uint8_t)cr->a)
             { cyc(70); break; }
         cyc(80);                        /* BEQ taken, JSL */
     }
-    lda8(0x40);
-    abi_GsuRecordRaise6A();
-    cpu.p |= P_M;
+    lda8(cr, 0x40);
+    w_GsuRecordRaise6A(cr);
+    cr->p |= P_M;
     cyc(80);
-    lda8(0x25);
-    abi_SoundPort0QueuePush();
-    sx = cpu.x;                                 /* PHX */
-    cpu.x = cpu.y;                              /* TYX */
-    cpu.p = nz16(cpu.p, cpu.x);
+    lda8(cr, 0x25);
+    w_SoundPort0QueuePush(cr);
+    sx = cr->x;                                 /* PHX */
+    cr->x = cr->y;                              /* TYX */
+    cr->p = nz16(cr->p, cr->x);
     cyc(44);
-    if (spawn(0xB7A8)) {
+    if (spawn(cr, 0xB7A8)) {
         uint8_t a;
 
-        cpu.x = rd16(cyc_then(24, db() | 0x0346));
-        cpu.p = nz16(cpu.p, cpu.x);
-        st8i(F(0x200A, cpu.y), cyc_then(6, 0x0A));
-        (cyc(62), abi_ObjectCopyPositionTo());
-        st16i(F(0x2027, cpu.y), cyc_then(22, 0x0000));
-        a = (uint8_t)cpu.a;
-        cpu.p &= (uint8_t)~P_M;
-        cpu.a = cpu.x;
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2029, cpu.y), cyc_then(110, cpu.x));
-        cpu.p |= P_M;
+        cr->x = rd16(cyc_then(24, db(cr) | 0x0346));
+        cr->p = nz16(cr->p, cr->x);
+        st8i(cr, F_c(0x200A, cr->y), cyc_then(6, 0x0A));
+        (cyc(62), w_ObjectCopyPositionTo(cr));
+        st16i(cr, F_c(0x2027, cr->y), cyc_then(22, 0x0000));
+        a = (uint8_t)cr->a;
+        cr->p &= (uint8_t)~P_M;
+        cr->a = cr->x;
+        cr->p = nz16(cr->p, cr->a);
+        wr16(F_c(0x2029, cr->y), cyc_then(110, cr->x));
+        cr->p |= P_M;
         cyc(52);
-        lda8(a);
-        handler(cpu.y, 0xAE60);
+        lda8(cr, a);
+        handler(cr, cr->y, 0xAE60);
     } else { cyc(26); }
     cyc(36);
-    cpu.x = sx;                                 /* PLX */
-    cpu.p = nz16(cpu.p, sx);
-    (cyc(62), abi_ObjectRelease());
+    cr->x = sx;                                 /* PLX */
+    cr->p = nz16(cr->p, sx);
+    (cyc(62), w_ObjectRelease(cr));
     cyc(44);
 }
 
 /* 09:9652: the dropped ball's record ($42D) with flag bit 4, +$2A high
    $14, at ($A0, $A0, $A0); then its frame. */
-static void drop_record(void)
+static void drop_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew42D());
-    abi_GsuRecordFlag10();
-    lda8(0x14);
-    (cyc(58), abi_GsuRecordSet2AHigh());
+    (cyc(62), w_GsuRecordNew42D(cr));
+    w_GsuRecordFlag10(cr);
+    lda8(cr, 0x14);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
     cyc(102);
-    record_at(0x00A0, 0x00A0, 0x00A0);
-    drop_frame();
+    record_at(cr, 0x00A0, 0x00A0, 0x00A0);
+    drop_frame(cr);
 }
 
 /*
@@ -1610,10 +2915,23 @@ static void drop_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBallDrop(Carried *cr)
+{
+    handlers2(cr, 0x9652, 0x967F);
+    drop_record(cr);
+}
+
 void abi_ObjectBallDrop(void)
 {
-    handlers2(0x9652, 0x967F);
-    drop_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBallDrop(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1624,9 +2942,22 @@ void abi_ObjectBallDrop(void)
  * GsuRecordPosition. Reached only by unit_objects_09.
  * Entry: as ObjectBallDrop. Exit: as ObjectBallDrop.
  */
+void ObjectBallDropRecord(Carried *cr)
+{
+    drop_record(cr);
+}
+
 void abi_ObjectBallDropRecord(void)
 {
-    drop_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBallDropRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1640,61 +2971,74 @@ void abi_ObjectBallDropRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBallDropStep(Carried *cr)
+{
+    drop_frame(cr);
+}
+
 void abi_ObjectBallDropStep(void)
 {
-    drop_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBallDropStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* REP #$20, LDA src, STA $1F4C, then LDA dst, CLC, ADC $1F4C, STA dst,
    SEP #$20: dst += src through $1F4C. */
-static void add16_via(uint32_t dst, uint32_t src)
+static void add16_via(Carried *cr, uint32_t dst, uint32_t src)
 {
-    cpu.p &= (uint8_t)~P_M;
+    cr->p &= (uint8_t)~P_M;
     cyc(74);
-    op_lda16(src);
-    wr16(db() | 0x1F4C, cyc_then(24, cpu.a));
-    cpu.p |= P_M;
-    cpu.p &= (uint8_t)~P_M;
+    r_lda16(cr, src);
+    wr16(db(cr) | 0x1F4C, cyc_then(24, cr->a));
+    cr->p |= P_M;
+    cr->p &= (uint8_t)~P_M;
     cyc(74);
-    op_lda16(dst);
-    op_add16(rd16(cyc_then(38, db() | 0x1F4C)));
+    r_lda16(cr, dst);
+    r_add16(cr, rd16(cyc_then(38, db(cr) | 0x1F4C)));
     cyc(30);
-    wr16(dst, cpu.a);
-    cpu.p |= P_M;
+    wr16(dst, cr->a);
+    cr->p |= P_M;
 }
 
 /* A cannon ball: a new object of kind $AA34 linked to object X (+$27),
    handler h, moved (dx, dy, dz), scale s, +$48 = 0, its rise +$29 and
    drift +$2B, life +$0A, homing frames +$49, sound $0E. */
-static void cannon_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
+static void cannon_ball(Carried *cr, uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
                         uint16_t rise, uint16_t drift, uint8_t life, uint8_t home)
 {
     uint8_t a;
 
-    if (!spawn(0xAA34))
+    if (!spawn(cr, 0xAA34))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    a = (uint8_t)cpu.a;
-    cpu.p &= (uint8_t)~P_M;
-    cpu.a = cpu.x;
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(F(0x2027, cpu.y), cyc_then(88, cpu.x));
-    cpu.p |= P_M;
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    a = (uint8_t)cr->a;
+    cr->p &= (uint8_t)~P_M;
+    cr->a = cr->x;
+    cr->p = nz16(cr->p, cr->a);
+    wr16(F_c(0x2027, cr->y), cyc_then(88, cr->x));
+    cr->p |= P_M;
     cyc(52);
-    lda8(a);
-    handler(cpu.y, h);
-    add16(F(0x200C, cpu.y), cyc_then(22, dx));
-    add16(F(0x200E, cpu.y), cyc_then(44, dy));
-    add16(F(0x2010, cpu.y), cyc_then(44, dz));
-    st8i(F(0x2015, cpu.y), cyc_then(28, s));
-    st8i(F(0x2048, cpu.y), cyc_then(6, 0x00));
-    st16i(F(0x2029, cpu.y), cyc_then(22, rise));
-    st16i(F(0x202B, cpu.y), cyc_then(44, drift));
-    st8i(F(0x200A, cpu.y), cyc_then(28, life));
-    st8i(F(0x2049, cpu.y), cyc_then(6, home));
+    lda8(cr, a);
+    handler(cr, cr->y, h);
+    add16(cr, F_c(0x200C, cr->y), cyc_then(22, dx));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(44, dy));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, dz));
+    st8i(cr, F_c(0x2015, cr->y), cyc_then(28, s));
+    st8i(cr, F_c(0x2048, cr->y), cyc_then(6, 0x00));
+    st16i(cr, F_c(0x2029, cr->y), cyc_then(22, rise));
+    st16i(cr, F_c(0x202B, cr->y), cyc_then(44, drift));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, life));
+    st8i(cr, F_c(0x2049, cr->y), cyc_then(6, home));
     cyc(58);
-    lda8(0x0E);
-    abi_SoundPort0QueuePush();
+    lda8(cr, 0x0E);
+    w_SoundPort0QueuePush(cr);
 }
 
 /* 09:9746: the lap gate's frame: a hit when the lap $0DEA differs from its
@@ -1702,11 +3046,11 @@ static void cannon_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8
    lap 2 three to the right ($09:9AE8). */
 /* 09:9793: the first lap's three cannon balls (ObjectCannonBallLeft),
    $3C00 to the left. */
-static void cannon_balls_left(void)
+static void cannon_balls_left(Carried *cr)
 {
-    cannon_ball(0x9ACB, 0xC400, 0xF880, 0x0500, 0xC0, 0xFD60, 0x0000, 0x05, 0x09);
-    cannon_ball(0x9ACB, 0xC400, 0xFC40, 0xF880, 0xC0, 0xFD40, 0xFE00, 0x05, 0x09);
-    cannon_ball(0x9ACB, 0xC400, 0xF9C0, 0x0000, 0xC0, 0xFD20, 0x0200, 0x05, 0x09);
+    cannon_ball(cr, 0x9ACB, 0xC400, 0xF880, 0x0500, 0xC0, 0xFD60, 0x0000, 0x05, 0x09);
+    cannon_ball(cr, 0x9ACB, 0xC400, 0xFC40, 0xF880, 0xC0, 0xFD40, 0xFE00, 0x05, 0x09);
+    cannon_ball(cr, 0x9ACB, 0xC400, 0xF9C0, 0x0000, 0xC0, 0xFD20, 0x0200, 0x05, 0x09);
 }
 
 /*
@@ -1718,18 +3062,31 @@ static void cannon_balls_left(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
  * the third ball leaves them.
  */
+void ObjectCannonBallsLeft(Carried *cr)
+{
+    cannon_balls_left(cr);
+}
+
 void abi_ObjectCannonBallsLeft(void)
 {
-    cannon_balls_left();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallsLeft(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:992F: the third lap's three cannon balls (ObjectCannonBallRight),
    $2580 to the right. */
-static void cannon_balls_right(void)
+static void cannon_balls_right(Carried *cr)
 {
-    cannon_ball(0x9AE8, 0x2580, 0xF880, 0x0500, 0x40, 0xFDC0, 0x0000, 0x12, 0x06);
-    cannon_ball(0x9AE8, 0x2580, 0xFC40, 0xF880, 0x40, 0xFDA0, 0xFF00, 0x12, 0x06);
-    cannon_ball(0x9AE8, 0x2580, 0xF9C0, 0x0000, 0x40, 0xFDC0, 0x0100, 0x12, 0x06);
+    cannon_ball(cr, 0x9AE8, 0x2580, 0xF880, 0x0500, 0x40, 0xFDC0, 0x0000, 0x12, 0x06);
+    cannon_ball(cr, 0x9AE8, 0x2580, 0xFC40, 0xF880, 0x40, 0xFDA0, 0xFF00, 0x12, 0x06);
+    cannon_ball(cr, 0x9AE8, 0x2580, 0xF9C0, 0x0000, 0x40, 0xFDC0, 0x0100, 0x12, 0x06);
 }
 
 /*
@@ -1740,53 +3097,66 @@ static void cannon_balls_right(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectCannonBallsLeft.
  */
-void abi_ObjectCannonBallsRight(void)
+void ObjectCannonBallsRight(Carried *cr)
 {
-    cannon_balls_right();
+    cannon_balls_right(cr);
 }
 
-static void lap_gate_frame(void)
+void abi_ObjectCannonBallsRight(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallsRight(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+static void lap_gate_frame(Carried *cr)
 {
     uint8_t lap;
 
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(34); }
-    wr8(db() | 0x1F58, cyc_then(24, ld8(F(0x200A, cpu.x))));
-    cpu.p |= P_M;
-    lap = ld8((cyc(38), db()) | 0x0DEA);
+    wr8(db(cr) | 0x1F58, cyc_then(24, ld8(cr, F_c(0x200A, cr->x))));
+    cr->p |= P_M;
+    lap = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
     {
-        uint8_t m = rd8(cyc_then(24, db() | 0x1F58));
+        uint8_t m = rd8(cyc_then(24, db(cr) | 0x1F58));
 
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(lap - m)) & ~P_C) | (lap >= m ? (cyc(66), P_C) : (cyc(32), 0)));
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(lap - m)) & ~P_C) | (lap >= m ? (cyc(66), P_C) : (cyc(32), 0)));
         if (lap == m)
             return;
     }
-    wr8(db() | 0x1F58, cyc_then(24, ld8(db() | 0x0DEA)));
-    wr8(F(0x200A, cpu.x), cyc_then(30, ld8((cyc(16), db()) | 0x1F58)));
-    cpu.p |= P_M;
-    lap = ld8((cyc(38), db()) | 0x0DEA);
+    wr8(db(cr) | 0x1F58, cyc_then(24, ld8(cr, db(cr) | 0x0DEA)));
+    wr8(F_c(0x200A, cr->x), cyc_then(30, ld8(cr, (cyc(16), db(cr)) | 0x1F58)));
+    cr->p |= P_M;
+    lap = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
     cyc(84);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap == 0x00) {
-        cannon_balls_left();
+        cannon_balls_left(cr);
         { cyc(110); return; }
     } else { cyc(54); }
-    cmp8(0x01);
+    cmp8(cr, 0x01);
     if (lap == 0x01)
         return; else { cyc(10); }
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (lap != 0x02)
         { cyc(16); return; }
-    cannon_balls_right();
+    cannon_balls_right(cr);
     cyc(86);
 }
 
 /* 09:971F: the lap gate's record ($42D) with flag bit 4 at ($F00, $F00,
    $F00); then its frame. */
-static void lap_gate_record(void)
+static void lap_gate_record(Carried *cr)
 {
-    post_record(0x0F00);
-    lap_gate_frame();
+    post_record(cr, 0x0F00);
+    lap_gate_frame(cr);
 }
 
 /*
@@ -1798,11 +3168,24 @@ static void lap_gate_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectCannonGate(Carried *cr)
+{
+    handlers2(cr, 0x971F, 0x9746);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x04));
+    lap_gate_record(cr);
+}
+
 void abi_ObjectCannonGate(void)
 {
-    handlers2(0x971F, 0x9746);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
-    lap_gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1812,9 +3195,22 @@ void abi_ObjectCannonGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectCannonGate. Exit: as ObjectCannonGate.
  */
+void ObjectCannonGateRecord(Carried *cr)
+{
+    lap_gate_record(cr);
+}
+
 void abi_ObjectCannonGateRecord(void)
 {
-    lap_gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1829,21 +3225,34 @@ void abi_ObjectCannonGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectCannonGateStep(Carried *cr)
+{
+    lap_gate_frame(cr);
+}
+
 void abi_ObjectCannonGateStep(void)
 {
-    lap_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9B6D: the ball homes on its gate (Y): X and Z eased toward the gate's
    (ApproachQuarterMin4), Z += +$2B; Y eased toward the gate's (03:CDC1),
    Y += +$29. */
-static void ball_home(void)
+static void ball_home(Carried *cr)
 {
-    (cyc(46), ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), ApproachQuarterMin4));
-    (cyc(22), ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), ApproachQuarterMin4));
-    add16_via(F(0x2010, cpu.x), F(0x202B, cpu.x));
-    (cyc(22), ease16(F(0x200E, cpu.x), F(0x200E, cpu.y), ease_cdc1));
-    add16_via(F(0x200E, cpu.x), F(0x2029, cpu.x));
+    (cyc(46), ease16(cr, F_c(0x200C, cr->x), F_c(0x200C, cr->y), ApproachQuarterMin4));
+    (cyc(22), ease16(cr, F_c(0x2010, cr->x), F_c(0x2010, cr->y), ApproachQuarterMin4));
+    add16_via(cr, F_c(0x2010, cr->x), F_c(0x202B, cr->x));
+    (cyc(22), ease16(cr, F_c(0x200E, cr->x), F_c(0x200E, cr->y), ease_cdc1));
+    add16_via(cr, F_c(0x200E, cr->x), F_c(0x2029, cr->x));
 }
 
 /*
@@ -1855,19 +3264,32 @@ static void ball_home(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A as the
  * last add leaves it.
  */
+void ObjectCannonBallHome(Carried *cr)
+{
+    ball_home(cr);
+}
+
 void abi_ObjectCannonBallHome(void)
 {
-    ball_home();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallHome(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9B05 / 9B39: the ball flies: Z += +$2B, X += dx; released when +$0A
    runs out. */
-static void ball_fly(uint16_t dx)
+static void ball_fly(Carried *cr, uint16_t dx)
 {
-    add16_via(F(0x2010, cpu.x), F(0x202B, cpu.x));
-    add16(F(0x200C, cpu.x), cyc_then(44, dx));
-    if (dec8(cyc_then(44, F(0x200A, cpu.x))) == 0)
-        { cyc(84); abi_ObjectRelease(); cyc(42); } else { cyc(90); }   /* RTS */
+    add16_via(cr, F_c(0x2010, cr->x), F_c(0x202B, cr->x));
+    add16(cr, F_c(0x200C, cr->x), cyc_then(44, dx));
+    if (dec8(cr, cyc_then(44, F_c(0x200A, cr->x))) == 0)
+        { cyc(84); w_ObjectRelease(cr); cyc(42); } else { cyc(90); }   /* RTS */
 }
 
 /*
@@ -1877,9 +3299,22 @@ static void ball_fly(uint16_t dx)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectCannonBallFlyRight(Carried *cr)
+{
+    ball_fly(cr, 0xFC80);
+}
+
 void abi_ObjectCannonBallFlyRight(void)
 {
-    ball_fly(0xFC80);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallFlyRight(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1890,31 +3325,44 @@ void abi_ObjectCannonBallFlyRight(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectCannonBallFlyLeft(Carried *cr)
+{
+    ball_fly(cr, 0x0100);
+}
+
 void abi_ObjectCannonBallFlyLeft(void)
 {
-    ball_fly(0x0100);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallFlyLeft(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The ball's frame: Y = its gate; for +$49 frames it homes, then it flies
    (dx a frame); rebucketed. */
-static void cannon_ball_frame(uint16_t dx)
+static void cannon_ball_frame(Carried *cr, uint16_t dx)
 {
     uint8_t v;
 
-    cpu.y = rd16(cyc_then(44, F(0x2027, cpu.x)));
-    cpu.p = nz16(cpu.p, cpu.y);
-    v = ld8(cyc_then(22, F(0x2049, cpu.x)));
+    cr->y = rd16(cyc_then(44, F_c(0x2027, cr->x)));
+    cr->p = nz16(cr->p, cr->y);
+    v = ld8(cr, cyc_then(22, F_c(0x2049, cr->x)));
     if (v) {
         cyc(44);
-        dec8(F(0x2049, cpu.x));
-        ball_home();
+        dec8(cr, F_c(0x2049, cr->x));
+        ball_home(cr);
         cyc(148);
     } else {
         cyc(72);
-        ball_fly(dx);
+        ball_fly(cr, dx);
         cyc(62);
     }
-    abi_ObjectRebucket();
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
@@ -1928,9 +3376,22 @@ static void cannon_ball_frame(uint16_t dx)
  * ObjectRebucket. Reached only by unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
  */
+void ObjectCannonBallLeft(Carried *cr)
+{
+    cannon_ball_frame(cr, 0x0100);
+}
+
 void abi_ObjectCannonBallLeft(void)
 {
-    cannon_ball_frame(0x0100);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallLeft(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1940,76 +3401,89 @@ void abi_ObjectCannonBallLeft(void)
  * HOW: As ObjectCannonBallLeft. Reached only by unit_objects_09.
  * Entry: as ObjectCannonBallLeft. Exit: as ObjectCannonBallLeft.
  */
+void ObjectCannonBallRight(Carried *cr)
+{
+    cannon_ball_frame(cr, 0xFC80);
+}
+
 void abi_ObjectCannonBallRight(void)
 {
-    cannon_ball_frame(0xFC80);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCannonBallRight(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectSyncToRecord(void);
 
 /* As hit(), with the object's position given to its record
    (ObjectSyncToRecord) instead. */
-static int hit_to_n(int *late)
+static int hit_to_n(Carried *cr, int *late)
 {
-    (cyc(62), abi_ObjectSyncToRecord());
+    (cyc(62), w_ObjectSyncToRecord(cr));
     cyc(4);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
+    cr->p = nz8(cr->p, (uint8_t)cr->a);
     *late = 0;
-    if (!(uint8_t)cpu.a)
+    if (!(uint8_t)cr->a)
         return 0; else { cyc(28); }
-    (cyc(62), abi_RecordContactSummary());
+    (cyc(62), w_RecordContactSummary(cr));
     cyc(28);
-    lda8((uint8_t)(cpu.a & 0x01));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
     *late = 1;
-    return (uint8_t)cpu.a != 0;
+    return (uint8_t)cr->a != 0;
 }
 
-static int hit_to(void)
+static int hit_to(Carried *cr)
 {
     int late;
 
-    return hit_to_n(&late);
+    return hit_to_n(cr, &late);
 }
 
 /* A wave ball: a new object of kind $AA34 linked to gate X (+$27),
    handler h, moved (dx, dy, dz), scale s, rise +$29 = rise; the gate moves
    (gx, gz); life +$0A, sound $0E. Nothing without a free object. */
-static void wave_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
+static void wave_ball(Carried *cr, uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
                       uint16_t rise, uint16_t gx, uint16_t gz, uint8_t life)
 {
     uint8_t a;
 
     cyc(46);
-    if (!spawn(0xAA34))
+    if (!spawn(cr, 0xAA34))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    a = (uint8_t)cpu.a;
-    cpu.p &= (uint8_t)~P_M;
-    cpu.a = cpu.x;
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16(F(0x2027, cpu.y), cyc_then(88, cpu.x));
-    cpu.p |= P_M;
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    a = (uint8_t)cr->a;
+    cr->p &= (uint8_t)~P_M;
+    cr->a = cr->x;
+    cr->p = nz16(cr->p, cr->a);
+    wr16(F_c(0x2027, cr->y), cyc_then(88, cr->x));
+    cr->p |= P_M;
     cyc(52);
-    lda8(a);
-    handler(cpu.y, h);
-    add16(F(0x200C, cpu.y), cyc_then(22, dx));
-    add16(F(0x200E, cpu.y), cyc_then(44, dy));
-    add16(F(0x2010, cpu.y), cyc_then(44, dz));
-    st8i(F(0x2015, cpu.y), cyc_then(28, s));
-    st16i(F(0x2029, cpu.y), cyc_then(22, rise));
-    add16(F(0x200C, cpu.x), cyc_then(44, gx));
-    add16(F(0x2010, cpu.x), cyc_then(44, gz));
-    st8i(F(0x200A, cpu.y), cyc_then(28, life));
+    lda8(cr, a);
+    handler(cr, cr->y, h);
+    add16(cr, F_c(0x200C, cr->y), cyc_then(22, dx));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(44, dy));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, dz));
+    st8i(cr, F_c(0x2015, cr->y), cyc_then(28, s));
+    st16i(cr, F_c(0x2029, cr->y), cyc_then(22, rise));
+    add16(cr, F_c(0x200C, cr->x), cyc_then(44, gx));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(44, gz));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, life));
     cyc(58);
-    lda8(0x0E);
-    abi_SoundPort0QueuePush();
+    lda8(cr, 0x0E);
+    w_SoundPort0QueuePush(cr);
 }
 
 /* 09:9CE4: the first gate's big wave ball (ObjectWaveBallBig). */
-static void wave_ball_a(void)
+static void wave_ball_a(Carried *cr)
 {
-    wave_ball(0x9F05, 0xDA80, 0xFE80, 0xDD00, 0xE0, 0xFF00, 0x0F00, 0x0F00, 0x0F);
+    wave_ball(cr, 0x9F05, 0xDA80, 0xFE80, 0xDD00, 0xE0, 0xFF00, 0x0F00, 0x0F00, 0x0F);
 }
 
 /*
@@ -2022,15 +3496,28 @@ static void wave_ball_a(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
  * new object; A low byte as the sound push leaves it.
  */
+void ObjectWaveBallLaunchA(Carried *cr)
+{
+    wave_ball_a(cr);
+}
+
 void abi_ObjectWaveBallLaunchA(void)
 {
-    wave_ball_a();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallLaunchA(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9D76: the second gate's wave ball (ObjectWaveBallStep), $1E00 back. */
-static void wave_ball_b(void)
+static void wave_ball_b(Carried *cr)
 {
-    wave_ball(0x9E9A, 0x2300, 0xFC40, 0xE200, 0x20, 0xFF60, 0xF100, 0x0F00, 0x0A);
+    wave_ball(cr, 0x9E9A, 0x2300, 0xFC40, 0xE200, 0x20, 0xFF60, 0xF100, 0x0F00, 0x0A);
 }
 
 /*
@@ -2042,15 +3529,28 @@ static void wave_ball_b(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectWaveBallLaunchA.
  */
+void ObjectWaveBallLaunchB(Carried *cr)
+{
+    wave_ball_b(cr);
+}
+
 void abi_ObjectWaveBallLaunchB(void)
 {
-    wave_ball_b();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallLaunchB(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9E08: the third gate's wave ball, $1E00 on. */
-static void wave_ball_c(void)
+static void wave_ball_c(Carried *cr)
 {
-    wave_ball(0x9E9A, 0x2300, 0xFC40, 0x1E00, 0x60, 0xFF60, 0xF100, 0xF100, 0x0C);
+    wave_ball(cr, 0x9E9A, 0x2300, 0xFC40, 0x1E00, 0x60, 0xFF60, 0xF100, 0xF100, 0x0C);
 }
 
 /*
@@ -2061,41 +3561,54 @@ static void wave_ball_c(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectWaveBallLaunchA.
  */
+void ObjectWaveBallLaunchC(Carried *cr)
+{
+    wave_ball_c(cr);
+}
+
 void abi_ObjectWaveBallLaunchC(void)
 {
-    wave_ball_c();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallLaunchC(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A wave gate's frame: on a hit on lap 1, the first time (+$25 bit 0),
    its wave ball. */
-static void wave_gate_frame(int which)
+static void wave_gate_frame(Carried *cr, int which)
 {
-    if (!hit_to())
+    if (!hit_to(cr))
         { cyc(78); return; }
-    ld8(db() | 0x0DEA);
+    ld8(cr, db(cr) | 0x0DEA);
     cyc(54);
-    cmp8(0x01);
-    if ((uint8_t)cpu.a != 0x01)
+    cmp8(cr, 0x01);
+    if ((uint8_t)cr->a != 0x01)
         { cyc(28); return; }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-    if ((uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+    if ((uint8_t)cr->a)
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
     if (which == 0)
-        wave_ball_a();
+        wave_ball_a(cr);
     else if (which == 1)
-        wave_ball_b();
+        wave_ball_b(cr);
     else
-        wave_ball_c();
+        wave_ball_c(cr);
     cyc(86);
 }
 
 /* 09:9BF5: the wave gate's record ($42D) with flag bit 4 at ($F00, $F00,
    $F00); then the first gate's frame. */
-static void wave_gate_record(void)
+static void wave_gate_record(Carried *cr)
 {
-    post_record(0x0F00);
-    wave_gate_frame(0);
+    post_record(cr, 0x0F00);
+    wave_gate_frame(cr, 0);
 }
 
 /*
@@ -2107,10 +3620,23 @@ static void wave_gate_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectWaveGateA(Carried *cr)
+{
+    handlers2(cr, 0x9BF5, 0x9C1C);
+    wave_gate_record(cr);
+}
+
 void abi_ObjectWaveGateA(void)
 {
-    handlers2(0x9BF5, 0x9C1C);
-    wave_gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateA(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2121,9 +3647,22 @@ void abi_ObjectWaveGateA(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectWaveGateA. Exit: as ObjectWaveGateA.
  */
+void ObjectWaveGateRecord(Carried *cr)
+{
+    wave_gate_record(cr);
+}
+
 void abi_ObjectWaveGateRecord(void)
 {
-    wave_gate_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2136,9 +3675,22 @@ void abi_ObjectWaveGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWaveGateAStep(Carried *cr)
+{
+    wave_gate_frame(cr, 0);
+}
+
 void abi_ObjectWaveGateAStep(void)
 {
-    wave_gate_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateAStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2148,10 +3700,23 @@ void abi_ObjectWaveGateAStep(void)
  * HOW: Word and byte stores.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 9.
  */
+void ObjectWaveGateB(Carried *cr)
+{
+    handlers2(cr, 0x9BF5, 0x9C69);
+    cyc(44);
+}
+
 void abi_ObjectWaveGateB(void)
 {
-    handlers2(0x9BF5, 0x9C69);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateB(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2162,9 +3727,22 @@ void abi_ObjectWaveGateB(void)
  * HOW: As ObjectWaveGateAStep.
  * Entry: as ObjectWaveGateAStep. Exit: as ObjectWaveGateAStep.
  */
+void ObjectWaveGateBStep(Carried *cr)
+{
+    wave_gate_frame(cr, 1);
+}
+
 void abi_ObjectWaveGateBStep(void)
 {
-    wave_gate_frame(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateBStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2174,10 +3752,23 @@ void abi_ObjectWaveGateBStep(void)
  * HOW: Word and byte stores.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 9.
  */
+void ObjectWaveGateC(Carried *cr)
+{
+    handlers2(cr, 0x9BF5, 0x9CB6);
+    cyc(44);
+}
+
 void abi_ObjectWaveGateC(void)
 {
-    handlers2(0x9BF5, 0x9CB6);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateC(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2187,21 +3778,34 @@ void abi_ObjectWaveGateC(void)
  * HOW: As ObjectWaveGateAStep.
  * Entry: as ObjectWaveGateAStep. Exit: as ObjectWaveGateAStep.
  */
+void ObjectWaveGateCStep(Carried *cr)
+{
+    wave_gate_frame(cr, 2);
+}
+
 void abi_ObjectWaveGateCStep(void)
 {
-    wave_gate_frame(2);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveGateCStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9EA6: the ball homes on Y (X, Z, Y eased by ApproachQuarterMin4),
    rises by +$29, and is released when +$0A runs out. */
-static void wave_home(void)
+static void wave_home(Carried *cr)
 {
-    (cyc(46), ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), ApproachQuarterMin4));
-    (cyc(22), ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), ApproachQuarterMin4));
-    (cyc(22), ease16(F(0x200E, cpu.x), F(0x200E, cpu.y), ApproachQuarterMin4));
-    add16_via(F(0x200E, cpu.x), F(0x2029, cpu.x));
-    if (dec8(cyc_then(44, F(0x200A, cpu.x))) == 0)
-        { cyc(84); abi_ObjectRelease(); cyc(42); } else { cyc(90); }   /* RTS */
+    (cyc(46), ease16(cr, F_c(0x200C, cr->x), F_c(0x200C, cr->y), ApproachQuarterMin4));
+    (cyc(22), ease16(cr, F_c(0x2010, cr->x), F_c(0x2010, cr->y), ApproachQuarterMin4));
+    (cyc(22), ease16(cr, F_c(0x200E, cr->x), F_c(0x200E, cr->y), ApproachQuarterMin4));
+    add16_via(cr, F_c(0x200E, cr->x), F_c(0x2029, cr->x));
+    if (dec8(cr, cyc_then(44, F_c(0x200A, cr->x))) == 0)
+        { cyc(84); w_ObjectRelease(cr); cyc(42); } else { cyc(90); }   /* RTS */
 }
 
 /*
@@ -2212,9 +3816,22 @@ static void wave_home(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWaveBallHome(Carried *cr)
+{
+    wave_home(cr);
+}
+
 void abi_ObjectWaveBallHome(void)
 {
-    wave_home();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallHome(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2226,64 +3843,77 @@ void abi_ObjectWaveBallHome(void)
  * unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
  */
+void ObjectWaveBallStep(Carried *cr)
+{
+    cr->y = rd16(cyc_then(44, F_c(0x2027, cr->x)));
+    cr->p = nz16(cr->p, cr->y);
+    wave_home(cr);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectWaveBallStep(void)
 {
-    cpu.y = rd16(cyc_then(44, F(0x2027, cpu.x)));
-    cpu.p = nz16(cpu.p, cpu.y);
-    wave_home();
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A03F: a sparkle's frame: released when +$0A runs out; its frame
    +$18 steps through 0-5 (bit 7 kept); rebucketed. */
-static void sparkle_frame(void)
+static void sparkle_frame(Carried *cr)
 {
     uint8_t v;
 
-    if (dec8(cyc_then(22, F(0x200A, cpu.x))) == 0)
-        { cyc(84); abi_ObjectRelease(); cyc(22); } else { cyc(70); }
-    v = ld8(F(0x2018, cpu.x));
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8(v, 0x01, &cpu.p);
+    if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
+        { cyc(84); w_ObjectRelease(cr); cyc(22); } else { cyc(70); }
+    v = ld8(cr, F_c(0x2018, cr->x));
+    cr->p &= (uint8_t)~P_C;
+    v = alu_adc8(v, 0x01, &cr->p);
     if (!(v & 0x80)) {
         cyc(24);
-        cpu.p &= (uint8_t)~P_C;
-        v = op_adc8(v, 0x06, &cpu.p);
+        cr->p &= (uint8_t)~P_C;
+        v = alu_adc8(v, 0x06, &cr->p);
     }
     v &= 0x7F;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cmp8(0x06);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cmp8(cr, 0x06);
     if (v >= 0x06) {
         cyc(8);
-        cpu.p |= P_C;
-        v = op_sbc8(v, 0x06, &cpu.p);
+        cr->p |= P_C;
+        v = alu_sbc8(v, 0x06, &cr->p);
     }
     v |= 0x80;
-    lda8(v);
-    wr8(F(0x2018, cpu.x), cyc_then(132, v));
-    (cyc(62), abi_ObjectRebucket());
+    lda8(cr, v);
+    wr8(F_c(0x2018, cr->x), cyc_then(132, v));
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
 }
 
 /* 09:9FE1: a sparkle: a new object of kind $A158 lit by $997C (+$5F
    $64), frame +$18 = $82, at object X's position $C8 back, life 8,
    handler $09:A03F (ObjectStarSparkleStep). */
-static void sparkle(void)
+static void sparkle(Carried *cr)
 {
     cyc(68);
-    if (!spawn(0xA158))
+    if (!spawn(cr, 0xA158))
         { cyc(26); return; } else { cyc(22); }
-    st16i(F(0x205D, cpu.y), 0x997C);
-    lda8(0x02);
-    lda8(0x82);
-    wr8(F(0x2018, cpu.y), cyc_then(44, 0x82));
-    lamp(cpu.y, 0x64);
-    (cyc(62), abi_ObjectCopyPositionTo());
-    add16(F(0x2010, cpu.y), cyc_then(22, 0xFF38));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x08));
+    st16i(cr, F_c(0x205D, cr->y), 0x997C);
+    lda8(cr, 0x02);
+    lda8(cr, 0x82);
+    wr8(F_c(0x2018, cr->y), cyc_then(44, 0x82));
+    lamp(cr, cr->y, 0x64);
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(22, 0xFF38));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x08));
     cyc(22);
-    handler(cpu.y, 0xA03F);
+    handler(cr, cr->y, 0xA03F);
 }
 
 /*
@@ -2295,66 +3925,79 @@ static void sparkle(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
  * new object; A low byte = 9.
  */
+void ObjectStarSparkleSpawn(Carried *cr)
+{
+    sparkle(cr);
+}
+
 void abi_ObjectStarSparkleSpawn(void)
 {
-    sparkle();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStarSparkleSpawn(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:9F63: the big wave ball's frame: once hit (+$25 bit 0) it grows
    (+$16, +$15 by $18), flies ($32 back, $28A right, $FA up) and leaves a
    sparkle each frame; before, it homes on its gate. A hit (its position
    given to the record) sets +$25 bit 0 the first time with sound $59. */
-static void big_ball_frame(void)
+static void big_ball_frame(Carried *cr)
 {
     int late;
 
-    lda8((uint8_t)(ld8(cyc_then(22, F(0x2025, cpu.x))) & 0x01));
-    if ((uint8_t)cpu.a) {
+    lda8(cr, (uint8_t)(ld8(cr, cyc_then(22, F_c(0x2025, cr->x))) & 0x01));
+    if ((uint8_t)cr->a) {
         cyc(18);
-        add8(F(0x2016, cpu.x), 0x18);
-        add8(F(0x2015, cpu.x), 0x18);
-        add16(F(0x2010, cpu.x), cyc_then(22, 0xFFCE));
-        add16(F(0x200C, cpu.x), cyc_then(44, 0x028A));
-        add16(F(0x200E, cpu.x), cyc_then(44, 0xFF06));
-        sparkle();
+        add8(cr, F_c(0x2016, cr->x), 0x18);
+        add8(cr, F_c(0x2015, cr->x), 0x18);
+        add16(cr, F_c(0x2010, cr->x), cyc_then(22, 0xFFCE));
+        add16(cr, F_c(0x200C, cr->x), cyc_then(44, 0x028A));
+        add16(cr, F_c(0x200E, cr->x), cyc_then(44, 0xFF06));
+        sparkle(cr);
         cyc(64);
     } else {
-        uint16_t sy = cpu.y;
+        uint16_t sy = cr->y;
 
-        cpu.y = rd16(cyc_then(104, F(0x2027, cpu.x)));
-        cpu.p = nz16(cpu.p, cpu.y);
-        wave_home();
-        cpu.y = sy;
-        cpu.p = nz16(cpu.p, sy);
+        cr->y = rd16(cyc_then(104, F_c(0x2027, cr->x)));
+        cr->p = nz16(cr->p, cr->y);
+        wave_home(cr);
+        cr->y = sy;
+        cr->p = nz16(cr->p, sy);
         cyc(36);
     }
-    if (!hit_to_n(&late))
+    if (!hit_to_n(cr, &late))
         { cyc(late ? 34 : 78); return; } else { cyc(6); }
-    lda8(cyc_then(18, (uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01)));
-    if ((uint8_t)cpu.a)
+    lda8(cr, cyc_then(18, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01)));
+    if ((uint8_t)cr->a)
         { cyc(70); return; }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
     cyc(58);
-    lda8(0x59);
-    abi_SoundPort0QueuePush();
+    lda8(cr, 0x59);
+    w_SoundPort0QueuePush(cr);
     cyc(44);
 }
 
 /* 09:9F3C: the big ball's record ($42D) with flag bit 4 at ($320, $320,
    $320); then its frame. */
-static void big_ball_record(void)
+static void big_ball_record(Carried *cr)
 {
-    post_record(0x0320);
-    big_ball_frame();
+    post_record(cr, 0x0320);
+    big_ball_frame(cr);
 }
 
 /* 09:9F14: restart $09:9F3C, frame $09:9F63, rise +$29 = -$50; then the
    record and frame. */
-static void big_ball_setup(void)
+static void big_ball_setup(Carried *cr)
 {
-    handlers2(0x9F3C, 0x9F63);
-    st16i(F(0x2029, cpu.x), cyc_then(22, 0xFFB0));
-    (cyc(22), big_ball_record());
+    handlers2(cr, 0x9F3C, 0x9F63);
+    st16i(cr, F_c(0x2029, cr->x), cyc_then(22, 0xFFB0));
+    (cyc(22), big_ball_record(cr));
 }
 
 /*
@@ -2365,11 +4008,24 @@ static void big_ball_setup(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
-void abi_ObjectWaveBallBig(void)
+void ObjectWaveBallBig(Carried *cr)
 {
     cyc(22);
-    handler(cpu.x, 0x9F14);
-    big_ball_setup();
+    handler(cr, cr->x, 0x9F14);
+    big_ball_setup(cr);
+}
+
+void abi_ObjectWaveBallBig(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallBig(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2381,9 +4037,22 @@ void abi_ObjectWaveBallBig(void)
  * HOW: Word and byte stores. Reached only by unit_objects_09.
  * Entry: as ObjectWaveBallBig. Exit: as ObjectWaveBallBig.
  */
+void ObjectWaveBallBigSetup(Carried *cr)
+{
+    big_ball_setup(cr);
+}
+
 void abi_ObjectWaveBallBigSetup(void)
 {
-    big_ball_setup();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallBigSetup(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2394,9 +4063,22 @@ void abi_ObjectWaveBallBigSetup(void)
  * by unit_objects_09.
  * Entry: as ObjectWaveBallBig. Exit: as ObjectWaveBallBig.
  */
+void ObjectWaveBallBigRecord(Carried *cr)
+{
+    big_ball_record(cr);
+}
+
 void abi_ObjectWaveBallBigRecord(void)
 {
-    big_ball_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallBigRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2411,9 +4093,22 @@ void abi_ObjectWaveBallBigRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWaveBallBigStep(Carried *cr)
+{
+    big_ball_frame(cr);
+}
+
 void abi_ObjectWaveBallBigStep(void)
 {
-    big_ball_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWaveBallBigStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2423,9 +4118,22 @@ void abi_ObjectWaveBallBigStep(void)
  * HOW: Byte adds and compares. Reached only by unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
  */
+void ObjectStarSparkleStep(Carried *cr)
+{
+    sparkle_frame(cr);
+}
+
 void abi_ObjectStarSparkleStep(void)
 {
-    sparkle_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStarSparkleStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2438,46 +4146,59 @@ void abi_ObjectStarSparkleStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last spark
  * leaves it.
  */
-void abi_ObjectLanternBurst(void)
+void ObjectLanternBurst(Carried *cr)
 {
     cyc(46);
-    spark(0x14, 0x0028, 0xFFD3, 0x0000);
-    spark(0x03, 0xFFD8, 0xFFD3, 0x0000);
-    spark(0x0A, 0x0000, 0xFFCE, 0x0028);
-    spark(0x01, 0x0000, 0xFFCE, 0xFFD8);
+    spark(cr, 0x14, 0x0028, 0xFFD3, 0x0000);
+    spark(cr, 0x03, 0xFFD8, 0xFFD3, 0x0000);
+    spark(cr, 0x0A, 0x0000, 0xFFCE, 0x0028);
+    spark(cr, 0x01, 0x0000, 0xFFCE, 0xFFD8);
+}
+
+void abi_ObjectLanternBurst(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLanternBurst(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A0C0: the lantern's frame: when a car hits it the first time (+$25
    bit 0), sound $10, it is released and bursts into four sparks; no hit
    clears the bit. */
-static void lantern_frame(void)
+static void lantern_frame(Carried *cr)
 {
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         { cyc(44); return; }
     } else { cyc(34); }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-    if ((uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+    if ((uint8_t)cr->a)
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
     cyc(58);
-    lda8(0x10);
-    abi_SoundPort0QueuePush();
-    (cyc(62), abi_ObjectRelease());
-    abi_ObjectLanternBurst();
+    lda8(cr, 0x10);
+    w_SoundPort0QueuePush(cr);
+    (cyc(62), w_ObjectRelease(cr));
+    ObjectLanternBurst(cr);
     cyc(86);                            /* RTS, RTL */
 }
 
 /* 09:A0B2: the lantern's record ($424, +$0A $90E8) with flag bit 4 and
    +$2A high 2; then its frame. */
-static void lantern_record(void)
+static void lantern_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew424Alt());
-    (cyc(62), abi_GsuRecordFlag10());
-    lda8(0x02);
-    (cyc(58), abi_GsuRecordSet2AHigh());
-    (cyc(102), lantern_frame());
+    (cyc(62), w_GsuRecordNew424Alt(cr));
+    (cyc(62), w_GsuRecordFlag10(cr));
+    lda8(cr, 0x02);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(102), lantern_frame(cr));
 }
 
 /*
@@ -2489,14 +4210,27 @@ static void lantern_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLantern(Carried *cr)
+{
+    add16(cr, F_c(0x200E, cr->x), cyc_then(22, 0xFF88));
+    st16i(cr, F_c(0x205D, cr->x), cyc_then(44, 0x996D));
+    cyc(22);
+    lamp(cr, cr->x, 0x64);
+    handlers2(cr, 0xA0B2, 0xA0C0);
+    lantern_record(cr);
+}
+
 void abi_ObjectLantern(void)
 {
-    add16(F(0x200E, cpu.x), cyc_then(22, 0xFF88));
-    st16i(F(0x205D, cpu.x), cyc_then(44, 0x996D));
-    cyc(22);
-    lamp(cpu.x, 0x64);
-    handlers2(0xA0B2, 0xA0C0);
-    lantern_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLantern(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2506,9 +4240,22 @@ void abi_ObjectLantern(void)
  * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
  * Entry: as ObjectLantern. Exit: as ObjectLantern.
  */
+void ObjectLanternRecord(Carried *cr)
+{
+    lantern_record(cr);
+}
+
 void abi_ObjectLanternRecord(void)
 {
-    lantern_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLanternRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2520,9 +4267,22 @@ void abi_ObjectLanternRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLanternStep(Carried *cr)
+{
+    lantern_frame(cr);
+}
+
 void abi_ObjectLanternStep(void)
 {
-    lantern_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLanternStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ---- 09:A293-B0A0: the course gates and markers ---- */
@@ -2536,107 +4296,204 @@ void abi_GsuRecordFlags8ASet(void);
 void abi_GsuRecordFlags8AClear(void);
 
 /* LDA #v, STA addr with M already 16-bit. */
-static void st16w(uint32_t addr, uint16_t v)
+static void st16w(Carried *cr, uint32_t addr, uint16_t v)
 {
-    op_lda16_imm(v);
+    r_lda16_imm(cr, v);
     cyc(10);
     wr16(addr, v);
 }
 
 /* LDA #v, JSL SoundPort1QueuePush. */
-static void sound1(uint8_t v)
+static void sound1(Carried *cr, uint8_t v)
 {
     cyc(58);
-    lda8(v);
-    abi_SoundPort1QueuePush();
+    lda8(cr, v);
+    w_SoundPort1QueuePush(cr);
+}
+
+static void sound1_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    sound1(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDA #v, JSL SoundPort0QueuePush. */
-static void sound0(uint8_t v)
+static void sound0(Carried *cr, uint8_t v)
 {
     cyc(58);
-    lda8(v);
-    abi_SoundPort0QueuePush();
+    lda8(cr, v);
+    w_SoundPort0QueuePush(cr);
 }
 
 /* LDA +$25, AND #m: whether bit m of the gate's +$25 is set. */
-static int bit25(uint8_t m)
+static int bit25(Carried *cr, uint8_t m)
 {
-    lda8((uint8_t)(ld8(cyc_then(22, F(0x2025, cpu.x))) & m));
-    return (uint8_t)cpu.a != 0;
+    lda8(cr, (uint8_t)(ld8(cr, cyc_then(22, F_c(0x2025, cr->x))) & m));
+    return (uint8_t)cr->a != 0;
+}
+
+static int bit25_g(uint8_t m)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = bit25(&c, m);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* SEP #$20, LDA $0DEA, CMP #lap: whether this is lap `lap`. */
-static int lap_is(uint8_t lap)
+static int lap_is(Carried *cr, uint8_t lap)
 {
-    cpu.p |= P_M;
-    ld8((cyc(14), db()) | 0x0DEA);
+    cr->p |= P_M;
+    ld8(cr, (cyc(14), db(cr)) | 0x0DEA);
     cyc(10);
-    cmp8(lap);
+    cmp8(cr, lap);
     cyc(38);
-    return (uint8_t)cpu.a == lap;
+    return (uint8_t)cr->a == lap;
 }
 
 /* As lap_is, with the time before the read of $0DEA (`pre`) and after the
    CMP when the lap is the one (`eq`) or is not (`ne`) given by the caller:
    they differ with the branch the original takes and with what follows. */
-static int lap_is_x(uint8_t lap, unsigned pre, unsigned eq, unsigned ne)
+static int lap_is_x(Carried *cr, uint8_t lap, unsigned pre, unsigned eq, unsigned ne)
 {
-    cpu.p |= P_M;
-    ld8((cyc(pre), db()) | 0x0DEA);
+    cr->p |= P_M;
+    ld8(cr, (cyc(pre), db(cr)) | 0x0DEA);
     cyc(10);
-    cmp8(lap);
-    cyc((uint8_t)cpu.a == lap ? eq : ne);
-    return (uint8_t)cpu.a == lap;
+    cmp8(cr, lap);
+    cyc((uint8_t)cr->a == lap ? eq : ne);
+    return (uint8_t)cr->a == lap;
+}
+
+static int lap_is_x_g(uint8_t lap, unsigned pre, unsigned eq, unsigned ne)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = lap_is_x(&c, lap, pre, eq, ne);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* As lap_is, for a caller whose BNE not taken goes straight on to the next
    LDA: the 38 is spent only when the lap differs. */
-static int lap_is_next(uint8_t lap)
+static int lap_is_next(Carried *cr, uint8_t lap)
 {
-    return lap_is_x(lap, 14, 0, 38);
+    return lap_is_x(cr, lap, 14, 0, 38);
+}
+
+static int lap_is_next_g(uint8_t lap)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = lap_is_next(&c, lap);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* A gate's record: a new one ($42D) with flag bit 4 at (s, s, s). */
-static void gate42d(uint16_t s)
+static void gate42d(Carried *cr, uint16_t s)
 {
     cyc(62);
-    abi_GsuRecordNew42D();
-    abi_GsuRecordFlag10();
-    record_at(s, s, s);
+    w_GsuRecordNew42D(cr);
+    w_GsuRecordFlag10(cr);
+    record_at(cr, s, s, s);
 }
 
 /* ObjectSyncFromRecord, AND #1: whether the record has contacts. */
-static int synced(void)
+static int synced(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
+    (cyc(62), w_ObjectSyncFromRecord(cr));
     cyc(10);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
-    return (uint8_t)cpu.a != 0;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
+    cr->p = nz8(cr->p, (uint8_t)cr->a);
+    return (uint8_t)cr->a != 0;
+}
+
+static int synced_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = synced(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* RecordNextContact until a contact whose flags AND #1 are set: 1 when
    one is found, 0 when the list runs out (carry clear). `tail` is the time
    of the BCC, AND and BEQ that follow a contact found, and of the first
    instructions after them, which differs by caller. */
-static int next_contact_t(unsigned tail)
+static int next_contact_t(Carried *cr, unsigned tail)
 {
     cyc(84);
     for (;;) {
-        abi_RecordNextContact();
-        if (!(cpu.p & P_C))
+        w_RecordNextContact(cr);
+        if (!(cr->p & P_C))
             return 0; else { cyc(tail); }
-        lda8((uint8_t)(cpu.a & 0x01));
-        if ((uint8_t)cpu.a)
+        lda8(cr, (uint8_t)(cr->a & 0x01));
+        if ((uint8_t)cr->a)
             { cyc(0); return 1; }
         cyc(116 - tail - 20);           /* BCC, AND, BEQ taken, JSL */
     }
 }
 
-static int next_contact(void)
+static int next_contact_t_g(unsigned tail)
 {
-    return next_contact_t(50);
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = next_contact_t(&c, tail);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
+}
+
+static int next_contact(Carried *cr)
+{
+    return next_contact_t(cr, 50);
+}
+
+static int next_contact_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = next_contact(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* REP #$20, A = n (16-bit), JSL to: a car record's +$8A bits set or
@@ -2650,47 +4507,73 @@ static void car_bits16(uint16_t n, void (*to)(void))
 
 /* The slide's step, target and direction ($19F8, $19FA, $19FC), M
    16-bit. */
-static void slide_set(uint16_t step, uint16_t target, uint16_t dir)
+static void slide_set(Carried *cr, uint16_t step, uint16_t target, uint16_t dir)
 {
-    st16w(db() | 0x19F8, step);
-    st16w(db() | 0x19FA, target);
-    st16w(db() | 0x19FC, dir);
+    st16w(cr, db(cr) | 0x19F8, step);
+    st16w(cr, db(cr) | 0x19FA, target);
+    st16w(cr, db(cr) | 0x19FC, dir);
+}
+
+static void slide_set_g(uint16_t step, uint16_t target, uint16_t dir)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    slide_set(&c, step, target, dir);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The fade's step $1A00 and end $1A02, M 16-bit. */
-static void fade_set(uint16_t step, uint16_t end)
+static void fade_set(Carried *cr, uint16_t step, uint16_t end)
 {
-    st16w(db() | 0x1A00, step);
-    st16w(db() | 0x1A02, end);
+    st16w(cr, db(cr) | 0x1A00, step);
+    st16w(cr, db(cr) | 0x1A02, end);
+}
+
+static void fade_set_g(uint16_t step, uint16_t end)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    fade_set(&c, step, end);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* SEP #$20, $1A04 = $FF, $1A05 = 0. */
-static void slide_hold(void)
+static void slide_hold(Carried *cr)
 {
-    cpu.p |= P_M;
-    st8i((cyc(22), db()) | 0x1A04, 0xFF);
-    st8i(db() | 0x1A05, 0x00);
+    cr->p |= P_M;
+    st8i(cr, (cyc(22), db(cr)) | 0x1A04, 0xFF);
+    st8i(cr, db(cr) | 0x1A05, 0x00);
 }
 
 /* 09:A2D8: the chime gate's frame: a car's hit, the first time (+$25 bit
    0, clearing bit 1), sound $13 on port 1; no hit, the first time (+$25
    bit 1, clearing bit 0), sound $0E. */
-static void chime_frame(void)
+static void chime_frame(Carried *cr)
 {
-    if (hit()) {
+    if (hit(cr)) {
         cyc(12);
-        if (bit25(0x01))
+        if (bit25(cr, 0x01))
             { cyc(88); return; } else { cyc(18); }
-        or8(F(0x2025, cpu.x), 0x01);
-        and8(F(0x2025, cpu.x), 0xFD);
-        sound1(0x13);
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        and8(cr, F_c(0x2025, cr->x), 0xFD);
+        sound1(cr, 0x13);
         { cyc(44); return; }
     } else { cyc(18); }
-    if (bit25(0x02))
+    if (bit25(cr, 0x02))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x02);
-    and8(F(0x2025, cpu.x), 0xFE);
-    sound1(0x0E);
+    or8(cr, F_c(0x2025, cr->x), 0x02);
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
+    sound1(cr, 0x0E);
     cyc(44);
 }
 
@@ -2703,11 +4586,24 @@ static void chime_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectChimeGate(Carried *cr)
+{
+    handlers2(cr, 0xA2B1, 0xA2D8);
+    gate42d(cr, 0x0F00);
+    chime_frame(cr);
+}
+
 void abi_ObjectChimeGate(void)
 {
-    handlers2(0xA2B1, 0xA2D8);
-    gate42d(0x0F00);
-    chime_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectChimeGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2718,10 +4614,23 @@ void abi_ObjectChimeGate(void)
  * by unit_gates_09.
  * Entry: as ObjectChimeGate. Exit: as ObjectChimeGate.
  */
+void ObjectChimeGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0F00);
+    chime_frame(cr);
+}
+
 void abi_ObjectChimeGateRecord(void)
 {
-    gate42d(0x0F00);
-    chime_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectChimeGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2734,34 +4643,47 @@ void abi_ObjectChimeGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectChimeGateStep(Carried *cr)
+{
+    chime_frame(cr);
+}
+
 void abi_ObjectChimeGateStep(void)
 {
-    chime_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectChimeGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A371 / A408: a flash gate's frame: a car's hit, the first time (+$25
    bit 0), flashes the screen ($19C5 = flash step) and starts a fade
    ($1A00 step, $1A02 end; $0DA5 bits 0 and 5); no hit clears the bit.
    `rep2`: a second REP #$20 before the fade's stores. */
-static void flash_frame(uint16_t flash, uint16_t step, uint16_t end, int rep2)
+static void flash_frame(Carried *cr, uint16_t flash, uint16_t step, uint16_t end, int rep2)
 {
-    if (hit()) {
+    if (hit(cr)) {
         cyc(12);
-        if (bit25(0x01))
+        if (bit25(cr, 0x01))
             { cyc(88); return; } else { cyc(18); }
-        or8(F(0x2025, cpu.x), 0x01);
-        cpu.p &= (uint8_t)~P_M;
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        cr->p &= (uint8_t)~P_M;
         cyc(30);
-        st16w(0x0019C5, flash);
+        st16w(cr, 0x0019C5, flash);
         if (rep2)
             cyc(22);                            /* the bright gate's second REP */
-        fade_set(step, end);
-        cpu.p |= P_M;
-        or8x((cyc(16), db()) | 0x0DA5, 0x21, 16);
+        fade_set(cr, step, end);
+        cr->p |= P_M;
+        or8x(cr, (cyc(16), db(cr)) | 0x0DA5, 0x21, 16);
         { cyc(44); return; }
     } else { cyc(40); }
-    cpu.p |= P_M;
-    and8(F(0x2025, cpu.x), 0xFE);
+    cr->p |= P_M;
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
     cyc(44);
 }
 
@@ -2774,11 +4696,24 @@ static void flash_frame(uint16_t flash, uint16_t step, uint16_t end, int rep2)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBrightGate(Carried *cr)
+{
+    handlers2(cr, 0xA34A, 0xA371);
+    gate42d(cr, 0x0780);
+    flash_frame(cr, 0x0020, 0x0200, 0x2000, 1);
+}
+
 void abi_ObjectBrightGate(void)
 {
-    handlers2(0xA34A, 0xA371);
-    gate42d(0x0780);
-    flash_frame(0x0020, 0x0200, 0x2000, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBrightGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2789,10 +4724,23 @@ void abi_ObjectBrightGate(void)
  * by unit_gates_09.
  * Entry: as ObjectBrightGate. Exit: as ObjectBrightGate.
  */
+void ObjectBrightGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    flash_frame(cr, 0x0020, 0x0200, 0x2000, 1);
+}
+
 void abi_ObjectBrightGateRecord(void)
 {
-    gate42d(0x0780);
-    flash_frame(0x0020, 0x0200, 0x2000, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBrightGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2805,9 +4753,22 @@ void abi_ObjectBrightGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBrightGateStep(Carried *cr)
+{
+    flash_frame(cr, 0x0020, 0x0200, 0x2000, 1);
+}
+
 void abi_ObjectBrightGateStep(void)
 {
-    flash_frame(0x0020, 0x0200, 0x2000, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBrightGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2819,11 +4780,24 @@ void abi_ObjectBrightGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectDarkGate(Carried *cr)
+{
+    handlers2(cr, 0xA3E1, 0xA408);
+    gate42d(cr, 0x0780);
+    flash_frame(cr, 0xFFE0, 0xFE00, 0xFE00, 0);
+}
+
 void abi_ObjectDarkGate(void)
 {
-    handlers2(0xA3E1, 0xA408);
-    gate42d(0x0780);
-    flash_frame(0xFFE0, 0xFE00, 0xFE00, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDarkGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2833,10 +4807,23 @@ void abi_ObjectDarkGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectDarkGate. Exit: as ObjectDarkGate.
  */
+void ObjectDarkGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    flash_frame(cr, 0xFFE0, 0xFE00, 0xFE00, 0);
+}
+
 void abi_ObjectDarkGateRecord(void)
 {
-    gate42d(0x0780);
-    flash_frame(0xFFE0, 0xFE00, 0xFE00, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDarkGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2849,9 +4836,22 @@ void abi_ObjectDarkGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectDarkGateStep(Carried *cr)
+{
+    flash_frame(cr, 0xFFE0, 0xFE00, 0xFE00, 0);
+}
+
 void abi_ObjectDarkGateStep(void)
 {
-    flash_frame(0xFFE0, 0xFE00, 0xFE00, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDarkGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A49D / A52C: a car flag gate's frame: a car's contact (bit 0), the
@@ -2860,24 +4860,41 @@ void abi_ObjectDarkGateStep(void)
    the bit. `on` picks set (08:B72E) or clear (08:B743). */
 static void car_flag_frame(int on, uint8_t snd)
 {
-    if (!synced() || !next_contact_t(28)) {
+    if (!synced_g() || !next_contact_t_g(28)) {
         cyc(28);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8_g(F(0x2025, cpu.x), 0xFE);
         cyc(44);
         return;
     }
-    if (bit25(0x01))
+    if (bit25_g(0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8_g(F(0x2025, cpu.x), 0x01);
     cpu.p |= P_M;
     cyc(46);
-    if (!ld8(0x7F3460))
+    if (!ld8_g(0x7F3460))
         { cyc(16); car_bits16(0x0002, on ? (cyc(12), abi_GsuRecordFlags8ASet) : abi_GsuRecordFlags8AClear); } else { cyc(44); }
     if (!on)
         { cyc(22); cpu.p &= (uint8_t)~P_M; }
     cpu.p |= P_M;
-    sound1(snd);
+    sound1_g(snd);
     cyc(44);
+}
+
+static void car_flag_frame_c(Carried *cr, int on, uint8_t snd)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    car_flag_frame(on, snd);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /*
@@ -2889,11 +4906,24 @@ static void car_flag_frame(int on, uint8_t snd)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectCarFlagOffGate(Carried *cr)
+{
+    handlers2(cr, 0xA476, 0xA49D);
+    gate42d(cr, 0x0780);
+    car_flag_frame_c(cr, 0, 0x11);
+}
+
 void abi_ObjectCarFlagOffGate(void)
 {
-    handlers2(0xA476, 0xA49D);
-    gate42d(0x0780);
-    car_flag_frame(0, 0x11);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCarFlagOffGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2903,10 +4933,23 @@ void abi_ObjectCarFlagOffGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectCarFlagOffGate. Exit: as ObjectCarFlagOffGate.
  */
+void ObjectCarFlagOffGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    car_flag_frame_c(cr, 0, 0x11);
+}
+
 void abi_ObjectCarFlagOffGateRecord(void)
 {
-    gate42d(0x0780);
-    car_flag_frame(0, 0x11);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCarFlagOffGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2934,11 +4977,24 @@ void abi_ObjectCarFlagOffGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectCarFlagOnGate(Carried *cr)
+{
+    handlers2(cr, 0xA505, 0xA52C);
+    gate42d(cr, 0x0780);
+    car_flag_frame_c(cr, 1, 0x10);
+}
+
 void abi_ObjectCarFlagOnGate(void)
 {
-    handlers2(0xA505, 0xA52C);
-    gate42d(0x0780);
-    car_flag_frame(1, 0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCarFlagOnGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2948,10 +5004,23 @@ void abi_ObjectCarFlagOnGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectCarFlagOnGate. Exit: as ObjectCarFlagOnGate.
  */
+void ObjectCarFlagOnGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    car_flag_frame_c(cr, 1, 0x10);
+}
+
 void abi_ObjectCarFlagOnGateRecord(void)
 {
-    gate42d(0x0780);
-    car_flag_frame(1, 0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCarFlagOnGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2976,22 +5045,39 @@ void abi_ObjectCarFlagOnGateStep(void)
    ($1A00 = $20 up to $2000). */
 static void slide1_frame(void)
 {
-    if (!synced() || !next_contact_t(52))
+    if (!synced_g() || !next_contact_t_g(52))
         { cyc(72); return; }
-    if (!lap_is_next(0x01))
+    if (!lap_is_next_g(0x01))
         { cyc(34); return; } else { cyc(22); }
-    if (bit25(0x01))
+    if (bit25_g(0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8_g(F(0x2025, cpu.x), 0x01);
     cpu.p |= P_M;
     cyc(24);
-    or8l(0x000DA5, 0xA0, 16);
+    or8l_g(0x000DA5, 0xA0, 16);
     car_bits16(0x0002, abi_GsuRecordFlags8AClear);
     cpu.p &= (uint8_t)~P_M;
-    fade_set(0x0020, 0x2000);
-    slide_set(0x0040, 0xFFC0, 0x8000);
+    fade_set_g(0x0020, 0x2000);
+    slide_set_g(0x0040, 0xFFC0, 0x8000);
     cpu.p |= P_M;
     cyc(66);
+}
+
+static void slide1_frame_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    slide1_frame();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /*
@@ -3003,11 +5089,24 @@ static void slide1_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideGate(Carried *cr)
+{
+    handlers2(cr, 0xA592, 0xA5B9);
+    gate42d(cr, 0x0780);
+    slide1_frame_c(cr);
+}
+
 void abi_ObjectSlideGate(void)
 {
-    handlers2(0xA592, 0xA5B9);
-    gate42d(0x0780);
-    slide1_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3017,10 +5116,23 @@ void abi_ObjectSlideGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectSlideGate. Exit: as ObjectSlideGate.
  */
+void ObjectSlideGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    slide1_frame_c(cr);
+}
+
 void abi_ObjectSlideGateRecord(void)
 {
-    gate42d(0x0780);
-    slide1_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3048,19 +5160,32 @@ void abi_ObjectSlideGateStep(void)
  * Entry: X 16-bit. Exit: M 8-bit; carry = bit 3 of $0E63; bit 4 set: A
  * low byte = 1; else as SoundPort0QueuePush leaves it.
  */
-void abi_GateFlashOnClock(void)
+void GateFlashOnClock(Carried *cr)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
-    v = ld8((cyc(84), db()) | 0x0E63);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v & 0x08) ? P_C : (cyc(70), 0)));
-    lda8((uint8_t)((v >> 4) & 0x01));
-    if ((uint8_t)cpu.a)
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(84), db(cr)) | 0x0E63);
+    cr->p = (uint8_t)((cr->p & ~P_C) | ((v & 0x08) ? P_C : (cyc(70), 0)));
+    lda8(cr, (uint8_t)((v >> 4) & 0x01));
+    if ((uint8_t)cr->a)
         { cyc(46); return; }
-    or8l(0x000DA5, 0x10, 0);
-    sound0(0x36);
+    or8l(cr, 0x000DA5, 0x10, 0);
+    sound0(cr, 0x36);
     cyc(42);
+}
+
+void abi_GateFlashOnClock(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GateFlashOnClock(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3070,50 +5195,63 @@ void abi_GateFlashOnClock(void)
  * Reached only by unit_gates_09.
  * Entry: X 16-bit. Exit: M 8-bit; A = $2000; N, Z from it.
  */
+void GateFadeUp(Carried *cr)
+{
+    cr->p |= P_M;
+    cyc(70);
+    or8l(cr, 0x000DA5, 0x20, 0);
+    cr->p &= (uint8_t)~P_M;
+    cyc(22);
+    fade_set(cr, 0x0080, 0x2000);
+    cr->p |= P_M;
+}
+
 void abi_GateFadeUp(void)
 {
-    cpu.p |= P_M;
-    cyc(70);
-    or8l(0x000DA5, 0x20, 0);
-    cpu.p &= (uint8_t)~P_M;
-    cyc(22);
-    fade_set(0x0080, 0x2000);
-    cpu.p |= P_M;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GateFadeUp(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A666: the lap gate's frame: a car's hit on lap 0 or 1, the first time
    (+$25 bit 0), GateFlashOnClock; on lap 2, the first time (+$25 bit 1),
    GateFadeUp and the gate is released. */
-static void lap_flash_frame(void)
+static void lap_flash_frame(Carried *cr)
 {
     uint8_t lap;
 
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(50); }
-    cpu.p |= P_M;
-    lap = ld8(db() | 0x0DEA);
+    cr->p |= P_M;
+    lap = ld8(cr, db(cr) | 0x0DEA);
     cyc(38);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap != 0x00) {
         cyc(32);
-        cmp8(0x01);
+        cmp8(cr, 0x01);
         if (lap != 0x01) {
             cyc(22);
-            cmp8(0x02);
+            cmp8(cr, 0x02);
             if (lap != 0x02)
                 { cyc(72); return; } else { cyc(10); }
-            if (bit25(0x02))
+            if (bit25(cr, 0x02))
                 { cyc(88); return; } else { cyc(18); }
-            or8(F(0x2025, cpu.x), 0x02);
-            abi_GateFadeUp();
-            (cyc(126), abi_ObjectRelease());
+            or8(cr, F_c(0x2025, cr->x), 0x02);
+            GateFadeUp(cr);
+            (cyc(126), w_ObjectRelease(cr));
             { cyc(44); return; }
         }
     }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    abi_GateFlashOnClock();
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    GateFlashOnClock(cr);
     cyc(68);
 }
 
@@ -3126,11 +5264,24 @@ static void lap_flash_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLapFlashGate(Carried *cr)
+{
+    handlers2(cr, 0xA63F, 0xA666);
+    gate42d(cr, 0x0780);
+    lap_flash_frame(cr);
+}
+
 void abi_ObjectLapFlashGate(void)
 {
-    handlers2(0xA63F, 0xA666);
-    gate42d(0x0780);
-    lap_flash_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapFlashGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3140,10 +5291,23 @@ void abi_ObjectLapFlashGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectLapFlashGate. Exit: as ObjectLapFlashGate.
  */
+void ObjectLapFlashGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    lap_flash_frame(cr);
+}
+
 void abi_ObjectLapFlashGateRecord(void)
 {
-    gate42d(0x0780);
-    lap_flash_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapFlashGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3157,30 +5321,43 @@ void abi_ObjectLapFlashGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLapFlashGateStep(Carried *cr)
+{
+    lap_flash_frame(cr);
+}
+
 void abi_ObjectLapFlashGateStep(void)
 {
-    lap_flash_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapFlashGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A73E: a car's hit on lap 0, the first time (+$25 bit 0): a sweep
    ($0DA5 bit 4) with sound $36, and the gate is released; no hit clears
    the bit. */
-static void sweep0_frame(void)
+static void sweep0_frame(Carried *cr)
 {
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         { cyc(44); return; }
     } else { cyc(36); }
-    if (!lap_is_next(0x00))
+    if (!lap_is_next(cr, 0x00))
         { cyc(34); return; } else { cyc(22); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
     cyc(2);
-    or8l(0x000DA5, 0x10, 0);
-    sound0(0x36);
-    (cyc(62), abi_ObjectRelease());
+    or8l(cr, 0x000DA5, 0x10, 0);
+    sound0(cr, 0x36);
+    (cyc(62), w_ObjectRelease(cr));
     cyc(44);
 }
 
@@ -3193,11 +5370,24 @@ static void sweep0_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSweepGate(Carried *cr)
+{
+    handlers2(cr, 0xA717, 0xA73E);
+    gate42d(cr, 0x0780);
+    sweep0_frame(cr);
+}
+
 void abi_ObjectSweepGate(void)
 {
-    handlers2(0xA717, 0xA73E);
-    gate42d(0x0780);
-    sweep0_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSweepGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3208,10 +5398,23 @@ void abi_ObjectSweepGate(void)
  * by unit_gates_09.
  * Entry: as ObjectSweepGate. Exit: as ObjectSweepGate.
  */
+void ObjectSweepGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    sweep0_frame(cr);
+}
+
 void abi_ObjectSweepGateRecord(void)
 {
-    gate42d(0x0780);
-    sweep0_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSweepGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3224,9 +5427,22 @@ void abi_ObjectSweepGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSweepGateStep(Carried *cr)
+{
+    sweep0_frame(cr);
+}
+
 void abi_ObjectSweepGateStep(void)
 {
-    sweep0_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSweepGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A7CD: the slide chime gate's frame: synced and summed (the summary's
@@ -3235,45 +5451,45 @@ void abi_ObjectSweepGateStep(void)
    down ($0DA5 bits 5 and 7, step $80 to -$80, direction $8000, $1A04 =
    $FF) and a fade ($20 up to $2000). No hit: the first time (+$25 bit 2)
    sound $0E; +$25 bit 1 cleared. */
-static void slide_chime_frame(void)
+static void slide_chime_frame(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    (cyc(62), abi_RecordContactSummary());
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), w_RecordContactSummary(cr));
     cyc(12);
-    lda8((uint8_t)(cpu.a & 0x01));
-    if ((uint8_t)cpu.a) {
-        if (!bit25(0x02)) {
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if ((uint8_t)cr->a) {
+        if (!bit25(cr, 0x02)) {
             cyc(18);
-            or8(F(0x2025, cpu.x), 0x02);
-            and8(F(0x2025, cpu.x), 0xFB);
-            sound1(0x13);
+            or8(cr, F_c(0x2025, cr->x), 0x02);
+            and8(cr, F_c(0x2025, cr->x), 0xFB);
+            sound1(cr, 0x13);
         } else { cyc(44); }
         cyc(24);
-        if (!lap_is_next(0x01))
+        if (!lap_is_next(cr, 0x01))
             { cyc(34); return; } else { cyc(22); }
-        if (bit25(0x01))
+        if (bit25(cr, 0x01))
             { cyc(88); return; } else { cyc(18); }
-        or8(F(0x2025, cpu.x), 0x01);
-        cpu.p |= P_M;
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        cr->p |= P_M;
         cyc(24);
-        or8l(0x000DA5, 0xA0, 0);
-        cpu.p &= (uint8_t)~P_M;
+        or8l(cr, 0x000DA5, 0xA0, 0);
+        cr->p &= (uint8_t)~P_M;
         cyc(22);
-        slide_set(0x0080, 0xFF80, 0x8000);
-        slide_hold();
-        cpu.p &= (uint8_t)~P_M;
+        slide_set(cr, 0x0080, 0xFF80, 0x8000);
+        slide_hold(cr);
+        cr->p &= (uint8_t)~P_M;
         cyc(22);
-        fade_set(0x0020, 0x2000);
-        cpu.p |= P_M;
+        fade_set(cr, 0x0020, 0x2000);
+        cr->p |= P_M;
         { cyc(66); return; }
     } else { cyc(28); }
-    cpu.p |= P_M;
-    if (!bit25(0x04)) {
+    cr->p |= P_M;
+    if (!bit25(cr, 0x04)) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x04);
-        sound1(0x0E);
+        or8(cr, F_c(0x2025, cr->x), 0x04);
+        sound1(cr, 0x0E);
     } else { cyc(44); }
-    and8(F(0x2025, cpu.x), 0xFD);
+    and8(cr, F_c(0x2025, cr->x), 0xFD);
     cyc(44);
 }
 
@@ -3286,11 +5502,24 @@ static void slide_chime_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideChimeGate(Carried *cr)
+{
+    handlers2(cr, 0xA7A6, 0xA7CD);
+    gate42d(cr, 0x0F00);
+    slide_chime_frame(cr);
+}
+
 void abi_ObjectSlideChimeGate(void)
 {
-    handlers2(0xA7A6, 0xA7CD);
-    gate42d(0x0F00);
-    slide_chime_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideChimeGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3300,10 +5529,23 @@ void abi_ObjectSlideChimeGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectSlideChimeGate. Exit: as ObjectSlideChimeGate.
  */
+void ObjectSlideChimeGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0F00);
+    slide_chime_frame(cr);
+}
+
 void abi_ObjectSlideChimeGateRecord(void)
 {
-    gate42d(0x0F00);
-    slide_chime_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideChimeGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3318,29 +5560,42 @@ void abi_ObjectSlideChimeGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSlideChimeGateStep(Carried *cr)
+{
+    slide_chime_frame(cr);
+}
+
 void abi_ObjectSlideChimeGateStep(void)
 {
-    slide_chime_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideChimeGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A8BC / A94C: on lap `lap` the first car contact (+$25 bit 0) starts
    a fade ($0DA5 bit 5, $1A00 = step, $1A02 = end). */
-static void fade_frame(uint8_t lap, uint16_t step, uint16_t end)
+static void fade_frame(Carried *cr, uint8_t lap, uint16_t step, uint16_t end)
 {
-    if (!synced() || !next_contact_t(52))
+    if (!synced(cr) || !next_contact_t(cr, 52))
         { cyc(72); return; }
-    if (!lap_is_next(lap))
+    if (!lap_is_next(cr, lap))
         { cyc(34); return; } else { cyc(22); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    cpu.p |= P_M;
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    cr->p |= P_M;
     cyc(24);
-    or8l(0x000DA5, 0x20, 0);
-    cpu.p &= (uint8_t)~P_M;
+    or8l(cr, 0x000DA5, 0x20, 0);
+    cr->p &= (uint8_t)~P_M;
     cyc(22);
-    fade_set(step, end);
-    cpu.p |= P_M;
+    fade_set(cr, step, end);
+    cr->p |= P_M;
     cyc(66);
 }
 
@@ -3353,11 +5608,24 @@ static void fade_frame(uint8_t lap, uint16_t step, uint16_t end)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectFadeGate0(Carried *cr)
+{
+    handlers2(cr, 0xA895, 0xA8BC);
+    gate42d(cr, 0x0780);
+    fade_frame(cr, 0x00, 0x000A, 0x1FFE);
+}
+
 void abi_ObjectFadeGate0(void)
 {
-    handlers2(0xA895, 0xA8BC);
-    gate42d(0x0780);
-    fade_frame(0x00, 0x000A, 0x1FFE);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3368,10 +5636,23 @@ void abi_ObjectFadeGate0(void)
  * by unit_gates_09.
  * Entry: as ObjectFadeGate0. Exit: as ObjectFadeGate0.
  */
+void ObjectFadeGate0Record(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    fade_frame(cr, 0x00, 0x000A, 0x1FFE);
+}
+
 void abi_ObjectFadeGate0Record(void)
 {
-    gate42d(0x0780);
-    fade_frame(0x00, 0x000A, 0x1FFE);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate0Record(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3383,9 +5664,22 @@ void abi_ObjectFadeGate0Record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectFadeGate0Step(Carried *cr)
+{
+    fade_frame(cr, 0x00, 0x000A, 0x1FFE);
+}
+
 void abi_ObjectFadeGate0Step(void)
 {
-    fade_frame(0x00, 0x000A, 0x1FFE);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate0Step(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3397,11 +5691,24 @@ void abi_ObjectFadeGate0Step(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectFadeGate2(Carried *cr)
+{
+    handlers2(cr, 0xA925, 0xA94C);
+    gate42d(cr, 0x0780);
+    fade_frame(cr, 0x02, 0x0020, 0x1F20);
+}
+
 void abi_ObjectFadeGate2(void)
 {
-    handlers2(0xA925, 0xA94C);
-    gate42d(0x0780);
-    fade_frame(0x02, 0x0020, 0x1F20);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3412,10 +5719,23 @@ void abi_ObjectFadeGate2(void)
  * by unit_gates_09.
  * Entry: as ObjectFadeGate2. Exit: as ObjectFadeGate2.
  */
+void ObjectFadeGate2Record(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    fade_frame(cr, 0x02, 0x0020, 0x1F20);
+}
+
 void abi_ObjectFadeGate2Record(void)
 {
-    gate42d(0x0780);
-    fade_frame(0x02, 0x0020, 0x1F20);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate2Record(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3428,28 +5748,41 @@ void abi_ObjectFadeGate2Record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectFadeGate2Step(Carried *cr)
+{
+    fade_frame(cr, 0x02, 0x0020, 0x1F20);
+}
+
 void abi_ObjectFadeGate2Step(void)
 {
-    fade_frame(0x02, 0x0020, 0x1F20);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate2Step(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:A9DC: while a car is in the zone, the slide runs up (step $100 to
    $1000, direction 0, $7F:3470 = $7FFF, $0DA5 bit 7); otherwise it runs
    back down (to -$100, direction $8000, $1A04 = $FF). */
-static void slide_zone_frame(void)
+static void slide_zone_frame(Carried *cr)
 {
-    if (hit()) {
+    if (hit(cr)) {
         cyc(42);
-        cpu.p &= (uint8_t)~P_M;
-        st16w(0x7F3470, 0x7FFF);
-        slide_set(0x0100, 0x1000, 0x0000);
-        cpu.p |= P_M;
-        or8((cyc(16), db()) | 0x0DA5, 0x80);
+        cr->p &= (uint8_t)~P_M;
+        st16w(cr, 0x7F3470, 0x7FFF);
+        slide_set(cr, 0x0100, 0x1000, 0x0000);
+        cr->p |= P_M;
+        or8(cr, (cyc(16), db(cr)) | 0x0DA5, 0x80);
         { cyc(44); return; }
     } else { cyc(40); }
-    cpu.p &= (uint8_t)~P_M;
-    slide_set(0x0100, 0xFF00, 0x8000);
-    slide_hold();
+    cr->p &= (uint8_t)~P_M;
+    slide_set(cr, 0x0100, 0xFF00, 0x8000);
+    slide_hold(cr);
     cyc(44);
 }
 
@@ -3462,11 +5795,24 @@ static void slide_zone_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideZone(Carried *cr)
+{
+    handlers2(cr, 0xA9B5, 0xA9DC);
+    gate42d(cr, 0x0F00);
+    slide_zone_frame(cr);
+}
+
 void abi_ObjectSlideZone(void)
 {
-    handlers2(0xA9B5, 0xA9DC);
-    gate42d(0x0F00);
-    slide_zone_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideZone(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3477,10 +5823,23 @@ void abi_ObjectSlideZone(void)
  * by unit_gates_09.
  * Entry: as ObjectSlideZone. Exit: as ObjectSlideZone.
  */
+void ObjectSlideZoneRecord(Carried *cr)
+{
+    gate42d(cr, 0x0F00);
+    slide_zone_frame(cr);
+}
+
 void abi_ObjectSlideZoneRecord(void)
 {
-    gate42d(0x0F00);
-    slide_zone_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideZoneRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3493,35 +5852,48 @@ void abi_ObjectSlideZoneRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSlideZoneStep(Carried *cr)
+{
+    slide_zone_frame(cr);
+}
+
 void abi_ObjectSlideZoneStep(void)
 {
-    slide_zone_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideZoneStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:AA78: a car's contact on lap 0 counts $1A06 up, sets bit 0 of the
    car's record +$8A (08:B72E), sweeps the screen with sound $36 unless
    bits 4-5 of the clock fraction $0E63 are clear, and releases the
    marker. */
-static void bonus_marker_frame(void)
+static void bonus_marker_frame(Carried *cr)
 {
     uint8_t v;
 
-    if (!synced() || !next_contact_t(52))
+    if (!synced(cr) || !next_contact_t(cr, 52))
         { cyc(72); return; }
-    if (!lap_is_next(0x00))
+    if (!lap_is_next(cr, 0x00))
         { cyc(34); return; }
-    inc8(db() | 0x1A06);
-    lda8(0x01);
-    abi_GsuRecordFlags8ASet();
-    cpu.p |= P_M;
-    v = ld8((cyc(16), db()) | 0x0E63);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v & 0x08) ? P_C : (cyc(62), 0)));
-    lda8((uint8_t)((v >> 4) & 0x03));
-    if ((uint8_t)cpu.a) {
-        or8(db() | 0x0DA5, 0x10);
-        sound0(0x36);
+    inc8(cr, db(cr) | 0x1A06);
+    lda8(cr, 0x01);
+    w_GsuRecordFlags8ASet(cr);
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(16), db(cr)) | 0x0E63);
+    cr->p = (uint8_t)((cr->p & ~P_C) | ((v & 0x08) ? P_C : (cyc(62), 0)));
+    lda8(cr, (uint8_t)((v >> 4) & 0x03));
+    if ((uint8_t)cr->a) {
+        or8(cr, db(cr) | 0x0DA5, 0x10);
+        sound0(cr, 0x36);
     } else { cyc(12); }
-    (cyc(62), abi_ObjectRelease());
+    (cyc(62), w_ObjectRelease(cr));
     cyc(44);
 }
 
@@ -3534,11 +5906,24 @@ static void bonus_marker_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBonusMarker(Carried *cr)
+{
+    handlers2(cr, 0xAA51, 0xAA78);
+    gate42d(cr, 0x0780);
+    bonus_marker_frame(cr);
+}
+
 void abi_ObjectBonusMarker(void)
 {
-    handlers2(0xAA51, 0xAA78);
-    gate42d(0x0780);
-    bonus_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusMarker(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3549,10 +5934,23 @@ void abi_ObjectBonusMarker(void)
  * by unit_gates_09.
  * Entry: as ObjectBonusMarker. Exit: as ObjectBonusMarker.
  */
+void ObjectBonusMarkerRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    bonus_marker_frame(cr);
+}
+
 void abi_ObjectBonusMarkerRecord(void)
 {
-    gate42d(0x0780);
-    bonus_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusMarkerRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3566,38 +5964,51 @@ void abi_ObjectBonusMarkerRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBonusMarkerStep(Carried *cr)
+{
+    bonus_marker_frame(cr);
+}
+
 void abi_ObjectBonusMarkerStep(void)
 {
-    bonus_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusMarkerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:AB01: a car's contact sets the window slide's bit 2 ($0DA5, bit 3
    cleared); the first time (+$25 bit 0) sound $10 on port 1 and, on lap 0
    with markers taken ($1A06), bit 0 of the car's record +$8A set. No
    contact clears the mark. */
-static void bonus_gate_frame(void)
+static void bonus_gate_frame(Carried *cr)
 {
     uint8_t v;
 
-    if (!synced() || !next_contact_t(28)) {
+    if (!synced(cr) || !next_contact_t(cr, 28)) {
         cyc(28);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         { cyc(44); return; }
     } else { cyc(38); }
-    cpu.p |= P_M;
-    v = (uint8_t)(ld8(db() | 0x0DA5) & 0xF7);
-    lda8((uint8_t)(v | 0x04));
-    wr8(db() | 0x0DA5, cyc_then(36, (uint8_t)(v | 0x04)));
-    if (bit25(0x01))
+    cr->p |= P_M;
+    v = (uint8_t)(ld8(cr, db(cr) | 0x0DA5) & 0xF7);
+    lda8(cr, (uint8_t)(v | 0x04));
+    wr8(db(cr) | 0x0DA5, cyc_then(36, (uint8_t)(v | 0x04)));
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    sound1(0x10);
-    if (!lap_is_x(0x00, 38, 0, 38))
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    sound1(cr, 0x10);
+    if (!lap_is_x(cr, 0x00, 38, 0, 38))
         { cyc(34); return; } else { cyc(38); }
-    if (!ld8(db() | 0x1A06))
+    if (!ld8(cr, db(cr) | 0x1A06))
         { cyc(66); return; } else { cyc(16); }
-    lda8(0x01);
-    abi_GsuRecordFlags8ASet();
+    lda8(cr, 0x01);
+    w_GsuRecordFlags8ASet(cr);
     cyc(22);
 }
 
@@ -3610,11 +6021,24 @@ static void bonus_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBonusGate(Carried *cr)
+{
+    handlers2(cr, 0xAADA, 0xAB01);
+    gate42d(cr, 0x0780);
+    bonus_gate_frame(cr);
+}
+
 void abi_ObjectBonusGate(void)
 {
-    handlers2(0xAADA, 0xAB01);
-    gate42d(0x0780);
-    bonus_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3625,10 +6049,23 @@ void abi_ObjectBonusGate(void)
  * by unit_gates_09.
  * Entry: as ObjectBonusGate. Exit: as ObjectBonusGate.
  */
+void ObjectBonusGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    bonus_gate_frame(cr);
+}
+
 void abi_ObjectBonusGateRecord(void)
 {
-    gate42d(0x0780);
-    bonus_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3642,9 +6079,22 @@ void abi_ObjectBonusGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBonusGateStep(Carried *cr)
+{
+    bonus_gate_frame(cr);
+}
+
 void abi_ObjectBonusGateStep(void)
 {
-    bonus_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:AB9B: a car's contact sets bits 1 and 3 of $0DA5; the first time
@@ -3653,24 +6103,41 @@ void abi_ObjectBonusGateStep(void)
    the mark. */
 static void bonus_end_frame(void)
 {
-    if (!synced() || !next_contact_t(28)) {
+    if (!synced_g() || !next_contact_t_g(28)) {
         cyc(28);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8_g(F(0x2025, cpu.x), 0xFE);
         { cyc(44); return; }
     } else { cyc(16); }
     cpu.p |= P_M;
-    or8(db() | 0x0DA5, 0x0A);
-    if (bit25(0x01))
+    or8_g(db_g() | 0x0DA5, 0x0A);
+    if (bit25_g(0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    sound1(0x0F);
-    if (lap_is_x(0x02, 38, 38, 0))
+    or8_g(F(0x2025, cpu.x), 0x01);
+    sound1_g(0x0F);
+    if (lap_is_x_g(0x02, 38, 38, 0))
         { cyc(34); return; } else { cyc(38); }
-    if (!ld8(db() | 0x1A06))
+    if (!ld8_g(db_g() | 0x1A06))
         { cyc(66); return; } else { cyc(16); }
     car_bits16(0x0001, abi_GsuRecordFlags8AClear);
     cpu.p |= P_M;
     cyc(44);
+}
+
+static void bonus_end_frame_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    bonus_end_frame();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /*
@@ -3682,11 +6149,24 @@ static void bonus_end_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBonusEndGate(Carried *cr)
+{
+    handlers2(cr, 0xAB74, 0xAB9B);
+    gate42d(cr, 0x0780);
+    bonus_end_frame_c(cr);
+}
+
 void abi_ObjectBonusEndGate(void)
 {
-    handlers2(0xAB74, 0xAB9B);
-    gate42d(0x0780);
-    bonus_end_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusEndGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3697,10 +6177,23 @@ void abi_ObjectBonusEndGate(void)
  * by unit_gates_09.
  * Entry: as ObjectBonusEndGate. Exit: as ObjectBonusEndGate.
  */
+void ObjectBonusEndGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    bonus_end_frame_c(cr);
+}
+
 void abi_ObjectBonusEndGateRecord(void)
 {
-    gate42d(0x0780);
-    bonus_end_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBonusEndGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3721,14 +6214,14 @@ void abi_ObjectBonusEndGateStep(void)
 
 /* REP #$20, LDA $0D2B (the HUD mode), and with a mode (two players) SEP
    #$20 and ObjectRelease: 1 when released. */
-static int released_by_hud(void)
+static int released_by_hud(Carried *cr)
 {
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(46, db() | 0x0D2B));
-    if (!cpu.a)
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(46, db(cr) | 0x0D2B));
+    if (!cr->a)
         { cyc(44); return 0; } else { cyc(100); }
-    cpu.p |= P_M;
-    abi_ObjectRelease();
+    cr->p |= P_M;
+    w_ObjectRelease(cr);
     return 1;
 }
 
@@ -3743,71 +6236,84 @@ static int released_by_hud(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; released:
  * as ObjectRelease leaves it; else A low byte = 0, Z set.
  */
+void ObjectPopMarker(Carried *cr)
+{
+    if ((cyc(14), released_by_hud(cr)))
+        { cyc(44); return; }
+    cr->p |= P_M;
+    if (spawn(cr, 0xB7FC)) {
+        cyc(62);
+        w_ObjectCopyPositionTo(cr);
+        ld8(cr, cyc_then(22, F_c(0x2015, cr->x)));
+        wr8(F_c(0x2015, cr->y), cyc_then(30, (uint8_t)cr->a));
+        add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0xFE20));
+        cyc(44);
+        handler(cr, cr->y, 0xAD50);
+    } else { cyc(26); }
+    handler_none(cr, cr->x);
+}
+
 void abi_ObjectPopMarker(void)
 {
-    if ((cyc(14), released_by_hud()))
-        { cyc(44); return; }
-    cpu.p |= P_M;
-    if (spawn(0xB7FC)) {
-        cyc(62);
-        abi_ObjectCopyPositionTo();
-        ld8(cyc_then(22, F(0x2015, cpu.x)));
-        wr8(F(0x2015, cpu.y), cyc_then(30, (uint8_t)cpu.a));
-        add16(F(0x200E, cpu.y), cyc_then(22, 0xFE20));
-        cyc(44);
-        handler(cpu.y, 0xAD50);
-    } else { cyc(26); }
-    handler_none(cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPopMarker(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:AD07: a car's hit on a lap other than the one in +$48 takes that lap
    in +$48 (through $1F58), plays sound $41 and adds $19E6 to the race
    time $0E70 in BCD. */
-static void time_gate_frame(void)
+static void time_gate_frame(Carried *cr)
 {
     uint8_t v, r;
 
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(34); }
-    v = ld8(F(0x2048, cpu.x));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    cpu.p |= P_M;
-    v = ld8((cyc(38), db()) | 0x0DEA);
-    r = rd8(cyc_then(24, db() | 0x1F58));
+    v = ld8(cr, F_c(0x2048, cr->x));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
+    r = rd8(cyc_then(24, db(cr) | 0x1F58));
     cyc(22);
-    cmp8(r);
+    cmp8(cr, r);
     if (v == r)
         { cyc(44); return; } else { cyc(32); }
-    cpu.p |= P_M;
-    v = ld8(db() | 0x0DEA);
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = ld8((cyc(16), db()) | 0x1F58);
-    wr8(F(0x2048, cpu.x), cyc_then(30, v));
-    sound0(0x41);
-    cpu.p |= P_D;
-    v = ld8((cyc(30), db()) | 0x0E70);
-    cpu.p &= (uint8_t)~P_C;
-    r = rd8(cyc_then(38, db() | 0x19E6));
-    v = op_adc8(v, r, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    wr8(db() | 0x0E70, cyc_then(24, v));
-    v = ld8((cyc(16), db()) | 0x0E71);
-    v = op_adc8(v, 0x00, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    wr8(db() | 0x0E71, cyc_then(40, v));
-    cpu.p &= (uint8_t)~P_D;
+    cr->p |= P_M;
+    v = ld8(cr, db(cr) | 0x0DEA);
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = ld8(cr, (cyc(16), db(cr)) | 0x1F58);
+    wr8(F_c(0x2048, cr->x), cyc_then(30, v));
+    sound0(cr, 0x41);
+    cr->p |= P_D;
+    v = ld8(cr, (cyc(30), db(cr)) | 0x0E70);
+    cr->p &= (uint8_t)~P_C;
+    r = rd8(cyc_then(38, db(cr) | 0x19E6));
+    v = alu_adc8(v, r, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    wr8(db(cr) | 0x0E70, cyc_then(24, v));
+    v = ld8(cr, (cyc(16), db(cr)) | 0x0E71);
+    v = alu_adc8(v, 0x00, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    wr8(db(cr) | 0x0E71, cyc_then(40, v));
+    cr->p &= (uint8_t)~P_D;
     cyc(58);
 }
 
 /* A time gate's set-up in a one-player race: restart r, frame $09:AD07
    (ObjectTimeGateStep), +$48 = 4 (no lap taken yet). */
-static void time_gate(uint16_t r, unsigned released, unsigned tail)
+static void time_gate(Carried *cr, uint16_t r, unsigned released, unsigned tail)
 {
-    if (released_by_hud())
+    if (released_by_hud(cr))
         { cyc(released); return; }
-    cpu.p |= P_M;
-    handlers2(r, 0xAD07);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x04));
+    cr->p |= P_M;
+    handlers2(cr, r, 0xAD07);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x04));
     cyc(tail);
 }
 
@@ -3820,10 +6326,23 @@ static void time_gate(uint16_t r, unsigned released, unsigned tail)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
  * byte = 4, or as ObjectRelease leaves it.
  */
+void ObjectTimeGate(Carried *cr)
+{
+    time_gate(cr, 0xAC83, 0, 0);
+    cyc(44);
+}
+
 void abi_ObjectTimeGate(void)
 {
-    time_gate(0xAC83, 0, 0);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTimeGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3834,10 +6353,23 @@ void abi_ObjectTimeGate(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * GsuRecordPosition leaves it, M 8-bit.
  */
+void ObjectTimeGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    cyc(44);
+}
+
 void abi_ObjectTimeGateRecord(void)
 {
-    gate42d(0x0780);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTimeGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3849,9 +6381,22 @@ void abi_ObjectTimeGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
  * byte = 4, or as ObjectRelease leaves it.
  */
+void ObjectTimeGateSmall(Carried *cr)
+{
+    time_gate(cr, 0xACDF, 44, 44);
+}
+
 void abi_ObjectTimeGateSmall(void)
 {
-    time_gate(0xACDF, 44, 44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTimeGateSmall(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3863,10 +6408,23 @@ void abi_ObjectTimeGateSmall(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * GsuRecordPosition leaves it, M 8-bit.
  */
+void ObjectTimeGateSmallRecord(Carried *cr)
+{
+    gate42d(cr, 0x03C0);
+    cyc(44);
+}
+
 void abi_ObjectTimeGateSmallRecord(void)
 {
-    gate42d(0x03C0);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTimeGateSmallRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3879,9 +6437,22 @@ void abi_ObjectTimeGateSmallRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it; D flag clear.
  */
+void ObjectTimeGateStep(Carried *cr)
+{
+    time_gate_frame(cr);
+}
+
 void abi_ObjectTimeGateStep(void)
 {
-    time_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTimeGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3890,122 +6461,135 @@ void abi_ObjectTimeGateStep(void)
  * HOW: ADC #$F8; ObjectRebucket.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
-void abi_ObjectPopMarkerStep(void)
+void ObjectPopMarkerStep(Carried *cr)
 {
-    add8(F(0x2014, cpu.x), 0xF8);
-    (cyc(62), abi_ObjectRebucket());
+    add8(cr, F_c(0x2014, cr->x), 0xF8);
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
 }
 
+void abi_ObjectPopMarkerStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPopMarkerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 /* +$0A against the lap $0DEA (through $1F58): 1 when equal. */
-static int lap_matches_0a(void)
+static int lap_matches_0a(Carried *cr)
 {
     uint8_t v, r;
 
-    v = ld8(cyc_then(0, F(0x200A, cpu.x)));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    cpu.p |= P_M;
-    v = ld8((cyc(38), db()) | 0x0DEA);
-    r = rd8(cyc_then(24, db() | 0x1F58));
+    v = ld8(cr, cyc_then(0, F_c(0x200A, cr->x)));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
+    r = rd8(cyc_then(24, db(cr) | 0x1F58));
     cyc(22);
-    cmp8(r);
+    cmp8(cr, r);
     return v == r;
 }
 
 /* +$0A = the lap $0DEA (through $1F58), +$04 = $A040 (the lit model). */
-static void lap_take_0a(void)
+static void lap_take_0a(Carried *cr)
 {
     uint8_t v;
 
-    v = ld8(db() | 0x0DEA);
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = ld8((cyc(16), db()) | 0x1F58);
-    wr8(F(0x200A, cpu.x), cyc_then(30, v));
-    st16i(F(0x2004, cpu.x), cyc_then(22, 0xA040));
+    v = ld8(cr, db(cr) | 0x0DEA);
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = ld8(cr, (cyc(16), db(cr)) | 0x1F58);
+    wr8(F_c(0x200A, cr->x), cyc_then(30, v));
+    st16i(cr, F_c(0x2004, cr->x), cyc_then(22, 0xA040));
     cyc(80);
 }
 
 /* PHX, TYX: a spark of `kind` at the player $0346's position following
    it (+$29 = the player, +$27 = 0, +$0A = $0A, handler $09:AE60
    ObjectSparkFollow); PLX. */
-static void spark_follow(uint16_t kind)
+static void spark_follow(Carried *cr, uint16_t kind)
 {
-    uint16_t sx = cpu.x;
+    uint16_t sx = cr->x;
 
-    cpu.x = cpu.y;
-    cpu.p = nz16(cpu.p, cpu.x);
+    cr->x = cr->y;
+    cr->p = nz16(cr->p, cr->x);
     cyc(44);
-    if (spawn(kind)) {
+    if (spawn(cr, kind)) {
         uint8_t a;
 
-        cpu.x = rd16(cyc_then(24, db() | 0x0346));
-        cpu.p = nz16(cpu.p, cpu.x);
-        st8i(F(0x200A, cpu.y), cyc_then(6, 0x0A));
-        (cyc(62), abi_ObjectCopyPositionTo());
-        st16i(F(0x2027, cpu.y), cyc_then(22, 0x0000));
-        a = (uint8_t)cpu.a;
-        cpu.p &= (uint8_t)~P_M;
-        cpu.a = cpu.x;
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2029, cpu.y), cyc_then(110, cpu.x));
-        cpu.p |= P_M;
+        cr->x = rd16(cyc_then(24, db(cr) | 0x0346));
+        cr->p = nz16(cr->p, cr->x);
+        st8i(cr, F_c(0x200A, cr->y), cyc_then(6, 0x0A));
+        (cyc(62), w_ObjectCopyPositionTo(cr));
+        st16i(cr, F_c(0x2027, cr->y), cyc_then(22, 0x0000));
+        a = (uint8_t)cr->a;
+        cr->p &= (uint8_t)~P_M;
+        cr->a = cr->x;
+        cr->p = nz16(cr->p, cr->a);
+        wr16(F_c(0x2029, cr->y), cyc_then(110, cr->x));
+        cr->p |= P_M;
         cyc(52);
-        lda8(a);
-        handler(cpu.y, 0xAE60);
+        lda8(cr, a);
+        handler(cr, cr->y, 0xAE60);
     } else { cyc(26); }
     cyc(36);                            /* PLX */
-    cpu.x = sx;
-    cpu.p = nz16(cpu.p, sx);
+    cr->x = sx;
+    cr->p = nz16(cr->p, sx);
 }
 
 /* A lap ball's record ($42D, flag bit 4, +$2A high $14); its model +$04
    lit ($A040) when +$0A is this lap, else `kind`. */
-static void lap_ball_record(uint16_t kind)
+static void lap_ball_record(Carried *cr, uint16_t kind)
 {
     cyc(62);
-    abi_GsuRecordNew42D();
-    abi_GsuRecordFlag10();
+    w_GsuRecordNew42D(cr);
+    w_GsuRecordFlag10(cr);
     cyc(58);
-    lda8(0x14);
-    abi_GsuRecordSet2AHigh();
-    if ((cyc(124), lap_matches_0a()))
-        { cyc(16); st16i(F(0x2004, cpu.x), 0xA040); cyc(46); }          /* SEP, JMP */
+    lda8(cr, 0x14);
+    w_GsuRecordSet2AHigh(cr);
+    if ((cyc(124), lap_matches_0a(cr)))
+        { cyc(16); st16i(cr, F_c(0x2004, cr->x), 0xA040); cyc(46); }          /* SEP, JMP */
     else
-        { cyc(22); st16i(F(0x2004, cpu.x), kind); cyc(22); }            /* SEP */
+        { cyc(22); st16i(cr, F_c(0x2004, cr->x), kind); cyc(22); }            /* SEP */
 }
 
 /* 09:ADB6: the up ball's frame: it grows (+$15, +$14 by $10); on a car's
    contact with flags 1 or 2 (AND #$0B) on a lap it has not lit yet (+$0A)
    it takes the lap, lights up, raises that car's record +$6A by $40,
    plays sound $25 and leaves a following spark ($B7A8). */
-static void ball_up_frame(void)
+static void ball_up_frame(Carried *cr)
 {
-    add8(F(0x2015, cpu.x), 0x10);
-    add8(F(0x2014, cpu.x), 0x10);
-    if (!synced())
+    add8(cr, F_c(0x2015, cr->x), 0x10);
+    add8(cr, F_c(0x2014, cr->x), 0x10);
+    if (!synced(cr))
         { cyc(66); return; } else { cyc(10); }
     for (;;) {
         cyc(80);
-        abi_RecordNextContact();
-        if (!(cpu.p & P_C))
+        w_RecordNextContact(cr);
+        if (!(cr->p & P_C))
             { cyc(72); return; } else { cyc(72); }
-        lda8((uint8_t)(cpu.a & 0x0B));
-        cmp8(0x01);
-        if ((uint8_t)cpu.a == 0x01)
+        lda8(cr, (uint8_t)(cr->a & 0x0B));
+        cmp8(cr, 0x01);
+        if ((uint8_t)cr->a == 0x01)
             break; else { cyc(10); }
-        cmp8(0x02);
-        if ((uint8_t)cpu.a == 0x02)
+        cmp8(cr, 0x02);
+        if ((uint8_t)cr->a == 0x02)
             { cyc(22); break; }
     }
-    if (lap_matches_0a())
+    if (lap_matches_0a(cr))
         { cyc(44); return; } else { cyc(10); }
-    lap_take_0a();
-    lda8(0x40);
-    abi_GsuRecordRaise6A();
-    cpu.p |= P_M;
+    lap_take_0a(cr);
+    lda8(cr, 0x40);
+    w_GsuRecordRaise6A(cr);
+    cr->p |= P_M;
     cyc(22);
-    sound0(0x25);
-    spark_follow(0xB7A8);
+    sound0(cr, 0x25);
+    spark_follow(cr, 0xB7A8);
     cyc(44);
 }
 
@@ -4018,12 +6602,25 @@ static void ball_up_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLapBallUp(Carried *cr)
+{
+    handlers2(cr, 0xAD81, 0xADB6);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x04));
+    lap_ball_record(cr, 0xB7A8);
+    ball_up_frame(cr);
+}
+
 void abi_ObjectLapBallUp(void)
 {
-    handlers2(0xAD81, 0xADB6);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
-    lap_ball_record(0xB7A8);
-    ball_up_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapBallUp(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4035,10 +6632,23 @@ void abi_ObjectLapBallUp(void)
  * compared through $1F58.
  * Entry: as ObjectLapBallUp. Exit: as ObjectLapBallUp.
  */
+void ObjectLapBallUpRecord(Carried *cr)
+{
+    lap_ball_record(cr, 0xB7A8);
+    ball_up_frame(cr);
+}
+
 void abi_ObjectLapBallUpRecord(void)
 {
-    lap_ball_record(0xB7A8);
-    ball_up_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapBallUpRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4053,12 +6663,24 @@ void abi_ObjectLapBallUpRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
-void abi_ObjectLapBallUpStep(void)
+void ObjectLapBallUpStep(Carried *cr)
 {
-    ball_up_frame();
+    ball_up_frame(cr);
 }
 
-static void life_down(unsigned next);
+void abi_ObjectLapBallUpStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapBallUpStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 09:AE60 ObjectSparkFollow
@@ -4070,42 +6692,55 @@ static void life_down(unsigned next);
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectSparkFollow(Carried *cr)
+{
+    cr->y = rd16(cyc_then(30, F_c(0x2029, cr->x)));
+    cr->p = nz16(cr->p, cr->y);
+    (cyc(62), w_ObjectCopyPositionFrom(cr));
+    (cyc(22), life_down(cr, 22));
+    add16(cr, F_c(0x200E, cr->x), 0xFF40);
+    add16(cr, F_c(0x2027, cr->x), cyc_then(44, 0xFFD8));
+    add16_via(cr, F_c(0x200E, cr->x), F_c(0x2027, cr->x));
+    add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x10));
+    add8(cr, F_c(0x2014, cr->x), 0x10);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectSparkFollow(void)
 {
-    cpu.y = rd16(cyc_then(30, F(0x2029, cpu.x)));
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(62), abi_ObjectCopyPositionFrom());
-    (cyc(22), life_down(22));
-    add16(F(0x200E, cpu.x), 0xFF40);
-    add16(F(0x2027, cpu.x), cyc_then(44, 0xFFD8));
-    add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
-    add8(F(0x2015, cpu.x), cyc_then(22, 0x10));
-    add8(F(0x2014, cpu.x), 0x10);
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSparkFollow(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:AF17: the down ball's frame: as the up ball's (contact flags bit 0),
    lowering the car's record +$82 by $40 (GsuRecordLower82) with sound $1B
    and a following spark $B7C4. */
-static void ball_down_frame(void)
+static void ball_down_frame(Carried *cr)
 {
-    add8(F(0x2015, cpu.x), 0x10);
-    add8(F(0x2014, cpu.x), 0x10);
-    if (!synced())
+    add8(cr, F_c(0x2015, cr->x), 0x10);
+    add8(cr, F_c(0x2014, cr->x), 0x10);
+    if (!synced(cr))
         { cyc(34); return; }
-    if ((cyc(6), !next_contact()))
+    if ((cyc(6), !next_contact(cr)))
         { cyc(40); return; }
-    if (lap_matches_0a())
+    if (lap_matches_0a(cr))
         { cyc(12); return; } else { cyc(10); }
-    lap_take_0a();
-    lda8(0x40);
-    abi_GsuRecordLower82();
+    lap_take_0a(cr);
+    lda8(cr, 0x40);
+    w_GsuRecordLower82(cr);
     cyc(72);
-    sound0(0x1B);
-    cpu.p |= P_M;
+    sound0(cr, 0x1B);
+    cr->p |= P_M;
     cyc(22);
-    spark_follow(0xB7C4);
+    spark_follow(cr, 0xB7C4);
     cyc(12);
 }
 
@@ -4118,13 +6753,26 @@ static void ball_down_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLapBallDown(Carried *cr)
+{
+    handlers2(cr, 0xAEE2, 0xAF17);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x04));
+    lap_ball_record(cr, 0xB7C4);
+    ball_down_frame(cr);
+    cyc(32);
+}
+
 void abi_ObjectLapBallDown(void)
 {
-    handlers2(0xAEE2, 0xAF17);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
-    lap_ball_record(0xB7C4);
-    ball_down_frame();
-    cyc(32);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapBallDown(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4136,11 +6784,24 @@ void abi_ObjectLapBallDown(void)
  * compared through $1F58.
  * Entry: as ObjectLapBallDown. Exit: as ObjectLapBallDown.
  */
+void ObjectLapBallDownRecord(Carried *cr)
+{
+    lap_ball_record(cr, 0xB7C4);
+    ball_down_frame(cr);
+    cyc(32);
+}
+
 void abi_ObjectLapBallDownRecord(void)
 {
-    lap_ball_record(0xB7C4);
-    ball_down_frame();
-    cyc(32);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapBallDownRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4154,24 +6815,37 @@ void abi_ObjectLapBallDownRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLapBallDownStep(Carried *cr)
+{
+    ball_down_frame(cr);
+    cyc(32);
+}
+
 void abi_ObjectLapBallDownStep(void)
 {
-    ball_down_frame();
-    cyc(32);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapBallDownStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:AFFC: a car's hit, the first time (+$25 bit 0), moves the count
    $19EE to $19F0 (HudCountMove19EE's copy) and sets $19ED = 8. */
-static void count_gate_frame(void)
+static void count_gate_frame(Carried *cr)
 {
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(12); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    (cyc(46), abi_HudCountMove19EECopy());
-    cpu.p |= P_M;
-    st8i((cyc(22), db()) | 0x19ED, 0x08);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    (cyc(46), w_HudCountMove19EECopy(cr));
+    cr->p |= P_M;
+    st8i(cr, (cyc(22), db(cr)) | 0x19ED, 0x08);
     cyc(44);
 }
 
@@ -4184,11 +6858,24 @@ static void count_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectCountGate(Carried *cr)
+{
+    handlers2(cr, 0xAFD5, 0xAFFC);
+    gate42d(cr, 0x0780);
+    count_gate_frame(cr);
+}
+
 void abi_ObjectCountGate(void)
 {
-    handlers2(0xAFD5, 0xAFFC);
-    gate42d(0x0780);
-    count_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4198,10 +6885,23 @@ void abi_ObjectCountGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectCountGate. Exit: as ObjectCountGate.
  */
+void ObjectCountGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    count_gate_frame(cr);
+}
+
 void abi_ObjectCountGateRecord(void)
 {
-    gate42d(0x0780);
-    count_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4214,33 +6914,46 @@ void abi_ObjectCountGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectCountGateStep(Carried *cr)
+{
+    count_gate_frame(cr);
+}
+
 void abi_ObjectCountGateStep(void)
 {
-    count_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:B065: the counting marker's record ($424, +$0A $90E8) in mode 2 with
    +$2A high $14 at ($500, $500, $500); then its frame. */
-static void count_marker_record(void)
+static void count_marker_record(Carried *cr)
 {
     cyc(62);
-    abi_GsuRecordNew424Alt();
-    (cyc(62), abi_GsuRecordMode2());
+    w_GsuRecordNew424Alt(cr);
+    (cyc(62), w_GsuRecordMode2(cr));
     cyc(58);
-    lda8(0x14);
-    abi_GsuRecordSet2AHigh();
+    lda8(cr, 0x14);
+    w_GsuRecordSet2AHigh(cr);
     cyc(102);
-    record_at(0x0500, 0x0500, 0x0500);
+    record_at(cr, 0x0500, 0x0500, 0x0500);
 }
 
 /* 09:B092: while $19E8 is set, ObjectStep48To8; then synced. */
-static void count_marker_frame(void)
+static void count_marker_frame(Carried *cr)
 {
-    cpu.p |= P_M;
-    if (ld8((cyc(38), db()) | 0x19E8))
-        { cyc(62); abi_ObjectStep48To8(); } else { cyc(22); }
+    cr->p |= P_M;
+    if (ld8(cr, (cyc(38), db(cr)) | 0x19E8))
+        { cyc(62); w_ObjectStep48To8(cr); } else { cyc(22); }
     cyc(62);
-    abi_ObjectSyncFromRecord();
+    w_ObjectSyncFromRecord(cr);
     cyc(44);
 }
 
@@ -4253,19 +6966,32 @@ static void count_marker_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectCountMarker(Carried *cr)
+{
+    handlers2(cr, 0xB065, 0xB092);
+    st16i(cr, F_c(0x2020, cr->x), cyc_then(22, 0xECD0));
+    lda8(cr, 0x00);
+    lda8(cr, 0x80);
+    wr8(F_c(0x205A, cr->x), cyc_then(44, 0x80));
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x04));
+    lda8(cr, 0x00);
+    lda8(cr, 0x80);
+    wr8(F_c(0x205A, cr->x), cyc_then(22, 0x80));
+    count_marker_record(cr);
+    count_marker_frame(cr);
+}
+
 void abi_ObjectCountMarker(void)
 {
-    handlers2(0xB065, 0xB092);
-    st16i(F(0x2020, cpu.x), cyc_then(22, 0xECD0));
-    lda8(0x00);
-    lda8(0x80);
-    wr8(F(0x205A, cpu.x), cyc_then(44, 0x80));
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x04));
-    lda8(0x00);
-    lda8(0x80);
-    wr8(F(0x205A, cpu.x), cyc_then(22, 0x80));
-    count_marker_record();
-    count_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountMarker(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4276,10 +7002,23 @@ void abi_ObjectCountMarker(void)
  * GsuRecordPosition.
  * Entry: as ObjectCountMarker. Exit: as ObjectCountMarker.
  */
+void ObjectCountMarkerRecord(Carried *cr)
+{
+    count_marker_record(cr);
+    count_marker_frame(cr);
+}
+
 void abi_ObjectCountMarkerRecord(void)
 {
-    count_marker_record();
-    count_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountMarkerRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4290,49 +7029,62 @@ void abi_ObjectCountMarkerRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectSyncFromRecord leaves it.
  */
+void ObjectCountMarkerStep(Carried *cr)
+{
+    count_marker_frame(cr);
+}
+
 void abi_ObjectCountMarkerStep(void)
 {
-    count_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountMarkerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_HudCountMove19EE(void);
 
 /* 09:B0DC: the trigger's record (GsuRecordNew42D, GsuRecordFlag10) at
    ($3C0, $3C0, $3C0). */
-static void count_trigger_record(void)
+static void count_trigger_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew42D());
-    abi_GsuRecordFlag10();
-    record_at(0x03C0, 0x03C0, 0x03C0);
+    (cyc(62), w_GsuRecordNew42D(cr));
+    w_GsuRecordFlag10(cr);
+    record_at(cr, 0x03C0, 0x03C0, 0x03C0);
 }
 
 /* 09:B103: synced from its record; at a car's contact (the record's
    contacts, RecordNextContact, with bit 0), +$25 bit 0 set and the count
    moved (HudCountMove19EE) the first time, then $19E8 = 1. */
-static void count_trigger_frame(void)
+static void count_trigger_frame(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
+    (cyc(62), w_ObjectSyncFromRecord(cr));
     cyc(18);
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(44); return; } else { cyc(56); }
     for (;;) {
-        abi_RecordNextContact();
-        if (!(cpu.p & P_C))
+        w_RecordNextContact(cr);
+        if (!(cr->p & P_C))
             return; else { cyc(50); }
-        lda8((uint8_t)(cpu.a & 0x01));
-        if ((uint8_t)cpu.a)
+        lda8(cr, (uint8_t)(cr->a & 0x01));
+        if ((uint8_t)cr->a)
             break;
     }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-    if (!(uint8_t)cpu.a) {
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+    if (!(uint8_t)cr->a) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x01);
-        (cyc(46), abi_HudCountMove19EE());
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        (cyc(46), w_HudCountMove19EE(cr));
     } else { cyc(44); }
     cyc(22);
-    cpu.p |= P_M;
-    st8i(db() | 0x19E8, 0x01);
+    cr->p |= P_M;
+    st8i(cr, db(cr) | 0x19E8, 0x01);
     cyc(44);
 }
 
@@ -4345,11 +7097,24 @@ static void count_trigger_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectCountTrigger(Carried *cr)
+{
+    handlers2(cr, 0xB0DC, 0xB103);
+    count_trigger_record(cr);
+    count_trigger_frame(cr);
+}
+
 void abi_ObjectCountTrigger(void)
 {
-    handlers2(0xB0DC, 0xB103);
-    count_trigger_record();
-    count_trigger_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountTrigger(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4361,10 +7126,23 @@ void abi_ObjectCountTrigger(void)
  * ObjectCountTriggerStep. A failed record is not checked.
  * Entry: as ObjectCountTrigger. Exit: as ObjectCountTrigger.
  */
+void ObjectCountTriggerRecord(Carried *cr)
+{
+    count_trigger_record(cr);
+    count_trigger_frame(cr);
+}
+
 void abi_ObjectCountTriggerRecord(void)
 {
-    count_trigger_record();
-    count_trigger_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountTriggerRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4379,9 +7157,22 @@ void abi_ObjectCountTriggerRecord(void)
  * ObjectSyncFromRecord or RecordNextContact leaves it; touched: A low byte
  * = 1, M 8-bit, N, Z from it.
  */
+void ObjectCountTriggerStep(Carried *cr)
+{
+    count_trigger_frame(cr);
+}
+
 void abi_ObjectCountTriggerStep(void)
 {
-    count_trigger_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountTriggerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ---- 09:C438-D13E: bobbing, breakable, swinging, orbiting objects ---- */
@@ -4393,56 +7184,56 @@ void abi_GsuRecordNew424Piece(void);
 void abi_ObjectBreakableBurst(void);
 
 /* Direct page byte or word at off. */
-static uint32_t dp(uint8_t off)
+static uint32_t dp(Carried *cr, uint8_t off)
 {
     cyc(4);
-    return (uint16_t)(cpu.d + off);
+    return (uint16_t)(cr->d + off);
 }
 
 /* LDA addr, EOR #m, STA addr (8-bit). */
-static void eor8(uint32_t addr, uint8_t m)
+static void eor8(Carried *cr, uint32_t addr, uint8_t m)
 {
-    uint8_t v = (uint8_t)(ld8(addr) ^ m);
+    uint8_t v = (uint8_t)(ld8(cr, addr) ^ m);
 
-    lda8(v);
+    lda8(cr, v);
     cyc(26);
     wr8(addr, v);
 }
 
 /* NOP, LDA #v, ORA #$80, STA +f: a value shown with bit 7. */
-static void st8i_hi(uint32_t addr, uint8_t v)
+static void st8i_hi(Carried *cr, uint32_t addr, uint8_t v)
 {
-    lda8(v);
-    lda8((uint8_t)(v | 0x80));
+    lda8(cr, v);
+    lda8(cr, (uint8_t)(v | 0x80));
     cyc(6);
     wr8(addr, (uint8_t)(v | 0x80));
 }
 
 /* LDA +f, STA $1F58, SEP #$20, LDA $0DEA, CMP $1F58: 1 when the lap
    $0DEA is the one in field f. */
-static int lap_eq(uint16_t f)
+static int lap_eq(Carried *cr, uint16_t f)
 {
     uint8_t v, r;
 
-    v = ld8(cyc_then(22, F(f, cpu.x)));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    cpu.p |= P_M;
-    v = ld8((cyc(38), db()) | 0x0DEA);
-    r = rd8(cyc_then(24, db() | 0x1F58));
-    cmp8(r);
+    v = ld8(cr, cyc_then(22, F_c(f, cr->x)));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
+    r = rd8(cyc_then(24, db(cr) | 0x1F58));
+    cmp8(cr, r);
     return v == r;
 }
 
 /* SEP #$20, field f = the lap $0DEA through $1F58. */
-static void lap_store(uint16_t f)
+static void lap_store(Carried *cr, uint16_t f)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
-    v = ld8((cyc(28), db()) | 0x0DEA);
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = ld8((cyc(16), db()) | 0x1F58);
-    wr8(F(f, cpu.x), cyc_then(30, v));
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(28), db(cr)) | 0x0DEA);
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = ld8(cr, (cyc(16), db(cr)) | 0x1F58);
+    wr8(F_c(f, cr->x), cyc_then(30, v));
 }
 
 /*
@@ -4453,45 +7244,58 @@ static void lap_store(uint16_t f)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the count | $80;
  * N, Z from it.
  */
-void abi_ObjectCountUpTo2(void)
+void ObjectCountUpTo2(Carried *cr)
 {
     uint8_t v;
 
-    v = ld8(cyc_then(22, F(0x2048, cpu.x)));
+    v = ld8(cr, cyc_then(22, F_c(0x2048, cr->x)));
     cyc(22);
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (v != 0x02)
-        inc8(F(0x2048, cpu.x)); else { cyc(42); }
+        inc8(cr, F_c(0x2048, cr->x)); else { cyc(42); }
     cyc(22);
-    v = ld8(F(0x2048, cpu.x));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = ld8((cyc(16), db()) | 0x1F58);
-    st8i_hi(F(0x205A, cpu.x), v);
+    v = ld8(cr, F_c(0x2048, cr->x));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = ld8(cr, (cyc(16), db(cr)) | 0x1F58);
+    st8i_hi(cr, F_c(0x205A, cr->x), v);
     cyc(42);
+}
+
+void abi_ObjectCountUpTo2(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountUpTo2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C478: the bob: the speed +$29 added to the offset +$27, turning back
    at $10 and -$10; the height +$0E moved by the offset (through $1F4C) and
    the scale +$15 grown by 4. */
-static void bob_frame(void)
+static void bob_frame(Carried *cr)
 {
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(52, F(0x2027, cpu.x)));
-    op_add16(rd16(cyc_then(44, F(0x2029, cpu.x))));
-    wr16(F(0x2027, cpu.x), cyc_then(30, cpu.a));
-    op_cmp16(0x0010);
-    if (cpu.a == 0x0010 || (cyc(34), (op_cmp16(0xFFF0), cpu.a == 0xFFF0))) {
-        op_lda16(cyc_then(76, F(0x2029, cpu.x)));
-        cpu.a ^= 0xFFFF;
-        cpu.p = nz16(cpu.p, cpu.a);
-        cpu.a++;
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2029, cpu.x), cyc_then(68, cpu.a));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(52, F_c(0x2027, cr->x)));
+    r_add16(cr, rd16(cyc_then(44, F_c(0x2029, cr->x))));
+    wr16(F_c(0x2027, cr->x), cyc_then(30, cr->a));
+    r_cmp16(cr, 0x0010);
+    if (cr->a == 0x0010 || (cyc(34), (r_cmp16(cr, 0xFFF0), cr->a == 0xFFF0))) {
+        r_lda16(cr, cyc_then(76, F_c(0x2029, cr->x)));
+        cr->a ^= 0xFFFF;
+        cr->p = nz16(cr->p, cr->a);
+        cr->a++;
+        cr->p = nz16(cr->p, cr->a);
+        wr16(F_c(0x2029, cr->x), cyc_then(68, cr->a));
     } else { cyc(52); }
-    cpu.p |= P_M;
-    add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
-    add8(F(0x2015, cpu.x), cyc_then(22, 0x04));
-    (cyc(62), abi_ObjectRebucket());
+    cr->p |= P_M;
+    add16_via(cr, F_c(0x200E, cr->x), F_c(0x2027, cr->x));
+    add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x04));
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
 }
 
@@ -4503,13 +7307,26 @@ static void bob_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBob(Carried *cr)
+{
+    st16i(cr, F_c(0x2027, cr->x), cyc_then(22, 0x0001));
+    st16i(cr, F_c(0x2029, cr->x), cyc_then(44, 0x0001));
+    cyc(44);
+    handler(cr, cr->x, 0xC478);
+    bob_frame(cr);
+}
+
 void abi_ObjectBob(void)
 {
-    st16i(F(0x2027, cpu.x), cyc_then(22, 0x0001));
-    st16i(F(0x2029, cpu.x), cyc_then(44, 0x0001));
-    cyc(44);
-    handler(cpu.x, 0xC478);
-    bob_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBob(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4522,21 +7339,34 @@ void abi_ObjectBob(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectBobStep(Carried *cr)
+{
+    bob_frame(cr);
+}
+
 void abi_ObjectBobStep(void)
 {
-    bob_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBobStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C4E1: a burst piece's frame: synced; released when +$0A runs out; it
    grows (+$14, +$15, +$16 by $18). */
-static void burst_piece_frame(void)
+static void burst_piece_frame(Carried *cr)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
-    if (!dec8(cyc_then(22, F(0x200A, cpu.x))))
-        { cyc(84); abi_ObjectRelease(); } else { cyc(48); }
-    add8(F(0x2014, cpu.x), 0x18);
-    add8(F(0x2015, cpu.x), 0x18);
-    add8(F(0x2016, cpu.x), 0x18);
+    (cyc(62), w_ObjectSyncFromRecord(cr));
+    if (!dec8(cr, cyc_then(22, F_c(0x200A, cr->x))))
+        { cyc(84); w_ObjectRelease(cr); } else { cyc(48); }
+    add8(cr, F_c(0x2014, cr->x), 0x18);
+    add8(cr, F_c(0x2015, cr->x), 0x18);
+    add8(cr, F_c(0x2016, cr->x), 0x18);
     cyc(44);
 }
 
@@ -4551,21 +7381,34 @@ static void burst_piece_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame or
  * ObjectRelease leaves it.
  */
-void abi_ObjectBreakablePiece(void)
+void ObjectBreakablePiece(Carried *cr)
 {
-    cpu.p |= P_M;
+    cr->p |= P_M;
     cyc(44);
-    handler(cpu.x, 0xC4E1);
-    (cyc(62), abi_GsuRecordNew424Piece());
-    if (cpu.p & P_N) {
+    handler(cr, cr->x, 0xC4E1);
+    (cyc(62), w_GsuRecordNew424Piece(cr));
+    if (cr->p & P_N) {
         cyc(84);
-        abi_ObjectRelease();
+        w_ObjectRelease(cr);
         { cyc(44); return; }
     } else { cyc(16); }
-    (cyc(62), abi_GsuRecordVelocity());
-    lda8(0x00);
-    (cyc(58), abi_GsuRecordSet2AHigh());
-    (cyc(102), burst_piece_frame());
+    (cyc(62), w_GsuRecordVelocity(cr));
+    lda8(cr, 0x00);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(102), burst_piece_frame(cr));
+}
+
+void abi_ObjectBreakablePiece(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakablePiece(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4576,45 +7419,58 @@ void abi_ObjectBreakablePiece(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: A low byte = the
  * new +$16; N, Z, C, V from its add.
  */
+void ObjectBreakablePieceStep(Carried *cr)
+{
+    burst_piece_frame(cr);
+}
+
 void abi_ObjectBreakablePieceStep(void)
 {
-    burst_piece_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakablePieceStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C560: the breakable's frame: its life +$0A runs out (released); it
    grows by $0C (the words at +$14, +$15, +$16); a car's hit releases it
    with sound $5A and bursts it into eight pieces (09:D79C). */
-static void breakable_frame(void)
+static void breakable_frame(Carried *cr)
 {
-    if (!dec8(cyc_then(22, F(0x200A, cpu.x))))
-        { cyc(84); abi_ObjectRelease(); cyc(22); } else { cyc(70); }
-    add16(F(0x2014, cpu.x), 0x000C);
-    add16(F(0x2015, cpu.x), cyc_then(44, 0x000C));
-    add16(F(0x2016, cpu.x), cyc_then(44, 0x000C));
-    if (!(cyc(22), hit()))
+    if (!dec8(cr, cyc_then(22, F_c(0x200A, cr->x))))
+        { cyc(84); w_ObjectRelease(cr); cyc(22); } else { cyc(70); }
+    add16(cr, F_c(0x2014, cr->x), 0x000C);
+    add16(cr, F_c(0x2015, cr->x), cyc_then(44, 0x000C));
+    add16(cr, F_c(0x2016, cr->x), cyc_then(44, 0x000C));
+    if (!(cyc(22), hit(cr)))
         { cyc(62); return; } else { cyc(36); }
-    (cyc(38), abi_ObjectRelease());
-    sound0(0x5A);
-    (cyc(62), abi_ObjectBreakableBurst());
+    (cyc(38), w_ObjectRelease(cr));
+    sound0(cr, 0x5A);
+    (cyc(62), ObjectBreakableBurst(cr));
     cyc(44);
 }
 
 /* 09:C531: the breakable's record (GsuRecordNew424Piece; none: released)
    with flag bit 4, +$2A high $46, at ($C0, $C0, $C0); then its frame. */
-static void breakable_record(void)
+static void breakable_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew424Piece());
-    if (cpu.p & P_N) {
+    (cyc(62), w_GsuRecordNew424Piece(cr));
+    if (cr->p & P_N) {
         cyc(84);
-        abi_ObjectRelease();
+        w_ObjectRelease(cr);
         { cyc(44); return; }
     } else { cyc(16); }
-    (cyc(62), abi_GsuRecordFlag10());
-    lda8(0x46);
-    (cyc(58), abi_GsuRecordSet2AHigh());
+    (cyc(62), w_GsuRecordFlag10(cr));
+    lda8(cr, 0x46);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
     cyc(102);
-    record_at(0x00C0, 0x00C0, 0x00C0);
-    breakable_frame();
+    record_at(cr, 0x00C0, 0x00C0, 0x00C0);
+    breakable_frame(cr);
 }
 
 /*
@@ -4627,13 +7483,26 @@ static void breakable_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
-void abi_ObjectBreakable(void)
+void ObjectBreakable(Carried *cr)
 {
     cyc(22);
-    handler(cpu.x, 0xC560);
-    st16i(F(0x201D, cpu.x), cyc_then(22, 0xC531));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
-    breakable_record();
+    handler(cr, cr->x, 0xC560);
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, 0xC531));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
+    breakable_record(cr);
+}
+
+void abi_ObjectBreakable(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakable(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4646,9 +7515,22 @@ void abi_ObjectBreakable(void)
  * Reached only by unit_objects_09c.
  * Entry: as ObjectBreakable. Exit: as ObjectBreakable.
  */
+void ObjectBreakableRecord(Carried *cr)
+{
+    breakable_record(cr);
+}
+
 void abi_ObjectBreakableRecord(void)
 {
-    breakable_record();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4662,9 +7544,22 @@ void abi_ObjectBreakableRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBreakableStep(Carried *cr)
+{
+    breakable_frame(cr);
+}
+
 void abi_ObjectBreakableStep(void)
 {
-    breakable_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4674,10 +7569,23 @@ void abi_ObjectBreakableStep(void)
  * expect. Reached only by unit_objects_09c.
  * Entry: M 8-bit; X = object. Exit: A low byte = $80; N set.
  */
+void ObjectColour0(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x00));
+    cyc(44);
+}
+
 void abi_ObjectColour0(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x00));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4687,10 +7595,23 @@ void abi_ObjectColour0(void)
  * expect. Reached only by unit_objects_09c.
  * Entry: M 8-bit; X = object. Exit: A low byte = $81; N set.
  */
+void ObjectColour1(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x01));
+    cyc(44);
+}
+
 void abi_ObjectColour1(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x01));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4700,10 +7621,23 @@ void abi_ObjectColour1(void)
  * expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $82; N set.
  */
+void ObjectColour2(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x02));
+    cyc(44);
+}
+
 void abi_ObjectColour2(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x02));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4713,10 +7647,23 @@ void abi_ObjectColour2(void)
  * expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $83; N set.
  */
+void ObjectColour3(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x03));
+    cyc(44);
+}
+
 void abi_ObjectColour3(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x03));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour3(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4726,10 +7673,23 @@ void abi_ObjectColour3(void)
  * expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $84; N set.
  */
+void ObjectColour4(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x04));
+    cyc(44);
+}
+
 void abi_ObjectColour4(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x04));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour4(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4739,10 +7699,23 @@ void abi_ObjectColour4(void)
  * expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $85; N set.
  */
+void ObjectColour5(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x05));
+    cyc(44);
+}
+
 void abi_ObjectColour5(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x05));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour5(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4752,10 +7725,23 @@ void abi_ObjectColour5(void)
  * expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $86; N set.
  */
+void ObjectColour6(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x06));
+    cyc(44);
+}
+
 void abi_ObjectColour6(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x06));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour6(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4765,10 +7751,23 @@ void abi_ObjectColour6(void)
  * expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $87; N set.
  */
+void ObjectColour7(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(30, 0x07));
+    cyc(44);
+}
+
 void abi_ObjectColour7(void)
 {
-    st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x07));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectColour7(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4777,10 +7776,23 @@ void abi_ObjectColour7(void)
  * HOW: One store; starts with a NOP, as the course data's pointers expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $E0.
  */
+void ObjectScaleE0(Carried *cr)
+{
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(20, 0xE0));
+    cyc(44);
+}
+
 void abi_ObjectScaleE0(void)
 {
-    st8i(F(0x2015, cpu.x), cyc_then(20, 0xE0));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScaleE0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4789,10 +7801,23 @@ void abi_ObjectScaleE0(void)
  * HOW: One store; starts with a NOP, as the course data's pointers expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $A0.
  */
+void ObjectScaleA0(Carried *cr)
+{
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(20, 0xA0));
+    cyc(44);
+}
+
 void abi_ObjectScaleA0(void)
 {
-    st8i(F(0x2015, cpu.x), cyc_then(20, 0xA0));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScaleA0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4801,40 +7826,53 @@ void abi_ObjectScaleA0(void)
  * HOW: One store; starts with a NOP, as the course data's pointers expect.
  * Entry: M 8-bit; X = object. Exit: A low byte = $20.
  */
+void ObjectScale20(Carried *cr)
+{
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(20, 0x20));
+    cyc(44);
+}
+
 void abi_ObjectScale20(void)
 {
-    st8i(F(0x2015, cpu.x), cyc_then(20, 0x20));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScale20(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C62D: the swing's frame: by +$25 bit 0 it moves $28 left with its
    scale +$15 eased toward $40, or $28 right toward $C0
    (ApproachEighthMin8Byte); +$0A counts down, and at 0 the side flips and
    +$0A = $50. */
-static void swing_frame(void)
+static void swing_frame(Carried *cr)
 {
-    if (bit25(0x01)) {
+    if (bit25(cr, 0x01)) {
         cyc(66);
-        add16(F(0x200C, cpu.x), 0x0028);
-        (cyc(4), ease8(F(0x2015, cpu.x), 0xC0, ApproachEighthMin8Byte));
+        add16(cr, F_c(0x200C, cr->x), 0x0028);
+        (cyc(4), ease8(cr, F_c(0x2015, cr->x), 0xC0, ApproachEighthMin8Byte));
         cyc(22);
     } else {
         cyc(40);
-        add16(F(0x200C, cpu.x), 0xFFD8);
-        (cyc(4), ease8(F(0x2015, cpu.x), 0x40, ApproachEighthMin8Byte));
+        add16(cr, F_c(0x200C, cr->x), 0xFFD8);
+        (cyc(4), ease8(cr, F_c(0x2015, cr->x), 0x40, ApproachEighthMin8Byte));
         cyc(46);                        /* JMP */
     }
-    if (ld8(F(0x200A, cpu.x))) {
+    if (ld8(cr, F_c(0x200A, cr->x))) {
         cyc(44);
-        dec8(F(0x200A, cpu.x));
+        dec8(cr, F_c(0x200A, cr->x));
         cyc(86);                        /* JMP, JSL */
     } else {
         cyc(70);
-        eor8(F(0x2025, cpu.x), 0x01);
-        st8i(F(0x200A, cpu.x), cyc_then(6, 0x50));
+        eor8(cr, F_c(0x2025, cr->x), 0x01);
+        st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x50));
         cyc(62);                        /* JSL */
     }
-    abi_ObjectRebucket();
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
@@ -4847,13 +7885,26 @@ static void swing_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSwing(Carried *cr)
+{
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(20, 0x00));
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x28));
+    cyc(22);
+    handler(cr, cr->x, 0xC62D);
+    swing_frame(cr);
+}
+
 void abi_ObjectSwing(void)
 {
-    st8i(F(0x2015, cpu.x), cyc_then(20, 0x00));
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x28));
-    cyc(22);
-    handler(cpu.x, 0xC62D);
-    swing_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwing(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4866,29 +7917,42 @@ void abi_ObjectSwing(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectSwingStep(Carried *cr)
+{
+    swing_frame(cr);
+}
+
 void abi_ObjectSwingStep(void)
 {
-    swing_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwingStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A new object of `kind` at X's position moved (dx, dy, dz), scale +$15 =
    s15, +$14 = $F8, life +$0A = t, handler h, sound $52; nothing without a
    free object. */
-static void crowd_spawn(uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s15, uint8_t t, uint16_t h)
+static void crowd_spawn(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s15, uint8_t t, uint16_t h)
 {
     cyc(28);
-    if (!spawn(0xB770))
+    if (!spawn(cr, 0xB770))
         { cyc(68); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    add16(F(0x200C, cpu.y), cyc_then(22, dx));
-    add16(F(0x200E, cpu.y), cyc_then(44, dy));
-    add16(F(0x2010, cpu.y), cyc_then(44, dz));
-    st8i(F(0x2015, cpu.y), cyc_then(28, s15));
-    st8i(F(0x2014, cpu.y), cyc_then(6, 0xF8));
-    st8i(F(0x200A, cpu.y), cyc_then(6, t));
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x200C, cr->y), cyc_then(22, dx));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(44, dy));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, dz));
+    st8i(cr, F_c(0x2015, cr->y), cyc_then(28, s15));
+    st8i(cr, F_c(0x2014, cr->y), cyc_then(6, 0xF8));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(6, t));
     cyc(22);
-    handler(cpu.y, h);
-    sound0(0x52);
+    handler(cr, cr->y, h);
+    sound0(cr, 0x52);
     cyc(42);
 }
 
@@ -4902,9 +7966,22 @@ static void crowd_spawn(uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s15, uint
  * Entry: M 8-bit, X 16-bit; X = the gate. Exit: as SoundPort0QueuePush or
  * ObjectSpawn leaves it.
  */
+void LapCrowdSpawn0(Carried *cr)
+{
+    crowd_spawn(cr, 0x0F00, 0xFE40, 0xD800, 0x40, 0x1C, 0xC7C9);
+}
+
 void abi_LapCrowdSpawn0(void)
 {
-    crowd_spawn(0x0F00, 0xFE40, 0xD800, 0x40, 0x1C, 0xC7C9);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdSpawn0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4914,9 +7991,22 @@ void abi_LapCrowdSpawn0(void)
  * HOW: As LapCrowdSpawn0. Reached only by unit_objects_09c.
  * Entry: as LapCrowdSpawn0. Exit: as LapCrowdSpawn0.
  */
+void LapCrowdSpawn1(Carried *cr)
+{
+    crowd_spawn(cr, 0xF600, 0xFE20, 0xD440, 0xE0, 0x16, 0xC7FC);
+}
+
 void abi_LapCrowdSpawn1(void)
 {
-    crowd_spawn(0xF600, 0xFE20, 0xD440, 0xE0, 0x16, 0xC7FC);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdSpawn1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4926,17 +8016,30 @@ void abi_LapCrowdSpawn1(void)
  * HOW: As LapCrowdSpawn0. Reached only by unit_objects_09c.
  * Entry: as LapCrowdSpawn0. Exit: as LapCrowdSpawn0.
  */
+void LapCrowdSpawn2(Carried *cr)
+{
+    crowd_spawn(cr, 0x03C0, 0xFE20, 0xD080, 0x00, 0x16, 0xC83D);
+}
+
 void abi_LapCrowdSpawn2(void)
 {
-    crowd_spawn(0x03C0, 0xFE20, 0xD080, 0x00, 0x16, 0xC83D);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdSpawn2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* DEC +$0A; at 0, ObjectRelease. `next` is the time of what follows on both
    paths (REP 22, JSL 62, RTS 42); the skipped release costs BEQ and JML. */
-static void life_down(unsigned next)
+static void life_down(Carried *cr, unsigned next)
 {
-    if (!dec8(F(0x200A, cpu.x)))
-        { cyc(84); abi_ObjectRelease(); cyc(next); } else { cyc(48 + next); }
+    if (!dec8(cr, F_c(0x200A, cr->x)))
+        { cyc(84); w_ObjectRelease(cr); cyc(next); } else { cyc(48 + next); }
 }
 
 /*
@@ -4947,11 +8050,24 @@ static void life_down(unsigned next)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as DEC or ObjectRelease
  * leaves it.
  */
+void LapCrowdMove0(Carried *cr)
+{
+    add16(cr, F_c(0x200C, cr->x), cyc_then(82, 0xFF4C));
+    add16(cr, F_c(0x200E, cr->x), cyc_then(44, 0xFFF6));
+    (cyc(44), life_down(cr, 42));
+}
+
 void abi_LapCrowdMove0(void)
 {
-    add16(F(0x200C, cpu.x), cyc_then(82, 0xFF4C));
-    add16(F(0x200E, cpu.x), cyc_then(44, 0xFFF6));
-    (cyc(44), life_down(42));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdMove0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4961,12 +8077,25 @@ void abi_LapCrowdMove0(void)
  * HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
  * Entry: as LapCrowdMove0. Exit: as LapCrowdMove0.
  */
+void LapCrowdMove1(Carried *cr)
+{
+    add16(cr, F_c(0x200C, cr->x), cyc_then(82, 0x0104));
+    add16(cr, F_c(0x200E, cr->x), cyc_then(44, 0xFFF6));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(44, 0x00C8));
+    (cyc(44), life_down(cr, 42));
+}
+
 void abi_LapCrowdMove1(void)
 {
-    add16(F(0x200C, cpu.x), cyc_then(82, 0x0104));
-    add16(F(0x200E, cpu.x), cyc_then(44, 0xFFF6));
-    add16(F(0x2010, cpu.x), cyc_then(44, 0x00C8));
-    (cyc(44), life_down(42));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdMove1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4976,11 +8105,24 @@ void abi_LapCrowdMove1(void)
  * HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
  * Entry: as LapCrowdMove0. Exit: as LapCrowdMove0.
  */
+void LapCrowdMove2(Carried *cr)
+{
+    add16(cr, F_c(0x200E, cr->x), cyc_then(82, 0xFFF3));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(44, 0x00C8));
+    (cyc(44), life_down(cr, 42));
+}
+
 void abi_LapCrowdMove2(void)
 {
-    add16(F(0x200E, cpu.x), cyc_then(82, 0xFFF3));
-    add16(F(0x2010, cpu.x), cyc_then(44, 0x00C8));
-    (cyc(44), life_down(42));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdMove2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4990,11 +8132,24 @@ void abi_LapCrowdMove2(void)
  * unit_objects_09c.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
+void LapCrowdStep0(Carried *cr)
+{
+    LapCrowdMove0(cr);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_LapCrowdStep0(void)
 {
-    abi_LapCrowdMove0();
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdStep0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5003,11 +8158,24 @@ void abi_LapCrowdStep0(void)
  * HOW: Starts with a NOP. Reached only by unit_objects_09c.
  * Entry: as LapCrowdStep0. Exit: as LapCrowdStep0.
  */
+void LapCrowdStep1(Carried *cr)
+{
+    LapCrowdMove1(cr);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_LapCrowdStep1(void)
 {
-    abi_LapCrowdMove1();
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdStep1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5016,49 +8184,62 @@ void abi_LapCrowdStep1(void)
  * HOW: Starts with a NOP. Reached only by unit_objects_09c.
  * Entry: as LapCrowdStep0. Exit: as LapCrowdStep0.
  */
+void LapCrowdStep2(Carried *cr)
+{
+    LapCrowdMove2(cr);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_LapCrowdStep2(void)
 {
-    abi_LapCrowdMove2();
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapCrowdStep2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C8BA: synced to its record (ObjectSyncToRecord); a car's hit on a lap
    not counted yet (+$48) counts it and brings out that lap's crowd (laps 0
    to 2). */
-static void crowd_gate_frame(void)
+static void crowd_gate_frame(Carried *cr)
 {
     cyc(62);
     uint8_t lap;
 
-    abi_ObjectSyncToRecord();
+    w_ObjectSyncToRecord(cr);
     cyc(12);
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(50); return; }
-    (cyc(62), abi_RecordContactSummary());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    (cyc(62), w_RecordContactSummary(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         return; else { cyc(12); }
-    if (lap_eq(0x2048))
+    if (lap_eq(cr, 0x2048))
         { cyc(66); return; } else { cyc(26); }
-    lap_store(0x2048);
-    cpu.p |= P_M;
-    lap = ld8((cyc(38), db()) | 0x0DEA);
+    lap_store(cr, 0x2048);
+    cr->p |= P_M;
+    lap = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
     cyc(56);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap == 0x00) {
-        abi_LapCrowdSpawn0();
+        LapCrowdSpawn0(cr);
         { cyc(68); return; }
     } else { cyc(32); }
-    cmp8(0x01);
+    cmp8(cr, 0x01);
     if (lap == 0x01) {
-        abi_LapCrowdSpawn1();
+        LapCrowdSpawn1(cr);
         { cyc(68); return; }
     } else { cyc(32); }
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (lap == 0x02)
-        abi_LapCrowdSpawn2();
+        LapCrowdSpawn2(cr);
     cyc(44);
 }
 
@@ -5071,12 +8252,25 @@ static void crowd_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLapCrowdGate(Carried *cr)
+{
+    handlers2(cr, 0xC893, 0xC8BA);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x04));
+    gate42d(cr, 0x0780);
+    crowd_gate_frame(cr);
+}
+
 void abi_ObjectLapCrowdGate(void)
 {
-    handlers2(0xC893, 0xC8BA);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x04));
-    gate42d(0x0780);
-    crowd_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapCrowdGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5086,10 +8280,23 @@ void abi_ObjectLapCrowdGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectLapCrowdGate. Exit: as ObjectLapCrowdGate.
  */
+void ObjectLapCrowdGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    crowd_gate_frame(cr);
+}
+
 void abi_ObjectLapCrowdGateRecord(void)
 {
-    gate42d(0x0780);
-    crowd_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapCrowdGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5102,9 +8309,22 @@ void abi_ObjectLapCrowdGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLapCrowdGateStep(Carried *cr)
+{
+    crowd_gate_frame(cr);
+}
+
 void abi_ObjectLapCrowdGateStep(void)
 {
-    crowd_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapCrowdGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5116,18 +8336,31 @@ void abi_ObjectLapCrowdGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last store
  * or ObjectSpawn leaves it.
  */
-void abi_ObjectFloaterSpawner(void)
+void ObjectFloaterSpawner(Carried *cr)
 {
     cyc(22);
-    handler(cpu.x, 0xC956);
-    if (!spawn(0xB3B8))
+    handler(cr, cr->x, 0xC956);
+    if (!spawn(cr, 0xB3B8))
         { cyc(70); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    add16(F(0x200E, cpu.y), cyc_then(22, 0x06E0));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x28));
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0x06E0));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x28));
     cyc(22);
-    handler(cpu.y, 0xC95C);
+    handler(cr, cr->y, 0xC95C);
     cyc(44);
+}
+
+void abi_ObjectFloaterSpawner(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFloaterSpawner(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5136,10 +8369,23 @@ void abi_ObjectFloaterSpawner(void)
  * HOW: One store.
  * Entry: M 8-bit; X = object. Exit: A low byte = $40.
  */
+void ObjectFloaterSpawnerStep(Carried *cr)
+{
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(6, 0x40));
+    cyc(44);
+}
+
 void abi_ObjectFloaterSpawnerStep(void)
 {
-    st8i(F(0x2015, cpu.x), cyc_then(6, 0x40));
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFloaterSpawnerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5151,38 +8397,51 @@ void abi_ObjectFloaterSpawnerStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last store
  * leaves it.
  */
-void abi_ObjectFloaterStep(void)
+void ObjectFloaterStep(Carried *cr)
 {
-    (cyc(62), abi_ObjectRebucket());
-    add8(F(0x2015, cpu.x), cyc_then(0, 0x08));
-    if (bit25(0x01))
-        { cyc(66); add16(F(0x200E, cpu.x), 0xFFEC); cyc(44); /* SEP */ }
+    (cyc(62), w_ObjectRebucket(cr));
+    add8(cr, F_c(0x2015, cr->x), cyc_then(0, 0x08));
+    if (bit25(cr, 0x01))
+        { cyc(66); add16(cr, F_c(0x200E, cr->x), 0xFFEC); cyc(44); /* SEP */ }
     else
-        { cyc(40); add16(F(0x200E, cpu.x), 0x0014); cyc(68); /* SEP, JMP */ }
-    if (ld8(F(0x200A, cpu.x))) {
+        { cyc(40); add16(cr, F_c(0x200E, cr->x), 0x0014); cyc(68); /* SEP, JMP */ }
+    if (ld8(cr, F_c(0x200A, cr->x))) {
         cyc(44);
-        dec8(F(0x200A, cpu.x));
+        dec8(cr, F_c(0x200A, cr->x));
         cyc(68);                        /* JMP, RTL */
         return;
     } else { cyc(70); }
-    eor8(F(0x2025, cpu.x), 0x01);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x28));
+    eor8(cr, F_c(0x2025, cr->x), 0x01);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x28));
     cyc(44);
+}
+
+void abi_ObjectFloaterStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFloaterStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA #r, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
    negative r, else 0 (r is a constant, so one of the two stores never
    runs). */
-static void orbit_axis(uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi, uint32_t abs8)
+static void orbit_axis(Carried *cr, uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi, uint32_t abs8)
 {
     /* abs8: 8 more a store when lo2 and hi are absolute ($05F2/$05F3) */
-    lda8(r);
+    lda8(cr, r);
     wr8(lo, r);
     cyc(16 + abs8);
     wr8(lo2, r);
     if (r & 0x80) {
         cyc(32);                        /* BIT #$80, BEQ not taken */
-        lda8(0xFF);
+        lda8(cr, 0xFF);
         cyc(16 + abs8);
         wr8(hi, 0xFF);
         cyc(22);                        /* BRA */
@@ -5194,10 +8453,10 @@ static void orbit_axis(uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi, uint32
 
 /* A sign byte's other arm: LDA #$FF, STA hi for a negative value, STZ hi
    for a positive one. */
-static void sign_arm(uint32_t hi, int neg)
+static void sign_arm(Carried *cr, uint32_t hi, int neg)
 {
     if (neg) {
-        lda8(0xFF);
+        lda8(cr, 0xFF);
         cyc(8);
         wr8(hi, 0xFF);
         cyc(22);                        /* BRA */
@@ -5208,33 +8467,33 @@ static void sign_arm(uint32_t hi, int neg)
 }
 
 /* LDA lo, STA hi (8-bit): the turned vector back as the next input. */
-static void orbit_again(void)
+static void orbit_again(Carried *cr)
 {
-    wr8(dp(0x02), cyc_then(16, ld8(dp(0x04))));
-    wr8(dp(0x08), cyc_then(16, ld8(dp(0x0A))));
+    wr8(dp(cr, 0x02), cyc_then(16, ld8(cr, dp(cr, 0x04))));
+    wr8(dp(cr, 0x08), cyc_then(16, ld8(cr, dp(cr, 0x0A))));
     cyc(12);
-    wr8(dp(0x94), cyc_then(16, ld8(db() | 0x05F2)));
+    wr8(dp(cr, 0x94), cyc_then(16, ld8(cr, db(cr) | 0x05F2)));
 }
 
 /* A word at `at` shifted left five times (16-bit). */
-static void asl5(uint32_t at)
+static void asl5(Carried *cr, uint32_t at)
 {
     int i;
 
     cyc(12);
-    op_lda16(at);
+    r_lda16(cr, at);
     for (i = 0; cyc_loop(14, i < 5); i++)
-        op_asl16();
+        r_asl16(cr);
     cyc((at & 0xFFFF) > 0xFF ? 24 : 16);   /* STA abs or dp */
-    wr16(at, cpu.a);
+    wr16(at, cr->a);
 }
 
 /* dst field of X = src field of Y + the word at `by` (16-bit). */
-static void orbit_add(uint16_t f, uint32_t by, uint32_t adc)
+static void orbit_add(Carried *cr, uint16_t f, uint32_t by, uint32_t adc)
 {
-    op_lda16(cyc_then(26, F(f, cpu.y)));
-    op_add16(rd16(cyc_then(adc, by)));  /* CLC, ADC: 30 direct page, 38 absolute */
-    wr16(F(f, cpu.x), cyc_then(30, cpu.a));
+    r_lda16(cr, cyc_then(26, F_c(f, cr->y)));
+    r_add16(cr, rd16(cyc_then(adc, by)));  /* CLC, ADC: 30 direct page, 38 absolute */
+    wr16(F_c(f, cr->x), cyc_then(30, cr->a));
 }
 
 /* The orbit: Y = the centre (+$27); the vector (r1, r2, r3) turned by the
@@ -5243,84 +8502,84 @@ static void orbit_add(uint16_t f, uint32_t by, uint32_t adc)
    position. Direct page $02/$08/$94 in, $04/$0A/$05F2 out. With arm 1-3
    it is entered at the sign store of r1, r2 or r3 that the constant never
    takes (Y already the centre). */
-static void orbit(int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
+static void orbit(Carried *cr, int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
 {
     if (arm == 0) {
-        cpu.y = rd16(cyc_then(30, F(0x2027, cpu.x)));
-        cpu.p = nz16(cpu.p, cpu.y);
-        orbit_axis(r1, dp(0x02), dp(0x04), dp(0x05), 0);
+        cr->y = rd16(cyc_then(30, F_c(0x2027, cr->x)));
+        cr->p = nz16(cr->p, cr->y);
+        orbit_axis(cr, r1, dp(cr, 0x02), dp(cr, 0x04), dp(cr, 0x05), 0);
     } else if (arm == 1) {
-        sign_arm(dp(0x05), !(r1 & 0x80));
+        sign_arm(cr, dp(cr, 0x05), !(r1 & 0x80));
     }
     if (arm <= 1)
-        orbit_axis(r2, dp(0x08), dp(0x0A), dp(0x0B), 0);
+        orbit_axis(cr, r2, dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B), 0);
     else if (arm == 2)
-        sign_arm(dp(0x0B), !(r2 & 0x80)); else { cyc(4); }
+        sign_arm(cr, dp(cr, 0x0B), !(r2 & 0x80)); else { cyc(4); }
     cyc(8);
     if (arm <= 2)
-        orbit_axis(r3, dp(0x94), db() | 0x05F2, db() | 0x05F3, 8);
+        orbit_axis(cr, r3, dp(cr, 0x94), db(cr) | 0x05F2, db(cr) | 0x05F3, 8);
     else
-        sign_arm(db() | 0x05F3, !(r3 & 0x80));
+        sign_arm(cr, db(cr) | 0x05F3, !(r3 & 0x80));
     cyc(22);
-    ld8(F(0x2016, cpu.y));
-    (cyc(62), abi_RotateXY());
-    orbit_again();
+    ld8(cr, F_c(0x2016, cr->y));
+    (cyc(62), w_RotateXY(cr));
+    orbit_again(cr);
     if (xz) {
         cyc(22);
-        ld8(F(0x2014, cpu.y));
-        (cyc(62), abi_RotateXZFrom08());
-        orbit_again();
-        ld8(cyc_then(22, F(0x2015, cpu.y)));
-        (cyc(62), abi_RotateXZ());
+        ld8(cr, F_c(0x2014, cr->y));
+        (cyc(62), w_RotateXZFrom08(cr));
+        orbit_again(cr);
+        ld8(cr, cyc_then(22, F_c(0x2015, cr->y)));
+        (cyc(62), w_RotateXZ(cr));
     }
     cyc(22);
-    cpu.p &= (uint8_t)~P_M;
-    asl5(dp(0x04));
-    asl5(dp(0x0A));
-    asl5((cyc(12), db()) | 0x05F2);
-    orbit_add(0x200C, dp(0x04), 30);
-    orbit_add(0x2010, (cyc(4), db()) | 0x05F2, 38);
-    orbit_add(0x200E, dp(0x0A), 30);
-    cpu.p |= P_M;
+    cr->p &= (uint8_t)~P_M;
+    asl5(cr, dp(cr, 0x04));
+    asl5(cr, dp(cr, 0x0A));
+    asl5(cr, (cyc(12), db(cr)) | 0x05F2);
+    orbit_add(cr, 0x200C, dp(cr, 0x04), 30);
+    orbit_add(cr, 0x2010, (cyc(4), db(cr)) | 0x05F2, 38);
+    orbit_add(cr, 0x200E, dp(cr, 0x0A), 30);
+    cr->p |= P_M;
 }
 
 /* An orbiter's set-up: a centre of kind $A040 at X's position with handler
    h (+$27 of X = the centre), X's frame f; no centre without a free
    object. */
-static void orbiter(uint16_t h, uint16_t f)
+static void orbiter(Carried *cr, uint16_t h, uint16_t f)
 {
-    if (spawn(0xA040)) {
+    if (spawn(cr, 0xA040)) {
         cyc(62);
         uint8_t a;
 
-        abi_ObjectCopyPositionTo();
-        a = (uint8_t)cpu.a;
-        cpu.p &= (uint8_t)~P_M;
-        cpu.a = cpu.y;
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2027, cpu.x), cyc_then(88, cpu.y));
-        cpu.p |= P_M;
+        w_ObjectCopyPositionTo(cr);
+        a = (uint8_t)cr->a;
+        cr->p &= (uint8_t)~P_M;
+        cr->a = cr->y;
+        cr->p = nz16(cr->p, cr->a);
+        wr16(F_c(0x2027, cr->x), cyc_then(88, cr->y));
+        cr->p |= P_M;
         cyc(52);
-        lda8(a);
-        handler(cpu.y, h);
+        lda8(cr, a);
+        handler(cr, cr->y, h);
     } else { cyc(26); }
     cyc(22);
-    handler(cpu.x, f);
+    handler(cr, cr->x, f);
 }
 
 /* LDA +15 of Y, STA +15 of X; ObjectRebucket. */
-static void orbit_scale_done(void)
+static void orbit_scale_done(Carried *cr)
 {
-    ld8(cyc_then(44, F(0x2015, cpu.y)));
-    wr8(F(0x2015, cpu.x), cyc_then(30, (uint8_t)cpu.a));
+    ld8(cr, cyc_then(44, F_c(0x2015, cr->y)));
+    wr8(F_c(0x2015, cr->x), cyc_then(30, (uint8_t)cr->a));
 }
 
 /* 09:C9F0: circles its centre at radius ($64, 0, 0) turned three ways. */
-static void ring_frame(int arm)
+static void ring_frame(Carried *cr, int arm)
 {
-    orbit(arm, 0x64, 0x00, 0x00, 1);
-    orbit_scale_done();
-    (cyc(62), abi_ObjectRebucket());
+    orbit(cr, arm, 0x64, 0x00, 0x00, 1);
+    orbit_scale_done(cr);
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
 }
 
@@ -5334,10 +8593,23 @@ static void ring_frame(int arm)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectRing(Carried *cr)
+{
+    orbiter(cr, 0xCAA3, 0xC9F0);
+    ring_frame(cr, 0);
+}
+
 void abi_ObjectRing(void)
 {
-    orbiter(0xCAA3, 0xC9F0);
-    ring_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRing(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5352,9 +8624,22 @@ void abi_ObjectRing(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectRingStep(Carried *cr)
+{
+    ring_frame(cr, 0);
+}
+
 void abi_ObjectRingStep(void)
 {
-    ring_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRingStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5368,9 +8653,22 @@ void abi_ObjectRingStep(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectRingStep.
  */
+void ObjectRingStepXSign(Carried *cr)
+{
+    ring_frame(cr, 1);
+}
+
 void abi_ObjectRingStepXSign(void)
 {
-    ring_frame(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRingStepXSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5384,9 +8682,22 @@ void abi_ObjectRingStepXSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectRingStep.
  */
+void ObjectRingStepYSign(Carried *cr)
+{
+    ring_frame(cr, 2);
+}
+
 void abi_ObjectRingStepYSign(void)
 {
-    ring_frame(2);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRingStepYSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5400,9 +8711,22 @@ void abi_ObjectRingStepYSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectRingStep.
  */
+void ObjectRingStepZSign(Carried *cr)
+{
+    ring_frame(cr, 3);
+}
+
 void abi_ObjectRingStepZSign(void)
 {
-    ring_frame(3);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRingStepZSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5411,41 +8735,54 @@ void abi_ObjectRingStepZSign(void)
  * HOW: ADC; ObjectRebucket. Reached only by unit_objects_09c.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
+void ObjectRingCentreStep(Carried *cr)
+{
+    add8(cr, F_c(0x2015, cr->x), 0x01);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectRingCentreStep(void)
 {
-    add8(F(0x2015, cpu.x), 0x01);
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRingCentreStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:CAF8: circles its centre at ($28, $0A, 0); its colour +$5A steps
    through 0-5 with bit 7. */
-static void spinner_frame(int arm)
+static void spinner_frame(Carried *cr, int arm)
 {
     uint8_t v;
 
-    orbit(arm, 0x28, 0x0A, 0x00, 1);
-    orbit_scale_done();
-    v = ld8(cyc_then(22, F(0x205A, cpu.x)));
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8(v, 0x01, &cpu.p);
+    orbit(cr, arm, 0x28, 0x0A, 0x00, 1);
+    orbit_scale_done(cr);
+    v = ld8(cr, cyc_then(22, F_c(0x205A, cr->x)));
+    cr->p &= (uint8_t)~P_C;
+    v = alu_adc8(v, 0x01, &cr->p);
     if (!(v & 0x80)) {
         cyc(24);
-        cpu.p &= (uint8_t)~P_C;
-        v = op_adc8(v, 0x06, &cpu.p);
+        cr->p &= (uint8_t)~P_C;
+        v = alu_adc8(v, 0x06, &cr->p);
     }
     v &= 0x7F;
-    lda8(v);
-    cmp8(0x06);
+    lda8(cr, v);
+    cmp8(cr, 0x06);
     if (v >= 0x06) {
         cyc(8);
-        cpu.p |= P_C;
-        v = op_sbc8(v, 0x06, &cpu.p);
+        cr->p |= P_C;
+        v = alu_sbc8(v, 0x06, &cr->p);
     }
     v |= 0x80;
-    lda8(v);
-    wr8(F(0x205A, cpu.x), cyc_then(112, v));
-    (cyc(62), abi_ObjectRebucket());
+    lda8(cr, v);
+    wr8(F_c(0x205A, cr->x), cyc_then(112, v));
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
 }
 
@@ -5458,13 +8795,26 @@ static void spinner_frame(int arm)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSpinner(Carried *cr)
+{
+    lda8(cr, 0x00);
+    lda8(cr, 0x80);
+    wr8(F_c(0x205A, cr->x), cyc_then(22, 0x80));
+    orbiter(cr, 0xCBC4, 0xCAF8);
+    spinner_frame(cr, 0);
+}
+
 void abi_ObjectSpinner(void)
 {
-    lda8(0x00);
-    lda8(0x80);
-    wr8(F(0x205A, cpu.x), cyc_then(22, 0x80));
-    orbiter(0xCBC4, 0xCAF8);
-    spinner_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpinner(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5478,9 +8828,22 @@ void abi_ObjectSpinner(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectSpinnerStep(Carried *cr)
+{
+    spinner_frame(cr, 0);
+}
+
 void abi_ObjectSpinnerStep(void)
 {
-    spinner_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpinnerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5494,9 +8857,22 @@ void abi_ObjectSpinnerStep(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectSpinnerStep.
  */
+void ObjectSpinnerStepXSign(Carried *cr)
+{
+    spinner_frame(cr, 1);
+}
+
 void abi_ObjectSpinnerStepXSign(void)
 {
-    spinner_frame(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpinnerStepXSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5510,9 +8886,22 @@ void abi_ObjectSpinnerStepXSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectSpinnerStep.
  */
+void ObjectSpinnerStepYSign(Carried *cr)
+{
+    spinner_frame(cr, 2);
+}
+
 void abi_ObjectSpinnerStepYSign(void)
 {
-    spinner_frame(2);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpinnerStepYSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5526,9 +8915,22 @@ void abi_ObjectSpinnerStepYSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectSpinnerStep.
  */
+void ObjectSpinnerStepZSign(Carried *cr)
+{
+    spinner_frame(cr, 3);
+}
+
 void abi_ObjectSpinnerStepZSign(void)
 {
-    spinner_frame(3);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpinnerStepZSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5538,27 +8940,40 @@ void abi_ObjectSpinnerStepZSign(void)
  * HOW: ADCs; ObjectRebucket.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
+void ObjectSpinnerCentreStep(Carried *cr)
+{
+    add8(cr, F_c(0x2015, cr->x), 0xF8);
+    add8(cr, F_c(0x2014, cr->x), 0x0C);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectSpinnerCentreStep(void)
 {
-    add8(F(0x2015, cpu.x), 0xF8);
-    add8(F(0x2014, cpu.x), 0x0C);
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpinnerCentreStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:CC20: a car's hit, the first time (+$25 bit 0), rings sound $2E; no
    hit clears the bit. */
-static void bell_frame(void)
+static void bell_frame(Carried *cr)
 {
-    if (hit()) {
+    if (hit(cr)) {
         cyc(12);
-        if (bit25(0x01))
+        if (bit25(cr, 0x01))
             { cyc(88); return; } else { cyc(18); }
-        or8(F(0x2025, cpu.x), 0x01);
-        sound0(0x2E);
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        sound0(cr, 0x2E);
         { cyc(44); return; }
     } else { cyc(18); }
-    and8(F(0x2025, cpu.x), 0xFE);
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
     cyc(44);
 }
 
@@ -5570,11 +8985,24 @@ static void bell_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBellGate(Carried *cr)
+{
+    handlers2(cr, 0xCBF9, 0xCC20);
+    gate42d(cr, 0x0F00);
+    bell_frame(cr);
+}
+
 void abi_ObjectBellGate(void)
 {
-    handlers2(0xCBF9, 0xCC20);
-    gate42d(0x0F00);
-    bell_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBellGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5584,10 +9012,23 @@ void abi_ObjectBellGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectBellGate. Exit: as ObjectBellGate.
  */
+void ObjectBellGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0F00);
+    bell_frame(cr);
+}
+
 void abi_ObjectBellGateRecord(void)
 {
-    gate42d(0x0F00);
-    bell_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBellGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5598,25 +9039,38 @@ void abi_ObjectBellGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBellGateStep(Carried *cr)
+{
+    bell_frame(cr);
+}
+
 void abi_ObjectBellGateStep(void)
 {
-    bell_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBellGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A lap sign: kind $ABD8 at X's position moved (dx, dy, dz), life +$0A =
    $14, handler h; nothing without a free object. */
-static void sign_spawn(uint16_t dx, uint16_t dy, uint16_t dz, uint16_t h)
+static void sign_spawn(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz, uint16_t h)
 {
     cyc(70);
-    if (!spawn(0xABD8))
+    if (!spawn(cr, 0xABD8))
         { cyc(68); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    add16(F(0x200C, cpu.y), cyc_then(22, dx));
-    add16(F(0x200E, cpu.y), cyc_then(44, dy));
-    add16(F(0x2010, cpu.y), cyc_then(44, dz));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x14));
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x200C, cr->y), cyc_then(22, dx));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(44, dy));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, dz));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x14));
     cyc(22);
-    handler(cpu.y, h);
+    handler(cr, cr->y, h);
     cyc(42);
 }
 
@@ -5630,9 +9084,22 @@ static void sign_spawn(uint16_t dx, uint16_t dy, uint16_t dz, uint16_t h)
  * Entry: M 8-bit, X 16-bit; X = the gate. Exit: as the last store or
  * ObjectSpawn leaves it.
  */
+void LapSignSpawn0(Carried *cr)
+{
+    sign_spawn(cr, 0x0A00, 0xFF00, 0x0140, 0xCDF4);
+}
+
 void abi_LapSignSpawn0(void)
 {
-    sign_spawn(0x0A00, 0xFF00, 0x0140, 0xCDF4);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapSignSpawn0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5642,9 +9109,22 @@ void abi_LapSignSpawn0(void)
  * HOW: As LapSignSpawn0. Reached only by unit_objects_09c.
  * Entry: as LapSignSpawn0. Exit: as LapSignSpawn0.
  */
+void LapSignSpawn1(Carried *cr)
+{
+    sign_spawn(cr, 0xF600, 0xFF00, 0x0140, 0xCE30);
+}
+
 void abi_LapSignSpawn1(void)
 {
-    sign_spawn(0xF600, 0xFF00, 0x0140, 0xCE30);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapSignSpawn1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5654,20 +9134,33 @@ void abi_LapSignSpawn1(void)
  * HOW: As LapSignSpawn0. Reached only by unit_objects_09c.
  * Entry: as LapSignSpawn0. Exit: as LapSignSpawn0.
  */
+void LapSignSpawn2(Carried *cr)
+{
+    sign_spawn(cr, 0x0000, 0x0000, 0x0000, 0xCE6C);
+}
+
 void abi_LapSignSpawn2(void)
 {
-    sign_spawn(0x0000, 0x0000, 0x0000, 0xCE6C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapSignSpawn2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A lap sign's frame: moved (dx, dy, dz), released when +$0A runs out,
    rebucketed. */
-static void sign_frame(uint16_t dx, uint16_t dy, uint16_t dz)
+static void sign_frame(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz)
 {
-    add16(F(0x200C, cpu.x), cyc_then(22, dx));
-    add16(F(0x200E, cpu.x), cyc_then(44, dy));
-    add16(F(0x2010, cpu.x), cyc_then(44, dz));
-    (cyc(44), life_down(62));
-    abi_ObjectRebucket();
+    add16(cr, F_c(0x200C, cr->x), cyc_then(22, dx));
+    add16(cr, F_c(0x200E, cr->x), cyc_then(44, dy));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(44, dz));
+    (cyc(44), life_down(cr, 62));
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
@@ -5679,9 +9172,22 @@ static void sign_frame(uint16_t dx, uint16_t dy, uint16_t dz)
  * unit_objects_09c.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
+void LapSignStep0(Carried *cr)
+{
+    sign_frame(cr, 0xFF20, 0x0000, 0x0000);
+}
+
 void abi_LapSignStep0(void)
 {
-    sign_frame(0xFF20, 0x0000, 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapSignStep0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5691,9 +9197,22 @@ void abi_LapSignStep0(void)
  * HOW: As LapSignStep0. Reached only by unit_objects_09c.
  * Entry: as LapSignStep0. Exit: as LapSignStep0.
  */
+void LapSignStep1(Carried *cr)
+{
+    sign_frame(cr, 0x00E0, 0x0000, 0x0000);
+}
+
 void abi_LapSignStep1(void)
 {
-    sign_frame(0x00E0, 0x0000, 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapSignStep1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5703,38 +9222,51 @@ void abi_LapSignStep1(void)
  * HOW: As LapSignStep0. Reached only by unit_objects_09c.
  * Entry: as LapSignStep0. Exit: as LapSignStep0.
  */
+void LapSignStep2(Carried *cr)
+{
+    sign_frame(cr, 0x0000, 0xFFE0, 0x0000);
+}
+
 void abi_LapSignStep2(void)
 {
-    sign_frame(0x0000, 0xFFE0, 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapSignStep2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:CC9D: a car's hit on a lap not counted yet (+$48) counts it and puts
    up that lap's sign (laps 0 to 2). */
-static void sign_gate_frame(void)
+static void sign_gate_frame(Carried *cr)
 {
     uint8_t lap;
 
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(12); }
-    if (lap_eq(0x2048))
+    if (lap_eq(cr, 0x2048))
         { cyc(66); return; } else { cyc(26); }
-    lap_store(0x2048);
-    cpu.p |= P_M;
-    lap = ld8((cyc(38), db()) | 0x0DEA);
+    lap_store(cr, 0x2048);
+    cr->p |= P_M;
+    lap = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
     cyc(14);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap == 0x00) {
-        abi_LapSignSpawn0();
+        LapSignSpawn0(cr);
         { cyc(68); return; }
     } else { cyc(32); }
-    cmp8(0x01);
+    cmp8(cr, 0x01);
     if (lap == 0x01) {
-        abi_LapSignSpawn1();
+        LapSignSpawn1(cr);
         { cyc(68); return; }
     } else { cyc(32); }
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (lap == 0x02)
-        { abi_LapSignSpawn2(); cyc(44); return; }
+        { LapSignSpawn2(cr); cyc(44); return; }
     cyc(86);
 }
 
@@ -5747,12 +9279,25 @@ static void sign_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLapSignGate(Carried *cr)
+{
+    handlers2(cr, 0xCC76, 0xCC9D);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x00));
+    gate42d(cr, 0x0F00);
+    sign_gate_frame(cr);
+}
+
 void abi_ObjectLapSignGate(void)
 {
-    handlers2(0xCC76, 0xCC9D);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x00));
-    gate42d(0x0F00);
-    sign_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapSignGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5763,10 +9308,23 @@ void abi_ObjectLapSignGate(void)
  * by unit_objects_09c.
  * Entry: as ObjectLapSignGate. Exit: as ObjectLapSignGate.
  */
+void ObjectLapSignGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0F00);
+    sign_gate_frame(cr);
+}
+
 void abi_ObjectLapSignGateRecord(void)
 {
-    gate42d(0x0F00);
-    sign_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapSignGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5779,9 +9337,22 @@ void abi_ObjectLapSignGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLapSignGateStep(Carried *cr)
+{
+    sign_gate_frame(cr);
+}
+
 void abi_ObjectLapSignGateStep(void)
 {
-    sign_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapSignGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:CEE8 / D023: circles its centre at ($64, $46, 0) (turned by +$16
@@ -5789,40 +9360,40 @@ void abi_ObjectLapSignGateStep(void)
    up to $3A or from $C0 (signed, against $3A and $C0) it is the plain model
    $A040 and +$25 bit 0 clears, between them model `lit` and the first
    time (+$25 bit 0) sound `snd` (none when 0); the angle steps by $AA. */
-static void fan_frame(int arm, int xz, uint16_t lit, uint8_t snd)
+static void fan_frame(Carried *cr, int arm, int xz, uint16_t lit, uint8_t snd)
 {
     uint8_t a;
 
-    orbit(arm, 0x64, 0x46, 0x00, xz);
-    ld8(cyc_then(44, F(0x2016, cpu.y)));
-    wr8(F(0x2016, cpu.x), cyc_then(30, (uint8_t)cpu.a));
-    a = ld8(cyc_then(22, F(0x2016, cpu.x)));
-    cmp8(0x3A);
+    orbit(cr, arm, 0x64, 0x46, 0x00, xz);
+    ld8(cr, cyc_then(44, F_c(0x2016, cr->y)));
+    wr8(F_c(0x2016, cr->x), cyc_then(30, (uint8_t)cr->a));
+    a = ld8(cr, cyc_then(22, F_c(0x2016, cr->x)));
+    cmp8(cr, 0x3A);
     if (a == 0x3A || (cyc(50), ((uint8_t)(a - 0x3A) & 0x80)))
         goto plain; else { cyc(52); }
-    ld8(F(0x2016, cpu.x));
-    cmp8(0xC0);
+    ld8(cr, F_c(0x2016, cr->x));
+    cmp8(cr, 0xC0);
     if (!(a == 0xC0 || (cyc(76), ((uint8_t)(a - 0xC0) & 0x80))))
         goto plain;
-    st16i(F(0x2004, cpu.x), lit);
+    st16i(cr, F_c(0x2004, cr->x), lit);
     cyc(22);
-    if (!bit25(0x01)) {
+    if (!bit25(cr, 0x01)) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x01);
+        or8(cr, F_c(0x2025, cr->x), 0x01);
         if (snd)
-            sound0(snd);
+            sound0(cr, snd);
     } else { cyc(44); }
     goto step;
 plain:
     cyc(26);
-    st16i(F(0x2004, cpu.x), 0xA040);
+    st16i(cr, F_c(0x2004, cr->x), 0xA040);
     cyc(22);
-    and8(F(0x2025, cpu.x), 0xFE);
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
 cyc(24);
 step:
-    add8(F(0x2016, cpu.x), 0xAA);
+    add8(cr, F_c(0x2016, cr->x), 0xAA);
     cyc(62);
-    abi_ObjectRebucket();
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
@@ -5835,10 +9406,23 @@ step:
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectFan(Carried *cr)
+{
+    orbiter(cr, 0xCFD5, 0xCEE8);
+    fan_frame(cr, 0, 0, 0xAF04, 0x00);
+}
+
 void abi_ObjectFan(void)
 {
-    orbiter(0xCFD5, 0xCEE8);
-    fan_frame(0, 0, 0xAF04, 0x00);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFan(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5854,9 +9438,22 @@ void abi_ObjectFan(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectFanStep(Carried *cr)
+{
+    fan_frame(cr, 0, 0, 0xAF04, 0x00);
+}
+
 void abi_ObjectFanStep(void)
 {
-    fan_frame(0, 0, 0xAF04, 0x00);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFanStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5870,9 +9467,22 @@ void abi_ObjectFanStep(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectFanStep.
  */
+void ObjectFanStepXSign(Carried *cr)
+{
+    fan_frame(cr, 1, 0, 0xAF04, 0x00);
+}
+
 void abi_ObjectFanStepXSign(void)
 {
-    fan_frame(1, 0, 0xAF04, 0x00);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFanStepXSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5886,9 +9496,22 @@ void abi_ObjectFanStepXSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectFanStep.
  */
+void ObjectFanStepYSign(Carried *cr)
+{
+    fan_frame(cr, 2, 0, 0xAF04, 0x00);
+}
+
 void abi_ObjectFanStepYSign(void)
 {
-    fan_frame(2, 0, 0xAF04, 0x00);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFanStepYSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5902,9 +9525,22 @@ void abi_ObjectFanStepYSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectFanStep.
  */
+void ObjectFanStepZSign(Carried *cr)
+{
+    fan_frame(cr, 3, 0, 0xAF04, 0x00);
+}
+
 void abi_ObjectFanStepZSign(void)
 {
-    fan_frame(3, 0, 0xAF04, 0x00);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFanStepZSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5913,11 +9549,24 @@ void abi_ObjectFanStepZSign(void)
  * HOW: ADC; ObjectRebucket.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
+void ObjectFanCentreStep(Carried *cr)
+{
+    add8(cr, F_c(0x2016, cr->x), 0xF8);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectFanCentreStep(void)
 {
-    add8(F(0x2016, cpu.x), 0xF8);
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFanCentreStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5929,10 +9578,23 @@ void abi_ObjectFanCentreStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectWheel(Carried *cr)
+{
+    orbiter(cr, 0xD131, 0xD023);
+    fan_frame(cr, 0, 1, 0xAF20, 0x38);
+}
+
 void abi_ObjectWheel(void)
 {
-    orbiter(0xD131, 0xD023);
-    fan_frame(0, 1, 0xAF20, 0x38);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWheel(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5945,9 +9607,22 @@ void abi_ObjectWheel(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectWheelStep(Carried *cr)
+{
+    fan_frame(cr, 0, 1, 0xAF20, 0x38);
+}
+
 void abi_ObjectWheelStep(void)
 {
-    fan_frame(0, 1, 0xAF20, 0x38);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWheelStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5961,9 +9636,22 @@ void abi_ObjectWheelStep(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectWheelStep.
  */
+void ObjectWheelStepXSign(Carried *cr)
+{
+    fan_frame(cr, 1, 1, 0xAF20, 0x38);
+}
+
 void abi_ObjectWheelStepXSign(void)
 {
-    fan_frame(1, 1, 0xAF20, 0x38);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWheelStepXSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5977,9 +9665,22 @@ void abi_ObjectWheelStepXSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectWheelStep.
  */
+void ObjectWheelStepYSign(Carried *cr)
+{
+    fan_frame(cr, 2, 1, 0xAF20, 0x38);
+}
+
 void abi_ObjectWheelStepYSign(void)
 {
-    fan_frame(2, 1, 0xAF20, 0x38);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWheelStepYSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5993,9 +9694,22 @@ void abi_ObjectWheelStepYSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
  * $7E. Exit: as ObjectWheelStep.
  */
+void ObjectWheelStepZSign(Carried *cr)
+{
+    fan_frame(cr, 3, 1, 0xAF20, 0x38);
+}
+
 void abi_ObjectWheelStepZSign(void)
 {
-    fan_frame(3, 1, 0xAF20, 0x38);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWheelStepZSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6004,28 +9718,41 @@ void abi_ObjectWheelStepZSign(void)
  * HOW: ADC; ObjectRebucket.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
  */
+void ObjectWheelCentreStep(Carried *cr)
+{
+    add8(cr, F_c(0x2016, cr->x), 0x08);
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectWheelCentreStep(void)
 {
-    add8(F(0x2016, cpu.x), 0x08);
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWheelCentreStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One piece of the breakable's burst: kind $ABF4 at X's position, handler
    $09:C4C0 (ObjectBreakablePiece), the height moved by 0, velocity (vx, vy,
    vz), life +$0A = $0F; nothing without a free object. */
-static void burst_piece(uint16_t vx, uint16_t vy, uint16_t vz)
+static void burst_piece(Carried *cr, uint16_t vx, uint16_t vy, uint16_t vz)
 {
-    if (!spawn(0xABF4))
+    if (!spawn(cr, 0xABF4))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
+    (cyc(62), w_ObjectCopyPositionTo(cr));
     cyc(22);
-    handler(cpu.y, 0xC4C0);
-    add16(F(0x200E, cpu.y), cyc_then(22, 0x0000));
-    st16i(F(0x202E, cpu.y), cyc_then(44, vx));
-    st16i(F(0x2030, cpu.y), cyc_then(44, vy));
-    st16i(F(0x2032, cpu.y), cyc_then(44, vz));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x0F));
+    handler(cr, cr->y, 0xC4C0);
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0x0000));
+    st16i(cr, F_c(0x202E, cr->y), cyc_then(44, vx));
+    st16i(cr, F_c(0x2030, cr->y), cyc_then(44, vy));
+    st16i(cr, F_c(0x2032, cr->y), cyc_then(44, vz));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x0F));
 }
 
 /*
@@ -6040,17 +9767,30 @@ static void burst_piece(uint16_t vx, uint16_t vy, uint16_t vz)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
  * leaves it.
  */
+void ObjectBreakableBurst(Carried *cr)
+{
+    burst_piece(cr, 0x01B3, 0xFFFB, 0x0302);
+    burst_piece(cr, 0x0186, 0xFFF9, 0x02B2);
+    burst_piece(cr, 0xFEA2, 0xFFF6, 0x0000);
+    burst_piece(cr, 0xFE5C, 0xFFF6, 0x0316);
+    burst_piece(cr, 0x0258, 0xFFF6, 0x0212);
+    burst_piece(cr, 0xFED9, 0xFFEC, 0x019F);
+    burst_piece(cr, 0xFE5C, 0xFFFB, 0x0000);
+    burst_piece(cr, 0xFEFC, 0xFFF6, 0xFDBC);
+    cyc(44);
+}
+
 void abi_ObjectBreakableBurst(void)
 {
-    burst_piece(0x01B3, 0xFFFB, 0x0302);
-    burst_piece(0x0186, 0xFFF9, 0x02B2);
-    burst_piece(0xFEA2, 0xFFF6, 0x0000);
-    burst_piece(0xFE5C, 0xFFF6, 0x0316);
-    burst_piece(0x0258, 0xFFF6, 0x0212);
-    burst_piece(0xFED9, 0xFFEC, 0x019F);
-    burst_piece(0xFE5C, 0xFFFB, 0x0000);
-    burst_piece(0xFEFC, 0xFFF6, 0xFDBC);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableBurst(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ---- 09:D13F-E3E3: rails, breakable lap gates, bursts, lamp posts ---- */
@@ -6060,86 +9800,86 @@ void abi_GsuRecordNew424(void);
 /* The colour +$5A stepped on through 0 to n-1 (bit 7 kept): ADC #1, and
    from a value without bit 7, ADC #n first; AND #$7F, CMP #n. Returns
    whether it reached n (carry), A = the masked step. */
-static int colour_step(uint8_t n)
+static int colour_step(Carried *cr, uint8_t n)
 {
     uint8_t v;
 
-    v = ld8(cyc_then(22, F(0x205A, cpu.x)));
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8(v, 0x01, &cpu.p);
+    v = ld8(cr, cyc_then(22, F_c(0x205A, cr->x)));
+    cr->p &= (uint8_t)~P_C;
+    v = alu_adc8(v, 0x01, &cr->p);
     if (!(v & 0x80)) {
         cyc(24);
-        cpu.p &= (uint8_t)~P_C;
-        v = op_adc8(v, n, &cpu.p);
+        cr->p &= (uint8_t)~P_C;
+        v = alu_adc8(v, n, &cr->p);
     }
     v &= 0x7F;
-    lda8(v);
-    cmp8(n);
+    lda8(cr, v);
+    cmp8(cr, n);
     return v >= n;
 }
 
 /* The colour +$5A stepped through 0-5 (SBC #6 at 6). */
-static void colour_cycle6(void)
+static void colour_cycle6(Carried *cr)
 {
     uint8_t v;
 
-    if (colour_step(0x06)) {
+    if (colour_step(cr, 0x06)) {
         cyc(8);
-        cpu.p |= P_C;
-        v = op_sbc8((uint8_t)cpu.a, 0x06, &cpu.p);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cr->p |= P_C;
+        v = alu_sbc8((uint8_t)cr->a, 0x06, &cr->p);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     }
-    v = (uint8_t)(cpu.a | 0x80);
-    lda8(v);
-    wr8(F(0x205A, cpu.x), cyc_then(112, v));
+    v = (uint8_t)(cr->a | 0x80);
+    lda8(cr, v);
+    wr8(F_c(0x205A, cr->x), cyc_then(112, v));
 }
 
 /* LDA dp $00, ORA #$80, STA field f of object o: the colour from the
    direct page's first byte. */
-static void colour_from_dp0(uint32_t at)
+static void colour_from_dp0(Carried *cr, uint32_t at)
 {
     cyc(4);
-    uint8_t v = (uint8_t)(ld8(dp(0x00)) | 0x80);
+    uint8_t v = (uint8_t)(ld8(cr, dp(cr, 0x00)) | 0x80);
 
-    lda8(v);
+    lda8(cr, v);
     cyc(26);
     wr8(at, v);
 }
 
 /* REP #$20, LDA src, STA dst, SEP #$20 (16-bit copy). */
-static void copy16(uint32_t dst, uint32_t src)
+static void copy16(Carried *cr, uint32_t dst, uint32_t src)
 {
-    cpu.p &= (uint8_t)~P_M;
+    cr->p &= (uint8_t)~P_M;
     cyc(52);
-    op_lda16(src);
+    r_lda16(cr, src);
     cyc((dst & 0xFFFF) >= 0x2000 ? 30 : 24);   /* STA abs,X (an object field) or abs */
-    wr16(dst, cpu.a);
-    cpu.p |= P_M;
+    wr16(dst, cr->a);
+    cr->p |= P_M;
 }
 
 /* The rail's slide: +$10 stepped by `step` toward the target +$27
    (through $1F4C); returns 1 when it was already there (nothing stored),
    else steps and syncs to the record (ObjectSyncToRecord). */
-static int rail_slide(uint16_t step)
+static int rail_slide(Carried *cr, uint16_t step)
 {
     uint16_t t;
 
-    copy16(db() | 0x1F4C, F(0x2027, cpu.x));
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(74, F(0x2010, cpu.x)));
-    t = rd16(cyc_then(24, db() | 0x1F4C));
-    op_cmp16(t);
-    cpu.p |= P_M;
-    if (cpu.a == t)
+    copy16(cr, db(cr) | 0x1F4C, F_c(0x2027, cr->x));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(74, F_c(0x2010, cr->x)));
+    t = rd16(cyc_then(24, db(cr) | 0x1F4C));
+    r_cmp16(cr, t);
+    cr->p |= P_M;
+    if (cr->a == t)
         { cyc(70); return 1; }
-    cpu.p &= (uint8_t)~P_M;
-    if (cpu.p & P_N)
-        op_add16(step);
+    cr->p &= (uint8_t)~P_M;
+    if (cr->p & P_N)
+        r_add16(cr, step);
     else
-        { cyc(10); op_sub16(step); }
-    wr16(F(0x2010, cpu.x), cyc_then(172, cpu.a));
-    cpu.p |= P_M;
-    (cyc(84), abi_ObjectSyncToRecord());
+        { cyc(10); r_sub16(cr, step); }
+    wr16(F_c(0x2010, cr->x), cyc_then(172, cr->a));
+    cr->p |= P_M;
+    (cyc(84), w_ObjectSyncToRecord(cr));
     return 0;
 }
 
@@ -6150,11 +9890,24 @@ static int rail_slide(uint16_t step)
  * HOW: Word and byte stores.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = 9.
  */
-void abi_RailStop(void)
+void RailStop(Carried *cr)
 {
     cyc(22);
-    handler(cpu.x, 0xD40C);
+    handler(cr, cr->x, 0xD40C);
     cyc(44);
+}
+
+void abi_RailStop(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailStop(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6167,16 +9920,28 @@ void abi_RailStop(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectSyncToRecord or RailStop leaves it.
  */
+void RailStep(Carried *cr)
+{
+    colour_cycle6(cr);
+    if (rail_slide(cr, 0x0280))
+        RailStop(cr); else { cyc(44); }
+}
+
 void abi_RailStep(void)
 {
-    colour_cycle6();
-    if (rail_slide(0x0280))
-        abi_RailStop(); else { cyc(44); }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:D42C: the drop's frame: the colour counts up to 6 (then the rise,
    09:D460); until then +$10 grows by $40 and it syncs to its record. */
-static void rail_drop_frame(void);
 
 /*
  * @routine 09:D460 RailRise
@@ -6189,15 +9954,28 @@ static void rail_drop_frame(void);
  */
 void abi_RailRiseStep(void);
 
+void RailRise(Carried *cr)
+{
+    copy16(cr, F_c(0x2027, cr->x), F_c(0x2010, cr->x));
+    colour_from_dp0(cr, cyc_then(22, F_c(0x205A, cr->x)));
+    st16i(cr, F_c(0x2004, cr->x), cyc_then(22, 0xB2D8));
+    add16(cr, F_c(0x2027, cr->x), cyc_then(44, 0x0500));
+    cyc(44);
+    handler(cr, cr->x, 0xD498);
+    RailRiseStep(cr);
+}
+
 void abi_RailRise(void)
 {
-    copy16(F(0x2027, cpu.x), F(0x2010, cpu.x));
-    colour_from_dp0(cyc_then(22, F(0x205A, cpu.x)));
-    st16i(F(0x2004, cpu.x), cyc_then(22, 0xB2D8));
-    add16(F(0x2027, cpu.x), cyc_then(44, 0x0500));
-    cyc(44);
-    handler(cpu.x, 0xD498);
-    abi_RailRiseStep();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailRise(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6208,30 +9986,43 @@ void abi_RailRise(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectSyncToRecord or ObjectRelease leaves it.
  */
-void abi_RailRiseStep(void)
+void RailRiseStep(Carried *cr)
 {
-    colour_cycle6();
-    if (rail_slide(0x0140))
-        { cyc(62); abi_ObjectRelease(); cyc(44); } else { cyc(44); }
+    colour_cycle6(cr);
+    if (rail_slide(cr, 0x0140))
+        { cyc(62); w_ObjectRelease(cr); cyc(44); } else { cyc(44); }
 }
 
-static void rail_drop_frame(void)
+void abi_RailRiseStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailRiseStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+static void rail_drop_frame(Carried *cr)
 {
     uint8_t v;
 
-    if (colour_step(0x07)) {
-        lda8(0x07);
-        lda8(0x06);
-        lda8(0x86);
-        wr8(F(0x205A, cpu.x), cyc_then(96, 0x86));
-        (cyc(24), abi_RailRise());
+    if (colour_step(cr, 0x07)) {
+        lda8(cr, 0x07);
+        lda8(cr, 0x06);
+        lda8(cr, 0x86);
+        wr8(F_c(0x205A, cr->x), cyc_then(96, 0x86));
+        (cyc(24), RailRise(cr));
         return;
     }
-    v = (uint8_t)(cpu.a | 0x80);
-    lda8(v);
-    wr8(F(0x205A, cpu.x), cyc_then(112, v));
-    add16(F(0x2010, cpu.x), cyc_then(22, 0x0040));
-    (cyc(84), abi_ObjectSyncToRecord());
+    v = (uint8_t)(cr->a | 0x80);
+    lda8(cr, v);
+    wr8(F_c(0x205A, cr->x), cyc_then(112, v));
+    add16(cr, F_c(0x2010, cr->x), cyc_then(22, 0x0040));
+    (cyc(84), w_ObjectSyncToRecord(cr));
     cyc(44);
 }
 
@@ -6243,13 +10034,26 @@ static void rail_drop_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void RailDrop(Carried *cr)
+{
+    colour_from_dp0(cr, F_c(0x205A, cr->x));
+    st16i(cr, F_c(0x2004, cr->x), cyc_then(22, 0xB2F4));
+    cyc(44);
+    handler(cr, cr->x, 0xD42C);
+    rail_drop_frame(cr);
+}
+
 void abi_RailDrop(void)
 {
-    colour_from_dp0(F(0x205A, cpu.x));
-    st16i(F(0x2004, cpu.x), cyc_then(22, 0xB2F4));
-    cyc(44);
-    handler(cpu.x, 0xD42C);
-    rail_drop_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailDrop(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6262,27 +10066,40 @@ void abi_RailDrop(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
  * ObjectSyncToRecord or RailRise leaves it.
  */
+void RailDropStep(Carried *cr)
+{
+    rail_drop_frame(cr);
+}
+
 void abi_RailDropStep(void)
 {
-    rail_drop_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailDropStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One rail: kind $B2D8 coloured from direct page $00, scale $80, at X's
    position moved (dx, 0, dz), its target +$27 = its +$10 + t, handler
    $09:D3AF (RailStep); nothing without a free object. */
-static void rail(uint16_t dx, uint16_t dz, uint16_t t)
+static void rail(Carried *cr, uint16_t dx, uint16_t dz, uint16_t t)
 {
-    if (!spawn(0xB2D8))
+    if (!spawn(cr, 0xB2D8))
         { cyc(26); return; }
-    colour_from_dp0(F(0x205A, cpu.y));
-    st8i(F(0x2015, cpu.y), cyc_then(6, 0x80));
-    (cyc(62), abi_ObjectCopyPositionTo());
-    add16(F(0x200C, cpu.y), cyc_then(22, dx));
-    add16(F(0x2010, cpu.y), cyc_then(44, dz));
-    copy16(F(0x2027, cpu.y), cyc_then(22, F(0x2010, cpu.y)));
-    add16(F(0x2027, cpu.y), cyc_then(44, t));
+    colour_from_dp0(cr, F_c(0x205A, cr->y));
+    st8i(cr, F_c(0x2015, cr->y), cyc_then(6, 0x80));
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x200C, cr->y), cyc_then(22, dx));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, dz));
+    copy16(cr, F_c(0x2027, cr->y), cyc_then(22, F_c(0x2010, cr->y)));
+    add16(cr, F_c(0x2027, cr->y), cyc_then(44, t));
     cyc(44);
-    handler(cpu.y, 0xD3AF);
+    handler(cr, cr->y, 0xD3AF);
 }
 
 /*
@@ -6296,28 +10113,41 @@ static void rail(uint16_t dx, uint16_t dz, uint16_t t)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last rail
  * leaves it.
  */
+void RailsSpawn(Carried *cr)
+{
+    rail(cr, 0x0000, 0x0000, 0x1180);
+    rail(cr, 0xFD80, 0xFD80, 0x1400);
+    rail(cr, 0xFB00, 0x0000, 0x1180);
+    rail(cr, 0xF9C0, 0xFB00, 0x1680);
+    rail(cr, 0xF740, 0x0000, 0x1180);
+    cyc(42);
+}
+
 void abi_RailsSpawn(void)
 {
-    rail(0x0000, 0x0000, 0x1180);
-    rail(0xFD80, 0xFD80, 0x1400);
-    rail(0xFB00, 0x0000, 0x1180);
-    rail(0xF9C0, 0xFB00, 0x1680);
-    rail(0xF740, 0x0000, 0x1180);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RailsSpawn(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:D184: a car's hit on lap 2 puts up the rails (RailsSpawn), plays sound
    $33 and releases the gate. */
-static void finale_frame(void)
+static void finale_frame(Carried *cr)
 {
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(36); }
-    if (!lap_is(0x02))
+    if (!lap_is(cr, 0x02))
         { cyc(34); return; } else { cyc(30); }
-    abi_RailsSpawn();
+    RailsSpawn(cr);
     cyc(0);
-    sound0(0x33);
-    (cyc(62), abi_ObjectRelease());
+    sound0(cr, 0x33);
+    (cyc(62), w_ObjectRelease(cr));
     cyc(44);
 }
 
@@ -6330,11 +10160,24 @@ static void finale_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectFinaleGate(Carried *cr)
+{
+    handlers2(cr, 0xD15D, 0xD184);
+    gate42d(cr, 0x2A80);
+    finale_frame(cr);
+}
+
 void abi_ObjectFinaleGate(void)
 {
-    handlers2(0xD15D, 0xD184);
-    gate42d(0x2A80);
-    finale_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFinaleGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6344,10 +10187,23 @@ void abi_ObjectFinaleGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectFinaleGate. Exit: as ObjectFinaleGate.
  */
+void ObjectFinaleGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x2A80);
+    finale_frame(cr);
+}
+
 void abi_ObjectFinaleGateRecord(void)
 {
-    gate42d(0x2A80);
-    finale_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFinaleGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6358,9 +10214,22 @@ void abi_ObjectFinaleGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectFinaleGateStep(Carried *cr)
+{
+    finale_frame(cr);
+}
+
 void abi_ObjectFinaleGateStep(void)
 {
-    finale_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFinaleGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6370,32 +10239,45 @@ void abi_ObjectFinaleGateStep(void)
  * Entry: M 8-bit; X = object. Exit: A low byte = the new scale; N, Z, C, V
  * from the add.
  */
+void ObjectScaleUp6(Carried *cr)
+{
+    add8(cr, F_c(0x2015, cr->x), 0x06);
+    cyc(44);
+}
+
 void abi_ObjectScaleUp6(void)
 {
-    add8(F(0x2015, cpu.x), 0x06);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectScaleUp6(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A breakable (kind $B4D0, handler $09:C513 ObjectBreakable) at X's
    position moved (dx, dy, dz) at rest, life +$0A = $1C; X's own size
    bytes +$14-$16 set to s; nothing without a free object. */
-static void breakable_put(uint16_t dy, uint16_t dz, uint16_t dx, uint8_t s)
+static void breakable_put(Carried *cr, uint16_t dy, uint16_t dz, uint16_t dx, uint8_t s)
 {
-    if (!spawn(0xB4D0))
+    if (!spawn(cr, 0xB4D0))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
+    (cyc(62), w_ObjectCopyPositionTo(cr));
     cyc(22);
-    handler(cpu.y, 0xC513);
-    add16(F(0x200E, cpu.y), cyc_then(22, dy));
-    add16(F(0x2010, cpu.y), cyc_then(44, dz));
-    add16(F(0x200C, cpu.y), cyc_then(44, dx));
-    st16i(F(0x202E, cpu.y), cyc_then(44, 0x0000));
-    st16i(F(0x2030, cpu.y), cyc_then(44, 0x0000));
-    st16i(F(0x2032, cpu.y), cyc_then(44, 0x0000));
-    st8i(F(0x2014, cpu.x), cyc_then(28, s));
-    st8i(F(0x2015, cpu.x), cyc_then(6, s));
-    st8i(F(0x2016, cpu.x), cyc_then(6, s));
-    st8i(F(0x200A, cpu.y), cyc_then(6, 0x1C));
+    handler(cr, cr->y, 0xC513);
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, dy));
+    add16(cr, F_c(0x2010, cr->y), cyc_then(44, dz));
+    add16(cr, F_c(0x200C, cr->y), cyc_then(44, dx));
+    st16i(cr, F_c(0x202E, cr->y), cyc_then(44, 0x0000));
+    st16i(cr, F_c(0x2030, cr->y), cyc_then(44, 0x0000));
+    st16i(cr, F_c(0x2032, cr->y), cyc_then(44, 0x0000));
+    st8i(cr, F_c(0x2014, cr->x), cyc_then(28, s));
+    st8i(cr, F_c(0x2015, cr->x), cyc_then(6, s));
+    st8i(cr, F_c(0x2016, cr->x), cyc_then(6, s));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(6, 0x1C));
 }
 
 /*
@@ -6407,11 +10289,24 @@ static void breakable_put(uint16_t dy, uint16_t dz, uint16_t dx, uint8_t s)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
  * block leaves it.
  */
+void BreakablePairA(Carried *cr)
+{
+    breakable_put(cr, 0xFCE0, 0xF980, 0x0B40, 0x5A);
+    breakable_put(cr, 0xFC40, 0xF920, 0x0F00, 0x23);
+    cyc(42);
+}
+
 void abi_BreakablePairA(void)
 {
-    breakable_put(0xFCE0, 0xF980, 0x0B40, 0x5A);
-    breakable_put(0xFC40, 0xF920, 0x0F00, 0x23);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BreakablePairA(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6422,11 +10317,24 @@ void abi_BreakablePairA(void)
  * unit_objects_09d.
  * Entry: as BreakablePairA. Exit: as BreakablePairA.
  */
+void BreakablePairB(Carried *cr)
+{
+    breakable_put(cr, 0xF9C0, 0xFC40, 0x0500, 0x5A);
+    breakable_put(cr, 0xF880, 0xFD80, 0x0B40, 0x23);
+    cyc(42);
+}
+
 void abi_BreakablePairB(void)
 {
-    breakable_put(0xF9C0, 0xFC40, 0x0500, 0x5A);
-    breakable_put(0xF880, 0xFD80, 0x0B40, 0x23);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BreakablePairB(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6436,11 +10344,24 @@ void abi_BreakablePairB(void)
  * HOW: As BreakablePairA. Reached only by unit_objects_09d.
  * Entry: as BreakablePairA. Exit: as BreakablePairA.
  */
+void BreakablePairC(Carried *cr)
+{
+    breakable_put(cr, 0xFB00, 0xF880, 0xEE80, 0x5A);
+    breakable_put(cr, 0xFA60, 0xF920, 0xF100, 0x23);
+    cyc(42);
+}
+
 void abi_BreakablePairC(void)
 {
-    breakable_put(0xFB00, 0xF880, 0xEE80, 0x5A);
-    breakable_put(0xFA60, 0xF920, 0xF100, 0x23);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BreakablePairC(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6450,38 +10371,51 @@ void abi_BreakablePairC(void)
  * HOW: As BreakablePairA. Reached only by unit_objects_09d.
  * Entry: as BreakablePairA. Exit: as BreakablePairA.
  */
+void BreakablePairD(Carried *cr)
+{
+    breakable_put(cr, 0xFB00, 0xFB40, 0xEE80, 0x5A);
+    breakable_put(cr, 0xFA60, 0xFA60, 0xF100, 0x23);
+    cyc(42);
+}
+
 void abi_BreakablePairD(void)
 {
-    breakable_put(0xFB00, 0xFB40, 0xEE80, 0x5A);
-    breakable_put(0xFA60, 0xFA60, 0xF100, 0x23);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BreakablePairD(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:D53E: a car's hit on a lap not counted yet (+$0A) counts it; on lap 2
    two breakables (BreakablePairA) and sound $53. */
-static void breakable_gate_frame(void)
+static void breakable_gate_frame(Carried *cr)
 {
     uint8_t lap;
 
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(12); }
-    if (lap_eq(0x200A))
+    if (lap_eq(cr, 0x200A))
         { cyc(66); return; } else { cyc(4); }
-    lap_store(0x200A);
-    cpu.p |= P_M;
-    lap = ld8((cyc(38), db()) | 0x0DEA);
+    lap_store(cr, 0x200A);
+    cr->p |= P_M;
+    lap = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
     cyc(62);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap == 0x00)
         { cyc(44); return; } else { cyc(32); }
-    cmp8(0x01);
+    cmp8(cr, 0x01);
     if (lap == 0x01)
         { cyc(44); return; } else { cyc(26); }
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (lap != 0x02)
         { cyc(44); return; } else { cyc(28); }
-    abi_BreakablePairA();
-    sound0(0x53);
+    BreakablePairA(cr);
+    sound0(cr, 0x53);
     cyc(44);
 }
 
@@ -6494,12 +10428,25 @@ static void breakable_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBreakableGate(Carried *cr)
+{
+    handlers2(cr, 0xD517, 0xD53E);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x04));
+    gate42d(cr, 0x1E00);
+    breakable_gate_frame(cr);
+}
+
 void abi_ObjectBreakableGate(void)
 {
-    handlers2(0xD517, 0xD53E);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
-    gate42d(0x1E00);
-    breakable_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6509,10 +10456,23 @@ void abi_ObjectBreakableGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectBreakableGate. Exit: as ObjectBreakableGate.
  */
+void ObjectBreakableGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x1E00);
+    breakable_gate_frame(cr);
+}
+
 void abi_ObjectBreakableGateRecord(void)
 {
-    gate42d(0x1E00);
-    breakable_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6525,26 +10485,39 @@ void abi_ObjectBreakableGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBreakableGateStep(Carried *cr)
+{
+    breakable_gate_frame(cr);
+}
+
 void abi_ObjectBreakableGateStep(void)
 {
-    breakable_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One piece of a burst: kind `kind` at X's position moved dy, handler
    $09:C4C0 (ObjectBreakablePiece), velocity (vx, vy, vz), life +$0A = $0F;
    nothing without a free object. */
-static void burst_piece_k(uint16_t kind, uint16_t dy, uint16_t vx, uint16_t vy, uint16_t vz)
+static void burst_piece_k(Carried *cr, uint16_t kind, uint16_t dy, uint16_t vx, uint16_t vy, uint16_t vz)
 {
-    if (!spawn(kind))
+    if (!spawn(cr, kind))
         { cyc(26); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
+    (cyc(62), w_ObjectCopyPositionTo(cr));
     cyc(22);
-    handler(cpu.y, 0xC4C0);
-    add16(F(0x200E, cpu.y), cyc_then(22, dy));
-    st16i(F(0x202E, cpu.y), cyc_then(44, vx));
-    st16i(F(0x2030, cpu.y), cyc_then(44, vy));
-    st16i(F(0x2032, cpu.y), cyc_then(44, vz));
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x0F));
+    handler(cr, cr->y, 0xC4C0);
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, dy));
+    st16i(cr, F_c(0x202E, cr->y), cyc_then(44, vx));
+    st16i(cr, F_c(0x2030, cr->y), cyc_then(44, vy));
+    st16i(cr, F_c(0x2032, cr->y), cyc_then(44, vz));
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x0F));
 }
 
 /*
@@ -6555,58 +10528,71 @@ static void burst_piece_k(uint16_t kind, uint16_t dy, uint16_t vx, uint16_t vy, 
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
  * leaves it.
  */
+void ObjectBreakableBurst2(Carried *cr)
+{
+    burst_piece_k(cr, 0xAC10, 0x0000, 0x01B3, 0xFFFB, 0x0302);
+    burst_piece_k(cr, 0xABF4, 0x0000, 0x0186, 0xFFF9, 0x02B2);
+    burst_piece_k(cr, 0xAC10, 0x0000, 0xFEA2, 0xFFF6, 0x0000);
+    burst_piece_k(cr, 0xABF4, 0x0000, 0xFE5C, 0xFFF6, 0x0316);
+    burst_piece_k(cr, 0xAC10, 0x0000, 0x0258, 0xFFF6, 0x0212);
+    burst_piece_k(cr, 0xABF4, 0x0000, 0xFED9, 0xFFEC, 0x019F);
+    burst_piece_k(cr, 0xAC10, 0x0000, 0xFE5C, 0xFFFB, 0x0000);
+    burst_piece_k(cr, 0xAC10, 0x0000, 0xFEFC, 0xFFF6, 0xFDBC);
+    cyc(44);
+}
+
 void abi_ObjectBreakableBurst2(void)
 {
-    burst_piece_k(0xAC10, 0x0000, 0x01B3, 0xFFFB, 0x0302);
-    burst_piece_k(0xABF4, 0x0000, 0x0186, 0xFFF9, 0x02B2);
-    burst_piece_k(0xAC10, 0x0000, 0xFEA2, 0xFFF6, 0x0000);
-    burst_piece_k(0xABF4, 0x0000, 0xFE5C, 0xFFF6, 0x0316);
-    burst_piece_k(0xAC10, 0x0000, 0x0258, 0xFFF6, 0x0212);
-    burst_piece_k(0xABF4, 0x0000, 0xFED9, 0xFFEC, 0x019F);
-    burst_piece_k(0xAC10, 0x0000, 0xFE5C, 0xFFFB, 0x0000);
-    burst_piece_k(0xAC10, 0x0000, 0xFEFC, 0xFFF6, 0xFDBC);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableBurst2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:DD68: a car's hit on a lap not counted yet (+$0A) counts it: lap 0, a
    sweep with sound $36 on even clock ticks; lap 1, BreakablePairC; lap 2,
    BreakablePairD; each pair with sound $53. */
-static void breakable_gate2_frame(void)
+static void breakable_gate2_frame(Carried *cr)
 {
     uint8_t lap, v;
 
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(12); }
-    if (lap_eq(0x200A))
+    if (lap_eq(cr, 0x200A))
         { cyc(66); return; }
     cyc(4);
-    lap_store(0x200A);
-    cpu.p |= P_M;
-    lap = ld8((cyc(38), db()) | 0x0DEA);
+    lap_store(cr, 0x200A);
+    cr->p |= P_M;
+    lap = ld8(cr, (cyc(38), db(cr)) | 0x0DEA);
     cyc(76);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap == 0x00) {
-        cpu.p |= P_M;
-        v = ld8(db() | 0x0E63);
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v & 0x08) ? P_C : (cyc(70), 0)));
-        lda8((uint8_t)((v >> 4) & 0x01));
-        if ((uint8_t)cpu.a)
+        cr->p |= P_M;
+        v = ld8(cr, db(cr) | 0x0E63);
+        cr->p = (uint8_t)((cr->p & ~P_C) | ((v & 0x08) ? P_C : (cyc(70), 0)));
+        lda8(cr, (uint8_t)((v >> 4) & 0x01));
+        if ((uint8_t)cr->a)
             { cyc(48); return; }
-        or8l(0x000DA5, 0x10, 0);
-        sound0(0x36);
+        or8l(cr, 0x000DA5, 0x10, 0);
+        sound0(cr, 0x36);
         { cyc(68); return; }
     } else { cyc(40); }
-    cmp8(0x01);
+    cmp8(cr, 0x01);
     if (lap == 0x01) {
-        abi_BreakablePairC();
-        sound0(0x53);
+        BreakablePairC(cr);
+        sound0(cr, 0x53);
         { cyc(68); return; }
     } else { cyc(32); }
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (lap != 0x02)
         { cyc(16); return; }
-    abi_BreakablePairD();
-    sound0(0x53);
+    BreakablePairD(cr);
+    sound0(cr, 0x53);
     cyc(44);
 }
 
@@ -6619,12 +10605,25 @@ static void breakable_gate2_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBreakableGate2(Carried *cr)
+{
+    handlers2(cr, 0xDD41, 0xDD68);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x04));
+    gate42d(cr, 0x0780);
+    breakable_gate2_frame(cr);
+}
+
 void abi_ObjectBreakableGate2(void)
 {
-    handlers2(0xDD41, 0xDD68);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
-    gate42d(0x0780);
-    breakable_gate2_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableGate2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6635,10 +10634,23 @@ void abi_ObjectBreakableGate2(void)
  * by unit_objects_09d.
  * Entry: as ObjectBreakableGate2. Exit: as ObjectBreakableGate2.
  */
+void ObjectBreakableGate2Record(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    breakable_gate2_frame(cr);
+}
+
 void abi_ObjectBreakableGate2Record(void)
 {
-    gate42d(0x0780);
-    breakable_gate2_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableGate2Record(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6652,64 +10664,77 @@ void abi_ObjectBreakableGate2Record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBreakableGate2Step(Carried *cr)
+{
+    breakable_gate2_frame(cr);
+}
+
 void abi_ObjectBreakableGate2Step(void)
 {
-    breakable_gate2_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBreakableGate2Step(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E018: the two-player gate's frame: with contacts, the summary's bit 0
    (player 1) the first time (+$25 bit 0) plays sound $5A for player 0
    ($1A5D = 0), its bit 1 the first time (+$25 bit 1) for player 1; each
    bit cleared when its contact is gone; no contacts clears both. */
-static void duo_frame(void)
+static void duo_frame(Carried *cr)
 {
-    if (!synced()) {
+    if (!synced(cr)) {
         cyc(28);
-        and8(F(0x2025, cpu.x), 0xFE);
-        and8(F(0x2025, cpu.x), 0xFD);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFD);
         cyc(44);
         return;
     } else { cyc(84); }
-    abi_RecordContactSummary();
+    w_RecordContactSummary(cr);
     cyc(12);
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a) {
-        and8(F(0x2025, cpu.x), 0xFE);
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a) {
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         cyc(24);
-    } else { cyc(6); if (!bit25(0x01)) {
+    } else { cyc(6); if (!bit25(cr, 0x01)) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x01);
-        cpu.p |= P_M;
-        st8i((cyc(22), db()) | 0x1A5D, 0x00);
-        sound0(0x5A);
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        cr->p |= P_M;
+        st8i(cr, (cyc(22), db(cr)) | 0x1A5D, 0x00);
+        sound0(cr, 0x5A);
     } else { cyc(44); } }
     cyc(62);
-    abi_RecordContactSummary();
-    lda8((uint8_t)(cpu.a & 0x02));
-    if (!(uint8_t)cpu.a) {
+    w_RecordContactSummary(cr);
+    lda8(cr, (uint8_t)(cr->a & 0x02));
+    if (!(uint8_t)cr->a) {
         cyc(12);
-        and8(F(0x2025, cpu.x), 0xFD);
+        and8(cr, F_c(0x2025, cr->x), 0xFD);
         cyc(66);
         return;
     } else { cyc(18); }
-    if (bit25(0x02))
+    if (bit25(cr, 0x02))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x02);
-    cpu.p |= P_M;
-    st8i((cyc(22), db()) | 0x1A5D, 0x01);
-    sound0(0x5A);
+    or8(cr, F_c(0x2025, cr->x), 0x02);
+    cr->p |= P_M;
+    st8i(cr, (cyc(22), db(cr)) | 0x1A5D, 0x01);
+    sound0(cr, 0x5A);
     cyc(44);
 }
 
 /* 09:E00A: a gate's record ($424, +$0A $90E8) with flag bit 4 and +$2A
    high h. */
-static void record424alt(uint8_t h)
+static void record424alt(Carried *cr, uint8_t h)
 {
-    (cyc(62), abi_GsuRecordNew424Alt());
-    (cyc(62), abi_GsuRecordFlag10());
+    (cyc(62), w_GsuRecordNew424Alt(cr));
+    (cyc(62), w_GsuRecordFlag10(cr));
     cyc(58);
-    lda8(h);
-    abi_GsuRecordSet2AHigh();
+    lda8(cr, h);
+    w_GsuRecordSet2AHigh(cr);
 }
 
 /*
@@ -6721,11 +10746,24 @@ static void record424alt(uint8_t h)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectDuoGate(Carried *cr)
+{
+    handlers2(cr, 0xE00A, 0xE018);
+    record424alt(cr, 0x14);
+    (cyc(102), duo_frame(cr));
+}
+
 void abi_ObjectDuoGate(void)
 {
-    handlers2(0xE00A, 0xE018);
-    record424alt(0x14);
-    (cyc(102), duo_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDuoGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6735,10 +10773,23 @@ void abi_ObjectDuoGate(void)
  * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
  * Entry: as ObjectDuoGate. Exit: as ObjectDuoGate.
  */
+void ObjectDuoGateRecord(Carried *cr)
+{
+    record424alt(cr, 0x14);
+    (cyc(102), duo_frame(cr));
+}
+
 void abi_ObjectDuoGateRecord(void)
 {
-    record424alt(0x14);
-    (cyc(102), duo_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDuoGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6751,26 +10802,39 @@ void abi_ObjectDuoGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectDuoGateStep(Carried *cr)
+{
+    duo_frame(cr);
+}
+
 void abi_ObjectDuoGateStep(void)
 {
-    duo_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDuoGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E0C8: a car's hit, the first time (+$25 bit 0), bursts the gate
    (ObjectBreakableBurst2) with sound $5A; no hit clears the bit. */
-static void burst_gate_frame(void)
+static void burst_gate_frame(Carried *cr)
 {
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         cyc(44);
         return;
     } else { cyc(12); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    (cyc(62), abi_ObjectBreakableBurst2());
-    sound0(0x5A);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    (cyc(62), ObjectBreakableBurst2(cr));
+    sound0(cr, 0x5A);
     cyc(44);
 }
 
@@ -6783,14 +10847,27 @@ static void burst_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBurstGate(Carried *cr)
+{
+    handlers2(cr, 0xE0BA, 0xE0C8);
+    cyc(4);
+    ld8(cr, dp(cr, 0x80));
+    wr8(F_c(0x2014, cr->x), cyc_then(30, (uint8_t)cr->a));
+    record424alt(cr, 0x14);
+    (cyc(102), burst_gate_frame(cr));
+}
+
 void abi_ObjectBurstGate(void)
 {
-    handlers2(0xE0BA, 0xE0C8);
-    cyc(4);
-    ld8(dp(0x80));
-    wr8(F(0x2014, cpu.x), cyc_then(30, (uint8_t)cpu.a));
-    record424alt(0x14);
-    (cyc(102), burst_gate_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBurstGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6800,10 +10877,23 @@ void abi_ObjectBurstGate(void)
  * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
  * Entry: as ObjectBurstGate. Exit: as ObjectBurstGate.
  */
+void ObjectBurstGateRecord(Carried *cr)
+{
+    record424alt(cr, 0x14);
+    (cyc(102), burst_gate_frame(cr));
+}
+
 void abi_ObjectBurstGateRecord(void)
 {
-    record424alt(0x14);
-    (cyc(102), burst_gate_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBurstGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6815,9 +10905,22 @@ void abi_ObjectBurstGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBurstGateStep(Carried *cr)
+{
+    burst_gate_frame(cr);
+}
+
 void abi_ObjectBurstGateStep(void)
 {
-    burst_gate_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBurstGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6831,24 +10934,37 @@ void abi_ObjectBurstGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last swap
  * or ObjectSpawn leaves it.
  */
+void ObjectLampPost(Carried *cr)
+{
+    add16(cr, F_c(0x200E, cr->x), cyc_then(22, 0xFF74));
+    st16i(cr, F_c(0x205D, cr->x), cyc_then(44, 0x9971));
+    cyc(22);
+    lamp(cr, cr->x, 0x64);
+    cyc(22);
+    handler(cr, cr->x, 0xE185);
+    if (!spawn(cr, 0xA0E8))
+        { cyc(70); return; }
+    lamp(cr, cr->y, 0x64);
+    st16i(cr, F_c(0x205D, cr->y), cyc_then(22, 0x9973));
+    (cyc(84), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0xFD94));
+    swap_xy(cr);
+    w_ObjectRebucket(cr);
+    swap_xy_less(cr, 84);
+    cyc(44);
+}
+
 void abi_ObjectLampPost(void)
 {
-    add16(F(0x200E, cpu.x), cyc_then(22, 0xFF74));
-    st16i(F(0x205D, cpu.x), cyc_then(44, 0x9971));
-    cyc(22);
-    lamp(cpu.x, 0x64);
-    cyc(22);
-    handler(cpu.x, 0xE185);
-    if (!spawn(0xA0E8))
-        { cyc(70); return; }
-    lamp(cpu.y, 0x64);
-    st16i(F(0x205D, cpu.y), cyc_then(22, 0x9973));
-    (cyc(84), abi_ObjectCopyPositionTo());
-    add16(F(0x200E, cpu.y), cyc_then(22, 0xFD94));
-    swap_xy();
-    abi_ObjectRebucket();
-    swap_xy_less(84);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLampPost(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6862,13 +10978,26 @@ void abi_ObjectLampPost(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
  * leaves it.
  */
-void abi_LampPostBurst(void)
+void LampPostBurst(Carried *cr)
 {
     cyc(62);
-    burst_piece_k(0xABF4, 0xFFA6, 0x0023, 0xFFFE, 0x000A);
-    burst_piece_k(0xABF4, 0xFF60, 0xFFE2, 0xFFFF, 0x000F);
-    burst_piece_k(0xABF4, 0xFFA6, 0x001E, 0xFFFE, 0xFFF3);
-    burst_piece_k(0xABF4, 0xFF4C, 0xFFDD, 0xFFFF, 0xFFF6);
+    burst_piece_k(cr, 0xABF4, 0xFFA6, 0x0023, 0xFFFE, 0x000A);
+    burst_piece_k(cr, 0xABF4, 0xFF60, 0xFFE2, 0xFFFF, 0x000F);
+    burst_piece_k(cr, 0xABF4, 0xFFA6, 0x001E, 0xFFFE, 0xFFF3);
+    burst_piece_k(cr, 0xABF4, 0xFF4C, 0xFFDD, 0xFFFF, 0xFFF6);
+}
+
+void abi_LampPostBurst(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LampPostBurst(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6880,30 +11009,43 @@ void abi_LampPostBurst(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last step
  * leaves it.
  */
-void abi_LampPostHit(void)
+void LampPostHit(Carried *cr)
 {
-    if (!bit25(0x04)) {
+    if (!bit25(cr, 0x04)) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x04);
-        abi_LampPostBurst();
+        or8(cr, F_c(0x2025, cr->x), 0x04);
+        LampPostBurst(cr);
     }
     cyc(44);
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(86); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    sound0(0x58);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    sound0(cr, 0x58);
     cyc(42);
 }
 
-/* 09:E1B1: a car's hit, LampPostHit; no hit clears +$25 bit 0. */
-static void lamp_post_frame(void)
+void abi_LampPostHit(void)
 {
-    if (hit()) {
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LampPostHit(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* 09:E1B1: a car's hit, LampPostHit; no hit clears +$25 bit 0. */
+static void lamp_post_frame(Carried *cr)
+{
+    if (hit(cr)) {
         cyc(58);
-        abi_LampPostHit();
+        LampPostHit(cr);
         { cyc(44); return; }
     } else { cyc(18); }
-    and8(F(0x2025, cpu.x), 0xFE);
+    and8(cr, F_c(0x2025, cr->x), 0xFE);
     cyc(44);
 }
 
@@ -6916,11 +11058,24 @@ static void lamp_post_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectLampPostLight(Carried *cr)
+{
+    handlers2(cr, 0xE1A3, 0xE1B1);
+    record424alt(cr, 0x08);
+    (cyc(102), lamp_post_frame(cr));
+}
+
 void abi_ObjectLampPostLight(void)
 {
-    handlers2(0xE1A3, 0xE1B1);
-    record424alt(0x08);
-    (cyc(102), lamp_post_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLampPostLight(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6931,10 +11086,23 @@ void abi_ObjectLampPostLight(void)
  * only by unit_objects_09d.
  * Entry: as ObjectLampPostLight. Exit: as ObjectLampPostLight.
  */
+void ObjectLampPostRecord(Carried *cr)
+{
+    record424alt(cr, 0x08);
+    (cyc(102), lamp_post_frame(cr));
+}
+
 void abi_ObjectLampPostRecord(void)
 {
-    record424alt(0x08);
-    (cyc(102), lamp_post_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLampPostRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -6946,42 +11114,55 @@ void abi_ObjectLampPostRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLampPostStep(Carried *cr)
+{
+    lamp_post_frame(cr);
+}
+
 void abi_ObjectLampPostStep(void)
 {
-    lamp_post_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLampPostStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E391: while +$48 counts down, the bump grows (+$15 by 6); a car's hit,
    the first time (+$25 bit 0), sound $59 and +$48 = 6; no hit clears the
    bit. */
-static void bump_post_frame(void)
+static void bump_post_frame(Carried *cr)
 {
-    if (ld8(cyc_then(22, F(0x2048, cpu.x)))) {
+    if (ld8(cr, cyc_then(22, F_c(0x2048, cr->x)))) {
         cyc(22);
-        add8(F(0x2015, cpu.x), 0x06);
-        add8(F(0x2048, cpu.x), 0xFF);
+        add8(cr, F_c(0x2015, cr->x), 0x06);
+        add8(cr, F_c(0x2048, cr->x), 0xFF);
     } else { cyc(48); }
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         cyc(44);
         return;
     } else { cyc(12); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    sound0(0x59);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x06));
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    sound0(cr, 0x59);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x06));
     cyc(44);
 }
 
 /* 09:E383: the bump post's record ($424) with flag bit 4 and +$2A high 1. */
-static void bump_post_record(void)
+static void bump_post_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew424());
-    (cyc(62), abi_GsuRecordFlag10());
-    lda8(0x01);
-    (cyc(58), abi_GsuRecordSet2AHigh());
+    (cyc(62), w_GsuRecordNew424(cr));
+    (cyc(62), w_GsuRecordFlag10(cr));
+    lda8(cr, 0x01);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
 }
 
 /*
@@ -6992,12 +11173,25 @@ static void bump_post_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBumpPost(Carried *cr)
+{
+    handlers2(cr, 0xE383, 0xE391);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x00));
+    bump_post_record(cr);
+    (cyc(102), bump_post_frame(cr));
+}
+
 void abi_ObjectBumpPost(void)
 {
-    handlers2(0xE383, 0xE391);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x00));
-    bump_post_record();
-    (cyc(102), bump_post_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBumpPost(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7007,10 +11201,23 @@ void abi_ObjectBumpPost(void)
  * HOW: GsuRecordNew424, GsuRecordFlag10, GsuRecordSet2AHigh.
  * Entry: as ObjectBumpPost. Exit: as ObjectBumpPost.
  */
+void ObjectBumpPostRecord(Carried *cr)
+{
+    bump_post_record(cr);
+    (cyc(102), bump_post_frame(cr));
+}
+
 void abi_ObjectBumpPostRecord(void)
 {
-    bump_post_record();
-    (cyc(102), bump_post_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBumpPostRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7022,9 +11229,22 @@ void abi_ObjectBumpPostRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBumpPostStep(Carried *cr)
+{
+    bump_post_frame(cr);
+}
+
 void abi_ObjectBumpPostStep(void)
 {
-    bump_post_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBumpPostStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ---- 09:E3E4-ECDF: slide gates, meter, trails, window and slide gates ---- */
@@ -7039,71 +11259,84 @@ void abi_ObjectBumpPostStep(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A as the last
  * step leaves it.
  */
-void abi_GateSlideStep(void)
+void GateSlideStep(Carried *cr)
 {
     uint16_t t;
 
-    if (!bit25(0x01)) {
+    if (!bit25(cr, 0x01)) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x01);
-        cpu.p |= P_M;
-        st8i((cyc(22), db()) | 0x1A29, 0x01);
-        sound0(0x5F);
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        cr->p |= P_M;
+        st8i(cr, (cyc(22), db(cr)) | 0x1A29, 0x01);
+        sound0(cr, 0x5F);
     } else { cyc(44); }
-    copy16(db() | 0x1F4C, F(0x2027, cpu.x));
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(74, F(0x200C, cpu.x)));
-    t = rd16(cyc_then(24, db() | 0x1F4C));
-    op_cmp16(t);
-    cpu.p |= P_M;
-    if (cpu.a == t) {
+    copy16(cr, db(cr) | 0x1F4C, F_c(0x2027, cr->x));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(74, F_c(0x200C, cr->x)));
+    t = rd16(cyc_then(24, db(cr) | 0x1F4C));
+    r_cmp16(cr, t);
+    cr->p |= P_M;
+    if (cr->a == t) {
         cyc(92);
-        cpu.p |= P_M;
-        st8i(db() | 0x1A29, 0x02);
+        cr->p |= P_M;
+        st8i(cr, db(cr) | 0x1A29, 0x02);
         return;
     }
-    cpu.p &= (uint8_t)~P_M;
-    if (cpu.p & P_N)
-        op_add16(0x0280);
+    cr->p &= (uint8_t)~P_M;
+    if (cr->p & P_N)
+        r_add16(cr, 0x0280);
     else
-        { cyc(10); op_sub16(0x0280); }
-    wr16(F(0x200C, cpu.x), cyc_then(172, cpu.a));
-    cpu.p |= P_M;
+        { cyc(10); r_sub16(cr, 0x0280); }
+    wr16(F_c(0x200C, cr->x), cyc_then(172, cr->a));
+    cr->p |= P_M;
     cyc(44);
+}
+
+void abi_GateSlideStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GateSlideStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E441: synced to its record; a car's hit on lap 1 runs GateSlideStep,
    on lap 2 eases the scale +$15 toward $80 (ApproachHalfMin2Byte). */
-static void slide_lap_frame(void)
+static void slide_lap_frame(Carried *cr)
 {
     cyc(62);
     uint8_t lap;
 
-    abi_ObjectSyncToRecord();
+    w_ObjectSyncToRecord(cr);
     cyc(12);
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         { cyc(50); return; } else { cyc(62); }
-    abi_RecordContactSummary();
-    lda8((uint8_t)(cpu.a & 0x01));
-    if (!(uint8_t)cpu.a)
+    w_RecordContactSummary(cr);
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if (!(uint8_t)cr->a)
         return; else { cyc(50); }
-    cpu.p |= P_M;
-    lap = ld8(db() | 0x0DEA);
+    cr->p |= P_M;
+    lap = ld8(cr, db(cr) | 0x0DEA);
     cyc(62);
-    cmp8(0x00);
+    cmp8(cr, 0x00);
     if (lap == 0x00)
         { cyc(44); return; } else { cyc(22); }
-    cmp8(0x01);
+    cmp8(cr, 0x01);
     if (lap == 0x01) {
         cyc(32);
-        abi_GateSlideStep();
+        GateSlideStep(cr);
         cyc(110);
         return;
     }
-    cmp8(0x02);
+    cmp8(cr, 0x02);
     if (lap == 0x02) {
-        ease8(F(0x2015, cpu.x), 0x80, ApproachHalfMin2Byte);
+        ease8(cr, F_c(0x2015, cr->x), 0x80, ApproachHalfMin2Byte);
         cyc(44);
     } else { cyc(80); }
 }
@@ -7117,14 +11350,27 @@ static void slide_lap_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideLapGate(Carried *cr)
+{
+    handlers2(cr, 0xE41A, 0xE441);
+    copy16(cr, F_c(0x2027, cr->x), F_c(0x200C, cr->x));
+    add16(cr, F_c(0x2027, cr->x), cyc_then(44, 0xDF80));
+    cyc(22);
+    gate42d(cr, 0x2A80);
+    slide_lap_frame(cr);
+}
+
 void abi_ObjectSlideLapGate(void)
 {
-    handlers2(0xE41A, 0xE441);
-    copy16(F(0x2027, cpu.x), F(0x200C, cpu.x));
-    add16(F(0x2027, cpu.x), cyc_then(44, 0xDF80));
-    cyc(22);
-    gate42d(0x2A80);
-    slide_lap_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideLapGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7134,10 +11380,23 @@ void abi_ObjectSlideLapGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectSlideLapGate. Exit: as ObjectSlideLapGate.
  */
+void ObjectSlideLapGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x2A80);
+    slide_lap_frame(cr);
+}
+
 void abi_ObjectSlideLapGateRecord(void)
 {
-    gate42d(0x2A80);
-    slide_lap_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideLapGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7150,53 +11409,66 @@ void abi_ObjectSlideLapGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSlideLapGateStep(Carried *cr)
+{
+    slide_lap_frame(cr);
+}
+
 void abi_ObjectSlideLapGateStep(void)
 {
-    slide_lap_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideLapGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* +$48 to $1F58, then +$5A = it with bit 7. */
-static void show48(void)
+static void show48(Carried *cr)
 {
     uint8_t v;
 
-    v = ld8(F(0x2048, cpu.x));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = ld8((cyc(16), db()) | 0x1F58);
-    st8i_hi(F(0x205A, cpu.x), v);
+    v = ld8(cr, F_c(0x2048, cr->x));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = ld8(cr, (cyc(16), db(cr)) | 0x1F58);
+    st8i_hi(cr, F_c(0x205A, cr->x), v);
 }
 
 /* 09:E4F2: the meter follows $1A29: 1 counts +$48 up to 7, 2 down to 0,
    shown at +$5A; 0 leaves it. */
-static void meter_frame(void)
+static void meter_frame(Carried *cr)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
-    v = ld8((cyc(38), db()) | 0x1A29);
+    cr->p |= P_M;
+    v = ld8(cr, (cyc(38), db(cr)) | 0x1A29);
     if (v) {
         int up = v == 0x01;
 
         cyc(70);
-        cmp8(0x01);
+        cmp8(cr, 0x01);
         if (v == 0x01) {
-            v = ld8(F(0x2048, cpu.x));
+            v = ld8(cr, F_c(0x2048, cr->x));
             cyc(22);
-            cmp8(0x07);
+            cmp8(cr, 0x07);
             if (v != 0x07)
-                inc8(F(0x2048, cpu.x)); else { cyc(42); }
+                inc8(cr, F_c(0x2048, cr->x)); else { cyc(42); }
         } else {
             cyc(6);
-            v = ld8(F(0x2048, cpu.x));
-            cmp8(0x00);
+            v = ld8(cr, F_c(0x2048, cr->x));
+            cmp8(cr, 0x00);
             if (v != 0x00)
-                { cyc(60); dec8(F(0x2048, cpu.x)); } else { cyc(64); }
+                { cyc(60); dec8(cr, F_c(0x2048, cr->x)); } else { cyc(64); }
         }
         cyc(22);
-        show48();
+        show48(cr);
         cyc(up ? 84 : 62);              /* BRA (counting up), JSL */
     } else { cyc(84); }
-    abi_ObjectRebucket();
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
@@ -7209,13 +11481,26 @@ static void meter_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
-void abi_ObjectSlideMeter(void)
+void ObjectSlideMeter(Carried *cr)
 {
     cyc(36);
-    handler(cpu.x, 0xE4F2);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x00));
-    st8i_hi(F(0x205A, cpu.x), cyc_then(16, 0x00));
-    meter_frame();
+    handler(cr, cr->x, 0xE4F2);
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x00));
+    st8i_hi(cr, F_c(0x205A, cr->x), cyc_then(16, 0x00));
+    meter_frame(cr);
+}
+
+void abi_ObjectSlideMeter(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideMeter(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7227,21 +11512,34 @@ void abi_ObjectSlideMeter(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectSlideMeterStep(Carried *cr)
+{
+    meter_frame(cr);
+}
+
 void abi_ObjectSlideMeterStep(void)
 {
-    meter_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideMeterStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E581: $19E7 = 1 while a car hits it, else 0. */
-static void trail_zone_frame(void)
+static void trail_zone_frame(Carried *cr)
 {
-    if (hit()) {
+    if (hit(cr)) {
         cyc(34);
-        cpu.p |= P_M;
-        st8i(db() | 0x19E7, 0x01);
+        cr->p |= P_M;
+        st8i(cr, db(cr) | 0x19E7, 0x01);
         { cyc(44); return; }
     }
-    wr8(db() | 0x19E7, cyc_then(42, 0x00));
+    wr8(db(cr) | 0x19E7, cyc_then(42, 0x00));
     cyc(44);
 }
 
@@ -7254,11 +11552,24 @@ static void trail_zone_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectTrailZone(Carried *cr)
+{
+    handlers2(cr, 0xE55A, 0xE581);
+    gate42d(cr, 0x1680);
+    trail_zone_frame(cr);
+}
+
 void abi_ObjectTrailZone(void)
 {
-    handlers2(0xE55A, 0xE581);
-    gate42d(0x1680);
-    trail_zone_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTrailZone(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7269,10 +11580,23 @@ void abi_ObjectTrailZone(void)
  * by unit_objects_09e.
  * Entry: as ObjectTrailZone. Exit: as ObjectTrailZone.
  */
+void ObjectTrailZoneRecord(Carried *cr)
+{
+    gate42d(cr, 0x1680);
+    trail_zone_frame(cr);
+}
+
 void abi_ObjectTrailZoneRecord(void)
 {
-    gate42d(0x1680);
-    trail_zone_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTrailZoneRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7284,9 +11608,22 @@ void abi_ObjectTrailZoneRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectTrailZoneStep(Carried *cr)
+{
+    trail_zone_frame(cr);
+}
+
 void abi_ObjectTrailZoneStep(void)
 {
-    trail_zone_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTrailZoneStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7298,27 +11635,40 @@ void abi_ObjectTrailZoneStep(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; Y =
  * the object; N, Z from X.
  */
+void TrailFlip(Carried *cr)
+{
+    uint16_t sx = cr->x;
+
+    cr->y = cr->x;
+    cr->p = nz16(cr->p, cr->y);
+    cr->p &= (uint8_t)~P_M;
+    cr->x = rd16(cyc_then(136, db(cr) | 0x0346));
+    cr->p = nz16(cr->p, cr->x);
+    cyc(32);
+    r_lda16(cr, (0x7E2022 + cr->x) & 0xFFFFFF);
+    cr->x = cr->a;
+    cr->p = nz16(cr->p, cr->x);
+    cyc(46);
+    r_lda16(cr, (0x70004A + cr->x) & 0xFFFFFF);
+    if (cr->a & 0x8000)
+        { cyc(16); add16(cr, F_c(0x2015, cr->y), 0x0080); } else { cyc(22); }
+    cyc(106);
+    cr->p |= P_M;
+    cr->x = sx;
+    cr->p = nz16(cr->p, sx);
+}
+
 void abi_TrailFlip(void)
 {
-    uint16_t sx = cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.y = cpu.x;
-    cpu.p = nz16(cpu.p, cpu.y);
-    cpu.p &= (uint8_t)~P_M;
-    cpu.x = rd16(cyc_then(136, db() | 0x0346));
-    cpu.p = nz16(cpu.p, cpu.x);
-    cyc(32);
-    op_lda16((0x7E2022 + cpu.x) & 0xFFFFFF);
-    cpu.x = cpu.a;
-    cpu.p = nz16(cpu.p, cpu.x);
-    cyc(46);
-    op_lda16((0x70004A + cpu.x) & 0xFFFFFF);
-    if (cpu.a & 0x8000)
-        { cyc(16); add16(F(0x2015, cpu.y), 0x0080); } else { cyc(22); }
-    cyc(106);
-    cpu.p |= P_M;
-    cpu.x = sx;
-    cpu.p = nz16(cpu.p, sx);
+    TrailFlip(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A trail's frame: while $19E7 is set it takes the player's ($0346) scale
@@ -7327,36 +11677,36 @@ void abi_TrailFlip(void)
    (ApproachQuarterMin4) then moves dx, life +$0A = $1A, TrailFlip, angle
    +$16 = 0; otherwise it counts +$0A down while moving (0 dropping by
    $100 a frame, and mx sideways). */
-static void trail_frame(uint16_t dz, uint16_t dx, uint16_t mx)
+static void trail_frame(Carried *cr, uint16_t dz, uint16_t dx, uint16_t mx)
 {
-    cpu.p |= P_M;
-    if (ld8((cyc(38), db()) | 0x19E7)) {
-        cpu.y = rd16(cyc_then(40, db() | 0x0346));
-        cpu.p = nz16(cpu.p, cpu.y);
-        ld8(cyc_then(22, F(0x2015, cpu.y)));
-        wr8(F(0x2015, cpu.x), cyc_then(30, (uint8_t)cpu.a));
-        add8(F(0x2015, cpu.x), 0x80);
-        ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), ease_cdc1);
-        add16(F(0x2010, cpu.x), cyc_then(44, dz));
-        (cyc(22), ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), ApproachQuarterMin4));
+    cr->p |= P_M;
+    if (ld8(cr, (cyc(38), db(cr)) | 0x19E7)) {
+        cr->y = rd16(cyc_then(40, db(cr) | 0x0346));
+        cr->p = nz16(cr->p, cr->y);
+        ld8(cr, cyc_then(22, F_c(0x2015, cr->y)));
+        wr8(F_c(0x2015, cr->x), cyc_then(30, (uint8_t)cr->a));
+        add8(cr, F_c(0x2015, cr->x), 0x80);
+        ease16(cr, F_c(0x2010, cr->x), F_c(0x2010, cr->y), ease_cdc1);
+        add16(cr, F_c(0x2010, cr->x), cyc_then(44, dz));
+        (cyc(22), ease16(cr, F_c(0x200C, cr->x), F_c(0x200C, cr->y), ApproachQuarterMin4));
         if (dx)
-            { cyc(44); add16(F(0x200C, cpu.x), dx); }
+            { cyc(44); add16(cr, F_c(0x200C, cr->x), dx); }
         cyc(28);
-        st8i(F(0x200A, cpu.x), 0x1A);
-        abi_TrailFlip();
-        st8i(F(0x2016, cpu.x), 0x00);
-        (cyc(62), abi_ObjectRebucket());
+        st8i(cr, F_c(0x200A, cr->x), 0x1A);
+        TrailFlip(cr);
+        st8i(cr, F_c(0x2016, cr->x), 0x00);
+        (cyc(62), w_ObjectRebucket(cr));
         { cyc(44); return; }
     } else { cyc(44); }
-    if (ld8(F(0x200A, cpu.x))) {
+    if (ld8(cr, F_c(0x200A, cr->x))) {
         cyc(22);
-        add8(F(0x200A, cpu.x), 0xFF);
-        add16(F(0x2010, cpu.x), cyc_then(22, 0xFF00));
+        add8(cr, F_c(0x200A, cr->x), 0xFF);
+        add16(cr, F_c(0x2010, cr->x), cyc_then(22, 0xFF00));
         if (mx)
-            { cyc(44); add16(F(0x200C, cpu.x), mx); }
+            { cyc(44); add16(cr, F_c(0x200C, cr->x), mx); }
     } else { cyc(26); }
     cyc(84);
-    abi_ObjectRebucket();
+    w_ObjectRebucket(cr);
     cyc(44);
 }
 
@@ -7371,9 +11721,22 @@ static void trail_frame(uint16_t dz, uint16_t dx, uint16_t mx)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectTrailMidStep(Carried *cr)
+{
+    trail_frame(cr, 0xFFFD, 0x0000, 0x0000);
+}
+
 void abi_ObjectTrailMidStep(void)
 {
-    trail_frame(0xFFFD, 0x0000, 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTrailMidStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7383,9 +11746,22 @@ void abi_ObjectTrailMidStep(void)
  * HOW: As ObjectTrailMidStep. Reached only by unit_objects_09e.
  * Entry: as ObjectTrailMidStep. Exit: as ObjectTrailMidStep.
  */
+void ObjectTrailLeftStep(Carried *cr)
+{
+    trail_frame(cr, 0x0003, 0xFFE2, 0x0040);
+}
+
 void abi_ObjectTrailLeftStep(void)
 {
-    trail_frame(0x0003, 0xFFE2, 0x0040);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTrailLeftStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7395,28 +11771,41 @@ void abi_ObjectTrailLeftStep(void)
  * HOW: As ObjectTrailMidStep. Reached only by unit_objects_09e.
  * Entry: as ObjectTrailMidStep. Exit: as ObjectTrailMidStep.
  */
+void ObjectTrailRightStep(Carried *cr)
+{
+    trail_frame(cr, 0x0003, 0x001E, 0xFFC0);
+}
+
 void abi_ObjectTrailRightStep(void)
 {
-    trail_frame(0x0003, 0x001E, 0xFFC0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectTrailRightStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E7C6: a car's hit on lap 1, the first time (+$25 bit 0), starts a
    fade ($0DA5 bit 5, $80 up to $2000), leaving M 16-bit. */
-static void lap1_fade_frame(void)
+static void lap1_fade_frame(Carried *cr)
 {
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(36); }
-    if (!lap_is_next(0x01))
+    if (!lap_is_next(cr, 0x01))
         { cyc(34); return; } else { cyc(22); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    cpu.p |= P_M;
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    cr->p |= P_M;
     cyc(24);
-    or8l(0x000DA5, 0x20, 0);
-    cpu.p &= (uint8_t)~P_M;
+    or8l(cr, 0x000DA5, 0x20, 0);
+    cr->p &= (uint8_t)~P_M;
     cyc(22);
-    fade_set(0x0080, 0x2000);
+    fade_set(cr, 0x0080, 0x2000);
     cyc(44);
 }
 
@@ -7429,11 +11818,24 @@ static void lap1_fade_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectFadeGate1(Carried *cr)
+{
+    handlers2(cr, 0xE79F, 0xE7C6);
+    gate42d(cr, 0x0780);
+    lap1_fade_frame(cr);
+}
+
 void abi_ObjectFadeGate1(void)
 {
-    handlers2(0xE79F, 0xE7C6);
-    gate42d(0x0780);
-    lap1_fade_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate1(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7443,10 +11845,23 @@ void abi_ObjectFadeGate1(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectFadeGate1. Exit: as ObjectFadeGate1.
  */
+void ObjectFadeGate1Record(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    lap1_fade_frame(cr);
+}
+
 void abi_ObjectFadeGate1Record(void)
 {
-    gate42d(0x0780);
-    lap1_fade_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate1Record(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7457,38 +11872,51 @@ void abi_ObjectFadeGate1Record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it (after the fade with M 16-bit, A = $2000).
  */
+void ObjectFadeGate1Step(Carried *cr)
+{
+    lap1_fade_frame(cr);
+}
+
 void abi_ObjectFadeGate1Step(void)
 {
-    lap1_fade_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFadeGate1Step(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E852 / E8C4: with contacts, contact summary bit 0 (player 1) sets or
    clears bit 6 of $0DA5, bit 1 (player 2) bit 6 of $0DA7. */
-static void window_gate_frame(int on)
+static void window_gate_frame(Carried *cr, int on)
 {
-    if (!synced())
+    if (!synced(cr))
         { cyc(72); return; } else { cyc(84); }
-    abi_RecordContactSummary();
-    lda8((uint8_t)(cpu.a & 0x01));
-    if ((uint8_t)cpu.a) {
+    w_RecordContactSummary(cr);
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if ((uint8_t)cr->a) {
         cyc(28);
-        cpu.p |= P_M;
+        cr->p |= P_M;
         if (on)
-            or8(db() | 0x0DA5, 0x40);
+            or8(cr, db(cr) | 0x0DA5, 0x40);
         else
-            and8(db() | 0x0DA5, 0xBF);
+            and8(cr, db(cr) | 0x0DA5, 0xBF);
         cyc(62);
     } else { cyc(80); }
-    abi_RecordContactSummary();
-    lda8((uint8_t)(cpu.a & 0x02));
-    if (!(uint8_t)cpu.a)
+    w_RecordContactSummary(cr);
+    lda8(cr, (uint8_t)(cr->a & 0x02));
+    if (!(uint8_t)cr->a)
         { cyc(62); return; }
     cyc(28);
-    cpu.p |= P_M;
+    cr->p |= P_M;
     if (on)
-        or8(db() | 0x0DA7, 0x40);
+        or8(cr, db(cr) | 0x0DA7, 0x40);
     else
-        and8(db() | 0x0DA7, 0xBF);
+        and8(cr, db(cr) | 0x0DA7, 0xBF);
     cyc(44);
 }
 
@@ -7500,11 +11928,24 @@ static void window_gate_frame(int on)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectWindowOnGate(Carried *cr)
+{
+    handlers2(cr, 0xE82B, 0xE852);
+    gate42d(cr, 0x0780);
+    window_gate_frame(cr, 1);
+}
+
 void abi_ObjectWindowOnGate(void)
 {
-    handlers2(0xE82B, 0xE852);
-    gate42d(0x0780);
-    window_gate_frame(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowOnGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7514,10 +11955,23 @@ void abi_ObjectWindowOnGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectWindowOnGate. Exit: as ObjectWindowOnGate.
  */
+void ObjectWindowOnGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    window_gate_frame(cr, 1);
+}
+
 void abi_ObjectWindowOnGateRecord(void)
 {
-    gate42d(0x0780);
-    window_gate_frame(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowOnGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7528,9 +11982,22 @@ void abi_ObjectWindowOnGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWindowOnGateStep(Carried *cr)
+{
+    window_gate_frame(cr, 1);
+}
+
 void abi_ObjectWindowOnGateStep(void)
 {
-    window_gate_frame(1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowOnGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7541,11 +12008,24 @@ void abi_ObjectWindowOnGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectWindowOffGate(Carried *cr)
+{
+    handlers2(cr, 0xE89D, 0xE8C4);
+    gate42d(cr, 0x0780);
+    window_gate_frame(cr, 0);
+}
+
 void abi_ObjectWindowOffGate(void)
 {
-    handlers2(0xE89D, 0xE8C4);
-    gate42d(0x0780);
-    window_gate_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowOffGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7555,10 +12035,23 @@ void abi_ObjectWindowOffGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectWindowOffGate. Exit: as ObjectWindowOffGate.
  */
+void ObjectWindowOffGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    window_gate_frame(cr, 0);
+}
+
 void abi_ObjectWindowOffGateRecord(void)
 {
-    gate42d(0x0780);
-    window_gate_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowOffGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7569,64 +12062,77 @@ void abi_ObjectWindowOffGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWindowOffGateStep(Carried *cr)
+{
+    window_gate_frame(cr, 0);
+}
+
 void abi_ObjectWindowOffGateStep(void)
 {
-    window_gate_frame(0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowOffGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:E936 / E9AE: a car's hit, the first time (+$25 bit 0), sound `snd` on
    port 1; no hit clears the bit. */
-static void beep_frame(uint8_t snd)
+static void beep_frame(Carried *cr, uint8_t snd)
 {
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         { cyc(44); return; }
     } else { cyc(12); }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    sound1(snd);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    sound1(cr, snd);
     cyc(44);
 }
 
 /* 09:EA26 / EAA8: a car's hit sets the window slide bits ($0DA5: `or`
    after AND `and`); the first time (+$25 bit 0) sound `snd` on port 1; no
    hit clears the bit. */
-static void slide_bits_frame(uint8_t and_m, uint8_t or_m, uint8_t snd)
+static void slide_bits_frame(Carried *cr, uint8_t and_m, uint8_t or_m, uint8_t snd)
 {
     uint8_t v;
 
-    if (!hit()) {
+    if (!hit(cr)) {
         cyc(18);
-        and8(F(0x2025, cpu.x), 0xFE);
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
         cyc(44);
         return;
     } else { cyc(28); }
-    cpu.p |= P_M;
+    cr->p |= P_M;
     if (and_m == 0xFF) {
-        or8(db() | 0x0DA5, or_m);
+        or8(cr, db(cr) | 0x0DA5, or_m);
     } else {
         cyc(22);
-        v = (uint8_t)(ld8(db() | 0x0DA5) & and_m);
-        lda8((uint8_t)(v | or_m));
-        wr8(db() | 0x0DA5, cyc_then(36, (uint8_t)(v | or_m)));
+        v = (uint8_t)(ld8(cr, db(cr) | 0x0DA5) & and_m);
+        lda8(cr, (uint8_t)(v | or_m));
+        wr8(db(cr) | 0x0DA5, cyc_then(36, (uint8_t)(v | or_m)));
     }
-    if (bit25(0x01))
+    if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
-    or8(F(0x2025, cpu.x), 0x01);
-    sound1(snd);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    sound1(cr, snd);
     cyc(44);
 }
 
 /* LDA addr, AND #a, ORA #o, STA addr (8-bit). */
-static void andor8(uint32_t addr, uint8_t a, uint8_t o)
+static void andor8(Carried *cr, uint32_t addr, uint8_t a, uint8_t o)
 {
     cyc(16);
-    uint8_t v = (uint8_t)(ld8(addr) & a);
+    uint8_t v = (uint8_t)(ld8(cr, addr) & a);
 
-    lda8(v);
-    lda8((uint8_t)(v | o));
+    lda8(cr, v);
+    lda8(cr, (uint8_t)(v | o));
     cyc(16);
     wr8(addr, (uint8_t)(v | o));
 }
@@ -7634,33 +12140,33 @@ static void andor8(uint32_t addr, uint8_t a, uint8_t o)
 /* 09:EB2C / EBAE: with contacts, contact summary bit 0 (player 1) sets
    $7F:3460 = t3460 and $0DA5 = (and a1, ora o1), bit 1 (player 2) sets
    $7F:3460 = t3460 (if store2) and $0DA7 = (and a2, ora o2). */
-static void window_set_frame(uint8_t t3460, uint8_t a1, uint8_t o1, uint8_t a2, uint8_t o2,
+static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1, uint8_t a2, uint8_t o2,
                              int store2)
 {
-    if (!synced())
+    if (!synced(cr))
         { cyc(72); return; } else { cyc(22); }
-    (cyc(62), abi_RecordContactSummary());
-    lda8((uint8_t)(cpu.a & 0x01));
-    if ((uint8_t)cpu.a) {
+    (cyc(62), w_RecordContactSummary(cr));
+    lda8(cr, (uint8_t)(cr->a & 0x01));
+    if ((uint8_t)cr->a) {
         cyc(42);
-        cpu.p |= P_M;
-        st8i(0x7F3460, t3460);
-        andor8(db() | 0x0DA5, a1, o1);
+        cr->p |= P_M;
+        st8i(cr, 0x7F3460, t3460);
+        andor8(cr, db(cr) | 0x0DA5, a1, o1);
         cyc(62);
     } else { cyc(80); }
-    abi_RecordContactSummary();
-    lda8((uint8_t)(cpu.a & 0x02));
-    if (!(uint8_t)cpu.a)
+    w_RecordContactSummary(cr);
+    lda8(cr, (uint8_t)(cr->a & 0x02));
+    if (!(uint8_t)cr->a)
         { cyc(62); return; }
     if (store2) {
         cyc(42);
-        cpu.p |= P_M;
-        st8i(0x7F3460, t3460);
+        cr->p |= P_M;
+        st8i(cr, 0x7F3460, t3460);
     } else {
         cyc(34);                                /* SEP, no store */
-        cpu.p |= P_M;
+        cr->p |= P_M;
     }
-    andor8(db() | 0x0DA7, a2, o2);
+    andor8(cr, db(cr) | 0x0DA7, a2, o2);
     cyc(44);
 }
 
@@ -7673,11 +12179,24 @@ static void window_set_frame(uint8_t t3460, uint8_t a1, uint8_t o1, uint8_t a2, 
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBeepGate11(Carried *cr)
+{
+    handlers2(cr, 0xE90F, 0xE936);
+    gate42d(cr, 0x0780);
+    beep_frame(cr, 0x11);
+}
+
 void abi_ObjectBeepGate11(void)
 {
-    handlers2(0xE90F, 0xE936);
-    gate42d(0x0780);
-    beep_frame(0x11);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBeepGate11(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7688,10 +12207,23 @@ void abi_ObjectBeepGate11(void)
  * unit_objects_09e.
  * Entry: as ObjectBeepGate11. Exit: as ObjectBeepGate11.
  */
+void ObjectBeepGate11Record(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    beep_frame(cr, 0x11);
+}
+
 void abi_ObjectBeepGate11Record(void)
 {
-    gate42d(0x0780);
-    beep_frame(0x11);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBeepGate11Record(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7703,9 +12235,22 @@ void abi_ObjectBeepGate11Record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBeepGate11Step(Carried *cr)
+{
+    beep_frame(cr, 0x11);
+}
+
 void abi_ObjectBeepGate11Step(void)
 {
-    beep_frame(0x11);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBeepGate11Step(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7717,11 +12262,24 @@ void abi_ObjectBeepGate11Step(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectBeepGate10(Carried *cr)
+{
+    handlers2(cr, 0xE987, 0xE9AE);
+    gate42d(cr, 0x0780);
+    beep_frame(cr, 0x10);
+}
+
 void abi_ObjectBeepGate10(void)
 {
-    handlers2(0xE987, 0xE9AE);
-    gate42d(0x0780);
-    beep_frame(0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBeepGate10(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7732,10 +12290,23 @@ void abi_ObjectBeepGate10(void)
  * unit_objects_09e.
  * Entry: as ObjectBeepGate10. Exit: as ObjectBeepGate10.
  */
+void ObjectBeepGate10Record(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    beep_frame(cr, 0x10);
+}
+
 void abi_ObjectBeepGate10Record(void)
 {
-    gate42d(0x0780);
-    beep_frame(0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBeepGate10Record(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7747,9 +12318,22 @@ void abi_ObjectBeepGate10Record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectBeepGate10Step(Carried *cr)
+{
+    beep_frame(cr, 0x10);
+}
+
 void abi_ObjectBeepGate10Step(void)
 {
-    beep_frame(0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectBeepGate10Step(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7760,11 +12344,24 @@ void abi_ObjectBeepGate10Step(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideBitsGate(Carried *cr)
+{
+    handlers2(cr, 0xE9FF, 0xEA26);
+    gate42d(cr, 0x0780);
+    slide_bits_frame(cr, 0xFF, 0x0A, 0x0F);
+}
+
 void abi_ObjectSlideBitsGate(void)
 {
-    handlers2(0xE9FF, 0xEA26);
-    gate42d(0x0780);
-    slide_bits_frame(0xFF, 0x0A, 0x0F);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideBitsGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7774,10 +12371,23 @@ void abi_ObjectSlideBitsGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectSlideBitsGate. Exit: as ObjectSlideBitsGate.
  */
+void ObjectSlideBitsGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    slide_bits_frame(cr, 0xFF, 0x0A, 0x0F);
+}
+
 void abi_ObjectSlideBitsGateRecord(void)
 {
-    gate42d(0x0780);
-    slide_bits_frame(0xFF, 0x0A, 0x0F);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideBitsGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7788,9 +12398,22 @@ void abi_ObjectSlideBitsGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSlideBitsGateStep(Carried *cr)
+{
+    slide_bits_frame(cr, 0xFF, 0x0A, 0x0F);
+}
+
 void abi_ObjectSlideBitsGateStep(void)
 {
-    slide_bits_frame(0xFF, 0x0A, 0x0F);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideBitsGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7801,11 +12424,24 @@ void abi_ObjectSlideBitsGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideBitGate(Carried *cr)
+{
+    handlers2(cr, 0xEA81, 0xEAA8);
+    gate42d(cr, 0x0780);
+    slide_bits_frame(cr, 0xF7, 0x04, 0x10);
+}
+
 void abi_ObjectSlideBitGate(void)
 {
-    handlers2(0xEA81, 0xEAA8);
-    gate42d(0x0780);
-    slide_bits_frame(0xF7, 0x04, 0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideBitGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7815,10 +12451,23 @@ void abi_ObjectSlideBitGate(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectSlideBitGate. Exit: as ObjectSlideBitGate.
  */
+void ObjectSlideBitGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    slide_bits_frame(cr, 0xF7, 0x04, 0x10);
+}
+
 void abi_ObjectSlideBitGateRecord(void)
 {
-    gate42d(0x0780);
-    slide_bits_frame(0xF7, 0x04, 0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideBitGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7829,9 +12478,22 @@ void abi_ObjectSlideBitGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSlideBitGateStep(Carried *cr)
+{
+    slide_bits_frame(cr, 0xF7, 0x04, 0x10);
+}
+
 void abi_ObjectSlideBitGateStep(void)
 {
-    slide_bits_frame(0xF7, 0x04, 0x10);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideBitGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7843,11 +12505,24 @@ void abi_ObjectSlideBitGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectWindowSetGate(Carried *cr)
+{
+    handlers2(cr, 0xEB05, 0xEB2C);
+    gate42d(cr, 0x0780);
+    window_set_frame(cr, 0x1F, 0x00, 0x44, 0x00, 0xC0, 1);
+}
+
 void abi_ObjectWindowSetGate(void)
 {
-    handlers2(0xEB05, 0xEB2C);
-    gate42d(0x0780);
-    window_set_frame(0x1F, 0x00, 0x44, 0x00, 0xC0, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowSetGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7858,10 +12533,23 @@ void abi_ObjectWindowSetGate(void)
  * unit_objects_09e.
  * Entry: as ObjectWindowSetGate. Exit: as ObjectWindowSetGate.
  */
+void ObjectWindowSetGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    window_set_frame(cr, 0x1F, 0x00, 0x44, 0x00, 0xC0, 1);
+}
+
 void abi_ObjectWindowSetGateRecord(void)
 {
-    gate42d(0x0780);
-    window_set_frame(0x1F, 0x00, 0x44, 0x00, 0xC0, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowSetGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7874,9 +12562,22 @@ void abi_ObjectWindowSetGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWindowSetGateStep(Carried *cr)
+{
+    window_set_frame(cr, 0x1F, 0x00, 0x44, 0x00, 0xC0, 1);
+}
+
 void abi_ObjectWindowSetGateStep(void)
 {
-    window_set_frame(0x1F, 0x00, 0x44, 0x00, 0xC0, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowSetGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7888,11 +12589,24 @@ void abi_ObjectWindowSetGateStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectWindowResetGate(Carried *cr)
+{
+    handlers2(cr, 0xEB87, 0xEBAE);
+    gate42d(cr, 0x0780);
+    window_set_frame(cr, 0x00, 0x00, 0x0A, 0xBF, 0x08, 0);
+}
+
 void abi_ObjectWindowResetGate(void)
 {
-    handlers2(0xEB87, 0xEBAE);
-    gate42d(0x0780);
-    window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowResetGate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7903,10 +12617,23 @@ void abi_ObjectWindowResetGate(void)
  * unit_objects_09e.
  * Entry: as ObjectWindowResetGate. Exit: as ObjectWindowResetGate.
  */
+void ObjectWindowResetGateRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    window_set_frame(cr, 0x00, 0x00, 0x0A, 0xBF, 0x08, 0);
+}
+
 void abi_ObjectWindowResetGateRecord(void)
 {
-    gate42d(0x0780);
-    window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowResetGateRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -7919,9 +12646,22 @@ void abi_ObjectWindowResetGateRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectWindowResetGateStep(Carried *cr)
+{
+    window_set_frame(cr, 0x00, 0x00, 0x0A, 0xBF, 0x08, 0);
+}
+
 void abi_ObjectWindowResetGateStep(void)
 {
-    window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectWindowResetGateStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* BRK in bank $09 with the next instruction at `next`: PB, PC and P
@@ -7942,6 +12682,23 @@ static void brk_09(uint16_t next)
     rd8((uint16_t)(cpu.s + 3));
     rd8((uint16_t)(cpu.s + 4));
     cpu.s = (uint16_t)(cpu.s + 4);
+}
+
+static void brk_09_c(Carried *cr, uint16_t next)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    brk_09(next);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 void abi_RasterIrq(void);
@@ -7995,42 +12752,59 @@ static void slide_gate_held_m16(void)
     cpu.unwound = 1;
 }
 
+static void slide_gate_held_m16_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    slide_gate_held_m16();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
 /* 09:ECB9 reached with M 8-bit (no hit while the screen flashes): the out
    mark's word code runs as other instructions. LDA +$25 and AND #$02 take
    one byte each, so the $00 that follows is a BRK (and the next byte its
    signature); then TSB $5C, CMP $BD09EC,X, AND $20, ORA #$02, a second
    BRK, AND $20, LDA +$25, AND #$FE, SBC $20259D,X (long, X), and on as
    written: SEP #$20, sound $10, the RTL. */
-static void slide_gate_out_m8(void)
+static void slide_gate_out_m8(Carried *cr)
 {
     uint8_t a, m;
 
-    a = ld8(F(0x2025, cpu.x));
-    lda8((uint8_t)(a & 0x02));
-    brk_09(0xECC0);
+    a = ld8(cr, F_c(0x2025, cr->x));
+    lda8(cr, (uint8_t)(a & 0x02));
+    brk_09_c(cr, 0xECC0);
     cyc(86);
-    m = rd8((uint16_t)(cpu.d + 0x5C));
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | (((uint8_t)cpu.a & m) ? 0 : P_Z));
+    m = rd8((uint16_t)(cr->d + 0x5C));
+    cr->p = (uint8_t)((cr->p & ~P_Z) | (((uint8_t)cr->a & m) ? 0 : P_Z));
     cyc(6);
-    wr8((uint16_t)(cpu.d + 0x5C), (uint8_t)(m | (uint8_t)cpu.a));
+    wr8((uint16_t)(cr->d + 0x5C), (uint8_t)(m | (uint8_t)cr->a));
     cyc(32);
-    m = rd8((0xBD09ECu + cpu.x) & 0xFFFFFF);
-    a = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    m = rd8((0xBD09ECu + cr->x) & 0xFFFFFF);
+    a = (uint8_t)cr->a;
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
     cyc(16);
-    lda8((uint8_t)(a & rd8((uint16_t)(cpu.d + 0x20))));
-    lda8((uint8_t)((uint8_t)cpu.a | 0x02));
-    brk_09(0xECCC);
+    lda8(cr, (uint8_t)(a & rd8((uint16_t)(cr->d + 0x20))));
+    lda8(cr, (uint8_t)((uint8_t)cr->a | 0x02));
+    brk_09_c(cr, 0xECCC);
     cyc(66);
-    lda8(cyc_then(2, (uint8_t)((uint8_t)cpu.a & rd8((uint16_t)(cpu.d + 0x20)))));
-    a = ld8(F(0x2025, cpu.x));
-    lda8((uint8_t)(a & 0xFE));
+    lda8(cr, cyc_then(2, (uint8_t)((uint8_t)cr->a & rd8((uint16_t)(cr->d + 0x20)))));
+    a = ld8(cr, F_c(0x2025, cr->x));
+    lda8(cr, (uint8_t)(a & 0xFE));
     cyc(28);
-    a = op_sbc8((uint8_t)cpu.a, rd8((0x20259Du + cpu.x) & 0xFFFFFF), &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p |= P_M;
+    a = alu_sbc8((uint8_t)cr->a, rd8((0x20259Du + cr->x) & 0xFFFFFF), &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->p |= P_M;
     cyc(6);
-    sound1(0x10);
+    sound1(cr, 0x10);
 }
 
 /* 09:EC2A: the slide gate's frame. A car's hit, unless the screen is
@@ -8044,65 +12818,65 @@ static void slide_gate_out_m8(void)
    16-bit, and no hit while flashing comes to 09:ECB9 with M 8-bit; the
    original runs their operand bytes as other instructions
    (slide_gate_held_m16, slide_gate_out_m8). */
-static void slide_gate_frame(void)
+static void slide_gate_frame(Carried *cr)
 {
     uint16_t v;
 
-    if (hit()) {
+    if (hit(cr)) {
         cyc(28);
-        cpu.p |= P_M;
-        lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
-        if (!(uint8_t)cpu.a) {
-            cpu.p &= (uint8_t)~P_M;
+        cr->p |= P_M;
+        lda8(cr, (uint8_t)(ld8(cr, db(cr) | 0x0DA5) & 0x01));
+        if (!(uint8_t)cr->a) {
+            cr->p &= (uint8_t)~P_M;
             cyc(66);
-            op_lda16(0x7F3470);
-            op_cmp16(0x7FFF);
-            if (cpu.a == 0x7FFF) {
-                slide_gate_held_m16();
+            r_lda16(cr, 0x7F3470);
+            r_cmp16(cr, 0x7FFF);
+            if (cr->a == 0x7FFF) {
+                slide_gate_held_m16_c(cr);
                 return;
             } else { cyc(66); }
             cyc(4);
-            st16w(0x7F3470, 0x0800);
-            slide_set(0x0100, 0x0700, 0x0000);
-            cpu.p |= P_M;
-            or8((cyc(16), db()) | 0x0DA5, 0x80);
+            st16w(cr, 0x7F3470, 0x0800);
+            slide_set(cr, 0x0100, 0x0700, 0x0000);
+            cr->p |= P_M;
+            or8(cr, (cyc(16), db(cr)) | 0x0DA5, 0x80);
         } else { cyc(18); }
-        if (bit25(0x01))
+        if (bit25(cr, 0x01))
             { cyc(44); return; } else { cyc(18); }
-        or8(F(0x2025, cpu.x), 0x01);
-        and8(F(0x2025, cpu.x), 0xFD);
-        cpu.p |= P_M;
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        and8(cr, F_c(0x2025, cr->x), 0xFD);
+        cr->p |= P_M;
         cyc(22);
-        sound1(0x11);
+        sound1(cr, 0x11);
         return;
     } else { cyc(34); }
-    lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
-    if ((uint8_t)cpu.a) {
+    lda8(cr, (uint8_t)(ld8(cr, db(cr) | 0x0DA5) & 0x01));
+    if ((uint8_t)cr->a) {
         cyc(40);
-        slide_gate_out_m8();
+        slide_gate_out_m8(cr);
         return;
     }
-    cpu.p &= (uint8_t)~P_M;
+    cr->p &= (uint8_t)~P_M;
     cyc(66);
-    op_lda16(0x7F3470);
-    op_cmp16(0x7FFF);
-    if (cpu.a != 0x7FFF)
-        { cyc(40); slide_set(0x0100, 0xFF00, 0x8000); } else { cyc(46); }
-    op_lda16(cyc_then(30, F(0x2025, cpu.x)));
-    op_and16(0x0002);
-    if (cpu.a)
+    r_lda16(cr, 0x7F3470);
+    r_cmp16(cr, 0x7FFF);
+    if (cr->a != 0x7FFF)
+        { cyc(40); slide_set(cr, 0x0100, 0xFF00, 0x8000); } else { cyc(46); }
+    r_lda16(cr, cyc_then(30, F_c(0x2025, cr->x)));
+    r_and16(cr, 0x0002);
+    if (cr->a)
         { cyc(70); return; }
-    v = (uint16_t)(rd16(cyc_then(74, F(0x2025, cpu.x))) | 0x0002);
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
-    wr16(F(0x2025, cpu.x), cyc_then(54, v));
-    v = (uint16_t)(rd16(cyc_then(30, F(0x2025, cpu.x))) & 0xFFFE);
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
-    wr16(F(0x2025, cpu.x), cyc_then(54, v));
-    cpu.p |= P_M;
+    v = (uint16_t)(rd16(cyc_then(74, F_c(0x2025, cr->x))) | 0x0002);
+    cr->a = v;
+    cr->p = nz16(cr->p, v);
+    wr16(F_c(0x2025, cr->x), cyc_then(54, v));
+    v = (uint16_t)(rd16(cyc_then(30, F_c(0x2025, cr->x))) & 0xFFFE);
+    cr->a = v;
+    cr->p = nz16(cr->p, v);
+    wr16(F_c(0x2025, cr->x), cyc_then(54, v));
+    cr->p |= P_M;
     cyc(22);
-    sound1(0x10);
+    sound1(cr, 0x10);
 }
 
 /*
@@ -8114,12 +12888,25 @@ static void slide_gate_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectSlideGateUp(Carried *cr)
+{
+    handlers2(cr, 0xEC03, 0xEC2A);
+    gate42d(cr, 0x0780);
+    slide_gate_frame(cr);
+    cyc(44);
+}
+
 void abi_ObjectSlideGateUp(void)
 {
-    handlers2(0xEC03, 0xEC2A);
-    gate42d(0x0780);
-    slide_gate_frame();
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideGateUp(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8129,11 +12916,24 @@ void abi_ObjectSlideGateUp(void)
  * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
  * Entry: as ObjectSlideGateUp. Exit: as ObjectSlideGateUp.
  */
+void ObjectSlideGateUpRecord(Carried *cr)
+{
+    gate42d(cr, 0x0780);
+    slide_gate_frame(cr);
+    cyc(44);
+}
+
 void abi_ObjectSlideGateUpRecord(void)
 {
-    gate42d(0x0780);
-    slide_gate_frame();
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideGateUpRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8149,10 +12949,23 @@ void abi_ObjectSlideGateUpRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectSlideGateUpStep(Carried *cr)
+{
+    slide_gate_frame(cr);
+    cyc(44);
+}
+
 void abi_ObjectSlideGateUpStep(void)
 {
-    slide_gate_frame();
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSlideGateUpStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ---- 09:B30B, 09:C11F-C437: the shatter, bouncing markers, lap lights ---- */
@@ -8161,37 +12974,37 @@ void abi_ObjectCopy14To(void);
 void abi_ObjectSpawnPuff(void);
 
 /* The colour +$5A stepped through 0 to n-1 with bit 7 (SBC #n at n). */
-static void colour_cycle(uint8_t n)
+static void colour_cycle(Carried *cr, uint8_t n)
 {
     uint8_t v;
 
     cyc(22);
-    if (colour_step(n)) {
+    if (colour_step(cr, n)) {
         cyc(8);
-        cpu.p |= P_C;
-        v = op_sbc8((uint8_t)cpu.a, n, &cpu.p);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cr->p |= P_C;
+        v = alu_sbc8((uint8_t)cr->a, n, &cr->p);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     }
-    v = (uint8_t)(cpu.a | 0x80);
-    lda8(v);
-    wr8(F(0x205A, cpu.x), cyc_then(112, v));
+    v = (uint8_t)(cr->a | 0x80);
+    lda8(cr, v);
+    wr8(F_c(0x205A, cr->x), cyc_then(112, v));
 }
 
 /* LDA src, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
    negative value, else 0. */
-static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
+static void axis_from(Carried *cr, uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
 {
     uint32_t w2 = (lo2 & 0xFFFF) > 0xFF ? 8 : 0, wh = (hi & 0xFFFF) > 0xFF ? 8 : 0;
 
     cyc((src & 0xFFFF) < 0x100 ? 0 : 4);        /* LDA dp or abs */
-    uint8_t r = ld8(src);
+    uint8_t r = ld8(cr, src);
 
     cyc(16);
     wr8(lo, r);
     cyc(16 + w2);
     wr8(lo2, r);
     if (r & 0x80) {
-        lda8(0xFF);
+        lda8(cr, 0xFF);
         cyc(44 + wh);
         wr8(hi, 0xFF);
         cyc(22);                        /* BRA */
@@ -8206,69 +13019,68 @@ static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
    $00) turned by X's angles +$16, +$14 and +$15 (RotateXY,
    RotateXZFrom08, RotateXZ; vx and vy through $1F58/$1F59), life +$0A =
    6, handler $09:BDE1; nothing without a free object. */
-static void shard_from_z(void);
 
-static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t vx, uint8_t vy)
+static void shard(Carried *cr, uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t vx, uint8_t vy)
 {
-    if (!spawn(kind))
+    if (!spawn(cr, kind))
         { cyc(26); return; } else { cyc(6); }
-    st8i(F(0x2048, cpu.y), s48);
-    st8i(F(0x2049, cpu.y), cyc_then(6, s49));
-    st8i(F(0x204A, cpu.y), cyc_then(6, s4a));
-    (cyc(62), abi_ObjectCopyPositionTo());
-    (cyc(62), abi_ObjectCopy14To());
-    st8i((cyc(0), db()) | 0x1F58, vx);
-    st8i(db() | 0x1F59, vy);
-    axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
-    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
-    shard_from_z();
+    st8i(cr, F_c(0x2048, cr->y), s48);
+    st8i(cr, F_c(0x2049, cr->y), cyc_then(6, s49));
+    st8i(cr, F_c(0x204A, cr->y), cyc_then(6, s4a));
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    (cyc(62), w_ObjectCopy14To(cr));
+    st8i(cr, (cyc(0), db(cr)) | 0x1F58, vx);
+    st8i(cr, db(cr) | 0x1F59, vy);
+    axis_from(cr, db(cr) | 0x1F58, dp(cr, 0x02), dp(cr, 0x04), dp(cr, 0x05));
+    axis_from(cr, db(cr) | 0x1F59, dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B));
+    shard_from_z(cr);
 }
 
 /* A shard from its third component on: direct page $00's byte and sign,
    the three turns, times 4, the placement at X's position, life 6 and the
    handler. */
-static void shard_from_z(void)
+static void shard_from_z(Carried *cr)
 {
     int i;
 
-    axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
-    ld8(cyc_then(22, F(0x2016, cpu.x)));
-    (cyc(62), abi_RotateXY());
-    orbit_again();
-    ld8(cyc_then(22, F(0x2014, cpu.x)));
-    (cyc(62), abi_RotateXZFrom08());
-    orbit_again();
-    ld8(cyc_then(22, F(0x2015, cpu.x)));
-    (cyc(62), abi_RotateXZ());
-    cpu.p &= (uint8_t)~P_M;
+    axis_from(cr, dp(cr, 0x00), dp(cr, 0x94), db(cr) | 0x05F2, db(cr) | 0x05F3);
+    ld8(cr, cyc_then(22, F_c(0x2016, cr->x)));
+    (cyc(62), w_RotateXY(cr));
+    orbit_again(cr);
+    ld8(cr, cyc_then(22, F_c(0x2014, cr->x)));
+    (cyc(62), w_RotateXZFrom08(cr));
+    orbit_again(cr);
+    ld8(cr, cyc_then(22, F_c(0x2015, cr->x)));
+    (cyc(62), w_RotateXZ(cr));
+    cr->p &= (uint8_t)~P_M;
     {
         cyc(22);
         static const uint8_t lo[2] = {0x04, 0x0A};
 
         for (i = 0; i < 2; i++) {
-            op_lda16(cyc_then(12, dp(lo[i])));
-            op_asl16();
-            op_asl16();
-            wr16(dp(lo[i]), cyc_then(40, cpu.a));
+            r_lda16(cr, cyc_then(12, dp(cr, lo[i])));
+            r_asl16(cr);
+            r_asl16(cr);
+            wr16(dp(cr, lo[i]), cyc_then(40, cr->a));
         }
     }
-    op_lda16(cyc_then(24, db() | 0x05F2));
-    op_asl16();
-    op_asl16();
-    wr16(db() | 0x05F2, cyc_then(52, cpu.a));
-    op_lda16(cyc_then(30, F(0x200C, cpu.x)));
-    op_add16(rd16(cyc_then(26, dp(0x04))));
-    wr16(F(0x200C, cpu.y), cyc_then(30, cpu.a));
-    op_lda16(cyc_then(30, F(0x2010, cpu.x)));
-    op_add16(rd16(cyc_then(38, db() | 0x05F2)));
-    wr16(F(0x2010, cpu.y), cyc_then(30, cpu.a));
-    op_lda16(cyc_then(30, F(0x200E, cpu.x)));
-    op_add16(rd16(cyc_then(26, dp(0x0A))));
-    wr16(F(0x200E, cpu.y), cyc_then(30, cpu.a));
-    cpu.p |= P_M;
-    st8i(F(0x200A, cpu.y), cyc_then(28, 0x06));
+    r_lda16(cr, cyc_then(24, db(cr) | 0x05F2));
+    r_asl16(cr);
+    r_asl16(cr);
+    wr16(db(cr) | 0x05F2, cyc_then(52, cr->a));
+    r_lda16(cr, cyc_then(30, F_c(0x200C, cr->x)));
+    r_add16(cr, rd16(cyc_then(26, dp(cr, 0x04))));
+    wr16(F_c(0x200C, cr->y), cyc_then(30, cr->a));
+    r_lda16(cr, cyc_then(30, F_c(0x2010, cr->x)));
+    r_add16(cr, rd16(cyc_then(38, db(cr) | 0x05F2)));
+    wr16(F_c(0x2010, cr->y), cyc_then(30, cr->a));
+    r_lda16(cr, cyc_then(30, F_c(0x200E, cr->x)));
+    r_add16(cr, rd16(cyc_then(26, dp(cr, 0x0A))));
+    wr16(F_c(0x200E, cr->y), cyc_then(30, cr->a));
+    cr->p |= P_M;
+    st8i(cr, F_c(0x200A, cr->y), cyc_then(28, 0x06));
     cyc(22);
-    handler(cpu.y, 0xBDE1);
+    handler(cr, cr->y, 0xBDE1);
 }
 
 /* The six shards' spin bytes +$48-$4A and offsets (x, y), and each
@@ -8285,32 +13097,32 @@ static const uint16_t shatter1_kinds[6] = {0xB08C, 0xB0A8, 0xB0C4, 0xB0E0, 0xB0F
 static const uint16_t shatter2_kinds[6] = {0xB134, 0xB150, 0xB16C, 0xB188, 0xB1A4, 0xB1C0};
 
 /* The shards from index from to the last. */
-static void shatter_rest(const uint16_t *kinds, int from)
+static void shatter_rest(Carried *cr, const uint16_t *kinds, int from)
 {
     int k;
 
     for (k = from; k < 6; k++)
-        shard(kinds[k], shatter_args[k][0], shatter_args[k][1], shatter_args[k][2],
+        shard(cr, kinds[k], shatter_args[k][0], shatter_args[k][1], shatter_args[k][2],
               shatter_args[k][3], shatter_args[k][4]);
     cyc(42);
 }
 
 /* Shard k entered at its x sign store (direct page $05): the y offset, the
    rest of the shard, the shards after it. */
-static void shatter_from_x(const uint16_t *kinds, int k, int neg)
+static void shatter_from_x(Carried *cr, const uint16_t *kinds, int k, int neg)
 {
-    sign_arm(dp(0x05), neg);
-    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
-    shard_from_z();
-    shatter_rest(kinds, k + 1);
+    sign_arm(cr, dp(cr, 0x05), neg);
+    axis_from(cr, db(cr) | 0x1F59, dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B));
+    shard_from_z(cr);
+    shatter_rest(cr, kinds, k + 1);
 }
 
 /* Shard k entered at its y sign store (direct page $0B). */
-static void shatter_from_y(const uint16_t *kinds, int k, int neg)
+static void shatter_from_y(Carried *cr, const uint16_t *kinds, int k, int neg)
 {
-    sign_arm(dp(0x0B), neg);
-    shard_from_z();
-    shatter_rest(kinds, k + 1);
+    sign_arm(cr, dp(cr, 0x0B), neg);
+    shard_from_z(cr);
+    shatter_rest(cr, kinds, k + 1);
 }
 
 /*
@@ -8329,9 +13141,22 @@ static void shatter_from_y(const uint16_t *kinds, int k, int neg)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
  * shard leaves it.
  */
+void ObjectShatter(Carried *cr)
+{
+    shatter_rest(cr, shatter1_kinds, 0);
+}
+
 void abi_ObjectShatter(void)
 {
-    shatter_rest(shatter1_kinds, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8345,9 +13170,22 @@ void abi_ObjectShatter(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard1XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter1_kinds, 0, 0);
+}
+
 void abi_ObjectShatterShard1XSign(void)
 {
-    shatter_from_x(shatter1_kinds, 0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard1XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8361,9 +13199,22 @@ void abi_ObjectShatterShard1XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard1YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter1_kinds, 0, 0);
+}
+
 void abi_ObjectShatterShard1YSign(void)
 {
-    shatter_from_y(shatter1_kinds, 0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard1YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8377,9 +13228,22 @@ void abi_ObjectShatterShard1YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard2XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter1_kinds, 1, 0);
+}
+
 void abi_ObjectShatterShard2XSign(void)
 {
-    shatter_from_x(shatter1_kinds, 1, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard2XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8393,9 +13257,22 @@ void abi_ObjectShatterShard2XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard2YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter1_kinds, 1, 0);
+}
+
 void abi_ObjectShatterShard2YSign(void)
 {
-    shatter_from_y(shatter1_kinds, 1, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard2YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8409,9 +13286,22 @@ void abi_ObjectShatterShard2YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard3XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter1_kinds, 2, 1);
+}
+
 void abi_ObjectShatterShard3XSign(void)
 {
-    shatter_from_x(shatter1_kinds, 2, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard3XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8425,9 +13315,22 @@ void abi_ObjectShatterShard3XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard3YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter1_kinds, 2, 0);
+}
+
 void abi_ObjectShatterShard3YSign(void)
 {
-    shatter_from_y(shatter1_kinds, 2, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard3YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8441,9 +13344,22 @@ void abi_ObjectShatterShard3YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard4XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter1_kinds, 3, 1);
+}
+
 void abi_ObjectShatterShard4XSign(void)
 {
-    shatter_from_x(shatter1_kinds, 3, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard4XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8457,9 +13373,22 @@ void abi_ObjectShatterShard4XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard4YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter1_kinds, 3, 0);
+}
+
 void abi_ObjectShatterShard4YSign(void)
 {
-    shatter_from_y(shatter1_kinds, 3, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard4YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8473,9 +13402,22 @@ void abi_ObjectShatterShard4YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard5XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter1_kinds, 4, 1);
+}
+
 void abi_ObjectShatterShard5XSign(void)
 {
-    shatter_from_x(shatter1_kinds, 4, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard5XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8489,9 +13431,22 @@ void abi_ObjectShatterShard5XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard5YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter1_kinds, 4, 0);
+}
+
 void abi_ObjectShatterShard5YSign(void)
 {
-    shatter_from_y(shatter1_kinds, 4, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard5YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8505,9 +13460,22 @@ void abi_ObjectShatterShard5YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard6XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter1_kinds, 5, 1);
+}
+
 void abi_ObjectShatterShard6XSign(void)
 {
-    shatter_from_x(shatter1_kinds, 5, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard6XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8521,34 +13489,47 @@ void abi_ObjectShatterShard6XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter.
  */
+void ObjectShatterShard6YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter1_kinds, 5, 1);
+}
+
 void abi_ObjectShatterShard6YSign(void)
 {
-    shatter_from_y(shatter1_kinds, 5, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterShard6YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
 /* The bounce: +$29 added to +$27, turning back at +-lim; field `pos`
    moved by +$27 (through $1F4C); the colour steps through 0-9; the scale
    +$15 grows by 8. */
-static void bounce_colour(uint16_t lim, uint16_t pos)
+static void bounce_colour(Carried *cr, uint16_t lim, uint16_t pos)
 {
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(52, F(0x2027, cpu.x)));
-    op_add16(rd16(cyc_then(44, F(0x2029, cpu.x))));
-    wr16(F(0x2027, cpu.x), cyc_then(30, cpu.a));
-    op_cmp16(lim);
-    if (cpu.a == lim || (cyc(34), (op_cmp16((uint16_t)-lim), cpu.a == (uint16_t)-lim))) {
-        op_lda16(cyc_then(76, F(0x2029, cpu.x)));
-        cpu.a ^= 0xFFFF;
-        cpu.p = nz16(cpu.p, cpu.a);
-        cpu.a++;
-        cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2029, cpu.x), cyc_then(68, cpu.a));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(52, F_c(0x2027, cr->x)));
+    r_add16(cr, rd16(cyc_then(44, F_c(0x2029, cr->x))));
+    wr16(F_c(0x2027, cr->x), cyc_then(30, cr->a));
+    r_cmp16(cr, lim);
+    if (cr->a == lim || (cyc(34), (r_cmp16(cr, (uint16_t)-lim), cr->a == (uint16_t)-lim))) {
+        r_lda16(cr, cyc_then(76, F_c(0x2029, cr->x)));
+        cr->a ^= 0xFFFF;
+        cr->p = nz16(cr->p, cr->a);
+        cr->a++;
+        cr->p = nz16(cr->p, cr->a);
+        wr16(F_c(0x2029, cr->x), cyc_then(68, cr->a));
     } else { cyc(52); }
-    cpu.p |= P_M;
-    add16_via(F(pos, cpu.x), F(0x2027, cpu.x));
-    colour_cycle(0x0A);
-    add8(F(0x2015, cpu.x), 0x08);
+    cr->p |= P_M;
+    add16_via(cr, F_c(pos, cr->x), F_c(0x2027, cr->x));
+    colour_cycle(cr, 0x0A);
+    add8(cr, F_c(0x2015, cr->x), 0x08);
     cyc(42);
 }
 
@@ -8562,9 +13543,22 @@ static void bounce_colour(uint16_t lim, uint16_t pos)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = the
  * new scale; N, Z, C, V from its add.
  */
+void MarkerBounceY(Carried *cr)
+{
+    bounce_colour(cr, 0x000E, 0x200E);
+}
+
 void abi_MarkerBounceY(void)
 {
-    bounce_colour(0x000E, 0x200E);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MarkerBounceY(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8575,44 +13569,70 @@ void abi_MarkerBounceY(void)
  * unit_objects_09f.
  * Entry: as MarkerBounceY. Exit: as MarkerBounceY.
  */
+void MarkerBounceX(Carried *cr)
+{
+    bounce_colour(cr, 0x0030, 0x200C);
+}
+
 void abi_MarkerBounceX(void)
 {
-    bounce_colour(0x0030, 0x200C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MarkerBounceX(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C225: the marker bounces (MarkerBounceY), syncs to its record; a car's
    contact (flags bit 0) shatters it (ObjectShatter) and releases it. */
-static void shatter_marker_frame(void)
+static void shatter_marker_frame(Carried *cr)
 {
-    (cyc(46), abi_MarkerBounceY());
-    (cyc(62), abi_ObjectSyncToRecord());
+    (cyc(46), MarkerBounceY(cr));
+    (cyc(62), w_ObjectSyncToRecord(cr));
     cyc(10);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
-    if (!(uint8_t)cpu.a)
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
+    cr->p = nz8(cr->p, (uint8_t)cr->a);
+    if (!(uint8_t)cr->a)
         { cyc(72); return; }
-    if (!next_contact())
+    if (!next_contact(cr))
         { cyc(72); return; } else { cyc(54); }
     {
-        uint16_t sx = cpu.x;
+        uint16_t sx = cr->x;
 
-        abi_ObjectShatter();
-        cpu.x = sx;
-        cpu.p = nz16(cpu.p, sx);
+        ObjectShatter(cr);
+        cr->x = sx;
+        cr->p = nz16(cr->p, sx);
     }
-    (cyc(98), abi_ObjectRelease());
+    (cyc(98), w_ObjectRelease(cr));
     cyc(44);
 }
 
 /* 09:C217: the marker's record ($42D, flag bit 4, +$2A high 1). */
-static void shatter_marker_record(void)
+static void shatter_marker_record(Carried *cr)
 {
     cyc(62);
-    abi_GsuRecordNew42D();
-    abi_GsuRecordFlag10();
+    w_GsuRecordNew42D(cr);
+    w_GsuRecordFlag10(cr);
     cyc(58);
-    lda8(0x01);
-    abi_GsuRecordSet2AHigh();
+    lda8(cr, 0x01);
+    w_GsuRecordSet2AHigh(cr);
+}
+
+static void shatter_marker_record_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    shatter_marker_record(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -8626,15 +13646,28 @@ static void shatter_marker_record(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
+void ObjectShatterMarker(Carried *cr)
+{
+    st8i_hi(cr, F_c(0x205A, cr->x), cyc_then(16, 0x00));
+    st16i(cr, F_c(0x2027, cr->x), cyc_then(22, 0x0000));
+    st16i(cr, F_c(0x2029, cr->x), cyc_then(44, 0x0002));
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(28, 0x01));
+    handlers2(cr, 0xC217, 0xC225);
+    shatter_marker_record(cr);
+    (cyc(102), shatter_marker_frame(cr));
+}
+
 void abi_ObjectShatterMarker(void)
 {
-    st8i_hi(F(0x205A, cpu.x), cyc_then(16, 0x00));
-    st16i(F(0x2027, cpu.x), cyc_then(22, 0x0000));
-    st16i(F(0x2029, cpu.x), cyc_then(44, 0x0002));
-    st8i(F(0x2048, cpu.x), cyc_then(28, 0x01));
-    handlers2(0xC217, 0xC225);
-    shatter_marker_record();
-    (cyc(102), shatter_marker_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterMarker(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8645,10 +13678,23 @@ void abi_ObjectShatterMarker(void)
  * by unit_objects_09f.
  * Entry: as ObjectShatterMarker. Exit: as ObjectShatterMarker.
  */
+void ObjectShatterMarkerRecord(Carried *cr)
+{
+    shatter_marker_record(cr);
+    (cyc(102), shatter_marker_frame(cr));
+}
+
 void abi_ObjectShatterMarkerRecord(void)
 {
-    shatter_marker_record();
-    (cyc(102), shatter_marker_frame());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterMarkerRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8661,24 +13707,37 @@ void abi_ObjectShatterMarkerRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectShatterMarkerStep(Carried *cr)
+{
+    shatter_marker_frame(cr);
+}
+
 void abi_ObjectShatterMarkerStep(void)
 {
-    shatter_marker_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatterMarkerStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A lap light's set-up in a one-player race: colour 0 with bit 7, +$0A =
    4 (no lap), the scale +$15 moved by ds (none when 0), restart $09:C30A,
    frame $09:C312; with a HUD mode released. */
-static void lap_light(uint8_t ds)
+static void lap_light(Carried *cr, uint8_t ds)
 {
-    if ((cyc(14), released_by_hud()))
+    if ((cyc(14), released_by_hud(cr)))
         { cyc(44); return; } else { cyc(16); }
-    cpu.p |= P_M;
-    st8i_hi(F(0x205A, cpu.x), 0x00);
-    st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
+    cr->p |= P_M;
+    st8i_hi(cr, F_c(0x205A, cr->x), 0x00);
+    st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x04));
     if (ds)
-        add8(F(0x2015, cpu.x), ds);
-    handlers2(0xC30A, 0xC312);
+        add8(cr, F_c(0x2015, cr->x), ds);
+    handlers2(cr, 0xC30A, 0xC312);
     cyc(44);
 }
 
@@ -8692,9 +13751,22 @@ static void lap_light(uint8_t ds)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
  * byte = 9, or as ObjectRelease leaves it.
  */
+void ObjectLapLight(Carried *cr)
+{
+    lap_light(cr, 0x00);
+}
+
 void abi_ObjectLapLight(void)
 {
-    lap_light(0x00);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapLight(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8707,9 +13779,22 @@ void abi_ObjectLapLight(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
  * byte = 9, or as ObjectRelease leaves it.
  */
+void ObjectLapLightLeft(Carried *cr)
+{
+    lap_light(cr, 0xE0);
+}
+
 void abi_ObjectLapLightLeft(void)
 {
-    lap_light(0xE0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapLightLeft(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8722,37 +13807,50 @@ void abi_ObjectLapLightLeft(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
  * byte = 9, or as ObjectRelease leaves it.
  */
+void ObjectLapLightRight(Carried *cr)
+{
+    lap_light(cr, 0x20);
+}
+
 void abi_ObjectLapLightRight(void)
 {
-    lap_light(0x20);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapLightRight(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:C312: a new lap ($0DEA against +$0A) clears the light (+$25 bit 0,
    colour 0, +$48 = 0); lit, it syncs and counts +$48 up to 2
    (ObjectCountUpTo2); unlit, a car's hit lights it for this lap (+$0A),
    sound $5C, and puts a puff at the player ($0346, ObjectSpawnPuff). */
-static void lap_light_frame(void)
+static void lap_light_frame(Carried *cr)
 {
-    if (!lap_eq(0x200A)) {
+    if (!lap_eq(cr, 0x200A)) {
         cyc(16);
-        and8(F(0x2025, cpu.x), 0xFE);
-        st8i_hi(F(0x205A, cpu.x), cyc_then(16, 0x00));
-        st8i(F(0x2048, cpu.x), cyc_then(6, 0x00));
+        and8(cr, F_c(0x2025, cr->x), 0xFE);
+        st8i_hi(cr, F_c(0x205A, cr->x), cyc_then(16, 0x00));
+        st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x00));
     } else { cyc(22); }
-    if (bit25(0x01)) {
+    if (bit25(cr, 0x01)) {
         cyc(106);
-        abi_ObjectSyncFromRecord();
-        (cyc(46), abi_ObjectCountUpTo2());
+        w_ObjectSyncFromRecord(cr);
+        (cyc(46), ObjectCountUpTo2(cr));
         { cyc(44); return; }
     } else { cyc(18); }
-    if (!hit())
+    if (!hit(cr))
         { cyc(62); return; } else { cyc(0); }
-    lap_store(0x200A);
-    sound0(0x5C);
-    or8(F(0x2025, cpu.x), 0x01);
-    cpu.y = rd16(cyc_then(24, db() | 0x0346));
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(46), abi_ObjectSpawnPuff());
+    lap_store(cr, 0x200A);
+    sound0(cr, 0x5C);
+    or8(cr, F_c(0x2025, cr->x), 0x01);
+    cr->y = rd16(cyc_then(24, db(cr) | 0x0346));
+    cr->p = nz16(cr->p, cr->y);
+    (cyc(46), w_ObjectSpawnPuff(cr));
     cyc(44);
 }
 
@@ -8764,12 +13862,25 @@ static void lap_light_frame(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
  */
-void abi_ObjectLapLightRecord(void)
+void ObjectLapLightRecord(Carried *cr)
 {
     cyc(62);
-    abi_GsuRecordNew42D();
-    abi_GsuRecordFlag10();
-    lap_light_frame();
+    w_GsuRecordNew42D(cr);
+    w_GsuRecordFlag10(cr);
+    lap_light_frame(cr);
+}
+
+void abi_ObjectLapLightRecord(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapLightRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8783,9 +13894,22 @@ void abi_ObjectLapLightRecord(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */
+void ObjectLapLightStep(Carried *cr)
+{
+    lap_light_frame(cr);
+}
+
 void abi_ObjectLapLightStep(void)
 {
-    lap_light_frame();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLapLightStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8799,33 +13923,46 @@ void abi_ObjectLapLightStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as DEC or
  * ObjectRelease leaves it.
  */
-void abi_ObjectPuffFollow(void)
+void ObjectPuffFollow(Carried *cr)
 {
-    cpu.y = rd16(cyc_then(24, db() | 0x0346));
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(62), abi_ObjectCopyPositionFrom());
+    cr->y = rd16(cyc_then(24, db(cr) | 0x0346));
+    cr->p = nz16(cr->p, cr->y);
+    (cyc(62), w_ObjectCopyPositionFrom(cr));
     cyc(22);
-    (cyc(40), abi_ObjectRebucket());
-    st8i_hi(F(0x2018, cpu.x), cyc_then(16, 0x01));
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(52, F(0x2029, cpu.x)));
+    (cyc(40), w_ObjectRebucket(cr));
+    st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(16, 0x01));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(52, F_c(0x2029, cr->x)));
     cyc(16);
-    wr16(0x00003E, cpu.a);
-    op_lda16_imm(0xF9C0);
-    approach_regs(ApproachEighthMin8);
-    wr16(F(0x2029, cpu.x), cyc_then(30, cpu.a));
-    cpu.p |= P_M;
-    copy16((cyc(22), db()) | 0x1F4E, F(0x2029, cpu.x));
-    cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(74, F(0x200E, cpu.x)));
-    op_add16(rd16(cyc_then(38, db() | 0x1F4E)));
-    wr16(F(0x200E, cpu.x), cyc_then(30, cpu.a));
-    cpu.p |= P_M;
+    wr16(0x00003E, cr->a);
+    r_lda16_imm(cr, 0xF9C0);
+    r_approach(cr, ApproachEighthMin8);
+    wr16(F_c(0x2029, cr->x), cyc_then(30, cr->a));
+    cr->p |= P_M;
+    copy16(cr, (cyc(22), db(cr)) | 0x1F4E, F_c(0x2029, cr->x));
+    cr->p &= (uint8_t)~P_M;
+    r_lda16(cr, cyc_then(74, F_c(0x200E, cr->x)));
+    r_add16(cr, rd16(cyc_then(38, db(cr) | 0x1F4E)));
+    wr16(F_c(0x200E, cr->x), cyc_then(30, cr->a));
+    cr->p |= P_M;
     cyc(44);
-    if (!dec8(F(0x200A, cpu.x)))
-        { cyc(84); abi_ObjectRelease(); cyc(44); }
+    if (!dec8(cr, F_c(0x200A, cr->x)))
+        { cyc(84); w_ObjectRelease(cr); cyc(44); }
     else
         cyc(92);
+}
+
+void abi_ObjectPuffFollow(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPuffFollow(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ---- 09:B876-C071: the second shatter, shards, bonus markers ---- */
@@ -8842,9 +13979,22 @@ void abi_HudCountUp19EC(void);
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
  * shard leaves it.
  */
+void ObjectShatter2(Carried *cr)
+{
+    shatter_rest(cr, shatter2_kinds, 0);
+}
+
 void abi_ObjectShatter2(void)
 {
-    shatter_rest(shatter2_kinds, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8858,9 +14008,22 @@ void abi_ObjectShatter2(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard1XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter2_kinds, 0, 0);
+}
+
 void abi_ObjectShatter2Shard1XSign(void)
 {
-    shatter_from_x(shatter2_kinds, 0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard1XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8874,9 +14037,22 @@ void abi_ObjectShatter2Shard1XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard1YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter2_kinds, 0, 0);
+}
+
 void abi_ObjectShatter2Shard1YSign(void)
 {
-    shatter_from_y(shatter2_kinds, 0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard1YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8890,9 +14066,22 @@ void abi_ObjectShatter2Shard1YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard2XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter2_kinds, 1, 0);
+}
+
 void abi_ObjectShatter2Shard2XSign(void)
 {
-    shatter_from_x(shatter2_kinds, 1, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard2XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8906,9 +14095,22 @@ void abi_ObjectShatter2Shard2XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard2YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter2_kinds, 1, 0);
+}
+
 void abi_ObjectShatter2Shard2YSign(void)
 {
-    shatter_from_y(shatter2_kinds, 1, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard2YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8922,9 +14124,22 @@ void abi_ObjectShatter2Shard2YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard3XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter2_kinds, 2, 1);
+}
+
 void abi_ObjectShatter2Shard3XSign(void)
 {
-    shatter_from_x(shatter2_kinds, 2, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard3XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8938,9 +14153,22 @@ void abi_ObjectShatter2Shard3XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard3YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter2_kinds, 2, 0);
+}
+
 void abi_ObjectShatter2Shard3YSign(void)
 {
-    shatter_from_y(shatter2_kinds, 2, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard3YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8954,9 +14182,22 @@ void abi_ObjectShatter2Shard3YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard4XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter2_kinds, 3, 1);
+}
+
 void abi_ObjectShatter2Shard4XSign(void)
 {
-    shatter_from_x(shatter2_kinds, 3, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard4XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8970,9 +14211,22 @@ void abi_ObjectShatter2Shard4XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard4YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter2_kinds, 3, 0);
+}
+
 void abi_ObjectShatter2Shard4YSign(void)
 {
-    shatter_from_y(shatter2_kinds, 3, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard4YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -8986,9 +14240,22 @@ void abi_ObjectShatter2Shard4YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard5XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter2_kinds, 4, 1);
+}
+
 void abi_ObjectShatter2Shard5XSign(void)
 {
-    shatter_from_x(shatter2_kinds, 4, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard5XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9002,9 +14269,22 @@ void abi_ObjectShatter2Shard5XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard5YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter2_kinds, 4, 0);
+}
+
 void abi_ObjectShatter2Shard5YSign(void)
 {
-    shatter_from_y(shatter2_kinds, 4, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard5YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9018,9 +14298,22 @@ void abi_ObjectShatter2Shard5YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard6XSign(Carried *cr)
+{
+    shatter_from_x(cr, shatter2_kinds, 5, 1);
+}
+
 void abi_ObjectShatter2Shard6XSign(void)
 {
-    shatter_from_x(shatter2_kinds, 5, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard6XSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9034,9 +14327,22 @@ void abi_ObjectShatter2Shard6XSign(void)
  * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
  * DB = $7E. Exit: as ObjectShatter2.
  */
+void ObjectShatter2Shard6YSign(Carried *cr)
+{
+    shatter_from_y(cr, shatter2_kinds, 5, 1);
+}
+
 void abi_ObjectShatter2Shard6YSign(void)
 {
-    shatter_from_y(shatter2_kinds, 5, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShatter2Shard6YSign(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9050,50 +14356,63 @@ void abi_ObjectShatter2Shard6YSign(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
-void abi_ObjectShardStep(void)
+void ObjectShardStep(Carried *cr)
 {
     uint8_t v;
     int i;
     static const uint8_t lo[2] = {0x04, 0x0A};
 
-    v = ld8(cyc_then(22, F(0x2048, cpu.x)));
-    wr8(db() | 0x1F58, cyc_then(24, v));
-    v = ld8(cyc_then(22, F(0x2049, cpu.x)));
-    wr8(db() | 0x1F59, cyc_then(24, v));
-    axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
-    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
-    axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
-    ld8(cyc_then(22, F(0x2014, cpu.x)));
-    (cyc(62), abi_RotateXZFrom08());
-    orbit_again();
-    ld8(cyc_then(22, F(0x2015, cpu.x)));
-    (cyc(62), abi_RotateXZ());
-    cpu.p &= (uint8_t)~P_M;
+    v = ld8(cr, cyc_then(22, F_c(0x2048, cr->x)));
+    wr8(db(cr) | 0x1F58, cyc_then(24, v));
+    v = ld8(cr, cyc_then(22, F_c(0x2049, cr->x)));
+    wr8(db(cr) | 0x1F59, cyc_then(24, v));
+    axis_from(cr, db(cr) | 0x1F58, dp(cr, 0x02), dp(cr, 0x04), dp(cr, 0x05));
+    axis_from(cr, db(cr) | 0x1F59, dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B));
+    axis_from(cr, dp(cr, 0x00), dp(cr, 0x94), db(cr) | 0x05F2, db(cr) | 0x05F3);
+    ld8(cr, cyc_then(22, F_c(0x2014, cr->x)));
+    (cyc(62), w_RotateXZFrom08(cr));
+    orbit_again(cr);
+    ld8(cr, cyc_then(22, F_c(0x2015, cr->x)));
+    (cyc(62), w_RotateXZ(cr));
+    cr->p &= (uint8_t)~P_M;
     cyc(22);
     for (i = 0; i < 2; i++) {
-        op_lda16(cyc_then(12, dp(lo[i])));
-        op_asl16();
-        op_asl16();
-        wr16(dp(lo[i]), cyc_then(40, cpu.a));
+        r_lda16(cr, cyc_then(12, dp(cr, lo[i])));
+        r_asl16(cr);
+        r_asl16(cr);
+        wr16(dp(cr, lo[i]), cyc_then(40, cr->a));
     }
-    op_lda16(cyc_then(24, db() | 0x05F2));
-    op_asl16();
-    op_asl16();
-    wr16(db() | 0x05F2, cyc_then(52, cpu.a));
-    op_lda16(cyc_then(30, F(0x200C, cpu.x)));
-    op_add16(rd16(cyc_then(26, dp(0x04))));
-    wr16(F(0x200C, cpu.x), cyc_then(30, cpu.a));
-    op_lda16(cyc_then(30, F(0x2010, cpu.x)));
-    op_add16(rd16(cyc_then(38, db() | 0x05F2)));
-    wr16(F(0x2010, cpu.x), cyc_then(30, cpu.a));
-    op_lda16(cyc_then(30, F(0x200E, cpu.x)));
-    op_add16(rd16(cyc_then(26, dp(0x0A))));
-    wr16(F(0x200E, cpu.x), cyc_then(30, cpu.a));
-    cpu.p |= P_M;
-    add8(F(0x2015, cpu.x), cyc_then(22, 0x12));
-    (cyc(22), life_down(62));
-    abi_ObjectRebucket();
+    r_lda16(cr, cyc_then(24, db(cr) | 0x05F2));
+    r_asl16(cr);
+    r_asl16(cr);
+    wr16(db(cr) | 0x05F2, cyc_then(52, cr->a));
+    r_lda16(cr, cyc_then(30, F_c(0x200C, cr->x)));
+    r_add16(cr, rd16(cyc_then(26, dp(cr, 0x04))));
+    wr16(F_c(0x200C, cr->x), cyc_then(30, cr->a));
+    r_lda16(cr, cyc_then(30, F_c(0x2010, cr->x)));
+    r_add16(cr, rd16(cyc_then(38, db(cr) | 0x05F2)));
+    wr16(F_c(0x2010, cr->x), cyc_then(30, cr->a));
+    r_lda16(cr, cyc_then(30, F_c(0x200E, cr->x)));
+    r_add16(cr, rd16(cyc_then(26, dp(cr, 0x0A))));
+    wr16(F_c(0x200E, cr->x), cyc_then(30, cr->a));
+    cr->p |= P_M;
+    add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x12));
+    (cyc(22), life_down(cr, 62));
+    w_ObjectRebucket(cr);
     cyc(44);
+}
+
+void abi_ObjectShardStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectShardStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9106,18 +14425,31 @@ void abi_ObjectShardStep(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
+void ObjectRisingSpark(Carried *cr)
+{
+    cr->y = rd16(cyc_then(30, F_c(0x2029, cr->x)));
+    cr->p = nz16(cr->p, cr->y);
+    (cyc(62), w_ObjectCopyPositionFrom(cr));
+    (cyc(22), life_down(cr, 22));
+    add16(cr, F_c(0x200E, cr->x), 0xFF80);
+    add16(cr, F_c(0x2027, cr->x), cyc_then(44, 0xFFD8));
+    add16_via(cr, F_c(0x200E, cr->x), F_c(0x2027, cr->x));
+    add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x12));
+    (cyc(62), w_ObjectRebucket(cr));
+    cyc(44);
+}
+
 void abi_ObjectRisingSpark(void)
 {
-    cpu.y = rd16(cyc_then(30, F(0x2029, cpu.x)));
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(62), abi_ObjectCopyPositionFrom());
-    (cyc(22), life_down(22));
-    add16(F(0x200E, cpu.x), 0xFF80);
-    add16(F(0x2027, cpu.x), cyc_then(44, 0xFFD8));
-    add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
-    add8(F(0x2015, cpu.x), cyc_then(22, 0x12));
-    (cyc(62), abi_ObjectRebucket());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRisingSpark(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 09:BF34 / BFF6: the marker bounces and syncs to its record; a car's
@@ -9137,7 +14469,7 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     if (!(uint8_t)cpu.a)
         { cyc(72); return; }
-    if (!next_contact())
+    if (!next_contact_g())
         return; else { cyc(24); }
     abi_HudCountUp19EC();
     sx = cpu.x;
@@ -9145,14 +14477,14 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
     cyc(66);
-    if (spawn(kind)) {
+    if (spawn_g(kind)) {
         uint8_t a;
 
-        cpu.x = rd16(cyc_then(24, db() | 0x0346));
+        cpu.x = rd16(cyc_then(24, db_g() | 0x0346));
         cpu.p = nz16(cpu.p, cpu.x);
-        st8i(F(0x200A, cpu.y), cyc_then(6, 0x0A));
+        st8i_g(F(0x200A, cpu.y), cyc_then(6, 0x0A));
         (cyc(62), abi_ObjectCopyPositionTo());
-        st16i(F(0x2027, cpu.y), cyc_then(22, 0x0000));
+        st16i_g(F(0x2027, cpu.y), cyc_then(22, 0x0000));
         a = (uint8_t)cpu.a;
         cpu.p &= (uint8_t)~P_M;
         cpu.a = cpu.x;
@@ -9160,23 +14492,23 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
         wr16(F(0x2029, cpu.y), cyc_then(110, cpu.x));
         cpu.p |= P_M;
         cyc(52);
-        lda8(a);
-        handler(cpu.y, 0xBE92);
+        lda8_g(a);
+        handler_g(cpu.y, 0xBE92);
     } else { cyc(26); }
     cyc(88);
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
     cpu.p |= P_M;
     cpu.p |= P_D;
-    v = ld8(db() | 0x19EE);
+    v = ld8_g(db_g() | 0x19EE);
     cpu.p &= (uint8_t)~P_C;
     v = op_adc8(v, bonus, &cpu.p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    wr8(db() | 0x19EE, cyc_then(54, v));
-    v = ld8((cyc(16), db()) | 0x19EF);
+    wr8(db_g() | 0x19EE, cyc_then(54, v));
+    v = ld8_g((cyc(16), db_g()) | 0x19EF);
     v = op_adc8(v, 0x00, &cpu.p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    wr8(db() | 0x19EF, cyc_then(40, v));
+    wr8(db_g() | 0x19EF, cyc_then(40, v));
     cpu.p &= (uint8_t)~P_D;
     (cyc(76), abi_ObjectRelease());
     cyc(44);
@@ -9184,11 +14516,24 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
 
 /* The bonus marker's start: colour 0 with bit 7, offset +$27 = 0, speed
    +$29 = 2. */
-static void bonus_marker2_init(void)
+static void bonus_marker2_init(Carried *cr)
 {
-    st8i_hi(F(0x205A, cpu.x), cyc_then(16, 0x00));
-    st16i(F(0x2027, cpu.x), cyc_then(22, 0x0000));
-    st16i(F(0x2029, cpu.x), cyc_then(44, 0x0002));
+    st8i_hi(cr, F_c(0x205A, cr->x), cyc_then(16, 0x00));
+    st16i(cr, F_c(0x2027, cr->x), cyc_then(22, 0x0000));
+    st16i(cr, F_c(0x2029, cr->x), cyc_then(44, 0x0002));
+}
+
+static void bonus_marker2_init_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    bonus_marker2_init(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -9202,10 +14547,10 @@ static void bonus_marker2_init(void)
  */
 void abi_ObjectBonusMarker2(void)
 {
-    bonus_marker2_init();
-    st8i(F(0x2048, cpu.x), cyc_then(28, 0x01));
-    handlers2(0xBF26, 0xBF34);
-    shatter_marker_record();
+    bonus_marker2_init_g();
+    st8i_g(F(0x2048, cpu.x), cyc_then(28, 0x01));
+    handlers2_g(0xBF26, 0xBF34);
+    shatter_marker_record_g();
     cyc(102);
     bonus_marker2_frame(abi_ObjectShatter, 0xB674, 0x02);
 }
@@ -9219,7 +14564,7 @@ void abi_ObjectBonusMarker2(void)
  */
 void abi_ObjectBonusMarker2Record(void)
 {
-    shatter_marker_record();
+    shatter_marker_record_g();
     cyc(102);
     bonus_marker2_frame(abi_ObjectShatter, 0xB674, 0x02);
 }
@@ -9251,10 +14596,10 @@ void abi_ObjectBonusMarker2Step(void)
  */
 void abi_ObjectBonusMarker5(void)
 {
-    bonus_marker2_init();
+    bonus_marker2_init_g();
     cyc(22);
-    handlers2(0xBFEE, 0xBFF6);
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x01));
+    handlers2_g(0xBFEE, 0xBFF6);
+    st8i_g(F(0x2048, cpu.x), cyc_then(6, 0x01));
     (cyc(62), abi_GsuRecordNew42D());
     abi_GsuRecordFlag10();
     bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);
@@ -9298,27 +14643,40 @@ void abi_ObjectBonusMarker5Step(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
  * ObjectRelease.
  */
-void abi_ObjectRiderStep(void)
+void ObjectRiderStep(Carried *cr)
 {
-    uint16_t par = rd16(cyc_then(30, F(0x2027, cpu.x)));
+    uint16_t par = rd16(cyc_then(30, F_c(0x2027, cr->x)));
     uint8_t v;
 
-    cpu.y = par;
-    cpu.p = nz16(cpu.p, par);
-    v = (uint8_t)(ld8(cyc_then(22, F(0x2025, par))) & 0x01);
-    lda8(v);
+    cr->y = par;
+    cr->p = nz16(cr->p, par);
+    v = (uint8_t)(ld8(cr, cyc_then(22, F_c(0x2025, par))) & 0x01);
+    lda8(cr, v);
     if (v) {
         cyc(44);
-        (cyc(62), abi_ObjectRelease());
+        (cyc(62), w_ObjectRelease(cr));
         { cyc(44); return; }
     } else { cyc(40); }
-    v = ld8(F(0x2015, cpu.x));
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8(v, 0x04, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    wr8(F(0x2015, cpu.x), cyc_then(60, v));
-    (cyc(62), abi_ObjectRebucket());
+    v = ld8(cr, F_c(0x2015, cr->x));
+    cr->p &= (uint8_t)~P_C;
+    v = alu_adc8(v, 0x04, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    wr8(F_c(0x2015, cr->x), cyc_then(60, v));
+    (cyc(62), w_ObjectRebucket(cr));
     cyc(44);
+}
+
+void abi_ObjectRiderStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRiderStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9332,24 +14690,37 @@ void abi_ObjectRiderStep(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; made: A low byte =
  * $09; none: as ObjectSpawn.
  */
-void abi_ObjectRiderSpawn(void)
+void ObjectRiderSpawn(Carried *cr)
 {
     uint8_t lo;
 
-    if (!spawn(0xAD44))
+    if (!spawn(cr, 0xAD44))
         { cyc(68); return; }
-    (cyc(62), abi_ObjectCopyPositionTo());
-    add16(F(0x200E, cpu.y), cyc_then(22, 0x00A0));
-    lo = (uint8_t)cpu.a;
-    cpu.p &= (uint8_t)~P_M;
-    cpu.a = cpu.x;
-    wr16(F(0x2027, cpu.y), cyc_then(110, cpu.x));
-    cpu.p |= P_M;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | lo);
-    cpu.p = nz8(cpu.p, lo);
+    (cyc(62), w_ObjectCopyPositionTo(cr));
+    add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0x00A0));
+    lo = (uint8_t)cr->a;
+    cr->p &= (uint8_t)~P_M;
+    cr->a = cr->x;
+    wr16(F_c(0x2027, cr->y), cyc_then(110, cr->x));
+    cr->p |= P_M;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | lo);
+    cr->p = nz8(cr->p, lo);
     cyc(72);
-    handler(cpu.y, 0xC0FE);
+    handler(cr, cr->y, 0xC0FE);
     cyc(42);
+}
+
+void abi_ObjectRiderSpawn(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRiderSpawn(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectStep48To8(void);
@@ -9358,75 +14729,75 @@ void abi_HudCountMove19EE(void);
 /* A switch lamp's set-up: +$1D = rec (its record set-up), handler step,
    shape +$20 = $ECD0, +$5A = $80 (dark), count +$48 = 4, +$5A = $80
    again. */
-static void hit_lamp(uint16_t rec, uint16_t step)
+static void hit_lamp(Carried *cr, uint16_t rec, uint16_t step)
 {
-    st16i(F(0x201D, cpu.x), cyc_then(22, rec));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, rec));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
     cyc(22);
-    handler(cpu.x, step);
-    st16i(F(0x2020, cpu.x), cyc_then(22, 0xECD0));
-    lda8(0x00);
-    lda8(0x80);
-    wr8(F(0x205A, cpu.x), cyc_then(44, 0x80));
-    st8i(F(0x2048, cpu.x), cyc_then(6, 0x04));
-    lda8(0x00);
-    lda8(0x80);
-    wr8(F(0x205A, cpu.x), cyc_then(22, 0x80));
+    handler(cr, cr->x, step);
+    st16i(cr, F_c(0x2020, cr->x), cyc_then(22, 0xECD0));
+    lda8(cr, 0x00);
+    lda8(cr, 0x80);
+    wr8(F_c(0x205A, cr->x), cyc_then(44, 0x80));
+    st8i(cr, F_c(0x2048, cr->x), cyc_then(6, 0x04));
+    lda8(cr, 0x00);
+    lda8(cr, 0x80);
+    wr8(F_c(0x205A, cr->x), cyc_then(22, 0x80));
 }
 
 /* The switch lamp's record: GsuRecordNew424Alt in mode 2 with $14 in the
    high byte of +$2A, at ($500, $500, $500). */
-static void hit_lamp_record(void)
+static void hit_lamp_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew424Alt());
-    (cyc(62), abi_GsuRecordMode2());
-    lda8(0x14);
-    (cyc(58), abi_GsuRecordSet2AHigh());
+    (cyc(62), w_GsuRecordNew424Alt(cr));
+    (cyc(62), w_GsuRecordMode2(cr));
+    lda8(cr, 0x14);
+    (cyc(58), w_GsuRecordSet2AHigh(cr));
     cyc(102);
-    record_at(0x0500, 0x0500, 0x0500);
+    record_at(cr, 0x0500, 0x0500, 0x0500);
 }
 
 /* The switch lamp's frame: while the switch byte at `flag` is set, it
    lights up a step (ObjectStep48To8); then it follows its record. */
-static void hit_lamp_frame(uint16_t flag)
+static void hit_lamp_frame(Carried *cr, uint16_t flag)
 {
-    cpu.p |= P_M;
-    if (ld8((cyc(38), db()) | flag))
-        { cyc(62); abi_ObjectStep48To8(); } else { cyc(22); }
+    cr->p |= P_M;
+    if (ld8(cr, (cyc(38), db(cr)) | flag))
+        { cyc(62); w_ObjectStep48To8(cr); } else { cyc(22); }
     cyc(62);
-    abi_ObjectSyncFromRecord();
+    w_ObjectSyncFromRecord(cr);
     cyc(44);
 }
 
 /* The switch's record: GsuRecordNew42D with flag $10 at ($3C0, $3C0,
    $3C0). */
-static void hit_switch_record(void)
+static void hit_switch_record(Carried *cr)
 {
-    (cyc(62), abi_GsuRecordNew42D());
-    abi_GsuRecordFlag10();
-    record_at(0x03C0, 0x03C0, 0x03C0);
+    (cyc(62), w_GsuRecordNew42D(cr));
+    w_GsuRecordFlag10(cr);
+    record_at(cr, 0x03C0, 0x03C0, 0x03C0);
 }
 
 /* The switch's frame: on a car's contact (bit 0 of a contact's flags) the
    switch byte at `flag` = 1, and the first time (+$25 bit 0 clear) +$25
    bit 0 is set and the count moved (HudCountMove19EE). */
-static void hit_switch_frame(uint16_t flag)
+static void hit_switch_frame(Carried *cr, uint16_t flag)
 {
-    (cyc(62), abi_ObjectSyncFromRecord());
+    (cyc(62), w_ObjectSyncFromRecord(cr));
     cyc(10);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
-    if (!(uint8_t)cpu.a || !next_contact_t(28))
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
+    cr->p = nz8(cr->p, (uint8_t)cr->a);
+    if (!(uint8_t)cr->a || !next_contact_t(cr, 28))
         { cyc(72); return; } else { cyc(22); }
-    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
-    if (!(uint8_t)cpu.a) {
+    lda8(cr, (uint8_t)(ld8(cr, F_c(0x2025, cr->x)) & 0x01));
+    if (!(uint8_t)cr->a) {
         cyc(18);
-        or8(F(0x2025, cpu.x), 0x01);
-        (cyc(46), abi_HudCountMove19EE());
+        or8(cr, F_c(0x2025, cr->x), 0x01);
+        (cyc(46), w_HudCountMove19EE(cr));
         cyc(22);                        /* SEP */
     } else { cyc(66); }
-    cpu.p |= P_M;
-    st8i(db() | flag, 0x01);
+    cr->p |= P_M;
+    st8i(cr, db(cr) | flag, 0x01);
     cyc(44);
 }
 
@@ -9438,9 +14809,22 @@ static void hit_switch_frame(uint16_t flag)
  * HOW: An 8-bit test of $19E9; ObjectSyncFromRecord.
  * Entry: X 16-bit; X = object. Exit: M 8-bit; as ObjectSyncFromRecord.
  */
+void ObjectSwitchLampBStep(Carried *cr)
+{
+    hit_lamp_frame(cr, 0x19E9);
+}
+
 void abi_ObjectSwitchLampBStep(void)
 {
-    hit_lamp_frame(0x19E9);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchLampBStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9451,10 +14835,23 @@ void abi_ObjectSwitchLampBStep(void)
  * HOW: Falls into ObjectSwitchLampBStep.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampBStep.
  */
+void ObjectSwitchLampBRecord(Carried *cr)
+{
+    hit_lamp_record(cr);
+    ObjectSwitchLampBStep(cr);
+}
+
 void abi_ObjectSwitchLampBRecord(void)
 {
-    hit_lamp_record();
-    abi_ObjectSwitchLampBStep();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchLampBRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9465,10 +14862,23 @@ void abi_ObjectSwitchLampBRecord(void)
  * HOW: Stores, then falls into ObjectSwitchLampBRecord.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampBStep.
  */
+void ObjectSwitchLampB(Carried *cr)
+{
+    hit_lamp(cr, 0xB16E, 0xB19B);
+    ObjectSwitchLampBRecord(cr);
+}
+
 void abi_ObjectSwitchLampB(void)
 {
-    hit_lamp(0xB16E, 0xB19B);
-    abi_ObjectSwitchLampBRecord();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchLampB(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9481,9 +14891,22 @@ void abi_ObjectSwitchLampB(void)
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: hit: A low byte
  * = 1; otherwise as the last call leaves it.
  */
+void ObjectSwitchBStep(Carried *cr)
+{
+    hit_switch_frame(cr, 0x19E9);
+}
+
 void abi_ObjectSwitchBStep(void)
 {
-    hit_switch_frame(0x19E9);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchBStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9494,10 +14917,23 @@ void abi_ObjectSwitchBStep(void)
  * HOW: Falls into ObjectSwitchBStep.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchBStep.
  */
+void ObjectSwitchBRecord(Carried *cr)
+{
+    hit_switch_record(cr);
+    ObjectSwitchBStep(cr);
+}
+
 void abi_ObjectSwitchBRecord(void)
 {
-    hit_switch_record();
-    abi_ObjectSwitchBStep();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchBRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9508,13 +14944,26 @@ void abi_ObjectSwitchBRecord(void)
  * HOW: Stores, then falls into ObjectSwitchBRecord.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchBStep.
  */
+void ObjectSwitchB(Carried *cr)
+{
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, 0xB1C8));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
+    cyc(22);
+    handler(cr, cr->x, 0xB1EF);
+    ObjectSwitchBRecord(cr);
+}
+
 void abi_ObjectSwitchB(void)
 {
-    st16i(F(0x201D, cpu.x), cyc_then(22, 0xB1C8));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
-    cyc(22);
-    handler(cpu.x, 0xB1EF);
-    abi_ObjectSwitchBRecord();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchB(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9523,9 +14972,22 @@ void abi_ObjectSwitchB(void)
  * HOW: As ObjectSwitchLampBStep.
  * Entry: as ObjectSwitchLampBStep. Exit: as ObjectSwitchLampBStep.
  */
+void ObjectSwitchLampCStep(Carried *cr)
+{
+    hit_lamp_frame(cr, 0x19EA);
+}
+
 void abi_ObjectSwitchLampCStep(void)
 {
-    hit_lamp_frame(0x19EA);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchLampCStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9534,10 +14996,23 @@ void abi_ObjectSwitchLampCStep(void)
  * HOW: Falls into ObjectSwitchLampCStep.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampCStep.
  */
+void ObjectSwitchLampCRecord(Carried *cr)
+{
+    hit_lamp_record(cr);
+    ObjectSwitchLampCStep(cr);
+}
+
 void abi_ObjectSwitchLampCRecord(void)
 {
-    hit_lamp_record();
-    abi_ObjectSwitchLampCStep();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchLampCRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9548,10 +15023,23 @@ void abi_ObjectSwitchLampCRecord(void)
  * HOW: Stores, then falls into ObjectSwitchLampCRecord.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampCStep.
  */
+void ObjectSwitchLampC(Carried *cr)
+{
+    hit_lamp(cr, 0xB25A, 0xB287);
+    ObjectSwitchLampCRecord(cr);
+}
+
 void abi_ObjectSwitchLampC(void)
 {
-    hit_lamp(0xB25A, 0xB287);
-    abi_ObjectSwitchLampCRecord();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchLampC(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9560,9 +15048,22 @@ void abi_ObjectSwitchLampC(void)
  * HOW: As ObjectSwitchBStep.
  * Entry: as ObjectSwitchBStep. Exit: as ObjectSwitchBStep.
  */
+void ObjectSwitchCStep(Carried *cr)
+{
+    hit_switch_frame(cr, 0x19EA);
+}
+
 void abi_ObjectSwitchCStep(void)
 {
-    hit_switch_frame(0x19EA);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchCStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9571,10 +15072,23 @@ void abi_ObjectSwitchCStep(void)
  * HOW: Falls into ObjectSwitchCStep.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchCStep.
  */
+void ObjectSwitchCRecord(Carried *cr)
+{
+    hit_switch_record(cr);
+    ObjectSwitchCStep(cr);
+}
+
 void abi_ObjectSwitchCRecord(void)
 {
-    hit_switch_record();
-    abi_ObjectSwitchCStep();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchCRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -9584,11 +15098,447 @@ void abi_ObjectSwitchCRecord(void)
  * HOW: Stores, then falls into ObjectSwitchCRecord.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchCStep.
  */
+void ObjectSwitchC(Carried *cr)
+{
+    st16i(cr, F_c(0x201D, cr->x), cyc_then(22, 0xB2B4));
+    st8i(cr, F_c(0x201F, cr->x), cyc_then(28, 0x09));
+    cyc(22);
+    handler(cr, cr->x, 0xB2DB);
+    ObjectSwitchCRecord(cr);
+}
+
 void abi_ObjectSwitchC(void)
 {
-    st16i(F(0x201D, cpu.x), cyc_then(22, 0xB2B4));
-    st8i(F(0x201F, cpu.x), cyc_then(28, 0x09));
-    cyc(22);
-    handler(cpu.x, 0xB2DB);
-    abi_ObjectSwitchCRecord();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSwitchC(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* ObjectSpawn as its adapter leaves the registers. */
+static void w_ObjectSpawn(Carried *cr)
+{
+    if (ObjectSpawn(cr->db, &cr->a, cr->x, &cr->y))
+        { cyc(22); cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_C | P_M); }
+    else
+        cr->p = (uint8_t)((nz16(cr->p, cr->x) & ~P_C) | P_M);
+    cyc(58);
+}
+
+/* ObjectCopyPositionTo, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_ObjectCopyPositionTo(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectCopyPositionTo();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* ObjectRebucket as its adapter leaves the registers. */
+static void w_ObjectRebucket(Carried *cr)
+{
+    cr->a = ObjectRebucket(cr->x);
+}
+
+/* ObjectSyncFromRecord as its adapter leaves the registers. */
+static void w_ObjectSyncFromRecord(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectSyncFromRecord(cr->db, cr->x, &cr->y, &p);
+    cr->p = (uint8_t)(p | P_M);
+}
+
+/* RecordContactSummary as its adapter leaves the registers. */
+static void w_RecordContactSummary(Carried *cr)
+{
+    cr->a = RecordContactSummary(cr->db, cr->x, &cr->y);
+    cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_M);
+    cyc(66);
+}
+
+/* GsuRecordFlag10, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordFlag10(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordFlag10();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordNew42D, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordNew42D(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordNew42D();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordPosition, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordPosition(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordPosition();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* SoundPort0QueuePush, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SoundPort0QueuePush(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SoundPort0QueuePush();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* ObjectRelease as its adapter leaves the registers. */
+static void w_ObjectRelease(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectRelease(cr->db, cr->x, cr->a, &p);
+    cr->p = p;
+}
+
+/* GsuRecordNew424, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordNew424(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordNew424();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordSet2AHigh as its adapter leaves the registers. */
+static void w_GsuRecordSet2AHigh(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = GsuRecordSet2AHigh(cr->db, cr->x, (uint8_t)cr->a, &p);
+    cr->p = (uint8_t)(p | P_M);
+}
+
+/* GsuRecordMode2, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordMode2(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordMode2();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordNew424Alt, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordNew424Alt(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordNew424Alt();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordRaise6A as its adapter leaves the registers. */
+static void w_GsuRecordRaise6A(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = GsuRecordRaise6A(cr->db, cr->y, (uint8_t)cr->a, &p);
+    cr->p = (uint8_t)((nz16(p, cr->x) | P_M) & ~P_X);
+}
+
+/* RecordNextContact as its adapter leaves the registers. */
+static void w_RecordNextContact(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    RecordNextContact(cr->db, &cr->a, &cr->y, &p, cr->x);
+    cr->p = (uint8_t)(p | P_M);
+}
+
+/* ObjectSyncToRecord as its adapter leaves the registers. */
+static void w_ObjectSyncToRecord(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectSyncToRecord(cr->db, cr->x, &cr->y, &p);
+    cr->p = (uint8_t)(p | P_M);
+}
+
+/* SoundPort1QueuePush, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SoundPort1QueuePush(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SoundPort1QueuePush();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordFlags8ASet, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordFlags8ASet(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordFlags8ASet();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* ObjectCopyPositionFrom, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_ObjectCopyPositionFrom(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectCopyPositionFrom();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordLower82 as its adapter leaves the registers. */
+static void w_GsuRecordLower82(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = GsuRecordLower82(cr->db, cr->y, (uint8_t)cr->a, &p);
+    cr->p = (uint8_t)((nz16(p, cr->x) | P_M) & ~P_X);
+}
+
+/* HudCountMove19EECopy as its adapter leaves the registers. */
+static void w_HudCountMove19EECopy(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = HudCountMove19EECopy(cr->db, &p);
+    cr->p = p;
+}
+
+/* ObjectStep48To8 as its adapter leaves the registers. */
+static void w_ObjectStep48To8(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | ObjectStep48To8(cr->db, cr->x, &p));
+    cr->p = p;
+}
+
+/* HudCountMove19EE, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_HudCountMove19EE(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_HudCountMove19EE();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordNew424Piece, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuRecordNew424Piece(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuRecordNew424Piece();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRecordVelocity as its adapter leaves the registers. */
+static void w_GsuRecordVelocity(Carried *cr)
+{
+    int has;
+    uint8_t p = cr->p;
+    uint16_t a = GsuRecordVelocity(cr->db, cr->x, &has, &p);
+
+    cr->a = a;
+    if (has) {
+        cr->y = cr->x;
+        cr->p = (uint8_t)((p & ~P_N) | P_Z | P_M);
+    } else {
+        cr->p = (uint8_t)((p & ~P_Z) | P_N | P_M);
+    }
+    cyc(96);
+}
+
+/* RotateXY as its adapter leaves the registers. */
+static void w_RotateXY(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXY((uint8_t)cr->a));
+    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y);
+}
+
+/* RotateXZ as its adapter leaves the registers. */
+static void w_RotateXZ(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZ((uint8_t)cr->a));
+    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y);
+}
+
+/* RotateXZFrom08 as its adapter leaves the registers. */
+static void w_RotateXZFrom08(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZFrom08((uint8_t)cr->a));
+    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x);
+}
+
+/* ObjectCopy14To, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_ObjectCopy14To(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectCopy14To();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* ObjectSpawnPuff as its adapter leaves the registers. */
+static void w_ObjectSpawnPuff(Carried *cr)
+{
+    Carried r = {cr->a, cr->x, cr->y, cr->d, cr->p, cr->db};
+
+    ObjectSpawnPuff(&r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    cr->d = r.d;
+    cr->p = r.p;
+    cr->db = r.db;
 }
