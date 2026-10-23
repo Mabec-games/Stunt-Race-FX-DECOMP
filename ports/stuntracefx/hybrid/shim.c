@@ -13,6 +13,25 @@
 
 #include "machine.h"
 #include "draw_list.h"
+#include "carried.h"
+
+/* computed calls from carried code: none taken as carried here, so each
+   goes through the routine's adapter and the harness's own dispatch (the
+   same C: an adapter loads the registers and calls the carried form) */
+CarriedFn carried_at(uint32_t addr)
+{
+    (void)addr;
+    return 0;
+}
+
+/* the interrupt mask is P's I flag, as the port's runtime keeps it */
+void irq_mask_set(int masked)
+{
+    if (masked)
+        cpu.p |= P_I;
+    else
+        cpu.p &= (uint8_t)~P_I;
+}
 
 uint8_t io_read(uint32_t addr, uint8_t value)
 {
