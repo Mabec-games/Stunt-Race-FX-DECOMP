@@ -303,19 +303,26 @@ def make_wrapper(n):
 # carried forms, or a stop
 EXTMAP = {'approach_regs': 'r_approach', 'approach_regs_byte': 'r_approach_byte'}
 EXTREG = set()
+EXTROUT = set()
 for f, t in src.items():
     if f == FILE:
         continue
     for (s0, e, n, hdr, params, bs) in functions(t):
         if not hdr.startswith('static') and not n.startswith('abi_') and REG.search(t[bs:e]):
             EXTREG.add(n)
+            # void X(void) whose adapter only calls it: called as the routine
+            if params.strip() == 'void' and re.match(r'void\s', hdr) and \
+                    re.search(r'^void abi_%s\(void\)\n\{\n\s*%s\(\);\n\}\n' % (n, n), t, re.M):
+                EXTROUT.add(n)
 stops = set()
 
 cvariants = set()
 def rewrite_body(b):
     for n in EXTMAP:
         b = re.sub(r'(?<![\w>.])%s\s*\(' % n, EXTMAP[n] + '(cr, ', b)
-    for n in EXTREG - set(EXTMAP):
+    for n in EXTROUT:
+        b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % n, 'abi_%s()' % n, b)
+    for n in EXTREG - set(EXTMAP) - EXTROUT:
         if re.search(r'(?<![\w>.])%s\s*\(' % n, b):
             stops.add(n)
     # calls of helpers still in registers: through their _c variants, which
@@ -629,12 +636,15 @@ if wrapcode or regfn:
     for c in sorted(set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', wcode + ''.join(body[n] for n in regfn)))):
         if c.startswith(('abi_', 'w_', 'r_', 'alu_')) or c in byname:
             continue
-        if re.search(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\)\s*;' % c, res, re.M):
-            continue
         hf = header_of(c)
         if hf:
+            # the header's declaration, in place of any of the file's own
             if ('"%s"' % hf) not in res:
-                protos.append('#include "%s"\n' % hf)
+                if '#include "%s"\n' % hf not in protos:
+                    protos.append('#include "%s"\n' % hf)
+                res = re.sub(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\)\s*;\n' % c, '', res, flags=re.M)
+            continue
+        if re.search(r'^[A-Za-z_][\w \*]*\b%s\s*\([^;{]*\)\s*;' % c, res, re.M):
             continue
         pr = proto_of(c)
         if pr:
