@@ -236,6 +236,12 @@ def export_into(f, n, b):
     reaches uses the register file; True when it is there."""
     if re.search(r'\bcpu\.(s|pc|e|unwound)\b|call_routine|jump_routine|\babi_\w+\s*\(', b):
         return False
+    # a helper's register form X_g (its carried form X with the registers
+    # loaded and taken back) is X itself on carried registers
+    for g in set(re.findall(r'(?<![\w>.])(\w+)_g\s*\(', b)):
+        if re.search(r'^(?:static )?[A-Za-z_][\w \*]*\b%s\(Carried \*cr[,)]' % g, src[f], re.M):
+            b = re.sub(r'(?<![\w>.])%s_g\s*\(\s*\)' % g, '%s(cr)' % g, b)
+            b = re.sub(r'(?<![\w>.])%s_g\s*\(' % g, '%s(cr, ' % g, b)
     if touches_any(f, b, set()):
         return False
     bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)

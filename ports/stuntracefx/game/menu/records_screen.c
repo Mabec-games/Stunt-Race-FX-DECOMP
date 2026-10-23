@@ -23,11 +23,6 @@ uint8_t OamPaletteFromTableE30F(uint8_t bank, uint16_t *y);
 uint8_t OamPalettesE28D(uint8_t bank, uint16_t *y);
 uint8_t OamSprite0AddY(uint8_t bank, uint8_t lines, uint8_t *p);
 #include "save_calls.h"
-void abi_RecordsMenuSpeed(void);
-void abi_RecordsMenuSpeedAlt(void);
-void abi_RecordsMenuThree(void);
-void abi_RecordsMenuTwo(void);
-void abi_SpeedRecordsPage(void);
 
 void abi_MetaspriteDraw(void);
 void abi_SoundPort0QueuePush(void);
@@ -82,21 +77,27 @@ void RecordsMenuAllMiddle(Carried *cr);
 void RecordsMenuAllTop(Carried *cr);
 void RecordsMenuBack(Carried *cr);
 void RecordsMenuGo(Carried *cr);
+void RecordsMenuSpeed(Carried *cr);
+void RecordsMenuSpeedAlt(Carried *cr);
 void RecordsMenuSpeedAltBottom(Carried *cr);
 void RecordsMenuSpeedAltTop(Carried *cr);
 void RecordsMenuSpeedBottom(Carried *cr);
 void RecordsMenuSpeedTop(Carried *cr);
+void RecordsMenuThree(Carried *cr);
 void RecordsMenuThreeBottom(Carried *cr);
 void RecordsMenuThreeMiddle(Carried *cr);
 void RecordsMenuThreeTop(Carried *cr);
+void RecordsMenuTwo(Carried *cr);
 void RecordsMenuTwoBottom(Carried *cr);
 void RecordsMenuTwoTop(Carried *cr);
 void RecordsPageMarkFlip(Carried *cr);
 void RecordsPageMarkFlipHide(Carried *cr);
 void SpeedRecordsLeaveCar(Carried *cr);
+void SpeedRecordsPage(Carried *cr);
 void SpeedRecordsScreen(Carried *cr);
 void StuntRecordsScreen(Carried *cr);
 static void all_bottom_show(Carried *cr, int pushed);
+static void all_menu(Carried *cr);
 static void all_middle_show(Carried *cr, int pushed);
 static void all_top_show(Carried *cr, int pushed);
 static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, int d_rest);
@@ -128,7 +129,6 @@ static void w_ColourMathA7Start(Carried *cr);
 static void w_OamClassName(Carried *cr);
 static void w_OamHideEntries0To2(Carried *cr);
 static void w_OamHideEntries3And9(Carried *cr);
-static void w_OamPaletteForD75(Carried *cr);
 static void w_OamPaletteFromTableE26A(Carried *cr);
 static void w_OamPaletteFromTableE26AByMode(Carried *cr);
 static void w_OamPaletteFromTableE30F(Carried *cr);
@@ -136,21 +136,9 @@ static void w_OamPalettesE28D(Carried *cr);
 static void w_OamSprite0AddY(Carried *cr);
 static void w_RecordNameLetters(Carried *cr);
 static void w_RecordNameLettersSmall(Carried *cr);
+static void w_RecordRowsFirstTimes(Carried *cr);
+static void w_RecordRowsGroupFirsts(Carried *cr);
 static void w_RecordTagCarSet(Carried *cr);
-static void w_RecordsMenuSpeed(Carried *cr);
-static void w_RecordsMenuSpeedAlt(Carried *cr);
-static void w_RecordsMenuThree(Carried *cr);
-static void w_RecordsMenuTwo(Carried *cr);
-static void w_SpeedRecordsPage(Carried *cr);
-static void w_SpritePiecesAt46Y71(Carried *cr);
-static void w_SpritePiecesAt46Y82(Carried *cr);
-static void w_SpritePiecesAt46Y93(Carried *cr);
-static void w_SpritePiecesAt62Y71(Carried *cr);
-static void w_SpritePiecesAt62Y83(Carried *cr);
-static void w_SpritePiecesAt62Y95(Carried *cr);
-static void w_SpritePiecesAtLeft(Carried *cr);
-static void w_SpritePiecesAtRight(Carried *cr);
-static void w_SpritePiecesCarAt51(Carried *cr);
 static void w_SpriteTextAt8152(Carried *cr);
 static void w_SpriteTextAt8152B(Carried *cr);
 static void w_SpriteTextAt8952(Carried *cr);
@@ -164,48 +152,30 @@ void OamAttr38x4_cr(Carried *cr);
 void OamAttr38x6_cr(Carried *cr);
 void OamAttr38x7_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
+void OamPaletteForD75_cr(Carried *cr);
 void RecordNameLettersLarge_cr(Carried *cr);
 void RecordScoreDigits_cr(Carried *cr);
 void RecordTimeDigitsLarge_cr(Carried *cr);
 void RecordTimeDigitsSmall_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
+void SpritePiecesAt46Y71_cr(Carried *cr);
+void SpritePiecesAt46Y82_cr(Carried *cr);
+void SpritePiecesAt46Y93_cr(Carried *cr);
+void SpritePiecesAt62Y71_cr(Carried *cr);
+void SpritePiecesAt62Y83_cr(Carried *cr);
+void SpritePiecesAt62Y95_cr(Carried *cr);
+void SpritePiecesAtLeft_cr(Carried *cr);
+void SpritePiecesAtRight_cr(Carried *cr);
+void SpritePiecesCarAt51_cr(Carried *cr);
 
 static uint32_t db(Carried *cr)
 {
     return (uint32_t)cr->db << 16;
 }
 
-static uint32_t db_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint32_t ret_ = db(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 static uint32_t dp(Carried *cr, uint8_t a)
 {
     return (uint16_t)(cr->d + a);
-}
-
-static uint32_t dp_g(uint8_t a)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint32_t ret_ = dp(&c, a);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* LDA #v with M 8-bit. */
@@ -215,19 +185,6 @@ static void lda8(Carried *cr, uint8_t v)
     cr->p = nz8(cr->p, v);
 }
 
-static void lda8_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    lda8(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* LDA $0D1A (the pad's new presses, 16-bit), BIT #mask: whether any of
    them is pressed. */
 static int pressed(Carried *cr, uint16_t mask)
@@ -235,20 +192,6 @@ static int pressed(Carried *cr, uint16_t mask)
     r_lda16(cr, cyc_then(24, db(cr) | 0x0D1A));
     cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(50), 0) : (cyc(16), P_Z)));
     return (cr->a & mask) != 0;
-}
-
-static int pressed_g(uint16_t mask)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = pressed(&c, mask);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* LDA #v (16-bit), JSL SoundPort0QueuePush. */
@@ -264,19 +207,6 @@ static void sound8(Carried *cr, uint8_t v)
     cyc(52);
     lda8(cr, v);
     SoundPort0QueuePush_cr(cr);
-}
-
-static void sound8_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    sound8(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* SEP #$30, then the metasprites' origin ($0D3B, $0D3C) and REP #$30. */
@@ -618,20 +548,6 @@ static int menu_wait(Carried *cr)
     return 0;
 }
 
-static int menu_wait_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = menu_wait(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 /* SEP #$10, REP #$20; Y goes back to the course select (returns 1). */
 static int menu_back(Carried *cr)
 {
@@ -641,20 +557,6 @@ static int menu_back(Carried *cr)
         { cyc(30); return 0; } else { cyc(20); }
     RecordsMenuBack(cr);
     return 1;
-}
-
-static int menu_back_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = menu_back(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* LDX $0D50 (8-bit), the menu's JMP (table,X): the handler's address. */
@@ -668,54 +570,23 @@ static uint16_t menu_handler(Carried *cr, uint16_t table)
     return rd16(0x020000 | (uint16_t)(table + x));
 }
 
-static uint16_t menu_handler_g(uint16_t table)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint16_t ret_ = menu_handler(&c, table);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 /* The all-courses records menu (inline in AllRecordsScreen): the
    countdown, Y back, then the cursor's handler from the table at
    $02:F519. */
-static void all_menu(void)
+static void all_menu(Carried *cr)
 {
     uint16_t h;
 
-    if (!(cyc(24), menu_wait_g()) || menu_back_g())
+    if (!(cyc(24), menu_wait(cr)) || menu_back(cr))
         { cyc(0); return; }
-    h = menu_handler_g(0xF519);
+    h = menu_handler(cr, 0xF519);
     switch (h) {
-    case 0xF51F: abi_RecordsMenuAllTop(); break;
-    case 0xF5C6: abi_RecordsMenuAllBottom(); break;
-    case 0xF55E: abi_RecordsMenuAllMiddle(); break;
-    default: jump_routine(0x020000 | h); break;
+    case 0xF51F: RecordsMenuAllTop(cr); break;
+    case 0xF5C6: RecordsMenuAllBottom(cr); break;
+    case 0xF55E: RecordsMenuAllMiddle(cr); break;
+    default: carried_jump(cr, 0x020000 | h); break;
     }
     cyc(0);
-}
-
-static void all_menu_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    all_menu();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* The Speed Trax records menu's highlights. */
@@ -812,20 +683,33 @@ void abi_RecordsMenuSpeedBottom(void)
  * Entry: any widths; data bank $7E or a mirror. Exit: as the handler
  * leaves it.
  */
-void abi_RecordsMenuSpeed(void)
+void RecordsMenuSpeed(Carried *cr)
 {
     cyc(24);
     uint16_t h;
 
-    if (!menu_wait_g() || menu_back_g())
+    if (!menu_wait(cr) || menu_back(cr))
         return;
-    h = menu_handler_g(0xF625);
+    h = menu_handler(cr, 0xF625);
     switch (h) {
-    case 0xF629: abi_RecordsMenuSpeedTop(); break;
-    case 0xF662: abi_RecordsMenuSpeedBottom(); break;
-    default: jump_routine(0x020000 | h); break;
+    case 0xF629: RecordsMenuSpeedTop(cr); break;
+    case 0xF662: RecordsMenuSpeedBottom(cr); break;
+    default: carried_jump(cr, 0x020000 | h); break;
     }
     cyc(0);
+}
+
+void abi_RecordsMenuSpeed(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsMenuSpeed(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The Speed Trax menu with $0D4C set: Y or the second choice's B or Start
@@ -965,20 +849,33 @@ void abi_RecordsMenuSpeedAltBottom(void)
  * Entry: any widths; data bank $7E or a mirror. Exit: as the handler
  * leaves it.
  */
-void abi_RecordsMenuSpeedAlt(void)
+void RecordsMenuSpeedAlt(Carried *cr)
 {
     cyc(24);
     uint16_t h;
 
-    if (!menu_wait_g())
+    if (!menu_wait(cr))
         return;
-    op_sep(P_X);
-    h = menu_handler_g(0xF6AE);
+    r_sep(cr, P_X);
+    h = menu_handler(cr, 0xF6AE);
     switch (h) {
-    case 0xF6B2: abi_RecordsMenuSpeedAltTop(); cyc(0); break;
-    case 0xF6F8: abi_RecordsMenuSpeedAltBottom(); break;
-    default: jump_routine(0x020000 | h); break;
+    case 0xF6B2: RecordsMenuSpeedAltTop(cr); cyc(0); break;
+    case 0xF6F8: RecordsMenuSpeedAltBottom(cr); break;
+    default: carried_jump(cr, 0x020000 | h); break;
     }
+}
+
+void abi_RecordsMenuSpeedAlt(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsMenuSpeedAlt(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1065,20 +962,33 @@ void abi_RecordsMenuTwoBottom(void)
  * Entry: any widths; data bank $7E or a mirror. Exit: as the handler
  * leaves it.
  */
-void abi_RecordsMenuTwo(void)
+void RecordsMenuTwo(Carried *cr)
 {
     cyc(24);
     uint16_t h;
 
-    if (!menu_wait_g() || menu_back_g())
+    if (!menu_wait(cr) || menu_back(cr))
         { cyc(0); return; }
-    h = menu_handler_g(0xF77E);
+    h = menu_handler(cr, 0xF77E);
     switch (h) {
-    case 0xF782: abi_RecordsMenuTwoTop(); break;
-    case 0xF7BB: abi_RecordsMenuTwoBottom(); break;
-    default: jump_routine(0x020000 | h); break;
+    case 0xF782: RecordsMenuTwoTop(cr); break;
+    case 0xF7BB: RecordsMenuTwoBottom(cr); break;
+    default: carried_jump(cr, 0x020000 | h); break;
     }
     cyc(0);
+}
+
+void abi_RecordsMenuTwo(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsMenuTwo(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1206,21 +1116,34 @@ void abi_RecordsMenuThreeBottom(void)
  * Entry: any widths; data bank $7E or a mirror. Exit: as the handler
  * leaves it.
  */
-void abi_RecordsMenuThree(void)
+void RecordsMenuThree(Carried *cr)
 {
     cyc(24);
     uint16_t h;
 
-    if (!menu_wait_g() || menu_back_g())
+    if (!menu_wait(cr) || menu_back(cr))
         { cyc(0); return; }
-    h = menu_handler_g(0xF814);
+    h = menu_handler(cr, 0xF814);
     switch (h) {
-    case 0xF81A: abi_RecordsMenuThreeTop(); break;
-    case 0xF8B6: abi_RecordsMenuThreeBottom(); break;
-    case 0xF85B: abi_RecordsMenuThreeMiddle(); break;
-    default: jump_routine(0x020000 | h); break;
+    case 0xF81A: RecordsMenuThreeTop(cr); break;
+    case 0xF8B6: RecordsMenuThreeBottom(cr); break;
+    case 0xF85B: RecordsMenuThreeMiddle(cr); break;
+    default: carried_jump(cr, 0x020000 | h); break;
     }
     cyc(0);
+}
+
+void abi_RecordsMenuThree(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsMenuThree(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* PHP, REP #$30, Y = ($0D73 & $FF) * 4, SEP #$20: the page mark's sprite
@@ -1341,115 +1264,128 @@ void abi_RecordsPageMarkFlip(void)
  * 8-bit; A low byte = the course byte, N and Z from it; the rest as
  * SpriteTextAt895E leaves it.
  */
-void abi_SpeedRecordsPage(void)
+void SpeedRecordsPage(Carried *cr)
 {
-    uint32_t b = db_g();
+    uint32_t b = db(cr);
     uint8_t v, old, p;
     uint16_t h;
     uint32_t join = 68;
 
-    op_rep(P_M);
-    if (pressed_g(0x0100)) {
-        op_sep(P_M);
+    r_rep(cr, P_M);
+    if (pressed(cr, 0x0100)) {
+        r_sep(cr, P_M);
         cyc(42);
-        op_lda8(b | 0x10D8);
-        v = (uint8_t)cpu.a;
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x04)) & ~P_C) | (v >= 0x04 ? P_C : (cyc(58), 0)));
+        r_lda8(cr, b | 0x10D8);
+        v = (uint8_t)cr->a;
+        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x04)) & ~P_C) | (v >= 0x04 ? P_C : (cyc(58), 0)));
         if (v < 0x04) {
-            sound8_g(0x45);
+            sound8(cr, 0x45);
             cyc(24);
             v = (uint8_t)(rd8(b | 0x10D8) + 1);
             cyc(6);
             wr8(b | 0x10D8, v);
-            cpu.p = nz8(cpu.p, v);
+            cr->p = nz8(cr->p, v);
         }
-    } else { cyc(24); if (pressed_g(0x0200)) {
-        op_sep(P_M);
+    } else { cyc(24); if (pressed(cr, 0x0200)) {
+        r_sep(cr, P_M);
         cyc(36);
-        op_lda8(b | 0x10D8);
-        if ((uint8_t)cpu.a) {
+        r_lda8(cr, b | 0x10D8);
+        if ((uint8_t)cr->a) {
             cyc(42);
-            sound8_g(0x45);
+            sound8(cr, 0x45);
             cyc(24);
             v = (uint8_t)(rd8(b | 0x10D8) - 1);
             cyc(6);
             wr8(b | 0x10D8, v);
-            cpu.p = nz8(cpu.p, v);
+            cr->p = nz8(cr->p, v);
         }
     cyc(22);
         } else { cyc(30); } }
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
     cyc(24);
-    op_lda8(b | 0x10D8);
-    v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(38), 0)));
+    r_lda8(cr, b | 0x10D8);
+    v = (uint8_t)cr->a;
+    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(38), 0)));
     if (v >= 0x05) {
         v = 0x00;
-        lda8_g(0x00);
+        lda8(cr, 0x00);
         cyc(72);
         wr8(b | 0x10D8, 0x00);
     }
     v = (uint8_t)(v << 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    cpu.x = v;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+    cr->x = v;
     cyc(106);
     h = rd16(0x020000 | (uint16_t)(0xEF3B + v));
     switch (h) {
     case 0xEF45:
-        lda8_g(0x24);
-        wr8(dp_g(0xF7), 0x24);
-        (cyc(46), abi_RecordRowsFirstTimes());
+        lda8(cr, 0x24);
+        wr8(dp(cr, 0xF7), 0x24);
+        (cyc(46), w_RecordRowsFirstTimes(cr));
         break;
     case 0xEF4E:
     case 0xEF5A:
     case 0xEF66:
         cyc(14);
-        abi_RecordsPageMarkFlip();
+        RecordsPageMarkFlip(cr);
         v = h == 0xEF4E ? 0x00 : h == 0xEF5A ? 0x03 : 0x06;
-        lda8_g(v);
-        wr8(dp_g(0xF7), cyc_then(32, v));
-        (cyc(46), abi_RecordRowsGroupFirsts());
+        lda8(cr, v);
+        wr8(dp(cr, 0xF7), cyc_then(32, v));
+        (cyc(46), w_RecordRowsGroupFirsts(cr));
         break;
     case 0xEF72:
         cyc(14);
-        abi_RecordsPageMarkFlipHide();
-        lda8_g(0x09);
-        wr8(dp_g(0xF7), cyc_then(32, 0x09));
-        (cyc(46), abi_RecordRowsGroupFirsts());
+        RecordsPageMarkFlipHide(cr);
+        lda8(cr, 0x09);
+        wr8(dp(cr, 0xF7), cyc_then(32, 0x09));
+        (cyc(46), w_RecordRowsGroupFirsts(cr));
         join = 46;                      /* falls into .title: no BRA */
         break;
     default:
-        jump_routine(0x020000 | h);
+        carried_jump(cr, 0x020000 | h);
         return;
     }
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(join);
-    op_lda8(b | 0x0E3D);
-    old = (uint8_t)cpu.a;
+    r_lda8(cr, b | 0x0E3D);
+    old = (uint8_t)cr->a;
     cyc(46);
-    op_lda8(b | 0x10D8);
-    if ((uint8_t)cpu.a) {
-        v = (uint8_t)(cpu.a - 1);
-        wr8(dp_g(0xF1), cyc_then(46, v));
+    r_lda8(cr, b | 0x10D8);
+    if ((uint8_t)cr->a) {
+        v = (uint8_t)(cr->a - 1);
+        wr8(dp(cr, 0xF1), cyc_then(46, v));
         cyc(24);
-        op_lda8(b | 0x0D4A);
-        p = (uint8_t)(cpu.p & ~P_C);
-        v = op_adc8((uint8_t)(cpu.a << 2), rd8(cyc_then(58, dp_g(0xF1))), &p);
-        cpu.p = p;
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        r_lda8(cr, b | 0x0D4A);
+        p = (uint8_t)(cr->p & ~P_C);
+        v = alu_adc8((uint8_t)(cr->a << 2), rd8(cyc_then(58, dp(cr, 0xF1))), &p);
+        cr->p = p;
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } else {
         cyc(16);
-        lda8_g(0x1C);
+        lda8(cr, 0x1C);
     }
     cyc(46);
-    wr8(b | 0x0E3D, (uint8_t)cpu.a);
-    (cyc(46), abi_SpriteTextAt895E());
-    op_sep(P_M);
-    lda8_g(old);
+    wr8(b | 0x0E3D, (uint8_t)cr->a);
+    (cyc(46), w_SpriteTextAt895E(cr));
+    r_sep(cr, P_M);
+    lda8(cr, old);
     cyc(74);
     wr8(b | 0x0E3D, old);
     cyc(42);
+}
+
+void abi_SpeedRecordsPage(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpeedRecordsPage(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1489,8 +1425,8 @@ void SpeedRecordsScreen(Carried *cr)
         wr16(b | 0x0D7B, cr->a);
         (cyc(46), w_OamClassName(cr));
         (cyc(46), w_SpriteTextAt895E(cr));
-        (cyc(62), w_OamPaletteForD75(cr));
-        (cyc(24), w_RecordsMenuSpeedAlt(cr));
+        (cyc(62), OamPaletteForD75_cr(cr));
+        (cyc(24), RecordsMenuSpeedAlt(cr));
         return;
     } else { cyc(6); }
     origin(cr, 0x89, 0x89);
@@ -1506,14 +1442,14 @@ void SpeedRecordsScreen(Carried *cr)
     md_next(cr, 0x04EDD9, 0x0D77, 0x0D79, 0x0004);
     md_next(cr, 0x04EDDD, 0x0D79, 0x0D7B, 0x0000);
     (cyc(46), w_OamClassName(cr));
-    (cyc(46), w_SpeedRecordsPage(cr));
+    (cyc(46), SpeedRecordsPage(cr));
     (cyc(62), w_OamPaletteFromTableE26A(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
     r_lda8(cr, b | 0x0D48);
     if (!(uint8_t)cr->a) {
         cyc(40);
-        w_RecordsMenuSpeed(cr);
+        RecordsMenuSpeed(cr);
         return;
     }
     lda8(cr, 0xF0);
@@ -1630,7 +1566,7 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
         slot_to_y(cr, 0x0D75, d_rest);
         cyc(74);
         r_lda16(cr, save + 4 + x);
-        (cyc(46), w_SpritePiecesCarAt51(cr));
+        (cyc(46), SpritePiecesCarAt51_cr(cr));
         cyc(68);                        /* BRA, JSR */
         return;
     } else { cyc(46); }
@@ -1741,7 +1677,7 @@ void StuntRecordsScreen(Carried *cr)
         md_next(cr, 0x04EE19, 0x0D73, 0x0D75, 0x0014);
         best_time(cr, 0x70FC4A, 0x0017, 0, 1);
         w_SpriteTextAt8152(cr);
-        (cyc(24), w_RecordsMenuTwo(cr));
+        (cyc(24), RecordsMenuTwo(cr));
         return;
     } else { cyc(30); }
     origin(cr, 0x81, 0x89);
@@ -1752,11 +1688,11 @@ void StuntRecordsScreen(Carried *cr)
     md_next(cr, 0x04EDF1, 0x0D77, 0x0D79, 0x0006);
     (cyc(46), w_SpriteTextAt8152(cr));
     r_rep(cr, P_M | P_X);
-    special_row(cr, 0x0D77, 4, 1, w_SpritePiecesAt46Y93);
-    special_row(cr, 0x0D75, 2, 1, w_SpritePiecesAt46Y82);
-    special_row(cr, 0x0D73, 0, 1, w_SpritePiecesAt46Y71);
+    special_row(cr, 0x0D77, 4, 1, SpritePiecesAt46Y93_cr);
+    special_row(cr, 0x0D75, 2, 1, SpritePiecesAt46Y82_cr);
+    special_row(cr, 0x0D73, 0, 1, SpritePiecesAt46Y71_cr);
     (cyc(62), w_OamPaletteFromTableE30F(cr));
-    (cyc(24), w_RecordsMenuThree(cr));
+    (cyc(24), RecordsMenuThree(cr));
 }
 
 void abi_StuntRecordsScreen(void)
@@ -1801,7 +1737,7 @@ void BattleRecordsScreen(Carried *cr)
     cr->a = alu_adc16(cr->a, rd16(b | 0x0D89), &p);
     cr->p = p;
     r_and16(cr, 0x00FF);
-    (cyc(68), w_SpritePiecesAtLeft(cr));
+    (cyc(68), SpritePiecesAtLeft_cr(cr));
     cyc(24);
     r_lda16(cr, b | 0x0D73);
     r_add16(cr, 0x0003);
@@ -1816,10 +1752,10 @@ void BattleRecordsScreen(Carried *cr)
     cr->a = alu_adc16(cr->a, rd16(b | 0x0D8A), &p);
     cr->p = p;
     r_and16(cr, 0x00FF);
-    (cyc(68), w_SpritePiecesAtRight(cr));
+    (cyc(68), SpritePiecesAtRight_cr(cr));
     (cyc(46), w_SpriteTextAt8152B(cr));
     (cyc(62), w_OamPalettesE28D(cr));
-    (cyc(24), w_RecordsMenuTwo(cr));
+    (cyc(24), RecordsMenuTwo(cr));
 }
 
 void abi_BattleRecordsScreen(void)
@@ -1865,7 +1801,7 @@ void AllRecordsScreen(Carried *cr)
         md_next(cr, 0x04EE25, 0x0D73, 0x0D75, 0x0017);
         best_time(cr, 0x70FC5E, 0x0014, -1, 0);
         w_SpriteTextAt8952(cr);
-        (cyc(24), w_RecordsMenuTwo(cr));
+        (cyc(24), RecordsMenuTwo(cr));
         return;
     } else { cyc(30); }
     origin(cr, 0x89, 0x89);
@@ -1878,10 +1814,10 @@ void AllRecordsScreen(Carried *cr)
     (cyc(62), w_OamPaletteFromTableE26AByMode(cr));
     r_rep(cr, P_M | P_X);
     cyc(0);
-    special_row(cr, 0x0D77, 4, 0, w_SpritePiecesAt62Y95);
-    special_row(cr, 0x0D75, 2, 0, w_SpritePiecesAt62Y83);
-    special_row(cr, 0x0D73, 0, 0, w_SpritePiecesAt62Y71);
-    all_menu_c(cr);
+    special_row(cr, 0x0D77, 4, 0, SpritePiecesAt62Y95_cr);
+    special_row(cr, 0x0D75, 2, 0, SpritePiecesAt62Y83_cr);
+    special_row(cr, 0x0D73, 0, 0, SpritePiecesAt62Y71_cr);
+    all_menu(cr);
 }
 
 void abi_AllRecordsScreen(void)
@@ -1916,19 +1852,9 @@ static void w_OamSprite0AddY(Carried *cr)
     cr->p = p;
 }
 
-/* OamClassName as its adapter leaves the registers. */
-static void w_OamClassName(Carried *cr)
-{
-    uint16_t x = cr->x, y = cr->y;
-
-    cr->a = OamClassName(cr->db, &x, &y);
-    cr->x = (cr->p & P_X) ? (uint8_t)x : (cyc(86), x);
-    cr->y = (cr->p & P_X) ? (uint8_t)y : y;
-}
-
-/* OamPaletteForD75, still in registers: its call with the registers loaded and taken
+/* RecordRowsFirstTimes, still in registers: its call with the registers loaded and taken
    back. */
-static void w_OamPaletteForD75(Carried *cr)
+static void w_RecordRowsFirstTimes(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -1936,7 +1862,7 @@ static void w_OamPaletteForD75(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_OamPaletteForD75();
+    abi_RecordRowsFirstTimes();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
@@ -1945,16 +1871,9 @@ static void w_OamPaletteForD75(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* OamPaletteFromTableE26A as its adapter leaves the registers. */
-static void w_OamPaletteFromTableE26A(Carried *cr)
-{
-    cr->a = OamPaletteFromTableE26A(cr->db, &cr->y);
-    cr->x = 0;
-}
-
-/* RecordsMenuSpeed, still in registers: its call with the registers loaded and taken
+/* RecordRowsGroupFirsts, still in registers: its call with the registers loaded and taken
    back. */
-static void w_RecordsMenuSpeed(Carried *cr)
+static void w_RecordRowsGroupFirsts(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -1962,45 +1881,7 @@ static void w_RecordsMenuSpeed(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_RecordsMenuSpeed();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RecordsMenuSpeedAlt, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsMenuSpeedAlt(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsMenuSpeedAlt();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpeedRecordsPage, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpeedRecordsPage(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpeedRecordsPage();
+    abi_RecordRowsGroupFirsts();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
@@ -2028,23 +1909,21 @@ static void w_SpriteTextAt895E(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* SpritePiecesCarAt51, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesCarAt51(Carried *cr)
+/* OamClassName as its adapter leaves the registers. */
+static void w_OamClassName(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesCarAt51();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    uint16_t x = cr->x, y = cr->y;
+
+    cr->a = OamClassName(cr->db, &x, &y);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : (cyc(86), x);
+    cr->y = (cr->p & P_X) ? (uint8_t)y : y;
+}
+
+/* OamPaletteFromTableE26A as its adapter leaves the registers. */
+static void w_OamPaletteFromTableE26A(Carried *cr)
+{
+    cr->a = OamPaletteFromTableE26A(cr->db, &cr->y);
+    cr->x = 0;
 }
 
 /* OamHideEntries0To2 as its adapter leaves the registers. */
@@ -2093,44 +1972,6 @@ static void w_OamPaletteFromTableE30F(Carried *cr)
     cr->x = 0;
 }
 
-/* RecordsMenuThree, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsMenuThree(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsMenuThree();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RecordsMenuTwo, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsMenuTwo(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsMenuTwo();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* SpriteTextAt8152, still in registers: its call with the registers loaded and taken
    back. */
 static void w_SpriteTextAt8152(Carried *cr)
@@ -2150,106 +1991,11 @@ static void w_SpriteTextAt8152(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* SpritePiecesAt46Y71, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAt46Y71(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAt46Y71();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesAt46Y82, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAt46Y82(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAt46Y82();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesAt46Y93, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAt46Y93(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAt46Y93();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* OamPalettesE28D as its adapter leaves the registers. */
 static void w_OamPalettesE28D(Carried *cr)
 {
     cr->a = OamPalettesE28D(cr->db, &cr->y);
     cr->x = 0;
-}
-
-/* SpritePiecesAtLeft, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAtLeft(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAtLeft();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesAtRight, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAtRight(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAtRight();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* SpriteTextAt8152B, still in registers: its call with the registers loaded and taken
@@ -2289,63 +2035,6 @@ static void w_SpriteTextAt8952(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_SpriteTextAt8952();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesAt62Y71, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAt62Y71(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAt62Y71();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesAt62Y83, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAt62Y83(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAt62Y83();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesAt62Y95, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesAt62Y95(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesAt62Y95();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;

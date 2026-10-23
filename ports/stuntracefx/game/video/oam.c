@@ -1822,6 +1822,12 @@ void abi_SpritePiecesAtLeft(void)
     pieces_exit_g(SpritePiecesAtLeft(cpu.db, cpu.a, cpu.y));
 }
 
+/* SpritePiecesAtLeft on carried registers, as abi_SpritePiecesAtLeft leaves them. */
+void SpritePiecesAtLeft_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAtLeft(cr->db, cr->a, cr->y));
+}
+
 /*
  * @routine 02:FD4D SpritePiecesAtRight
  * WHAT IT DOES: As SpritePiecesAtLeft at screen X = $A5.
@@ -1836,6 +1842,12 @@ uint16_t SpritePiecesAtRight(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAtRight(void)
 {
     pieces_exit_g(SpritePiecesAtRight(cpu.db, cpu.a, cpu.y));
+}
+
+/* SpritePiecesAtRight on carried registers, as abi_SpritePiecesAtRight leaves them. */
+void SpritePiecesAtRight_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAtRight(cr->db, cr->a, cr->y));
 }
 
 /* The position (x, y) of the piece set in $10C3 (Y stored first when
@@ -1890,6 +1902,12 @@ void abi_SpritePiecesAt46Y71(void)
     pieces_exit_g(SpritePiecesAt46Y71(cpu.db, cpu.a, cpu.y));
 }
 
+/* SpritePiecesAt46Y71 on carried registers, as abi_SpritePiecesAt46Y71 leaves them. */
+void SpritePiecesAt46Y71_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt46Y71(cr->db, cr->a, cr->y));
+}
+
 /*
  * @routine 02:FCA9 SpritePiecesAt46Y82
  * WHAT IT DOES: As SpritePiecesAt46Y71 at Y = $82 (the second row).
@@ -1905,6 +1923,12 @@ uint16_t SpritePiecesAt46Y82(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAt46Y82(void)
 {
     pieces_exit_g(SpritePiecesAt46Y82(cpu.db, cpu.a, cpu.y));
+}
+
+/* SpritePiecesAt46Y82 on carried registers, as abi_SpritePiecesAt46Y82 leaves them. */
+void SpritePiecesAt46Y82_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt46Y82(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -1924,6 +1948,12 @@ void abi_SpritePiecesAt46Y93(void)
     pieces_exit_g(SpritePiecesAt46Y93(cpu.db, cpu.a, cpu.y));
 }
 
+/* SpritePiecesAt46Y93 on carried registers, as abi_SpritePiecesAt46Y93 leaves them. */
+void SpritePiecesAt46Y93_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt46Y93(cr->db, cr->a, cr->y));
+}
+
 /*
  * @routine 02:FCD6 SpritePiecesAt62Y71
  * WHAT IT DOES: As SpritePiecesAt46Y71 at X = $62.
@@ -1939,6 +1969,12 @@ uint16_t SpritePiecesAt62Y71(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAt62Y71(void)
 {
     pieces_exit_g(SpritePiecesAt62Y71(cpu.db, cpu.a, cpu.y));
+}
+
+/* SpritePiecesAt62Y71 on carried registers, as abi_SpritePiecesAt62Y71 leaves them. */
+void SpritePiecesAt62Y71_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt62Y71(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -1958,6 +1994,12 @@ void abi_SpritePiecesAt62Y83(void)
     pieces_exit_g(SpritePiecesAt62Y83(cpu.db, cpu.a, cpu.y));
 }
 
+/* SpritePiecesAt62Y83 on carried registers, as abi_SpritePiecesAt62Y83 leaves them. */
+void SpritePiecesAt62Y83_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt62Y83(cr->db, cr->a, cr->y));
+}
+
 /*
  * @routine 02:FCF4 SpritePiecesAt62Y95
  * WHAT IT DOES: As SpritePiecesAt62Y71 at Y = $95.
@@ -1973,6 +2015,12 @@ uint16_t SpritePiecesAt62Y95(uint8_t bank, uint16_t set, uint16_t slot)
 void abi_SpritePiecesAt62Y95(void)
 {
     pieces_exit_g(SpritePiecesAt62Y95(cpu.db, cpu.a, cpu.y));
+}
+
+/* SpritePiecesAt62Y95 on carried registers, as abi_SpritePiecesAt62Y95 leaves them. */
+void SpritePiecesAt62Y95_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesAt62Y95(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -2005,6 +2053,12 @@ uint16_t SpritePiecesCarAt51(uint8_t bank, uint16_t car, uint16_t slot)
 void abi_SpritePiecesCarAt51(void)
 {
     pieces_exit_g(SpritePiecesCarAt51(cpu.db, cpu.a, cpu.y));
+}
+
+/* SpritePiecesCarAt51 on carried registers, as abi_SpritePiecesCarAt51 leaves them. */
+void SpritePiecesCarAt51_cr(Carried *cr)
+{
+    pieces_exit(cr, SpritePiecesCarAt51(cr->db, cr->a, cr->y));
 }
 
 /*
@@ -2403,6 +2457,16 @@ void abi_OamPaletteForD75(void)
     cpu.a = v;
     cpu.x = 0;
     pull_p_g(p0);
+}
+
+/* OamPaletteForD75 on carried registers, as abi_OamPaletteForD75 leaves them. */
+void OamPaletteForD75_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v = OamPaletteForD75(cr->db, &cr->y);
+
+    cr->a = v;
+    cr->x = 0;
+    pull_p(cr, p0);
 }
 
 /*
