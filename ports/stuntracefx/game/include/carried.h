@@ -13,13 +13,22 @@
 
 /* The registers a routine leaves for its callers: A, X, Y, the direct
    page, P and the data bank. */
-typedef struct {
+typedef struct Carried {
     uint16_t a, x, y, d;
     uint8_t p, db;
 } Carried;
 
 /* A routine on carried registers, passed as a value. */
 typedef void (*CarriedFn)(Carried *);
+
+/* The carried form of the routine that starts at addr (the runtime's
+   table from the tags), or NULL when it has none yet. */
+CarriedFn carried_at(uint32_t addr);
+
+/* A computed call or jump from carried code (system/computed.c): the
+   routine at addr on the carried registers. */
+void carried_call(Carried *cr, uint32_t addr, int long_call);
+void carried_jump(Carried *cr, uint32_t addr);
 
 /* A carried routine called from code still on the register file: the
    registers go in and come back. */

@@ -141,6 +141,11 @@ decl = ''.join('void abi_%s(void);\n' % n for n in sorted(resolved)
 if decl:
     inc = list(re.finditer(r'^#include .*\n', text, re.M))[-1]
     text = text[:inc.end()] + decl + text[inc.end():]
+# the rest go through an address computed at run time: carried code calls
+# them through carried_call and carried_jump (system/computed.c), code left
+# in registers keeps call_routine and jump_routine (put back at the end)
+text = re.sub(r'\bcall_routine\(', 'dispatch_call_(', text)
+text = re.sub(r'\bjump_routine\(', 'dispatch_jump_(', text)
 src[FILE] = text
 if resolved:
     print('constant calls resolved: %s' % ', '.join(sorted(resolved)))
@@ -413,6 +418,8 @@ def rewrite_body(b):
     for c in sorted(set(re.findall(r'\babi_(\w+)\s*\(\s*\)', b))):
         b = re.sub(r'\babi_%s\s*\(\s*\)' % c, make_wrapper(c), b)
     b = routine_values(b)
+    b = re.sub(r'\bdispatch_call_\(', 'carried_call(cr, ', b)
+    b = re.sub(r'\bdispatch_jump_\(', 'carried_jump(cr, ', b)
     b = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
     b = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', b)
     b = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', b)
@@ -778,6 +785,8 @@ for f, lst in exports.items():
 
 if stops:
     sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))
+res = re.sub(r'\bdispatch_call_\(', 'call_routine(', res)
+res = re.sub(r'\bdispatch_jump_\(', 'jump_routine(', res)
 open(os.path.join(G, FILE), 'w').write(res)
 print('converted %d, glue %d (%s), sync wrappers %d (%s)' % (len(regfn), len(glue), ', '.join(sorted(glue)), len(syncw | extsw), ', '.join(sorted(syncw | extsw))))
 for n, w in left.items():

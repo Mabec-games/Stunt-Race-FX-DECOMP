@@ -13,8 +13,6 @@ uint8_t SaveChecksum(void);
 uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x);
 uint16_t TilemapLevelColumns(void);
 #include "video_calls.h"
-void abi_CourseCursorStep(void);
-void abi_RaceFadeStageDispatch(void);
 void abi_AllRecordsScreen(void);
 void abi_BattleRecordsScreen(void);
 void abi_CourseScreenFadeBack(void);
@@ -89,6 +87,7 @@ void CourseCursorAt2(Carried *cr);
 void CourseCursorAt2Open(Carried *cr);
 void CourseCursorAt3(Carried *cr);
 void CourseCursorAt3Open(Carried *cr);
+void CourseCursorStep(Carried *cr);
 void CourseFromSelectionLong_cr(Carried *cr);
 void CoursePreviewReset(Carried *cr);
 void CoursePreviewRowsAll(Carried *cr);
@@ -121,6 +120,7 @@ void CourseZoomStunt(Carried *cr);
 void CourseZoomTimeUp(Carried *cr);
 void CourseZoomTimeUpNext(Carried *cr);
 void LevelColumnsSet4(Carried *cr);
+void RaceFadeStageDispatch(Carried *cr);
 void SpeedCourseSelectStep(Carried *cr);
 void StuntCourseSelectStep(Carried *cr);
 void TimeUpCursorStep(Carried *cr);
@@ -145,6 +145,7 @@ static int records_key_inner(Carried *cr, uint32_t b);
 static void records_pulse(Carried *cr, uint32_t b);
 static void records_reopen_body(Carried *cr);
 static void records_sprite(Carried *cr, uint32_t b, uint8_t y);
+static void screen_state(Carried *cr, uint32_t b, uint16_t table);
 static void screen_state2(Carried *cr, uint32_t b);
 static void sel_choose(Carried *cr, uint32_t b);
 static void sel_cursor(Carried *cr, uint32_t b, uint8_t y);
@@ -167,24 +168,27 @@ static void w_BlendStepUp(Carried *cr);
 static void w_ColourMathA3(Carried *cr);
 static void w_ColourMathA3Long(Carried *cr);
 static void w_ColourMathOffLong(Carried *cr);
-static void w_CourseCursorStep(Carried *cr);
 static void w_CourseFromSelection(Carried *cr);
+static void w_CourseScreenNothing(Carried *cr);
 static void w_FlashingMetaspriteDraw(Carried *cr);
 static void w_FlashingMetaspriteDraw0(Carried *cr);
 static void w_FlashingMetaspriteDrawByMode(Carried *cr);
 static void w_PreviewRowDrawAll(Carried *cr);
 static void w_PreviewRowDrawStunt(Carried *cr);
-static void w_RaceFadeStageDispatch(Carried *cr);
 static void w_RecordsLoadForCourse(Carried *cr);
 static void w_RecordsUnpackCourseTotals(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
 static void w_Set0D37FromTable(Carried *cr);
 static void w_TilemapLevelColumns(Carried *cr);
 static void w_WindowEdgesStep(Carried *cr);
+void AllRecordsScreen(Carried *cr);
+void BattleRecordsScreen(Carried *cr);
 void FixedColourFromStep_cr(Carried *cr);
 void MenuCursorFourWay_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
+void SpeedRecordsScreen(Carried *cr);
+void StuntRecordsScreen(Carried *cr);
 void WindowTable7FLong(Carried *cr);
 
 void CourseFromSelectionLong_cr(Carried *cr)
@@ -452,27 +456,40 @@ void abi_CourseCursorAt3Open(void)
  * takes A's high byte too), then JMP (table,X).
  * Entry: any widths. Exit: as the handler leaves it.
  */
-void abi_CourseCursorStep(void)
+void CourseCursorStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
-    if (cpu.p & P_M) {
+    if (cr->p & P_M) {
         uint8_t v = rd8(b | 0x0D48);
 
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+        cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
         v = (uint8_t)(v << 1);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } else {
         cyc(24);
         uint16_t v = rd16(b | 0x0D48);
 
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 15));
-        cpu.a = (uint16_t)(v << 1);
+        cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 15));
+        cr->a = (uint16_t)(v << 1);
     }
-    cpu.x = (cpu.p & P_X) ? (uint8_t)cpu.a : cpu.a;
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+    cr->x = (cr->p & P_X) ? (uint8_t)cr->a : cr->a;
+    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x);
     cyc(74);
-    call_routine(0x020000 | rd16(0x020000 | (uint16_t)(0xEC28 + cpu.x)), 0);
+    carried_call(cr, 0x020000 | rd16(0x020000 | (uint16_t)(0xEC28 + cr->x)), 0);
+}
+
+void abi_CourseCursorStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseCursorStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -544,20 +561,33 @@ void abi_CourseZoomInStep(void)
  * to the caller.
  * Entry: M 8-bit, X 8-bit. Exit: as the handler leaves it.
  */
-void abi_RaceFadeStageDispatch(void)
+void RaceFadeStageDispatch(Carried *cr)
 {
     uint8_t v;
 
     cyc(24);
-    op_lda8((uint32_t)cpu.db << 16 | 0x0D48);
-    v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    r_lda8(cr, (uint32_t)cr->db << 16 | 0x0D48);
+    v = (uint8_t)cr->a;
+    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
     v = (uint8_t)(v << 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = v;
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = v;
+    cr->p = nz8(cr->p, v);
     cyc(74);
-    call_routine(0x020000 | rd16(0x020000 | (uint16_t)(0xEC18 + v)), 0);
+    carried_call(cr, 0x020000 | rd16(0x020000 | (uint16_t)(0xEC18 + v)), 0);
+}
+
+void abi_RaceFadeStageDispatch(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceFadeStageDispatch(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ColourMathA3(void);
@@ -1218,7 +1248,7 @@ void StuntCourseSelectStep(Carried *cr)
             return;
         } else { cyc(68); }
         r_sep(cr, P_M);
-        w_RaceFadeStageDispatch(cr);
+        RaceFadeStageDispatch(cr);
         cyc(42);
         return;
     }
@@ -1295,7 +1325,7 @@ void BattleCourseSelectStep(Carried *cr)
         cyc(42);
         return;
     } else { cyc(46); }
-    w_CourseCursorStep(cr);
+    CourseCursorStep(cr);
     cyc(42);
 }
 
@@ -2745,55 +2775,38 @@ void abi_CourseRecordsDispatch(void)
 
 /* JMP (table,X) with X = $0D40 (8-bit): the state's step; any other word
    (a state past the table's end) through jump_routine. */
-static void screen_state(uint32_t b, uint16_t table)
+static void screen_state(Carried *cr, uint32_t b, uint16_t table)
 {
     cyc(62);
-    cpu.x = rd8(b | 0x0D40);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    cr->x = rd8(b | 0x0D40);
+    cr->p = nz8(cr->p, (uint8_t)cr->x);
     cyc(46);
-    switch (rd16(0x020000 | (uint16_t)(table + cpu.x))) {
-    case 0xE564: abi_CourseScreenStartSpeed(); cyc(0); break;
-    case 0xE56D: abi_CourseScreenStartAll(); break;
-    case 0xE573: abi_CourseScreenStartBattle(); cyc(0); break;
-    case 0xE579: abi_CourseScreenStartStunt(); cyc(0); break;
-    case 0xE5F0: abi_CourseRecordsDispatch(); break;
-    case 0xE7F5: abi_SpeedCourseSelectStep(); break;
-    case 0xE9AB: abi_StuntCourseSelectStep(); cyc(0); break;
-    case 0xEA32: abi_BattleCourseSelectStep(); cyc(0); break;
-    case 0xED3E: abi_CourseZoomInStep(); cyc(0); break;
-    case 0xE3F1: abi_CourseScreenWindowStep(); cyc(0); break;
-    case 0xE57F: abi_CourseScreenNothing(); break;
-    case 0xE580: abi_CourseScreenZoomOut(); break;
-    case 0xE414: abi_CourseScreenWipeOut(); break;
-    case 0xE4BD: abi_CoursePreviewRowsStunt(); break;
-    case 0xE51E: abi_CoursePreviewRowsAll(); break;
-    case 0xE44B: abi_CourseScreenWipeIn(); break;
-    case 0xE5B4: abi_CourseScreenZoomIn(); break;
-    case 0xED98: abi_CourseScreenFadeBack(); break;
-    case 0xEDD2: abi_SpeedRecordsScreen(); cyc(0); break;
-    case 0xED75: abi_CourseScreenFadeLeave(); break;
-    case 0xF148: abi_StuntRecordsScreen(); break;
-    case 0xF30A: abi_BattleRecordsScreen(); break;
-    case 0xF37A: abi_AllRecordsScreen(); break;
-    default: jump_routine(0x020000 | rd16(0x020000 | (uint16_t)(table + cpu.x))); break;
+    switch (rd16(0x020000 | (uint16_t)(table + cr->x))) {
+    case 0xE564: CourseScreenStartSpeed(cr); cyc(0); break;
+    case 0xE56D: CourseScreenStartAll(cr); break;
+    case 0xE573: CourseScreenStartBattle(cr); cyc(0); break;
+    case 0xE579: CourseScreenStartStunt(cr); cyc(0); break;
+    case 0xE5F0: CourseRecordsDispatch(cr); break;
+    case 0xE7F5: SpeedCourseSelectStep(cr); break;
+    case 0xE9AB: StuntCourseSelectStep(cr); cyc(0); break;
+    case 0xEA32: BattleCourseSelectStep(cr); cyc(0); break;
+    case 0xED3E: CourseZoomInStep(cr); cyc(0); break;
+    case 0xE3F1: CourseScreenWindowStep(cr); cyc(0); break;
+    case 0xE57F: w_CourseScreenNothing(cr); break;
+    case 0xE580: CourseScreenZoomOut(cr); break;
+    case 0xE414: CourseScreenWipeOut(cr); break;
+    case 0xE4BD: CoursePreviewRowsStunt(cr); break;
+    case 0xE51E: CoursePreviewRowsAll(cr); break;
+    case 0xE44B: CourseScreenWipeIn(cr); break;
+    case 0xE5B4: CourseScreenZoomIn(cr); break;
+    case 0xED98: CourseScreenFadeBack(cr); break;
+    case 0xEDD2: SpeedRecordsScreen(cr); cyc(0); break;
+    case 0xED75: CourseScreenFadeLeave(cr); break;
+    case 0xF148: StuntRecordsScreen(cr); break;
+    case 0xF30A: BattleRecordsScreen(cr); break;
+    case 0xF37A: AllRecordsScreen(cr); break;
+    default: carried_jump(cr, 0x020000 | rd16(0x020000 | (uint16_t)(table + cr->x))); break;
     }
-}
-
-static void screen_state_c(Carried *cr, uint32_t b, uint16_t table)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    screen_state(b, table);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /*
@@ -2828,15 +2841,15 @@ void CourseScreenStep(Carried *cr)
     switch (rd16(0x02E360 + cr->x)) {
     case 0xE3F6:
         r_sep(cr, P_M | P_X);
-        screen_state_c(cr, b, 0xE3FE);
+        screen_state(cr, b, 0xE3FE);
         return;
     case 0xE48B:
         r_sep(cr, P_M | P_X);
-        screen_state_c(cr, b, 0xE493);
+        screen_state(cr, b, 0xE493);
         return;
     case 0xE49F:
         r_sep(cr, P_M | P_X);
-        screen_state_c(cr, b, 0xE4A7);
+        screen_state(cr, b, 0xE4A7);
         return;
     }
     r_sep(cr, P_M);
@@ -2917,10 +2930,10 @@ void CourseScreenStep(Carried *cr)
     cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? (cyc(18), P_C) : 0));
     if (v == 0x03) {
         r_sep(cr, P_M | P_X);
-        screen_state_c(cr, b, 0xE4A7);
+        screen_state(cr, b, 0xE4A7);
         return;
     }
-    screen_state_c(cr, b, 0xE3E1);
+    screen_state(cr, b, 0xE3E1);
 }
 
 void abi_CourseScreenStep(void)
@@ -3191,25 +3204,6 @@ static void w_FlashingMetaspriteDraw(Carried *cr)
     }
 }
 
-/* RaceFadeStageDispatch, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceFadeStageDispatch(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceFadeStageDispatch();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* Set0D37FromTable as its adapter leaves the registers. */
 static void w_Set0D37FromTable(Carried *cr)
 {
@@ -3217,25 +3211,6 @@ static void w_Set0D37FromTable(Carried *cr)
 
     cr->a = Set0D37FromTable(cr->db, &x);
     cr->x = (cr->p & P_X) ? (cyc(70), (uint8_t)x) : x;
-}
-
-/* CourseCursorStep, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CourseCursorStep(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CourseCursorStep();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* FlashingMetaspriteDraw0 as its adapter leaves the registers. */
@@ -3336,6 +3311,12 @@ static void w_ColourMathOffLong(Carried *cr)
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
+}
+
+/* CourseScreenNothing as its adapter leaves the registers. */
+static void w_CourseScreenNothing(Carried *cr)
+{
+    cyc(42);
 }
 
 /* SaveChecksum as its adapter leaves the registers. */

@@ -17,6 +17,17 @@ typedef struct {
 extern const PortRoutine port_routines[];
 extern const int port_routine_count;
 
+/* the routines with C on carried registers (carried.h), by address */
+struct Carried;
+typedef struct {
+    uint32_t addr;
+    void (*fn)(struct Carried *);
+} PortCarried;
+
+/* sorted by address */
+extern const PortCarried port_carried[];
+extern const int port_carried_count;
+
 /* the ROM bytes an SPC700 routine's C depends on: runs of len bytes at
    APU RAM apu, uploaded from ROM offset rom; ends with len 0 */
 typedef struct {

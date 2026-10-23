@@ -77,10 +77,18 @@ def main(argv):
         return 2
     rom = open(argv[1], 'rb').read()
     files = sorted(glob.glob(os.path.join(SRC, '**', '*.c'), recursive=True))
-    rows, spc, uses, adapters = [], {}, {}, set()
+    rows, spc, uses, adapters, carried = [], {}, {}, set(), {}
     for f in files:
         text = open(f).read()
         adapters |= set(re.findall(r'^void abi_(\w+)\(void\)\s*\{', text, re.M))
+        # the routine's carried form: what its adapter calls on the loaded
+        # registers, or the X_cr beside a routine still in registers
+        for m in re.finditer(r'^void abi_(\w+)\(void\)\n\{\n(.*?)^\}\n', text, re.M | re.S):
+            c = re.match(r'\s*Carried r = \{cpu\.a, cpu\.x, cpu\.y, cpu\.d, cpu\.p, cpu\.db\};\s*(\w+)\(&r\);', m.group(2))
+            if c:
+                carried[m.group(1)] = c.group(1)
+        for m in re.finditer(r'^void (\w+)_cr\(Carried \*cr\)\n\{', text, re.M):
+            carried.setdefault(m.group(1), m.group(1) + '_cr')
         for m in TAG.finditer(text):
             addr = int(m.group(1), 16) << 16 | int(m.group(2), 16)
             name = m.group(3)
@@ -123,6 +131,12 @@ def main(argv):
         out.append('    {0x%06X, %s, "%s"},' % (a, 'abi_' + n if n in adapters else 'NULL', n))
     out.append('};')
     out.append('const int port_routine_count = %d;' % len(set(rows)))
+    crow = [(a, carried[n]) for a, n in sorted(set(rows)) if n in carried]
+    out += ['void %s(struct Carried *cr);' % c for c in sorted({c for _, c in crow})]
+    out.append('const PortCarried port_carried[] = {')
+    out += ['    {0x%06X, %s},' % (a, c) for a, c in crow]
+    out.append('};')
+    out.append('const int port_carried_count = %d;' % len(crow))
     srows = sorted(spc.items(), key=lambda kv: (kv[1][0], kv[0]))
     for a, (apu, n) in srows:
         m = apu_rom(a)

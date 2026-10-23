@@ -31,6 +31,7 @@
 
 #include "machine.h"
 #include "routines.h"
+#include "carried.h"
 #include "snes.h"
 #include "jump.h"
 #include "dispatch.h"
@@ -66,6 +67,22 @@ static const PortRoutine *find_any(uint32_t addr)
         if (port_routines[mid].addr == addr)
             return &port_routines[mid];
         if (port_routines[mid].addr < addr)
+            lo = mid + 1;
+        else
+            hi = mid - 1;
+    }
+    return NULL;
+}
+
+CarriedFn carried_at(uint32_t addr)
+{
+    int lo = 0, hi = port_carried_count - 1;
+    addr &= 0xFFFFFF;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (port_carried[mid].addr == addr)
+            return port_carried[mid].fn;
+        if (port_carried[mid].addr < addr)
             lo = mid + 1;
         else
             hi = mid - 1;
