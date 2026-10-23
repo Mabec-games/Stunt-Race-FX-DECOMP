@@ -9,6 +9,7 @@
 #include "native.h"
 #include "hw.h"
 #include "video_palette_calls.h"
+#include "carried.h"
 
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size);
 
@@ -756,6 +757,24 @@ void abi_PaletteKeptColoursStep(void)
         cpu.p = (uint8_t)(nz8((uint8_t)(p | P_C), (uint8_t)a) | P_M);
     cpu.a = a;
     cpu.x = x;
+}
+
+/* PaletteKeptColoursStep on carried registers, as abi_PaletteKeptColoursStep leaves them. */
+void PaletteKeptColoursStep_cr(Carried *cr)
+{
+    int stepped;
+    uint16_t x;
+    uint16_t a = PaletteKeptColoursStep(cr->db, cr->a, cr->x, cr->y, &x, &stepped);
+    uint8_t p = (uint8_t)(cr->p & ~(P_C | P_V));
+
+    if (kept_v)
+        p |= P_V;
+    if (stepped)
+        cr->p = (uint8_t)(nz16(p, a) & ~(P_C | P_M));
+    else
+        cr->p = (uint8_t)(nz8((uint8_t)(p | P_C), (uint8_t)a) | P_M);
+    cr->a = a;
+    cr->x = x;
 }
 
 uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v);

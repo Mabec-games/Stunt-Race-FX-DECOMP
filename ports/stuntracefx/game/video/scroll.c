@@ -5,6 +5,7 @@
 #include "native.h"
 #include "hw.h"
 #include "video_calls.h"
+#include "carried.h"
 
 /* BG2 scroll pairs in work RAM, indexed by the screen band: horizontal at
    $0D92, vertical at $0D8E (low, high). */
@@ -62,6 +63,17 @@ void abi_Bg2ScrollFromTable(void)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+    cyc(42);
+}
+
+/* Bg2ScrollFromTable on carried registers, as abi_Bg2ScrollFromTable leaves them. */
+void Bg2ScrollFromTable_cr(Carried *cr)
+{
+    int wide = !(cr->p & P_X);
+    uint8_t v = wide ? Bg2ScrollFromTable(cr->x) : bg2_scroll((uint8_t)cr->x, 0);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
     cyc(42);
 }
 

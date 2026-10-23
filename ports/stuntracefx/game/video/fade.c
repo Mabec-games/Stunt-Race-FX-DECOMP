@@ -8,6 +8,7 @@
 #include "machine.h"
 #include "wram.h"
 #include "video_calls.h"
+#include "carried.h"
 
 /* Per-brightness fade-in steps, in the frame code's RAM copy at $7E:AC9D. */
 #define FADE_IN_STEPS 0x7EAC9Du
@@ -93,6 +94,14 @@ void abi_FadeStepFixed(void)
     cpu.p = fade_p;
 }
 
+/* FadeStepFixed on carried registers, as abi_FadeStepFixed leaves them. */
+void FadeStepFixed_cr(Carried *cr)
+{
+    fade_p = cr->p;
+    cr->a = FadeStepFixed();
+    cr->p = fade_p;
+}
+
 /*
  * @routine 7E:AC69 FadeStep
  * WHAT IT DOES: Steps the fade by one frame, fading in faster or slower
@@ -129,4 +138,15 @@ void abi_FadeStep(void)
     if (fade_x >= 0)
         cpu.x = (uint16_t)fade_x;
     cpu.p = fade_p;
+}
+
+/* FadeStep on carried registers, as abi_FadeStep leaves them. */
+void FadeStep_cr(Carried *cr)
+{
+    fade_p = cr->p;
+    fade_x = -1;
+    cr->a = FadeStep();
+    if (fade_x >= 0)
+        cr->x = (uint16_t)fade_x;
+    cr->p = fade_p;
 }

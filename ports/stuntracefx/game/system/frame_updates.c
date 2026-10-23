@@ -13,6 +13,7 @@
 #include "hw.h"
 #include "wram.h"
 #include "system_calls.h"
+#include "carried.h"
 
 #define FRAME_UPDATE_FLAGS 0x0011D7u
 #define BYTE_WRITES_SIZE 0x00162Du   /* bytes used in the list below */
@@ -510,6 +511,17 @@ void abi_FrameInputAndCountEnd(void)
     cpu.a = (uint16_t)(hi | v);
     cpu.x = (cpu.p & P_X) ? (cyc(44), (uint8_t)x) : x;
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
+}
+
+/* FrameInputAndCountEnd on carried registers, as abi_FrameInputAndCountEnd leaves them. */
+void FrameInputAndCountEnd_cr(Carried *cr)
+{
+    uint8_t v = FrameInputAndCountEnd(cr->db);
+    uint16_t hi = input_hi, x = input_x;
+
+    cr->a = (uint16_t)(hi | v);
+    cr->x = (cr->p & P_X) ? (cyc(44), (uint8_t)x) : x;
+    cr->p = (uint8_t)(nz8(cr->p, v) | P_M);
 }
 
 int JoypadPortCheck(uint8_t bank, uint8_t port);

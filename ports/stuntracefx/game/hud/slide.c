@@ -4,6 +4,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "hud_calls.h"
+#include "carried.h"
 
 /* The sliding panel's offset; $10 is fully shown. */
 #define HUD_SLIDE 0x000D57u
@@ -434,4 +435,14 @@ void abi_HudPanelsStep(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | step_a);
     cpu.x = step_x;
     cpu.y &= 0x00FF;
+}
+
+/* HudPanelsStep on carried registers, as abi_HudPanelsStep leaves them. */
+void HudPanelsStep_cr(Carried *cr)
+{
+    HudPanelsStep(cr->db, cr->d);
+    if (step_a_set)
+        cr->a = (uint16_t)((cr->a & 0xFF00) | step_a);
+    cr->x = step_x;
+    cr->y &= 0x00FF;
 }
