@@ -5,6 +5,7 @@
 #include "machine.h"
 
 #include "math_calls.h"
+#include "carried.h"
 
 uint16_t Gsu8325(uint8_t bank);
 uint16_t Gsu82CE(void);
@@ -362,4 +363,17 @@ void abi_CameraFollowStep(void)
     }
     cpu.y = cam_y;
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags);
+}
+
+/* CameraFollowStep on carried registers, as abi_CameraFollowStep leaves them. */
+void CameraFollowStep_cr(Carried *cr)
+{
+    cam_early = 0;
+    cr->a = CameraFollowStep(cr->db, cr->x, cr->y);
+    if (cam_early) {
+        cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~(P_M | P_X));
+        return;
+    }
+    cr->y = cam_y;
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags);
 }

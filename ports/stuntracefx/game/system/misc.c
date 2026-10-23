@@ -5,6 +5,9 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
+#include "carried.h"
+
+#include "hud_calls.h"
 
 /*
  * @routine 7E:E18B DataBankTest
@@ -23,6 +26,27 @@ void abi_DataBankTest(void)
     cpu.p = nz8(cpu.p, cpu.db);
 }
 
+void ChampionshipFinish(Carried *cr);
+void DelayLoop13(Carried *cr);
+void WramFillZeroLong(Carried *cr);
+static void demo_blank(Carried *cr, uint32_t b);
+static void demo_camera(Carried *cr, uint8_t db);
+static int demo_fade_done(Carried *cr, uint32_t b);
+static void demo_fade_out(Carried *cr, uint32_t b);
+static void demo_lda8(Carried *cr, uint8_t v);
+static void demo_next(Carried *cr, uint16_t n);
+static void demo_next_before(Carried *cr, uint16_t n);
+static uint32_t dp_addr(Carried *cr, uint8_t a);
+static void w_BootSoftRestart(Carried *cr);
+static void w_OverlayFramesUntilFaded(Carried *cr);
+static void w_RecordTimeInsert(Carried *cr);
+static void w_RecordsUnpackCourseRunning(Carried *cr);
+static void w_SoftResetToBootWarm(Carried *cr);
+static void w_WramFillZero(Carried *cr);
+void CameraFollowStep_cr(Carried *cr);
+void ChampionScreenRun(Carried *cr);
+void ObjectFaceTied_cr(Carried *cr);
+
 /*
  * @routine 7E:D2BA DelayLoop13
  * WHAT IT DOES: Waits a short while: $13 turns of a NOP loop. Nothing
@@ -33,13 +57,26 @@ void abi_DataBankTest(void)
  * Entry: any widths. Exit: P, A and the data bank unchanged; Y = 0; X's
  * high byte 0 (8-bit index on the way).
  */
-void abi_DelayLoop13(void)
+void DelayLoop13(Carried *cr)
 {
     /* NOP, DEY, BNE: 14 + 14 + 22 clocks a turn, 16 for the last BNE */
     cyc(232);
     cpu_idle(0x13u * 50u - 6u);
-    cpu.x &= 0x00FF;
-    cpu.y = 0;
+    cr->x &= 0x00FF;
+    cr->y = 0;
+}
+
+void abi_DelayLoop13(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DelayLoop13(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -202,32 +239,45 @@ void abi_SoftResetToBootWarm(void);
  * HOW: Calls in turn through the data bank; JML or JMP to the restart.
  * Entry: data bank $07, D = $0000. Exit: never returns.
  */
-void abi_ChampionshipFinish(void)
+void ChampionshipFinish(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
-    cpu.p |= P_M;
+    cr->p |= P_M;
     cyc(46);
     wr8(b | 0x0D59, 0x00);
-    (cyc(46), abi_OverlayFramesUntilFaded());
-    cpu.p |= P_M;
+    (cyc(46), w_OverlayFramesUntilFaded(cr));
+    cr->p |= P_M;
     cyc(46);
     wr8(b | 0x0D48, 0x00);
-    (cyc(46), abi_RecordTimeInsert());
-    (cyc(62), abi_RecordsUnpackCourseRunning());
-    cpu.p &= (uint8_t)~P_M;
-    (cyc(0), abi_ChampionScreenRun());
-    cpu.p |= P_M;
+    (cyc(46), w_RecordTimeInsert(cr));
+    (cyc(62), w_RecordsUnpackCourseRunning(cr));
+    cr->p &= (uint8_t)~P_M;
+    (cyc(0), ChampionScreenRun(cr));
+    cr->p |= P_M;
     cyc(46);
     v = rd8(b | 0x0D4A);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, (uint8_t)(v - 0x02));
-    cpu.p = (uint8_t)(v >= 0x02 ? (cyc(64), cpu.p | P_C) : (cyc(62), cpu.p & ~P_C));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, (uint8_t)(v - 0x02));
+    cr->p = (uint8_t)(v >= 0x02 ? (cyc(64), cr->p | P_C) : (cyc(62), cr->p & ~P_C));
     if (v == 0x02)
-        abi_BootSoftRestart();
+        w_BootSoftRestart(cr);
     else
-        abi_SoftResetToBootWarm();
+        w_SoftResetToBootWarm(cr);
+}
+
+void abi_ChampionshipFinish(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ChampionshipFinish(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -360,10 +410,23 @@ void abi_DemoRunFirst(void)
  * HOW: A near call, then a long return.
  * Entry: as WramFillZero. Exit: as WramFillZero.
  */
+void WramFillZeroLong(Carried *cr)
+{
+    (cyc(46), w_WramFillZero(cr));
+    cyc(44); /* RTL */
+}
+
 void abi_WramFillZeroLong(void)
 {
-    (cyc(46), abi_WramFillZero());
-    cyc(44); /* RTL */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WramFillZeroLong(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -465,89 +528,195 @@ void abi_ObjectFaceTied(void);
 void abi_RaceFrameRun(void);
 
 /* The direct page address of `a`. */
-static uint32_t dp_addr(uint8_t a)
+static uint32_t dp_addr(Carried *cr, uint8_t a)
 {
-    return (uint16_t)(cpu.d + a);
+    return (uint16_t)(cr->d + a);
+}
+
+static uint32_t dp_addr_g(uint8_t a)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    uint32_t ret_ = dp_addr(&c, a);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* LDA #v with M 8-bit. */
-static void demo_lda8(uint8_t v)
+static void demo_lda8(Carried *cr, uint8_t v)
 {
     cyc(40);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+static void demo_lda8_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    demo_lda8(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* SEP #$20, HDMA off, the screen blanked, SEI. */
-static void demo_blank(uint32_t b)
+static void demo_blank(Carried *cr, uint32_t b)
 {
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(46);
     hdmaen_wr(b | HDMAEN, 0x00);
-    demo_lda8(0x80);
+    demo_lda8(cr, 0x80);
     ppu_wr(b | INIDISP, 0x80);
-    cpu.p |= P_I;
+    cr->p |= P_I;
+}
+
+static void demo_blank_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    demo_blank(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* LDA $0D61 (16-bit), its low byte sign-extended (BIT #$80, ORA #$FF00 or
    AND #$00FF): whether the fade's level has gone negative (the fade is
    over). */
-static int demo_fade_done(uint32_t b)
+static int demo_fade_done(Carried *cr, uint32_t b)
 {
     cyc(24);
-    op_lda16(b | 0x0D61);
-    if (cpu.a & 0x0080)
-        cpu.a |= 0xFF00;
+    r_lda16(cr, b | 0x0D61);
+    if (cr->a & 0x0080)
+        cr->a |= 0xFF00;
     else
-        { cyc(92); cpu.a &= 0x00FF; }
-    cpu.p = nz16(cpu.p, cpu.a);
-    return (cpu.a & 0x8000) != 0;
+        { cyc(92); cr->a &= 0x00FF; }
+    cr->p = nz16(cr->p, cr->a);
+    return (cr->a & 0x8000) != 0;
+}
+
+static int demo_fade_done_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    int ret_ = demo_fade_done(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+    return ret_;
 }
 
 /* SEP #$20, $0E3A = 1 (the fade out started), REP #$20. */
-static void demo_fade_out(uint32_t b)
+static void demo_fade_out(Carried *cr, uint32_t b)
 {
-    op_sep(P_M);
-    demo_lda8(0x01);
+    r_sep(cr, P_M);
+    demo_lda8(cr, 0x01);
     cyc(44);
     wr8(b | 0x0E3A, 0x01);
-    op_rep(P_M);
+    r_rep(cr, P_M);
+}
+
+static void demo_fade_out_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    demo_fade_out(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The camera object $1A64 moved: CameraFollowStep and ObjectFaceTied with
    the data bank $7E (PHB, PLB around them), then REP #$30. */
-static void demo_camera(uint8_t db)
+static void demo_camera(Carried *cr, uint8_t db)
 {
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(156);
-    demo_lda8(0x7E);
-    cpu.db = 0x7E;
-    cpu.x = 0x1A64;
-    cpu.p = nz16(cpu.p, 0x1A64);
-    abi_CameraFollowStep();
-    (cyc(62), abi_ObjectFaceTied());
-    cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
-    op_rep(P_M | P_X);
+    demo_lda8(cr, 0x7E);
+    cr->db = 0x7E;
+    cr->x = 0x1A64;
+    cr->p = nz16(cr->p, 0x1A64);
+    CameraFollowStep_cr(cr);
+    (cyc(62), ObjectFaceTied_cr(cr));
+    cr->db = db;
+    cr->p = nz8(cr->p, db);
+    r_rep(cr, P_M | P_X);
+}
+
+static void demo_camera_g(uint8_t db)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    demo_camera(&c, db);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* X += n (TXA, CLC, ADC #n, TAX). */
-static void demo_next(uint16_t n)
+static void demo_next(Carried *cr, uint16_t n)
 {
     cyc(90);
-    cpu.a = (uint16_t)(cpu.x + n);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~(P_C | P_V));
-    cpu.x = cpu.a;
+    cr->a = (uint16_t)(cr->x + n);
+    cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~(P_C | P_V));
+    cr->x = cr->a;
+}
+
+static void demo_next_g(uint16_t n)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    demo_next(&c, n);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* As demo_next without its closing JMP (24): for a command that stores
    before it jumps back. */
-static void demo_next_before(uint16_t n)
+static void demo_next_before(Carried *cr, uint16_t n)
 {
     cyc(66);
-    cpu.a = (uint16_t)(cpu.x + n);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~(P_C | P_V));
-    cpu.x = cpu.a;
+    cr->a = (uint16_t)(cr->x + n);
+    cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~(P_C | P_V));
+    cr->x = cr->a;
+}
+
+static void demo_next_before_g(uint16_t n)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    demo_next_before(&c, n);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -605,24 +774,24 @@ void abi_DemoRun(void)
     cyc(10);
     wr16(b | 0x0D2B, 0x0000);
     op_sep(P_M);
-    demo_lda8(0x01);
+    demo_lda8_g(0x01);
     cyc(22);
     wr8(b | 0x0374, 0x01);
-    demo_lda8(0x01);
+    demo_lda8_g(0x01);
     hw_wr(b | 0x3039, 0x01);
-    demo_lda8(0x20);
+    demo_lda8_g(0x20);
     hw_wr(b | 0x3037, 0x20);
-    demo_lda8(0x0B);
+    demo_lda8_g(0x0B);
     hw_wr(b | 0x3038, 0x0B);
     (cyc(62), abi_Set7EFFA6Sequence());
     b = (uint32_t)cpu.db << 16;
-    demo_blank(b);
+    demo_blank_g(b);
     (cyc(76), abi_RaceVideoInit());
     cpu.db = 0x03;
     cpu.p = nz8(cpu.p, 0x03);
     b = 0x030000;
     cyc(50);
-    demo_blank(b);
+    demo_blank_g(b);
     op_sep(P_M | P_X);
     cyc(138);
     call_routine(0x02CF3E, 1);
@@ -630,10 +799,10 @@ void abi_DemoRun(void)
     op_sep(P_M);
     op_rep(P_X);
     b = (uint32_t)cpu.db << 16;
-    demo_lda8(0x01);
+    demo_lda8_g(0x01);
     cyc(22);
     hw_wr(b | 0x3039, 0x01);
-    demo_lda8(0x01);
+    demo_lda8_g(0x01);
     cyc(8);
     wr8(0x7EFF65, 0x01);
     cpu.p |= P_I;
@@ -641,7 +810,7 @@ void abi_DemoRun(void)
     call_routine(0x02CF45, 1);
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
-    demo_lda8(0x03);
+    demo_lda8_g(0x03);
     cyc(22);
     wr8(b | 0x0D2B, 0x03);
     (cyc(62), abi_CourseDataPointer());
@@ -650,13 +819,13 @@ void abi_DemoRun(void)
     op_sep(P_M);
     op_rep(P_X);
     cyc(84);
-    demo_lda8(0x04);
+    demo_lda8_g(0x04);
     cpu.x = 0x8800;
     cpu.p = nz16(cpu.p, 0x8800);
     abi_GsuRun();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
-    demo_lda8(0x01);
+    demo_lda8_g(0x01);
     cyc(22);
     wr8(b | 0x0357, 0x01);
     cyc(24);
@@ -715,7 +884,7 @@ void abi_DemoRun(void)
                 cpu.x = x;
                 op_rep(P_M | P_X);
                 cyc(36);
-                demo_next(0x0003);
+                demo_next_g(0x0003);
                 continue;
             } else { cyc(16); }
             if (c == 0x03) {
@@ -723,7 +892,7 @@ void abi_DemoRun(void)
                 op_cmp16(rd16(b | 0x1A59));
                 if (!(cpu.p & P_Z))
                     break; else { cyc(22); }
-                demo_next(0x0003);
+                demo_next_g(0x0003);
                 continue;
             } else { cyc(54); }
             if (c == 0x02) {
@@ -732,26 +901,26 @@ void abi_DemoRun(void)
                 cyc(80);
                 op_lda16(0x038006 + cpu.x);
                 wr16(0x702733, cpu.a);
-                demo_next(0x0004);
+                demo_next_g(0x0004);
                 continue;
             } else { cyc(80); }
             if (c == 0x05) {
-                demo_next(0x0001);
-                demo_fade_out(b);
+                demo_next_g(0x0001);
+                demo_fade_out_g(b);
                 continue;
             }
             if (c == 0x06) {
-                if (!demo_fade_done(b))
+                if (!demo_fade_done_g(b))
                     break;
-                demo_next(0x0001);
+                demo_next_g(0x0001);
                 continue;
             }
             if (c == 0x07) {
-                demo_next_before(0x0001);
+                demo_next_before_g(0x0001);
                 op_sep(P_M);
-                demo_lda8(0x00);
+                demo_lda8_g(0x00);
                 wr8(b | 0x19DF, 0x00);
-                demo_lda8(0x01);
+                demo_lda8_g(0x01);
                 wr8(b | 0x19D8, 0x01);
                 op_rep(P_M);
                 cyc(24);                        /* JMP */
@@ -763,50 +932,50 @@ void abi_DemoRun(void)
                 op_cmp16(0x0005);
                 if (cpu.a != 0x0005)
                     { cyc(46); break; } else { cyc(68); }
-                demo_next(0x0001);
+                demo_next_g(0x0001);
                 continue;
             } else { cyc(34); }
             if (c == 0x09) {
                 cyc(52);
                 op_lda16(0x038005 + cpu.x);
-                wr16(dp_addr(0x02), cpu.a);
+                wr16(dp_addr_g(0x02), cpu.a);
                 cyc(64);
                 op_lda16(0x038007 + cpu.x);
-                wr16(dp_addr(0x94), cpu.a);
+                wr16(dp_addr_g(0x94), cpu.a);
                 x = cpu.x;
                 cpu.x = 0x1A64;
-                op_lda16(cyc_then(70, dp_addr(0x02)));
+                op_lda16(cyc_then(70, dp_addr_g(0x02)));
                 cyc(32);
                 wr16(0x000008 + cpu.x, cpu.a);
-                op_lda16(cyc_then(16, dp_addr(0x94)));
+                op_lda16(cyc_then(16, dp_addr_g(0x94)));
                 cyc(32);
                 wr16(0x00000C + cpu.x, cpu.a);
                 db = cpu.db;
-                demo_camera(db);
+                demo_camera_g(db);
                 cpu.x = x;
                 cyc(64);
-                demo_next(0x0005);
+                demo_next_g(0x0005);
                 continue;
             }
             if (c == 0x0A) {
                 cyc(98);
                 op_lda16(0x038005 + cpu.x);
-                wr16(dp_addr(0x08), cpu.a);
+                wr16(dp_addr_g(0x08), cpu.a);
                 x = cpu.x;
                 cpu.x = 0x1A64;
                 cyc(86);
                 v = rd16(0x00000A + cpu.x);
                 p = (uint8_t)(cpu.p & ~P_C);
-                w = op_adc16(v, rd16(cyc_then(30, dp_addr(0x08))), &p);
+                w = op_adc16(v, rd16(cyc_then(30, dp_addr_g(0x08))), &p);
                 cpu.p = p;
                 cpu.a = w;
                 cyc(32);
                 wr16(0x00000A + cpu.x, w);
                 db = cpu.db;
-                demo_camera(db);
+                demo_camera_g(db);
                 cpu.x = x;
                 cyc(64);
-                demo_next(0x0003);
+                demo_next_g(0x0003);
                 continue;
             }
             if (c == 0x0B) {
@@ -814,8 +983,8 @@ void abi_DemoRun(void)
                 op_lda16(b | 0x030A);
                 if (!cpu.a)
                     goto next_pass;
-                demo_fade_out(b);
-                while (!demo_fade_done(b))
+                demo_fade_out_g(b);
+                while (!demo_fade_done_g(b))
                     ;
                 goto end;
             }
@@ -827,7 +996,7 @@ void abi_DemoRun(void)
                 cpu.a = c == 0x0C ? (uint16_t)(cpu.a | v) : (uint16_t)(cpu.a & v);
                 cpu.p = nz16(cpu.p, cpu.a);
                 wr16(b | 0x1A5B, cpu.a);
-                demo_next(0x0003);
+                demo_next_g(0x0003);
                 continue;
             }
             goto end;
@@ -857,11 +1026,11 @@ void abi_DemoRun(void)
                 cpu.a |= 0x0041;
                 cpu.p = nz16(cpu.p, cpu.a);
                 wr16(b | 0x1A5B, cpu.a);
-                demo_fade_out(b);
+                demo_fade_out_g(b);
             } else {
                 cpu.p &= (uint8_t)~P_Z;
             }
-            if (demo_fade_done(b))
+            if (demo_fade_done_g(b))
                 goto end;
         }
 next_pass:
@@ -871,7 +1040,7 @@ next_pass:
 end:
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
-    demo_lda8(0x80);
+    demo_lda8_g(0x80);
     cyc(148);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
@@ -888,4 +1057,102 @@ end:
     cyc(62);
     wr16(b | 0x1A5B, 0x0000);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (v ? P_C : (cyc(58), 0)));
+}
+
+/* BootSoftRestart, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_BootSoftRestart(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_BootSoftRestart();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* OverlayFramesUntilFaded, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_OverlayFramesUntilFaded(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_OverlayFramesUntilFaded();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* RecordTimeInsert as its adapter leaves the registers. */
+static void w_RecordTimeInsert(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+    uint16_t x = cr->x, y = cr->y;
+
+    cr->p = p0 | P_M | P_X;             /* what an interrupt pushes */
+    cr->a = RecordTimeInsert(cr->db, cr->a, &x, &y, p0);
+    cr->x = x;
+    cr->y = y;
+    cr->p = p0;
+}
+
+/* RecordsUnpackCourseRunning, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RecordsUnpackCourseRunning(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RecordsUnpackCourseRunning();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SoftResetToBootWarm(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SoftResetToBootWarm();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* WramFillZero as its adapter leaves the registers. */
+static void w_WramFillZero(Carried *cr)
+{
+    WramFillZero((uint8_t)cr->a, cr->x, cr->y);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0x8008;
+    cr->p = (uint8_t)(cr->p & ~(P_N | P_Z));
 }

@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "gsu_programs_calls.h"
 #include "object_calls.h"
+#include "carried.h"
 
 /* An absolute indexed address: the data bank, plus the offset and index
    (the sum may carry into the next bank). */
@@ -113,6 +114,14 @@ void abi_ObjectFaceTied(void)
     cpu.a = ObjectFaceTied(cpu.db, cpu.x);
     if (face_y_set)
         cpu.y = cpu.x;
+}
+
+/* ObjectFaceTied on carried registers, as abi_ObjectFaceTied leaves them. */
+void ObjectFaceTied_cr(Carried *cr)
+{
+    cr->a = ObjectFaceTied(cr->db, cr->x);
+    if (face_y_set)
+        cr->y = cr->x;
 }
 
 uint16_t ScaleDp02Dp94Long(uint8_t *p);
