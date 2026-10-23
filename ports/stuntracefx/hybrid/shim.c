@@ -24,10 +24,6 @@ CarriedFn carried_at(uint32_t addr)
     return 0;
 }
 
-/* the emulation flag, as the port's runtime keeps it */
-uint8_t cpu_mode(void) { return cpu.e; }
-void cpu_mode_set(uint8_t e) { cpu.e = e; }
-
 /* the interrupt mask is P's I flag, as the port's runtime keeps it */
 void irq_mask_set(int masked)
 {

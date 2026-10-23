@@ -1379,13 +1379,31 @@ int NmiFrameUploadRace(uint8_t bank)
     return p;
 }
 
+static int NmiFrameUploadRace_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    int ret_ = NmiFrameUploadRace(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 void NmiFrameUploadRace_cr(Carried *cr)
 {
     int p;
 
     u_set = 0;
     u_y = cr->y;
-    p = NmiFrameUploadRace(cr->db);
+    p = NmiFrameUploadRace_c(cr, cr->db);
     if (p >= 0)
         set_p(cr, (uint8_t)p);
     else
@@ -1476,11 +1494,29 @@ uint8_t NmiFrameUploadSprites(uint8_t bank)
     return p;
 }
 
+static uint8_t NmiFrameUploadSprites_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = NmiFrameUploadSprites(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 void NmiFrameUploadSprites_cr(Carried *cr)
 {
     u_set = 0;
     u_y = cr->y;
-    set_p(cr, NmiFrameUploadSprites(cr->db));
+    set_p(cr, NmiFrameUploadSprites_c(cr, cr->db));
     upload_exit(cr);
 }
 

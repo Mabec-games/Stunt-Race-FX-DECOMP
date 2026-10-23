@@ -7,7 +7,6 @@
 #include "hud_calls.h"
 #include "carried.h"
 
-
 uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
 uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
 
@@ -89,11 +88,20 @@ static uint8_t gauge_p(uint8_t p)
     return (uint8_t)(((p | P_M) & ~P_X) & ~(P_N | P_Z));
 }
 
-void Gauge6APlace_cr(Carried *cr);
-void Gauge6BPlace_cr(Carried *cr);
-void HudGaugesPanelA_cr(Carried *cr);
-void HudGaugesPanelB_cr(Carried *cr);
+void abi_HudGaugesPanelA(void)
+{
+    uint16_t a, x, y;
 
+    /* an interrupt inside the gauges pushes the P the bars run under */
+    cpu.p = gauge_p(cpu.p);
+    HudGaugesPanelA(cpu.db, &a, &x, &y);
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = gauge_p(cpu.p);
+}
+
+/* HudGaugesPanelA on carried registers, as abi_HudGaugesPanelA leaves them. */
 void HudGaugesPanelA_cr(Carried *cr)
 {
     uint16_t a, x, y;
@@ -105,19 +113,6 @@ void HudGaugesPanelA_cr(Carried *cr)
     cr->x = x;
     cr->y = y;
     set_p(cr, gauge_p(cr->p));
-}
-
-void abi_HudGaugesPanelA(void)
-{
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    HudGaugesPanelA_cr(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
 }
 
 /*
@@ -165,6 +160,25 @@ int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
     return 1;
 }
 
+void abi_HudGaugesPanelB(void)
+{
+    uint16_t a, x, y;
+    uint8_t p0 = cpu.p;
+
+    cpu.p = gauge_p(p0);
+    if (!HudGaugesPanelB(cpu.db, &a, &x, &y)) {
+        cpu.p = p0;
+        cpu.a &= 0xFF00;
+        cpu.p = (uint8_t)((nz8(cpu.p, 0) | P_M) & ~P_X);
+        return;
+    }
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = gauge_p(cpu.p);
+}
+
+/* HudGaugesPanelB on carried registers, as abi_HudGaugesPanelB leaves them. */
 void HudGaugesPanelB_cr(Carried *cr)
 {
     uint16_t a, x, y;
@@ -181,19 +195,6 @@ void HudGaugesPanelB_cr(Carried *cr)
     cr->x = x;
     cr->y = y;
     set_p(cr, gauge_p(cr->p));
-}
-
-void abi_HudGaugesPanelB(void)
-{
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    HudGaugesPanelB_cr(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
 }
 
 /* Gauge y at `at` = y, then the X-position high bits of the twelve sprites
@@ -234,26 +235,13 @@ uint8_t Gauge6BPlace(uint8_t bank)
     return gauge6_place(bank, 0x0E14, 0x5A, 0x00);
 }
 
-void Gauge6BPlace_cr(Carried *cr)
-{
-    uint8_t v = Gauge6BPlace(cr->db);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x = 0x00;
-    cr->y &= 0x00FF;
-}
-
 void abi_Gauge6BPlace(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    uint8_t v = Gauge6BPlace(cpu.db);
 
-    Gauge6BPlace_cr(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x00;
+    cpu.y &= 0x00FF;
 }
 
 /*
@@ -268,25 +256,11 @@ uint8_t Gauge6APlace(uint8_t bank)
     return gauge6_place(bank, 0x0E15, 0xC2, 0x10);
 }
 
-void Gauge6APlace_cr(Carried *cr)
-{
-    uint8_t v = Gauge6APlace(cr->db);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x = 0x10;
-    cr->y &= 0x00FF;
-}
-
 void abi_Gauge6APlace(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    uint8_t v = Gauge6APlace(cpu.db);
 
-    Gauge6APlace_cr(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x10;
+    cpu.y &= 0x00FF;
 }
-

@@ -40,7 +40,6 @@ void PhaseGlyphsFourB(Carried *cr);
 void PhaseGlyphsSix(Carried *cr);
 void PlayerTwoFrameWork(Carried *cr);
 void RaceEndLeave(Carried *cr);
-void RaceEndToAttract(Carried *cr);
 void RaceEndVideoReset(Carried *cr);
 void RaceEndWaitBigSprites(Carried *cr);
 void RaceEndWaitRow6B(Carried *cr);
@@ -53,7 +52,6 @@ void RacePhaseLapP1(Carried *cr);
 void RacePhaseLapP2(Carried *cr);
 void RaceReadyLong(Carried *cr);
 void RaceReadyShort(Carried *cr);
-void RaceRestart(Carried *cr);
 void RaceStartCountdown(Carried *cr);
 void RaceStartCountdownStunt(Carried *cr);
 void RaceStartGlyphsSteps(Carried *cr);
@@ -64,7 +62,6 @@ void RaceStartTimer(Carried *cr);
 void RaceStartTimerSteps(Carried *cr);
 void ResultsPanelSteps(Carried *cr);
 void ResultsWindowWait(Carried *cr);
-void SoftResetToBootWarm(Carried *cr);
 void TimeUpBattle(Carried *cr);
 void TimeUpRace(Carried *cr);
 void TimeUpStunt(Carried *cr);
@@ -107,7 +104,10 @@ static void window_up(Carried *cr, uint32_t b);
 static void w_ApuUpload(Carried *cr);
 static void w_LapBannerNone(Carried *cr);
 static void w_LapSplit(Carried *cr);
+static void w_RaceEndToAttract(Carried *cr);
+static void w_RaceRestart(Carried *cr);
 static void w_RaceTimeKeep(Carried *cr);
+static void w_SoftResetToBootWarm(Carried *cr);
 void BigSpritesNine_cr(Carried *cr);
 void BigSpritesRow5_cr(Carried *cr);
 void BigSpritesRow6B_cr(Carried *cr);
@@ -155,7 +155,6 @@ void RecordOffsetAllCourses(Carried *cr);
 void RecordTimeCompare_cr(Carried *cr);
 void RecordsLoadCourseLong_cr(Carried *cr);
 void SaveSumsRecordsB_cr(Carried *cr);
-void SoundDataLoad_cr(Carried *cr);
 void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePushX8(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
@@ -171,6 +170,19 @@ static void lda8_imm(Carried *cr, uint8_t v)
     cyc(24);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
+}
+
+static void lda8_imm_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    lda8_imm(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* INC / DEC of a work-RAM byte: one read, one write; N, Z from it. */
@@ -2261,7 +2273,7 @@ void ResultsWindowWait(Carried *cr)
         cyc(40);
         r_lda8(cr, b | 0x0D61);
         if ((uint8_t)cr->a & 0x80)
-            { cyc(40); SoftResetToBootWarm(cr); } else { cyc(64); }
+            { cyc(40); w_SoftResetToBootWarm(cr); } else { cyc(64); }
         return;
     }
     cyc(46);
@@ -2274,7 +2286,7 @@ void ResultsWindowWait(Carried *cr)
         cyc(46);
         r_lda8(cr, b | 0x0DD4);
         if ((uint8_t)cr->a)
-            { cyc(40); RaceRestart(cr); }
+            { cyc(40); w_RaceRestart(cr); }
         else
             { cyc(46); RaceEndVideoReset(cr); }
         return;
@@ -2364,7 +2376,7 @@ void RaceEndWindowSteps(Carried *cr)
                 inc8_mem(cr, b | 0x0D48);
             }
         }
-        RaceRestart(cr);
+        w_RaceRestart(cr);
         return;
     }
     cyc(18);
@@ -2758,6 +2770,19 @@ static void screen_off(Carried *cr)
     hdmaen_wr(0x00420C, 0x00);
 }
 
+static void screen_off_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    screen_off(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /* REP #$30, command 5 to APU port 1 (16-bit), the delay of $4000 counts
    of A. */
 static void apu_command5(Carried *cr)
@@ -2772,6 +2797,19 @@ static void apu_command5(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
 }
 
+static void apu_command5_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    apu_command5(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /* ApuUpload of block a from y, then the delay of $4000 counts of A. */
 static void apu_upload(Carried *cr, uint16_t a, uint16_t y)
 {
@@ -2784,6 +2822,19 @@ static void apu_upload(Carried *cr, uint16_t a, uint16_t y)
     delay_turns(0x4000);
     cr->a = 0x0000;
     set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
+static void apu_upload_g(uint16_t a, uint16_t y)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    apu_upload(&c, a, y);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_BootWarm(void);
@@ -2801,47 +2852,34 @@ void abi_BootWarmAttract(void);
  * jump to BootWarm, which resets the stack (cpu_restart).
  * Entry: any widths. Exit: never returns.
  */
-void SoftResetToBootWarm(Carried *cr)
+void abi_SoftResetToBootWarm(void)
 {
     uint8_t p1;
 
-    screen_off(cr);
-    p1 = cr->p;
-    (cyc(14), apu_command5(cr));
-    r_lda16_imm(cr, 0xF3B5);
-    cr->y = 0x001E;
-    set_p(cr, nz16(cr->p, 0x001E));
-    SoundDataLoad_cr(cr);
-    r_plp(cr, p1);
-    p1 = cr->p;
-    apu_command5(cr);
-    apu_upload(cr, 0x001B, 0x85F8);
-    r_plp(cr, p1);
-    p1 = cr->p;
-    apu_command5(cr);
-    apu_upload(cr, 0x0019, 0x9A98);
-    r_plp(cr, p1);
-    (cyc(48), SoundReset_cr(cr));
-    r_sep(cr, P_M);
-    lda8_imm(cr, 0x01);
+    screen_off_g();
+    p1 = cpu.p;
+    (cyc(14), apu_command5_g());
+    op_lda16_imm(0xF3B5);
+    cpu.y = 0x001E;
+    cpu.p = nz16(cpu.p, 0x001E);
+    abi_SoundDataLoad();
+    op_plp(p1);
+    p1 = cpu.p;
+    apu_command5_g();
+    apu_upload_g(0x001B, 0x85F8);
+    op_plp(p1);
+    p1 = cpu.p;
+    apu_command5_g();
+    apu_upload_g(0x0019, 0x9A98);
+    op_plp(p1);
+    (cyc(48), abi_SoundReset());
+    op_sep(P_M);
+    lda8_imm_g(0x01);
     cyc(38);
     hw_wr(0x002140, 0x01);
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
+    cpu.p &= (uint8_t)~P_I;
     cyc(46); /* CLI, JML */
-    carried_restart(cr, 0x038BAA, abi_BootWarm);
-}
-
-void abi_SoftResetToBootWarm(void)
-{
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    SoftResetToBootWarm(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    cpu_restart(0x038BAA, abi_BootWarm);
 }
 
 /*
@@ -2852,24 +2890,11 @@ void abi_SoftResetToBootWarm(void)
  * (cpu_restart).
  * Entry: any widths. Exit: never returns.
  */
-void RaceRestart(Carried *cr)
-{
-    screen_off(cr);
-    cyc(32); /* JML */
-    carried_restart(cr, 0x038BCD, abi_BootWarmRace);
-}
-
 void abi_RaceRestart(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    RaceRestart(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    screen_off_g();
+    cyc(32); /* JML */
+    cpu_restart(0x038BCD, abi_BootWarmRace);
 }
 
 /*
@@ -2880,24 +2905,11 @@ void abi_RaceRestart(void)
  * HOW: As RaceRestart.
  * Entry: any widths. Exit: never returns.
  */
-void RaceEndToAttract(Carried *cr)
-{
-    screen_off(cr);
-    cyc(32); /* JML */
-    carried_restart(cr, 0x038BF8, abi_BootWarmAttract);
-}
-
 void abi_RaceEndToAttract(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    RaceEndToAttract(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    screen_off_g();
+    cyc(32); /* JML */
+    cpu_restart(0x038BF8, abi_BootWarmAttract);
 }
 
 /*
@@ -2917,7 +2929,7 @@ void RaceEndVideoReset(Carried *cr)
     ppu_wr(0x002100, 0x80);
     set_p(cr, (uint8_t)(cr->p | (P_I)));
     (cyc(76), RaceVideoInit_cr(cr));
-    (cyc(0), RaceEndToAttract(cr));
+    (cyc(0), w_RaceEndToAttract(cr));
 }
 
 void abi_RaceEndVideoReset(void)
@@ -2948,11 +2960,11 @@ void RaceEndLeave(Carried *cr)
     r_lda8(cr, ((uint32_t)cr->db << 16) | 0x0E5C);
     if (!(uint8_t)cr->a) {
         cyc(46);
-        RaceEndToAttract(cr);
+        w_RaceEndToAttract(cr);
         return;
     }
     ChampionScreenRun(cr);
-    SoftResetToBootWarm(cr);
+    w_SoftResetToBootWarm(cr);
 }
 
 void abi_RaceEndLeave(void)
@@ -3394,6 +3406,44 @@ static void w_LapBannerNone(Carried *cr)
     cyc(42);
 }
 
+/* RaceRestart, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RaceRestart(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RaceRestart();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SoftResetToBootWarm(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SoftResetToBootWarm();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
 /* ApuUpload as its adapter leaves the registers. */
 static void w_ApuUpload(Carried *cr)
 {
@@ -3403,4 +3453,23 @@ static void w_ApuUpload(Carried *cr)
     cr->x = 0;
     cr->y = end.offset;
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V)) | P_Z | P_C | P_M));
+}
+
+/* RaceEndToAttract, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RaceEndToAttract(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RaceEndToAttract();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }

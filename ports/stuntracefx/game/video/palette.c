@@ -2556,12 +2556,30 @@ uint8_t PaletteCycleFourth(uint8_t bank, uint16_t y, uint16_t *xo, uint8_t *db, 
     return v;
 }
 
+static uint8_t PaletteCycleFourth_c(Carried *cr, uint8_t bank, uint16_t y, uint16_t *xo, uint8_t *db, int *wrapped)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = PaletteCycleFourth(bank, y, xo, db, wrapped);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 void PaletteCycleFourth_cr(Carried *cr)
 {
     uint16_t x;
     uint8_t db;
     int wrapped;
-    uint8_t v = PaletteCycleFourth(cr->db, cr->y, &x, &db, &wrapped);
+    uint8_t v = PaletteCycleFourth_c(cr, cr->db, cr->y, &x, &db, &wrapped);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = x;

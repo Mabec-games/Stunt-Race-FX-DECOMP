@@ -88,11 +88,11 @@ static void abi_row_mark(Carried *cr, uint16_t x, uint16_t count, uint8_t bits, 
 static void bg2_scroll_corner(Carried *cr, uint32_t b);
 static void palette_cycle_exit(Carried *cr, int r);
 static void stage_next(Carried *cr, uint32_t b);
+static void w_RaceRestart(Carried *cr);
 void GsuCF42To3000_cr(Carried *cr);
 void OamHide36And96_cr(Carried *cr);
 void OverlaySpritesStep_cr(Carried *cr);
 void RaceEndLeave(Carried *cr);
-void RaceRestart(Carried *cr);
 void WindowSlideUpSound_cr(Carried *cr);
 
 void TilemapRowFromGsuRam_cr(Carried *cr)
@@ -1609,7 +1609,7 @@ void WindowClosedDigitStep(Carried *cr)
     cyc(40);
     wr8(b | 0x0D48, 0x02);
     cyc(24);
-    RaceRestart(cr);
+    w_RaceRestart(cr);
 }
 
 void abi_WindowClosedDigitStep(void)
@@ -1877,3 +1877,21 @@ void abi_ChampionshipScreenLoop(void)
     cpu.db = r.db;
 }
 
+/* RaceRestart, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RaceRestart(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RaceRestart();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}

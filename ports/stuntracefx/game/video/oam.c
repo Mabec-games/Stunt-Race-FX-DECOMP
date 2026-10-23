@@ -84,7 +84,6 @@ void OamStagePauseLoop(Carried *cr);
 void OamWordRow5_cr(Carried *cr);
 void OamWriteSprites36To46_cr(Carried *cr);
 void OverlayFramesUntilFaded(Carried *cr);
-void OverlaySpritesState0(Carried *cr);
 void OverlaySpritesStep_cr(Carried *cr);
 void PauseOnStart(Carried *cr);
 void PictureTurnStep_cr(Carried *cr);
@@ -3865,33 +3864,20 @@ void abi_OverlaySpritesStep(void)
  * Entry: M and X 8-bit; data bank $04; D = $0000; OverlaySpritesStep's P
  * and data bank on the stack. Exit: as OverlaySpritesStep.
  */
-void OverlaySpritesState0(Carried *cr)
-{
-    overlay_state0();
-    cr->a = (cyc(2), overlay_draw(68));
-    cr->x = ov_x;
-    cr->y = 0x00C0;
-    cyc(20);
-    cr->db = rd8((uint16_t)(cpu.s + 1));
-    cpu.s = (uint16_t)(cpu.s + 1);
-    set_p(cr, nz8(cr->p, cr->db));
-    cyc(20);
-    r_plp(cr, rd8((uint16_t)(cpu.s + 1)));
-    cpu.s = (uint16_t)(cpu.s + 1);
-    cyc(2);
-}
-
 void abi_OverlaySpritesState0(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    OverlaySpritesState0(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    overlay_state0();
+    cpu.a = (cyc(2), overlay_draw(68));
+    cpu.x = ov_x;
+    cpu.y = 0x00C0;
+    cyc(20);
+    cpu.db = rd8((uint16_t)(cpu.s + 1));
+    cpu.s = (uint16_t)(cpu.s + 1);
+    cpu.p = nz8(cpu.p, cpu.db);
+    cyc(20);
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
+    cyc(2);
 }
 
 /* Waits for the vertical blank: $0D52, set by each, read until it is set,

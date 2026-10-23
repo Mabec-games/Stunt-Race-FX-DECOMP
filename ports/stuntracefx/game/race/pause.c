@@ -10,6 +10,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
+#include "hud_calls.h"
 
 void abi_SoundPort0QueuePush(void);
 void abi_SoundPort1QueuePush(void);
@@ -80,11 +81,14 @@ static void slide_up(Carried *cr, uint32_t b, uint8_t v);
 static void stage(Carried *cr, uint32_t b, uint8_t s);
 static int timer_out(Carried *cr, uint32_t b);
 static int window_closed(Carried *cr, uint32_t b);
+static void w_Gauge6APlace(Carried *cr);
+static void w_Gauge6BPlace(Carried *cr);
+static void w_RaceEndToAttract(Carried *cr);
+static void w_RaceRestart(Carried *cr);
+static void w_SoftResetToBootWarm(Carried *cr);
 void CarSelectTwoPlayers_cr(Carried *cr);
 void ChampionshipScreenLoop(Carried *cr);
 void Countdown0DF8_cr(Carried *cr);
-void Gauge6APlace_cr(Carried *cr);
-void Gauge6BPlace_cr(Carried *cr);
 void OamBlock123Left_cr(Carried *cr);
 void OamBlock123Right_cr(Carried *cr);
 void OamBlock52Left_cr(Carried *cr);
@@ -94,10 +98,7 @@ void OamBlock59Right_cr(Carried *cr);
 void OamHighBits18Park48_cr(Carried *cr);
 void OamHighBits58Park112_cr(Carried *cr);
 void OamPlaceRows75And112_cr(Carried *cr);
-void RaceEndToAttract(Carried *cr);
 void RaceEndVideoReset(Carried *cr);
-void RaceRestart(Carried *cr);
-void SoftResetToBootWarm(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePushX8(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
@@ -257,7 +258,7 @@ void PauseStageResumeB(Carried *cr)
 
     if (!timer_out(cr, b))
         { cyc(64); return; } else { cyc(62); }
-    Gauge6BPlace_cr(cr);
+    w_Gauge6BPlace(cr);
     cyc(22);
     pause_resume(cr, b);
 }
@@ -287,7 +288,7 @@ void PauseStageResumeA(Carried *cr)
 
     if (!timer_out(cr, b))
         { cyc(64); return; } else { cyc(62); }
-    Gauge6APlace_cr(cr);
+    w_Gauge6APlace(cr);
     cyc(22);
     pause_resume(cr, b);
 }
@@ -430,7 +431,7 @@ void PauseStageLeave(Carried *cr)
         cyc(24);
         r_lda8(cr, b | 0x0D61);
         if ((uint8_t)cr->a & 0x80)
-            { cyc(40); SoftResetToBootWarm(cr); } else { cyc(64); }
+            { cyc(40); w_SoftResetToBootWarm(cr); } else { cyc(64); }
         return;
     }
     cyc(46);
@@ -440,7 +441,7 @@ void PauseStageLeave(Carried *cr)
     cyc(46);
     r_lda8(cr, b | 0x0DD4);
     if ((uint8_t)cr->a)
-        { cyc(40); RaceRestart(cr); }
+        { cyc(40); w_RaceRestart(cr); }
     else
         RaceEndVideoReset(cr);
 }
@@ -474,7 +475,7 @@ void PauseStageQuitWait(Carried *cr)
     cyc(40);
     r_lda8(cr, b | 0x0D24);
     if ((uint8_t)cr->a)
-        { cyc(40); RaceRestart(cr); }
+        { cyc(40); w_RaceRestart(cr); }
     else
         { cyc(22); PauseStageLeave(cr); }
 }
@@ -905,9 +906,9 @@ void PauseStageQuitTaken(Carried *cr)
     cyc(18);
     r_lda8(cr, b | 0x0D50);
     if ((uint8_t)cr->a)
-        { cyc(40); RaceRestart(cr); }
+        { cyc(40); w_RaceRestart(cr); }
     else
-        { cyc(46); RaceEndToAttract(cr); }
+        { cyc(46); w_RaceEndToAttract(cr); }
 }
 
 void abi_PauseStageQuitTaken(void)
@@ -1225,3 +1226,79 @@ void abi_PauseQuitMenuBack(void)
     cpu.db = r.db;
 }
 
+/* Gauge6BPlace as its adapter leaves the registers. */
+static void w_Gauge6BPlace(Carried *cr)
+{
+    uint8_t v = Gauge6BPlace(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = 0x00;
+    cr->y &= 0x00FF;
+}
+
+/* Gauge6APlace as its adapter leaves the registers. */
+static void w_Gauge6APlace(Carried *cr)
+{
+    uint8_t v = Gauge6APlace(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = 0x10;
+    cr->y &= 0x00FF;
+}
+
+/* RaceRestart, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RaceRestart(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RaceRestart();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SoftResetToBootWarm(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SoftResetToBootWarm();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* RaceEndToAttract, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RaceEndToAttract(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RaceEndToAttract();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}

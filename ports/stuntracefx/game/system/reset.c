@@ -29,8 +29,6 @@ static void reset_fill(uint8_t bank, uint16_t x, uint16_t y, uint32_t pre)
     cyc(44);                            /* RTL */
 }
 
-void InterruptReturn(Carried *cr);
-void ResetVector(Carried *cr);
 void SoftResetApu_cr(Carried *cr);
 void SoftResetApuLong(Carried *cr);
 void SoftResetCheck_cr(Carried *cr);
@@ -39,9 +37,8 @@ void SoftResetWarmBoot(Carried *cr);
 int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a);
 int SoftResetLong(Carried *cr, int x16, uint16_t *a);
 static void reset_jump(Carried *cr, uint8_t bank, int started);
-void BootColdStart(Carried *cr);
-void BootStart(Carried *cr);
-void BootWarm(Carried *cr);
+static void w_BootStart(Carried *cr);
+static void w_BootWarm(Carried *cr);
 
 /* The jump to 03:8B34 with the registers the reset leaves: A = $FFFF,
    X = $2800, Y = $2801 (the MVN's), M 8-bit, X 16-bit, C set when this
@@ -57,7 +54,7 @@ static void reset_jump(Carried *cr, uint8_t bank, int started)
     if (started)
         set_p(cr, (uint8_t)(cr->p | (P_C)));
     set_p(cr, nz8(cr->p, bank));
-    BootStart(cr);
+    w_BootStart(cr);
 }
 
 /*
@@ -70,7 +67,7 @@ static void reset_jump(Carried *cr, uint8_t bank, int started)
 void SoftResetWarmBoot(Carried *cr)
 {
     cyc(32);
-    BootWarm(cr);
+    w_BootWarm(cr);
 }
 
 void abi_SoftResetWarmBoot(void)
@@ -247,29 +244,16 @@ void abi_SoftResetLong(void)
  * HOW: SEI, CLC, XCE (the old emulation flag into C), CLD, a long jump.
  * Entry: the reset (emulation mode). Exit: never returns.
  */
-void ResetVector(Carried *cr)
-{
-    uint8_t old_e = cpu_mode();
-
-    set_p(cr, (uint8_t)(cr->p | (P_I)));
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
-    cpu_mode_set(0);
-    set_p(cr, (uint8_t)((cr->p & ~P_C) | (old_e ? P_C : (cyc(88), 0))));
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_D)));
-    BootColdStart(cr);
-}
-
 void abi_ResetVector(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    uint8_t old_e = cpu.e;
 
-    ResetVector(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    cpu.p |= P_I;
+    cpu.p &= (uint8_t)~P_C;
+    cpu.e = 0;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : (cyc(88), 0)));
+    cpu.p &= (uint8_t)~P_D;
+    abi_BootColdStart();
 }
 
 /*
@@ -282,7 +266,7 @@ void abi_ResetVector(void)
  * Entry: native mode, the interrupt's frame on the stack (P, then PC and
  * PB). Exit: P, PC and PB as the interrupt pushed them; S 4 higher.
  */
-void InterruptReturn(Carried *cr)
+void abi_InterruptReturn(void)
 {
     /* P from the frame; the PC and PB above it are the return, taken as
        for any routine's. */
@@ -291,24 +275,11 @@ void InterruptReturn(Carried *cr)
     cyc(20);
     p = rd8((uint16_t)(cpu.s + 1));
     cyc(24);   /* the pulls of PC and PB */
-    set_p(cr, p);
+    cpu.p = p;
     if (p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
     }
-}
-
-void abi_InterruptReturn(void)
-{
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    InterruptReturn(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
 }
 
 /*
@@ -386,3 +357,40 @@ void abi_SoftResetApuLong(void)
     cpu.db = r.db;
 }
 
+/* BootStart, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_BootStart(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_BootStart();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* BootWarm, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_BootWarm(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_BootWarm();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}

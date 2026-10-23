@@ -14,6 +14,7 @@ void ApproachTargetZero(uint8_t bank);
 #include "system_calls.h"
 #include "menu_calls.h"
 uint8_t SaveChecksum(void);
+void abi_TitleScreenLoop(void);
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
 
@@ -62,7 +63,6 @@ void MenuSpritePalettesScale_cr(Carried *cr);
 void MenuVramClear(Carried *cr);
 void MenuWindowSetup(Carried *cr);
 void PictureCellAttributes(Carried *cr);
-void TitleScreenLoop(Carried *cr);
 void TitleScreenRun(Carried *cr);
 void MenuScreenOpen6(Carried *cr);
 static uint16_t champion_add(Carried *cr, uint16_t a, uint16_t m);
@@ -75,11 +75,8 @@ static void w_ApuUpload(Carried *cr);
 static void w_MenuActorsRun(Carried *cr);
 static void w_MenuScreenOpen6(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
-void DemoRunFirst(Carried *cr);
-void DemoRunFourth(Carried *cr);
-void DemoRunSecond(Carried *cr);
+static void w_TitleScreenLoop(Carried *cr);
 void GsuCF42To3000_cr(Carried *cr);
-void MenuActorFind_cr(Carried *cr);
 void MenuActorPoolInit_cr(Carried *cr);
 void MenuActorSpawnList_cr(Carried *cr);
 void MenuOamBuild_cr(Carried *cr);
@@ -1939,109 +1936,96 @@ void abi_BootWarm(void);
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = 0 or $FFFF; M 16-bit, X
  * 16-bit; or BootWarm, which never returns.
  */
-void TitleScreenLoop(Carried *cr)
+void abi_TitleScreenLoop(void)
 {
     uint32_t b;
     uint16_t v;
 
     for (;;) {
         cyc(46);
-        MenuWaitFrame_cr(cr);
-        (cyc(62), w_MenuActorsRun(cr));
-        (cyc(62), MenuOamBuild_cr(cr));
-        r_rep(cr, P_M);
-        r_lda16_imm(cr, 0x0012);
-        (cyc(32), MenuActorFind_cr(cr));
+        abi_MenuWaitFrame();
+        (cyc(62), abi_MenuActorsRun());
+        (cyc(62), abi_MenuOamBuild());
+        op_rep(P_M);
+        op_lda16_imm(0x0012);
+        (cyc(32), abi_MenuActorFind());
         cyc(22);
-        r_lda16(cr, (uint16_t)(cr->d + 0x08 + cr->x));
-        r_cmp16(cr, 0xD606);
-        if (cr->p & P_Z) {
+        op_lda16((uint16_t)(cpu.d + 0x08 + cpu.x));
+        op_cmp16(0xD606);
+        if (cpu.p & P_Z) {
             cyc(62);
-            r_lda16(cr, (uint16_t)(cr->d + 0x0A + cr->x));
-            if (!cr->a) {
+            op_lda16((uint16_t)(cpu.d + 0x0A + cpu.x));
+            if (!cpu.a) {
                 cyc(48);
-                r_lda16(cr, 0x001913);
-                cr->a++;
-                set_p(cr, nz16(cr->p, cr->a));
+                op_lda16(0x001913);
+                cpu.a++;
+                cpu.p = nz16(cpu.p, cpu.a);
                 cyc(46);
-                wr16(0x001913, cr->a);
-                r_cmp16(cr, 0x0400);
-                if (cr->p & P_Z) {
+                wr16(0x001913, cpu.a);
+                op_cmp16(0x0400);
+                if (cpu.p & P_Z) {
                     cyc(86);
-                    w_ApproachTargetZero(cr);
-                    (cyc(46), MenuRunFrames_cr(cr));
-                    r_sep(cr, P_M);
-                    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
-                    set_p(cr, nz8(cr->p, 0xFF));
+                    abi_ApproachTargetZero();
+                    (cyc(46), abi_MenuRunFrames());
+                    op_sep(P_M);
+                    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+                    cpu.p = nz8(cpu.p, 0xFF);
                     cyc(70);
                     wr8(0x0010DA, 0xFF);
-                    r_rep(cr, P_M);
+                    op_rep(P_M);
                     cyc(32);
-                    r_lda16(cr, 0x001915);
-                    cr->a++;
-                    set_p(cr, nz16(cr->p, cr->a));
-                    r_and16(cr, 0x0003);
-                    r_cmp16(cr, 0x0003);
-                    if (cr->p & P_Z)
-                        r_lda16_imm(cr, 0x0000);
-                    v = cr->a;
+                    op_lda16(0x001915);
+                    cpu.a++;
+                    cpu.p = nz16(cpu.p, cpu.a);
+                    op_and16(0x0003);
+                    op_cmp16(0x0003);
+                    if (cpu.p & P_Z)
+                        op_lda16_imm(0x0000);
+                    v = cpu.a;
                     cyc(114);
                     wr16(0x001915, v);
-                    r_cmp16(cr, 0x0000);
-                    if (cr->p & P_Z)
-                        { cyc(108); DemoRunFirst(cr); }
+                    op_cmp16(0x0000);
+                    if (cpu.p & P_Z)
+                        { cyc(108); abi_DemoRunFirst(); }
                     else {
-                        r_cmp16(cr, 0x0001);
-                        if (cr->p & P_Z)
-                            { cyc(148); DemoRunSecond(cr); }
+                        op_cmp16(0x0001);
+                        if (cpu.p & P_Z)
+                            { cyc(148); abi_DemoRunSecond(); }
                         else
-                            { cyc(142); DemoRunFourth(cr); }
+                            { cyc(142); abi_DemoRunFourth(); }
                     }
-                    if (cr->p & P_C) {
-                        r_rep(cr, P_M | P_X);
-                        r_lda16_imm(cr, 0xFFFF);
+                    if (cpu.p & P_C) {
+                        op_rep(P_M | P_X);
+                        op_lda16_imm(0xFFFF);
                         return;
                     }
                     cyc(48); /* BCS, JML */
-                    carried_restart(cr, 0x038BAA, abi_BootWarm);
+                    cpu_restart(0x038BAA, abi_BootWarm);
                     return;
                 }
             }
         }
-        b = (uint32_t)cr->db << 16;
+        b = (uint32_t)cpu.db << 16;
         cyc(70);
         wr16(b | 0x118B, 0x0000);
         cyc(24);
         wr16(b | 0x118D, 0x0000);
-        r_sep(cr, P_M);
+        op_sep(P_M);
         cyc(46);
-        r_lda8(cr, b | 0x11D7);
-        cr->a = (uint16_t)(cr->a | 0x0F);
-        set_p(cr, nz8(cr->p, (uint8_t)cr->a));
+        op_lda8(b | 0x11D7);
+        cpu.a = (uint16_t)(cpu.a | 0x0F);
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
         cyc(40);
-        wr8(b | 0x11D7, (uint8_t)cr->a);
-        r_rep(cr, P_M | P_X);
+        wr8(b | 0x11D7, (uint8_t)cpu.a);
+        op_rep(P_M | P_X);
         cyc(24);
-        r_lda16(cr, b | 0x11EB);
-        if (cr->a) {
+        op_lda16(b | 0x11EB);
+        if (cpu.a) {
             cyc(52);
-            r_lda16_imm(cr, 0x0000);
+            op_lda16_imm(0x0000);
             return;
         } else { cyc(46); }
     }
-}
-
-void abi_TitleScreenLoop(void)
-{
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    TitleScreenLoop(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
 }
 
 /*
@@ -2068,7 +2052,7 @@ void TitleScreenRun(Carried *cr)
     r_lda16_imm(cr, 0x0000);
     cyc(18);
     wr16(0x001913, 0x0000);
-    TitleScreenLoop(cr);
+    w_TitleScreenLoop(cr);
 }
 
 void abi_TitleScreenRun(void)
@@ -2173,4 +2157,23 @@ static void w_ApproachTargetZero(Carried *cr)
 static void w_MenuScreenOpen6(Carried *cr)
 {
     MenuScreenOpen6(cr);
+}
+
+/* TitleScreenLoop, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_TitleScreenLoop(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_TitleScreenLoop();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }

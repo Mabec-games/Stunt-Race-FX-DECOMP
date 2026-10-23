@@ -8,9 +8,6 @@
 #include "hw.h"
 #include "carried.h"
 
-#include "audio_calls.h"
-uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p);
-#include "video_calls.h"
 void abi_AttractCourseSetup(void);
 void abi_KeepRegisters(void);
 
@@ -35,13 +32,6 @@ void abi_WramFillZeroLong(void);
 void abi_SoftResetApuLong(void);
 void abi_DemoRunThird(void);
 
-void BootColdStart(Carried *cr);
-void BootSoftRestart(Carried *cr);
-void BootSoftRestartRest(Carried *cr);
-void BootStart(Carried *cr);
-void BootWarm(Carried *cr);
-void BootWarmAttract(Carried *cr);
-void BootWarmRace(Carried *cr);
 void HardwareRegsInit(Carried *cr);
 static void boot_bank03(Carried *cr);
 static void boot_blank(Carried *cr, uint32_t b);
@@ -50,28 +40,6 @@ static void boot_dma(Carried *cr, uint32_t b, uint16_t to, uint8_t wbank, uint8_
 static void boot_lda8(Carried *cr, uint8_t v);
 static void boot_ldx(Carried *cr, uint16_t v);
 static void boot_ldy(Carried *cr, uint16_t v);
-static void boot_run(Carried *cr, int from);
-static void boot_stack(Carried *cr);
-static void w_ApuUploadBank19(Carried *cr);
-static void w_CourseDataPointer(Carried *cr);
-static void w_KeepRegisters(Carried *cr);
-static void w_SpriteSlot1Countdown(Carried *cr);
-void AttractCourseSetup(Carried *cr);
-void CourseMenuRun(Carried *cr);
-void CourseScriptRun(Carried *cr);
-void DemoRunThird(Carried *cr);
-void GsuRun_cr(Carried *cr);
-void MenuScreen0Run_cr(Carried *cr);
-void ObjectPlaceAll_cr(Carried *cr);
-void RaceFrameRun(Carried *cr);
-void RaceFrameRunTwoPlayers(Carried *cr);
-void RaceLoop(Carried *cr);
-void RaceModeSetup(Carried *cr);
-void RaceVideoInit_cr(Carried *cr);
-void SaveUnlocksCheck_cr(Carried *cr);
-void Set7EFFA6Sequence_cr(Carried *cr);
-void SoftResetApuLong(Carried *cr);
-void WindowsInit_cr(Carried *cr);
 void WramFillZeroLong(Carried *cr);
 void WramFillZero_cr(Carried *cr);
 
@@ -212,12 +180,38 @@ static void boot_lda8(Carried *cr, uint8_t v)
     set_p(cr, nz8(cr->p, v));
 }
 
+static void boot_lda8_g(uint8_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_lda8(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /* LDX # / LDY # (16-bit). */
 static void boot_ldx(Carried *cr, uint16_t v)
 {
     cyc(22);
     cr->x = v;
     set_p(cr, nz16(cr->p, v));
+}
+
+static void boot_ldx_g(uint16_t v)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_ldx(&c, v);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 static void boot_ldy(Carried *cr, uint16_t v)
@@ -233,12 +227,25 @@ static void boot_bank03(Carried *cr)
     set_p(cr, nz8(cr->p, 0x03));
 }
 
-/* REP #$10 (or as is), LDX #$02FF, TXS. */
-static void boot_stack(Carried *cr)
+static void boot_bank03_g(void)
 {
-    r_rep(cr, P_X);
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_bank03(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
+/* REP #$10 (or as is), LDX #$02FF, TXS. */
+static void boot_stack(void)
+{
+    op_rep(P_X);
     cyc(76);
-    boot_ldx(cr, 0x02FF);
+    boot_ldx_g(0x02FF);
     cpu.s = 0x02FF;
 }
 
@@ -280,6 +287,19 @@ static void boot_clear(Carried *cr, void (*fill)(Carried *), uint32_t first, uin
     set_p(cr, nz8(cr->p, db));
 }
 
+static void boot_clear_g(void (*fill)(Carried *), uint32_t first, uint32_t rest, uint32_t after)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_clear(&c, fill, first, rest, after);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 /* The screen blanked and HDMA off; interrupts off. */
 static void boot_blank(Carried *cr, uint32_t b)
 {
@@ -289,6 +309,19 @@ static void boot_blank(Carried *cr, uint32_t b)
     boot_lda8(cr, 0x80);
     ppu_wr(b | INIDISP, 0x80);
     set_p(cr, (uint8_t)(cr->p | (P_I)));
+}
+
+static void boot_blank_g(uint32_t b)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_blank(&c, b);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* One DMA of `count` bytes from bank:$8000 to work RAM bank:to. */
@@ -313,10 +346,23 @@ static void boot_dma(Carried *cr, uint32_t b, uint16_t to, uint8_t wbank, uint8_
     mdmaen_wr(b | MDMAEN, 0x01);
 }
 
+static void boot_dma_g(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, uint16_t count)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    boot_dma(&c, b, to, wbank, from_bank, count);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
+}
+
 enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_RACE, BOOT_ATTRACT, BOOT_SOFT, BOOT_SOFT_REST };
 
 /* The boot's code from one of its entries; none returns. */
-static void boot_run(Carried *cr, int from)
+static void boot_run(int from)
 {
     uint32_t b = 0x030000;
     uint8_t old_e;
@@ -335,95 +381,95 @@ static void boot_run(Carried *cr, int from)
     case BOOT_SOFT_REST:
         goto soft_rest;
     }
-    r_sep(cr, P_M | P_X);
-    set_p(cr, (uint8_t)(cr->p | (P_I)));
-    old_e = cpu_mode();
-    cpu_mode_set(0);
-    set_p(cr, (uint8_t)((cr->p & ~P_C) | (old_e ? P_C : 0)));
-    boot_bank03(cr);
-    r_rep(cr, P_M | P_X);
-    boot_ldx(cr, 0x02FF);
+    op_sep(P_M | P_X);
+    cpu.p |= P_I;
+    old_e = cpu.e;
+    cpu.e = 0;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : 0));
+    boot_bank03_g();
+    op_rep(P_M | P_X);
+    boot_ldx_g(0x02FF);
     cpu.s = 0x02FF;
-    r_lda16_imm(cr, 0x0000);
-    cr->d = 0x0000;
-    r_sep(cr, P_M);
-    boot_lda8(cr, 0x1C);
+    op_lda16_imm(0x0000);
+    cpu.d = 0x0000;
+    op_sep(P_M);
+    boot_lda8_g(0x1C);
     cyc(130);
     wr8(b | 0x0D3F, 0x1C);
-    (cyc(62), HardwareRegsInit(cr));
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
-    boot_ldx(cr, 0x02FE);
+    (cyc(62), abi_HardwareRegsInit());
+    cpu.p &= (uint8_t)~P_I;
+    op_sep(P_M);
+    op_rep(P_X);
+    boot_ldx_g(0x02FE);
     cyc(2);
     do {
         cyc(58);
-        wr8((uint16_t)(cr->d + cr->x), 0x00);
-        cr->x--;
-        set_p(cr, nz16(cr->p, cr->x));
-    } while (!(cr->x & 0x8000));
+        wr8((uint16_t)(cpu.d + cpu.x), 0x00);
+        cpu.x--;
+        cpu.p = nz16(cpu.p, cpu.x);
+    } while (!(cpu.x & 0x8000));
     cyc(60);
-    r_rep(cr, P_M);
-    r_lda16_imm(cr, 0x0000);
-    cr->d = 0x0000;
-    r_lda16_imm(cr, 0x02FF);
+    op_rep(P_M);
+    op_lda16_imm(0x0000);
+    cpu.d = 0x0000;
+    op_lda16_imm(0x02FF);
     cpu.s = 0x02FF;
-    boot_bank03(cr);
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
-    boot_clear(cr, WramFillZero_cr, 90, 48, 62);
-    w_ApuUploadBank19(cr);
-    SaveUnlocksCheck_cr(cr);
-    r_rep(cr, P_M | P_X);
-    boot_ldx(cr, 0x000F);
+    boot_bank03_g();
+    op_sep(P_M);
+    op_rep(P_X);
+    boot_clear_g(WramFillZero_cr, 90, 48, 62);
+    abi_ApuUploadBank19();
+    abi_SaveUnlocksCheck();
+    op_rep(P_M | P_X);
+    boot_ldx_g(0x000F);
     do {
-        r_lda16(cr, 0x038D16 + cr->x);
-        wr16(0x000101 + cr->x, cr->a);
-        cr->x--;
-        set_p(cr, nz16(cr->p, cr->x));
-    } while (!(cr->x & 0x8000));
+        op_lda16(0x038D16 + cpu.x);
+        wr16(0x000101 + cpu.x, cpu.a);
+        cpu.x--;
+        cpu.p = nz16(cpu.p, cpu.x);
+    } while (!(cpu.x & 0x8000));
 start:
     cyc(22);
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
-    boot_dma(cr, b, 0xA2D9, 0x7E, 0x02, 0x54A6);
-    boot_dma(cr, b, 0x0800, 0x7F, 0x0B, 0x2C00);
-    r_sep(cr, P_M);
-    boot_lda8(cr, 0x01);
+    op_sep(P_M);
+    op_rep(P_X);
+    boot_dma_g(b, 0xA2D9, 0x7E, 0x02, 0x54A6);
+    boot_dma_g(b, 0x0800, 0x7F, 0x0B, 0x2C00);
+    op_sep(P_M);
+    boot_lda8_g(0x01);
     cyc(22);
     wr8(b | 0x0374, 0x01);
-    boot_lda8(cr, 0x01);
+    boot_lda8_g(0x01);
     hw_wr(b | 0x3039, 0x01);
-    boot_lda8(cr, 0x20);
+    boot_lda8_g(0x20);
     hw_wr(b | 0x3037, 0x20);
-    boot_lda8(cr, 0x0B);
+    boot_lda8_g(0x0B);
     hw_wr(b | 0x3038, 0x0B);
-    (cyc(62), MenuScreen0Run_cr(cr));
-    r_rep(cr, P_M | P_X);
-    r_lda16_imm(cr, 0x0003);
+    (cyc(62), abi_MenuScreen0Run());
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0003);
     cyc(18);
     wr16(0x001915, 0x0003);
-    r_lda16_imm(cr, 0x0000);
+    op_lda16_imm(0x0000);
     cyc(18);
     wr16(0x001917, 0x0000);
 warm:
-    boot_bank03(cr);
-    boot_stack(cr);
-    r_sep(cr, P_M);
+    boot_bank03_g();
+    boot_stack();
+    op_sep(P_M);
     cyc(36);
     wr8(b | 0x0E4E, 0x00);
-    boot_lda8(cr, 0x02);
+    boot_lda8_g(0x02);
     wr8(b | 0x117A, 0x02);
-    boot_lda8(cr, 0x01);
+    boot_lda8_g(0x01);
     wr8(b | 0x117B, 0x01);
-    (cyc(62), CourseMenuRun(cr));
-    RaceModeSetup(cr);
-    Set7EFFA6Sequence_cr(cr);
+    (cyc(62), abi_CourseMenuRun());
+    abi_RaceModeSetup();
+    abi_Set7EFFA6Sequence();
 race:
-    boot_bank03(cr);
-    boot_blank(cr, b);
-    boot_stack(cr);
-    r_sep(cr, P_M);
+    boot_bank03_g();
+    boot_blank_g(b);
+    boot_stack();
+    op_sep(P_M);
     wr8(b | 0x0E4E, 0x00);
     /* JSL RaceLoop: its return address (03:8BE8) on the stack, which
        RaceLoop leaves by (LoopLeaveWhenEnded). */
@@ -435,97 +481,97 @@ race:
     cpu.s--;
     wr8((uint16_t)cpu.s, 0xE8);
     cpu.s--;
-    RaceLoop(cr);
+    abi_RaceLoop();
     if (cpu.unwound)
         cpu.unwound = 0;
     else
         cpu.s = (uint16_t)(cpu.s + 3);
-    b = (uint32_t)cr->db << 16;
-    boot_blank(cr, b);
-    RaceVideoInit_cr(cr);
+    b = (uint32_t)cpu.db << 16;
+    boot_blank_g(b);
+    abi_RaceVideoInit();
 attract:
-    boot_bank03(cr);
+    boot_bank03_g();
     b = 0x030000;
-    boot_blank(cr, b);
-    (cyc(78), boot_stack(cr));
-    r_sep(cr, P_M | P_X);
-    w_KeepRegisters(cr);
-    WindowsInit_cr(cr);
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
-    b = (uint32_t)cr->db << 16;
-    boot_lda8(cr, 0x01);
+    boot_blank_g(b);
+    (cyc(78), boot_stack());
+    op_sep(P_M | P_X);
+    abi_KeepRegisters();
+    abi_WindowsInit();
+    op_sep(P_M);
+    op_rep(P_X);
+    b = (uint32_t)cpu.db << 16;
+    boot_lda8_g(0x01);
     cyc(22);
     hw_wr(b | 0x3039, 0x01);
-    boot_lda8(cr, 0x01);
+    boot_lda8_g(0x01);
     cyc(8);
     wr8(0x7EFF65, 0x01);
-    set_p(cr, (uint8_t)(cr->p | (P_I)));
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
+    cpu.p |= P_I;
+    op_sep(P_M);
+    op_rep(P_X);
     cyc(98);
-    AttractCourseSetup(cr);
-    (cyc(62), w_CourseDataPointer(cr));
-    (cyc(62), CourseScriptRun(cr));
-    (cyc(62), ObjectPlaceAll_cr(cr));
-    b = (uint32_t)cr->db << 16;
-    boot_lda8(cr, 0x00);
+    abi_AttractCourseSetup();
+    (cyc(62), abi_CourseDataPointer());
+    (cyc(62), abi_CourseScriptRun());
+    (cyc(62), abi_ObjectPlaceAll());
+    b = (uint32_t)cpu.db << 16;
+    boot_lda8_g(0x00);
     cyc(8);
     wr8(0x70023A, 0x00);
     cyc(24);
     wr8(b | 0x1A32, 0x00);
     cyc(24);
     wr8(b | 0x05E9, 0x00);
-    boot_lda8(cr, 0x01);
+    boot_lda8_g(0x01);
     wr8(b | 0x0713, 0x01);
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
+    op_sep(P_M);
+    op_rep(P_X);
     cyc(62);
-    boot_lda8(cr, 0x04);
-    boot_ldx(cr, 0x8800);
-    GsuRun_cr(cr);
-    r_sep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
-    boot_lda8(cr, 0x01);
+    boot_lda8_g(0x04);
+    boot_ldx_g(0x8800);
+    abi_GsuRun();
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    boot_lda8_g(0x01);
     cyc(22);
     wr8(b | 0x0357, 0x01);
     cyc(32);
-    r_lda8(cr, TIMEUP);
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
+    op_lda8(TIMEUP);
+    cpu.p &= (uint8_t)~P_I;
     for (;;) {
         cyc(76);
-        w_SpriteSlot1Countdown(cr);
-        r_sep(cr, P_M);
-        b = (uint32_t)cr->db << 16;
+        abi_SpriteSlot1Countdown();
+        op_sep(P_M);
+        b = (uint32_t)cpu.db << 16;
         cyc(46);
-        r_lda8(cr, b | 0x0D62);
-        if ((uint8_t)cr->a)
-            RaceFrameRunTwoPlayers(cr);
+        op_lda8(b | 0x0D62);
+        if ((uint8_t)cpu.a)
+            abi_RaceFrameRunTwoPlayers();
         else
-            { cyc(84); RaceFrameRun(cr); }
-        r_sep(cr, P_M);
-        b = (uint32_t)cr->db << 16;
+            { cyc(84); abi_RaceFrameRun(); }
+        op_sep(P_M);
+        b = (uint32_t)cpu.db << 16;
         cyc(46);
-        r_lda8(cr, b | 0x05E9);
-        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(cr->a - 0x1E)) & ~P_C) | ((uint8_t)cr->a >= 0x1E ? P_C : (cyc(24), 0))));
-        if (cr->p & P_C)
+        op_lda8(b | 0x05E9);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x1E)) & ~P_C) | ((uint8_t)cpu.a >= 0x1E ? P_C : (cyc(24), 0)));
+        if (cpu.p & P_C)
             wr8(b | 0x0713, 0x00);
     }
 soft:
-    r_rep(cr, P_M);
-    r_lda16_imm(cr, 0xFFFF);
+    op_rep(P_M);
+    op_lda16_imm(0xFFFF);
     cyc(10);
     wr16(b | 0x10DC, 0xFFFF);
     cyc(24);
     wr16(b | 0x10DE, 0x0000);
-    (cyc(62), DemoRunThird(cr));
+    (cyc(62), abi_DemoRunThird());
 soft_rest:
-    r_sep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
-    boot_lda8(cr, 0x06);
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    boot_lda8_g(0x06);
     cyc(22);
     hw_wr(b | APUIO1, 0x06);
-    boot_lda8(cr, 0x80);
+    boot_lda8_g(0x80);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
     hw_wr(b | NMITIMEN, 0x00);
@@ -533,11 +579,11 @@ soft_rest:
     mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);
     hdmaen_wr(b | HDMAEN, 0x00);
-    r_sep(cr, P_M);
-    r_rep(cr, P_X);
-    boot_clear(cr, WramFillZeroLong, 86, 64, 62);
-    SoftResetApuLong(cr);
-    b = (uint32_t)cr->db << 16;
+    op_sep(P_M);
+    op_rep(P_X);
+    boot_clear_g(WramFillZeroLong, 86, 64, 62);
+    abi_SoftResetApuLong();
+    b = (uint32_t)cpu.db << 16;
     cyc(24); /* JMP */
     goto start;
 }
@@ -554,22 +600,9 @@ soft_rest:
  * each byte to the next; the stubs from $03:8D16. Never returns.
  * Entry: from the reset vector. Exit: never returns.
  */
-void BootColdStart(Carried *cr)
-{
-    boot_run(cr, BOOT_COLD);
-}
-
 void abi_BootColdStart(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootColdStart(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_COLD);
 }
 
 /*
@@ -582,22 +615,9 @@ void abi_BootColdStart(void)
  * HOW: DMA channel 0 to WMDATA; 8-bit A, 16-bit X and Y. Never returns.
  * Entry: data bank $03. Exit: never returns.
  */
-void BootStart(Carried *cr)
-{
-    boot_run(cr, BOOT_START);
-}
-
 void abi_BootStart(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootStart(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_START);
 }
 
 /*
@@ -615,22 +635,9 @@ void abi_BootStart(void)
  * RaceLoop leaves its return address on the stack for RaceLoop's way out.
  * Entry: any. Exit: never returns.
  */
-void BootWarm(Carried *cr)
-{
-    boot_run(cr, BOOT_WARM);
-}
-
 void abi_BootWarm(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootWarm(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_WARM);
 }
 
 /*
@@ -642,22 +649,9 @@ void abi_BootWarm(void)
  * HOW: As BootWarm from its .race label. Never returns.
  * Entry: any. Exit: never returns.
  */
-void BootWarmRace(Carried *cr)
-{
-    boot_run(cr, BOOT_RACE);
-}
-
 void abi_BootWarmRace(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootWarmRace(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_RACE);
 }
 
 /*
@@ -668,22 +662,9 @@ void abi_BootWarmRace(void)
  * HOW: As BootWarm from its .attract label. Never returns.
  * Entry: any. Exit: never returns.
  */
-void BootWarmAttract(Carried *cr)
-{
-    boot_run(cr, BOOT_ATTRACT);
-}
-
 void abi_BootWarmAttract(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootWarmAttract(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_ATTRACT);
 }
 
 /*
@@ -696,22 +677,9 @@ void abi_BootWarmAttract(void)
  * HOW: As BootColdStart's clears; a jump to BootStart. Never returns.
  * Entry: data bank $03. Exit: never returns.
  */
-void BootSoftRestart(Carried *cr)
-{
-    boot_run(cr, BOOT_SOFT);
-}
-
 void abi_BootSoftRestart(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootSoftRestart(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_SOFT);
 }
 
 /*
@@ -723,71 +691,8 @@ void abi_BootSoftRestart(void)
  * HOW: As BootSoftRestart from the call's return. Never returns.
  * Entry: data bank $03. Exit: never returns.
  */
-void BootSoftRestartRest(Carried *cr)
-{
-    boot_run(cr, BOOT_SOFT_REST);
-}
-
 void abi_BootSoftRestartRest(void)
 {
-    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-
-    BootSoftRestartRest(&r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.d = r.d;
-    cpu.p = r.p;
-    cpu.db = r.db;
+    boot_run(BOOT_SOFT_REST);
 }
 
-/* ApuUploadBank19 as its adapter leaves the registers. */
-static void w_ApuUploadBank19(Carried *cr)
-{
-    uint16_t offset = ApuUploadBank19();
-
-    cr->a = 0;
-    cr->x = 0;
-    cr->y = offset;
-}
-
-/* CourseDataPointer as its adapter leaves the registers. */
-static void w_CourseDataPointer(Carried *cr)
-{
-    uint8_t bank, p = cr->p;
-    uint16_t x = CourseDataPointer(&bank, &p);
-
-    cr->x = x;
-    cr->y = x;
-    cr->a = (uint16_t)((x & 0xFF00) | bank);
-    set_p(cr, (uint8_t)((nz16(p, x) & ~P_X) | P_M));
-}
-
-/* KeepRegisters, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_KeepRegisters(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_KeepRegisters();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpriteSlot1Countdown as its adapter leaves the registers. */
-static void w_SpriteSlot1Countdown(Carried *cr)
-{
-    uint16_t x = cr->x;
-    uint8_t a = SpriteSlot1Countdown(cr->db, &x);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
-    cr->x = (cr->p & P_X) ? (uint8_t)x : (cyc(72), x);
-}

@@ -3147,7 +3147,6 @@ void abi_HudHoldDraw(void)
     cpu.db = r.db;
 }
 
-
 /* SEP #$20, REP #$10, LDX #$F329, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
    Super FX program $07:F329 (the glyph at $70:0216 drawn at $70:020A,
    $70:020C). */
@@ -4906,9 +4905,27 @@ uint8_t HudTimesDrawEven(uint8_t bank)
     return p0;
 }
 
+static uint8_t HudTimesDrawEven_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = HudTimesDrawEven(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 void HudTimesDrawEven_cr(Carried *cr)
 {
-    set_p(cr, HudTimesDrawEven(cr->db));
+    set_p(cr, HudTimesDrawEven_c(cr, cr->db));
     cr->a = hud_a;
     cr->x = hud_x;
     cr->y = hud_y;

@@ -62,11 +62,6 @@ enum {
    is carried (carried.h), as SEI, CLI or a PLP would. */
 void irq_mask_set(int masked);
 
-/* The CPU's emulation flag (E): read, and set (XCE), by code whose
-   registers are carried. */
-uint8_t cpu_mode(void);
-void cpu_mode_set(uint8_t e);
-
 /* N and Z as a 16-bit load sets them. */
 static inline uint8_t nz16(uint8_t p, uint16_t v)
 {
