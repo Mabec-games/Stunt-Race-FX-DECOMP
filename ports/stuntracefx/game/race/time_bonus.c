@@ -688,7 +688,7 @@ static void tb_GsuRun(uint8_t bank, TbRegs *r)
 
 /* SEP, REP (X too: 22 and the index high bytes cleared), LDA, LSR A,
    AND # on the carried registers, as cpu_ops.h's. */
-static void r_sep(TbRegs *r, uint8_t bits)
+static void tb_sep(TbRegs *r, uint8_t bits)
 {
     r->p |= bits;
     if (bits & P_X) {
@@ -698,33 +698,33 @@ static void r_sep(TbRegs *r, uint8_t bits)
     }
 }
 
-static void r_rep(TbRegs *r, uint8_t bits)
+static void tb_rep(TbRegs *r, uint8_t bits)
 {
     cyc(22);
     r->p &= (uint8_t)~bits;
 }
 
-static void r_lda(TbRegs *r, uint32_t addr)
+static void tb_lda(TbRegs *r, uint32_t addr)
 {
     r->a = rd16(addr);
     r->p = nz16(r->p, r->a);
 }
 
-static void r_lda_imm(TbRegs *r, uint16_t v)
+static void tb_lda_imm(TbRegs *r, uint16_t v)
 {
     cyc(38);
     r->a = v;
     r->p = nz16(r->p, v);
 }
 
-static void r_lsr(TbRegs *r)
+static void tb_lsr(TbRegs *r)
 {
     r->p = (uint8_t)((r->p & ~P_C) | (r->a & 1));
     r->a >>= 1;
     r->p = nz16(r->p, r->a);
 }
 
-static void r_and(TbRegs *r, uint16_t m)
+static void tb_and(TbRegs *r, uint16_t m)
 {
     cyc(2);
     r->a &= m;
@@ -1587,14 +1587,14 @@ void abi_TimeLeftDigits(void)
    program $07:F15B (a digit). */
 static void run_f15b(uint8_t bank, TbRegs *r)
 {
-    r_sep(r, P_M);
-    r_rep(r, P_X);
+    tb_sep(r, P_M);
+    tb_rep(r, P_X);
     r->x = 0xF15B;
     r->p = nz16(r->p, r->x);
     r->a = (uint16_t)((r->a & 0xFF00) | 0x07);
     r->p = nz8(r->p, 0x07);
     (cyc(124), tb_GsuRun(bank, r));
-    r_rep(r, P_M | P_X);
+    tb_rep(r, P_M | P_X);
 }
 
 /*
@@ -1611,23 +1611,23 @@ void GsuDigitPair0E74At(uint8_t bank, TbRegs *r)
 
     cyc(32);
     wr16(0x70020A, r->a);
-    r_lda_imm(r, 0x0008);
-    r_lda_imm(r, 0x0008);
+    tb_lda_imm(r, 0x0008);
+    tb_lda_imm(r, 0x0008);
     cyc(4);
     wr16(0x70020C, 0x0008);
     cyc(24);
-    r_lda(r, b | 0x0E74);
-    r_lsr(r);
-    r_lsr(r);
-    r_lsr(r);
-    r_lsr(r);
-    r_and(r, 0x000F);
+    tb_lda(r, b | 0x0E74);
+    tb_lsr(r);
+    tb_lsr(r);
+    tb_lsr(r);
+    tb_lsr(r);
+    tb_and(r, 0x000F);
     (cyc(124), tb_GsuParam216A(bank, r));
     run_f15b(bank, r);
-    r_rep(r, P_M | P_X);
+    tb_rep(r, P_M | P_X);
     cyc(46);
-    r_lda(r, b | 0x0E74);
-    r_and(r, 0x000F);
+    tb_lda(r, b | 0x0E74);
+    tb_and(r, 0x000F);
     (cyc(68), tb_GsuParam216A(bank, r));
     run_f15b(bank, r);
     cyc(64);

@@ -188,6 +188,8 @@ def statics(f):
             if w:
                 out.add(w.group(1))
     out |= set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*(?:\[|=)', t, re.M))
+    out |= set(re.findall(r'\}\s*(\w+)\s*;', t))           # typedef struct { ... } Name;
+    out |= set(re.findall(r'^typedef [^;(]*\b(\w+)\s*;', t, re.M))
     return out
 
 exports = {}
@@ -415,6 +417,31 @@ def split_params(params):
         out.append(cur.strip())
     return out
 
+def call_arglists(t, name):
+    """The argument lists of the calls of name in t."""
+    out = []
+    for m in re.finditer(r'(?<![\w>.])%s\s*\(' % name, t):
+        depth, i = 1, m.end()
+        while depth and i < len(t):
+            depth += {'(': 1, ')': -1}.get(t[i], 0)
+            i += 1
+        out.append(split_params(t[m.end():i - 1]))
+    return out
+
+FPARAM = re.compile(r'\(\s*\*\s*(\w+)\s*\)\s*\(([^)]*)\)')
+carried_fp = {}      # helper -> {param name: its argument list}
+for h in regfn:
+    if isroutine[h]:
+        continue
+    plist = split_params(byname[h][4]) if byname[h][4].strip() not in ('void', '') else []
+    for i, prm in enumerate(plist):
+        m = FPARAM.search(prm)
+        if not m or m.group(2).strip() in ('void', ''):
+            continue
+        for args in call_arglists(text, h):
+            if i < len(args) and args[i].strip() in regfn and not isroutine[args[i].strip()]:
+                carried_fp.setdefault(h, {})[m.group(1)] = m.group(2)
+
 gvariants = set()
 out, pos = [], 0
 for (s0, e, n, hdr, params, bs) in fns:
@@ -445,6 +472,9 @@ void %s(void)
             np = 'Carried *cr' if p in ('void', '') else 'Carried *cr, ' + routine_values(params)
             for fp in rparams(params):
                 b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % fp, '%s(cr)' % fp, b)
+            for fp, fargs in carried_fp.get(n, {}).items():
+                np = re.sub(r'\(\s*\*\s*%s\s*\)\s*\(' % fp, '(*%s)(Carried *, ' % fp, np)
+                b = re.sub(r'(?<![\w>.])%s\s*\(' % fp, '%s(cr, ' % fp, b)
             out.append('%s(%s)\n{\n%s}\n' % (hdr.rstrip(), np, b))
     elif n in glue or n in adapter:
         b = glue_body(body[n])

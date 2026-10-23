@@ -40,7 +40,7 @@ typedef struct {
 
 /* LDA (8-bit), LDA (16-bit) and LDA #, CLC/ADC #, SEC/SBC, CMP, TAX, TXA
    on the carried registers. */
-static void r_lda8(LRegs *r, uint32_t addr)
+static void lr_lda8(LRegs *r, uint32_t addr)
 {
     uint8_t v = rd8(addr);
 
@@ -48,44 +48,44 @@ static void r_lda8(LRegs *r, uint32_t addr)
     r->p = nz8(r->p, v);
 }
 
-static void r_lda(LRegs *r, uint32_t addr)
+static void lr_lda(LRegs *r, uint32_t addr)
 {
     r->a = rd16(addr);
     r->p = nz16(r->p, r->a);
 }
 
-static void r_lda_imm(LRegs *r, uint16_t v)
+static void lr_lda_imm(LRegs *r, uint16_t v)
 {
     cyc(38);
     r->a = v;
     r->p = nz16(r->p, v);
 }
 
-static void r_add(LRegs *r, uint16_t m)
+static void lr_add(LRegs *r, uint16_t m)
 {
     r->p &= (uint8_t)~P_C;
     r->a = alu_adc16(r->a, m, &r->p);
 }
 
-static void r_sub(LRegs *r, uint16_t m)
+static void lr_sub(LRegs *r, uint16_t m)
 {
     r->p |= P_C;
     r->a = alu_sbc16(r->a, m, &r->p);
 }
 
-static void r_cmp(LRegs *r, uint16_t m)
+static void lr_cmp(LRegs *r, uint16_t m)
 {
     r->p = (uint8_t)((nz16(r->p, (uint16_t)(r->a - m)) & ~P_C) | (r->a >= m ? P_C : 0));
 }
 
-static void r_tax(LRegs *r)
+static void lr_tax(LRegs *r)
 {
     cyc(30);
     r->x = r->a;
     r->p = nz16(r->p, r->x);
 }
 
-static void r_txa(LRegs *r)
+static void lr_txa(LRegs *r)
 {
     cyc(30);
     r->a = r->x;
@@ -93,7 +93,7 @@ static void r_txa(LRegs *r)
 }
 
 /* An approach of $3E toward A (approach.c), with the flags it leaves. */
-static void r_approach(LRegs *r, uint16_t (*f)(uint16_t, int *))
+static void lr_approach(LRegs *r, uint16_t (*f)(uint16_t, int *))
 {
     int moved;
 
@@ -101,7 +101,7 @@ static void r_approach(LRegs *r, uint16_t (*f)(uint16_t, int *))
     r->p = ApproachExitP(r->p, r->a, 1, moved);
 }
 
-static void r_approach_byte(LRegs *r, uint8_t (*f)(uint8_t, int *))
+static void lr_approach_byte(LRegs *r, uint8_t (*f)(uint8_t, int *))
 {
     int moved;
     uint8_t v = f((uint8_t)r->a, &moved);
@@ -236,7 +236,7 @@ static void lda8(uint8_t bank, LRegs *r, uint8_t v)
 static uint8_t ld8(uint8_t bank, LRegs *r, uint32_t addr)
 {
     cyc(30);
-    r_lda8(r, addr);
+    lr_lda8(r, addr);
     return (uint8_t)r->a;
 }
 
@@ -252,7 +252,7 @@ static void st8i(uint8_t bank, LRegs *r, uint32_t addr, uint8_t v)
 static void st16i(uint8_t bank, LRegs *r, uint32_t addr, uint16_t v)
 {
     r->p &= (uint8_t)~P_M;
-    r_lda_imm(r, v);
+    lr_lda_imm(r, v);
     cyc(32);
     wr16(addr, v);
     r->p |= P_M;
@@ -273,8 +273,8 @@ static void add16(uint8_t bank, LRegs *r, uint32_t addr, uint16_t v)
 {
     r->p &= (uint8_t)~P_M;
     cyc(30);
-    r_lda(r, addr);
-    r_add(r, v);
+    lr_lda(r, addr);
+    lr_add(r, v);
     cyc(68);
     wr16(addr, r->a);
     r->p |= P_M;
@@ -650,17 +650,17 @@ void ObjectSpray8(uint8_t bank, LRegs *r)
         cyc(22);
         handler(bank, r, r->y, 0xDB7A);
         r->p &= (uint8_t)~P_M;
-        r_lda_imm(r, spray8[i].vx);
+        lr_lda_imm(r, spray8[i].vx);
         wr16(F(0x202E, r->y), cyc_then(38, spray8[i].vx));
-        r_lda_imm(r, 0x03E8);
+        lr_lda_imm(r, 0x03E8);
         wr16(F(0x2030, r->y), cyc_then(16, 0x03E8));
-        r_lda_imm(r, 0x1770);
+        lr_lda_imm(r, 0x1770);
         wr16(F(0x2032, r->y), cyc_then(16, 0x1770));
         r->p |= P_M;
         st16i(bank, r, F(0x2029, r->y), cyc_then(28, spray8[i].rise));
         lo = (uint8_t)r->a;
         r->p &= (uint8_t)~P_M;
-        r_txa(r);
+        lr_txa(r);
         wr16(F(0x2027, r->y), cyc_then(80, r->x));
         r->p |= P_M;
         r->a = (uint16_t)((r->a & 0xFF00) | lo);
@@ -689,14 +689,14 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
 {
     uint8_t v;
 
-    r_lda8(r, cyc_then(30, F(0x2014, r->x)));
+    lr_lda8(r, cyc_then(30, F(0x2014, r->x)));
     cyc(16);
     wr8(0x00003E, (uint8_t)r->a);
     cyc(58);
     lda8(bank, r, 0x00);
-    r_approach_byte(r, ApproachSixteenthMin16Byte);
+    lr_approach_byte(r, ApproachSixteenthMin16Byte);
     wr8(F(0x2014, r->x), cyc_then(30, (uint8_t)r->a));
-    r_lda8(r, cyc_then(30, F(0x2015, r->x)));
+    lr_lda8(r, cyc_then(30, F(0x2015, r->x)));
     r->p &= (uint8_t)~P_C;
     v = alu_adc8((uint8_t)r->a, 0x08, &r->p);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
@@ -706,19 +706,19 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
     (cyc(62), l_ObjectCopyPositionFrom(bank, r));
     (cyc(62), l_ObjectApplyVelocity(bank, r));
     r->p &= (uint8_t)~P_M;
-    r_lda(r, cyc_then(52, F(0x2030, r->x)));
+    lr_lda(r, cyc_then(52, F(0x2030, r->x)));
     cyc(16);
     wr16(0x00003E, r->a);
-    r_lda(r, cyc_then(30, F(0x2029, r->x)));
-    (cyc(14), r_approach(r, ApproachEighthMin8));
+    lr_lda(r, cyc_then(30, F(0x2029, r->x)));
+    (cyc(14), lr_approach(r, ApproachEighthMin8));
     wr16(F(0x2030, r->x), cyc_then(30, r->a));
     r->p |= P_M;
     r->p &= (uint8_t)~P_M;
-    r_lda(r, cyc_then(74, F(0x2032, r->x)));
+    lr_lda(r, cyc_then(74, F(0x2032, r->x)));
     cyc(16);
     wr16(0x00003E, r->a);
-    r_lda_imm(r, 0x05DC);
-    r_approach(r, ApproachEighthMin8);
+    lr_lda_imm(r, 0x05DC);
+    lr_approach(r, ApproachEighthMin8);
     wr16(F(0x2032, r->x), cyc_then(30, r->a));
     r->p |= P_M;
     cyc(66);
@@ -797,7 +797,7 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     uint8_t v;
     uint16_t d;
 
-    r_lda8(r, cyc_then(30, F(0x2025, r->x)));
+    lr_lda8(r, cyc_then(30, F(0x2025, r->x)));
     v = (uint8_t)(r->a & 0x01);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
@@ -806,8 +806,8 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     r->y = rd16(cyc_then(62, ((uint32_t)bank << 16) | 0x0346));
     r->p = nz16(r->p, r->y);
     r->p &= (uint8_t)~P_M;
-    r_lda(r, cyc_then(52, F(0x2010, r->y)));
-    r_sub(r, rd16(cyc_then(44, F(0x2010, r->x))));
+    lr_lda(r, cyc_then(52, F(0x2010, r->y)));
+    lr_sub(r, rd16(cyc_then(44, F(0x2010, r->x))));
     if (r->a & 0x8000) {
         cyc(32);
         d = (uint16_t)(r->a ^ 0xFFFF);
@@ -815,17 +815,17 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
         r->p = nz16(r->p, r->a);
     }
     cyc(84);
-    r_cmp(r, 0x01F4);
+    lr_cmp(r, 0x01F4);
     r->p |= P_M;
     if (!(r->p & P_N))
         { cyc(44); return; }
-    r_lda8(r, cyc_then(24, F(0x204C, r->y)));
+    lr_lda8(r, cyc_then(24, F(0x204C, r->y)));
     v = (uint8_t)(r->a + 1);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
     wr8(F(0x204C, r->y), cyc_then(44, v));
     r->p = (uint8_t)((nz8(r->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
-    r_lda8(r, cyc_then(v == 0x01 ? 68 : 84, F(0x2025, r->x)));
+    lr_lda8(r, cyc_then(v == 0x01 ? 68 : 84, F(0x2025, r->x)));
     v = (uint8_t)(r->a | 0x01);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
@@ -848,7 +848,7 @@ void abi_ObjectPlayerPassCount(void)
 static void dp16i(uint8_t bank, LRegs *r, uint16_t d, uint16_t v)
 {
     r->p &= (uint8_t)~P_M;
-    r_lda_imm(r, v);
+    lr_lda_imm(r, v);
     cyc(24);
     wr16(d, v);
     r->p |= P_M;
@@ -1086,7 +1086,7 @@ void ObjectContactsCameraPoint(uint8_t bank, LRegs *r)
         r->p &= (uint8_t)~P_M;
         cyc(22);
         for (i = 0; i < 3; i++) {
-            r_lda(r, cyc_then(24, ((uint32_t)bank << 16) | from[i]));
+            lr_lda(r, cyc_then(24, ((uint32_t)bank << 16) | from[i]));
             wr16(((uint32_t)bank << 16) | (uint16_t)(to[i] + r->y), cyc_then(30, r->a));
         }
         r->p |= P_M;
@@ -1114,7 +1114,7 @@ static void spin_step(uint8_t bank, LRegs *r)
 {
     uint8_t v;
 
-    r_lda8(r, cyc_then(30, F(0x2015, r->x)));
+    lr_lda8(r, cyc_then(30, F(0x2015, r->x)));
     r->p &= (uint8_t)~P_C;
     v = alu_adc8((uint8_t)r->a, 0x08, &r->p);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
@@ -1259,7 +1259,7 @@ static void record_match_step(uint8_t bank, LRegs *r)
     unsigned i;
 
     (cyc(62), l_ObjectSyncFromRecord(bank, r));
-    r_lda8(r, cyc_then(30, F(0x2024, r->x)));
+    lr_lda8(r, cyc_then(30, F(0x2024, r->x)));
     f = (uint8_t)(r->a & 0xFD);
     r->a = (uint16_t)((r->a & 0xFF00) | f);
     r->p = nz8(r->p, f);
@@ -1269,20 +1269,20 @@ static void record_match_step(uint8_t bank, LRegs *r)
     r->x = rd16(cyc_then(38, ((uint32_t)bank << 16) | 0x0346));
     r->p = nz16(r->p, r->x);
     r->p &= (uint8_t)~P_M;
-    r_lda(r, cyc_then(52, F(0x2022, r->x)));
-    r_tax(r);
+    lr_lda(r, cyc_then(52, F(0x2022, r->x)));
+    lr_tax(r);
     cyc(16);
-    r_lda(r, 0x700058 + r->x);
-    r_cmp(r, rd16(cyc_then(30, F(0x2029, r->y))));
+    lr_lda(r, 0x700058 + r->x);
+    lr_cmp(r, rd16(cyc_then(30, F(0x2029, r->y))));
     r->p |= P_M;
     if (r->p & P_Z) {
-        r_lda8(r, cyc_then(68, F(0x2024, r->y)));
+        lr_lda8(r, cyc_then(68, F(0x2024, r->y)));
         f = (uint8_t)(r->a | 0x02);
         r->a = (uint16_t)((r->a & 0xFF00) | f);
         r->p = nz8(r->p, f);
         wr8(F(0x2024, r->y), cyc_then(46, f));
         r->p &= (uint8_t)~P_M;
-        r_lda(r, cyc_then(52, F(0x200E, r->y)));
+        lr_lda(r, cyc_then(52, F(0x200E, r->y)));
         v = (uint16_t)((r->a ^ 0xFFFF) + 1);
         for (i = 0; i < 5; i++) {
             c = v >= 0x8000;
@@ -1292,7 +1292,7 @@ static void record_match_step(uint8_t bank, LRegs *r)
         r->a = v;
         r->p = nz16(r->p, v);
         wr16(((uint32_t)bank << 16) | 0x1F41, cyc_then(252, v));
-        r_lda(r, cyc_then(30, F(0x2029, r->y)));
+        lr_lda(r, cyc_then(30, F(0x2029, r->y)));
         wr16(((uint32_t)bank << 16) | 0x1F43, cyc_then(24, r->a));
         r->p |= P_M;
     } else { cyc(22); }
