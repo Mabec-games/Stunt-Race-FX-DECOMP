@@ -7,6 +7,10 @@
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
+#include "race_calls.h"
+void VramDmaTileFromGsuRam(uint16_t tile, uint16_t vram, uint8_t *p);
 
 static void io8(uint8_t bank, uint32_t reg, uint8_t v)
 {
@@ -251,72 +255,90 @@ void abi_SoundIndicesFromHandlers(void);
 void abi_GsuCF42ToVram(void);
 void abi_GsuCF42To3000(void);
 
+void RaceHudLoad(Carried *cr);
+static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_t vram);
+static void pull_p(Carried *cr, uint8_t p);
+static void race_video_exit(Carried *cr, int swapped, uint8_t p0, uint8_t db0, uint16_t a, uint16_t x, uint16_t y);
+static void video_gsu_3000(Carried *cr, uint16_t a, uint16_t x, int x_first);
+static void video_gsu_ram_dma(Carried *cr, uint16_t src, uint16_t vram, uint16_t size);
+static void video_gsu_vram(Carried *cr, uint16_t y, uint16_t x);
+static void video_mvn(Carried *cr, uint32_t src, uint32_t dst, uint16_t n);
+static void w_GsuCF42To3000(Carried *cr);
+static void w_GsuCF42ToVram(Carried *cr);
+static void w_RaceTimeInit(Carried *cr);
+static void w_SoundIndicesFromHandlers(Carried *cr);
+static void w_VramDmaTileFromGsuRam(Carried *cr);
+void CourseSoundLoad_cr(Carried *cr);
+void SoundReset_cr(Carried *cr);
+static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db);
+static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db);
+
 /* REP #$30, LDY, LDX, JSL GsuCF42ToVram. */
-static void video_gsu_vram(uint16_t y, uint16_t x)
+static void video_gsu_vram(Carried *cr, uint16_t y, uint16_t x)
 {
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.y = y;
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
-    (cyc(116), abi_GsuCF42ToVram());
+    cr->p &= (uint8_t)~(P_M | P_X);
+    cr->y = y;
+    cr->x = x;
+    cr->p = nz16(cr->p, x);
+    (cyc(116), w_GsuCF42ToVram(cr));
 }
 
 /* REP #$30, LDA and LDX (x_last: LDX first), JSL GsuCF42To3000. */
-static void video_gsu_3000(uint16_t a, uint16_t x, int x_first)
+static void video_gsu_3000(Carried *cr, uint16_t a, uint16_t x, int x_first)
 {
     cyc(28);
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.a = a;
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x_first ? a : (cyc(40), x));
-    (cyc(46), abi_GsuCF42To3000());
+    cr->p &= (uint8_t)~(P_M | P_X);
+    cr->a = a;
+    cr->x = x;
+    cr->p = nz16(cr->p, x_first ? a : (cyc(40), x));
+    (cyc(46), w_GsuCF42To3000(cr));
 }
 
 /* PHP, REP #$20: DMA channel 0 in mode 1 of `size` bytes from $70:src to
    VRAM `vram` (VMAIN $80), started at once; PLP. */
-static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
+static void video_gsu_ram_dma(Carried *cr, uint16_t src, uint16_t vram, uint16_t size)
 {
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    cpu.p &= (uint8_t)~P_M;
+    cr->p &= (uint8_t)~P_M;
     cyc(80);
     dma_wr16(DMAP0, 0x1801);
     cyc(56);
     dma_wr16(A1T0L, src);
     cyc(56);
     ppu_wr16(VMADDL, vram);
-    cpu.a = size;
+    cr->a = size;
     cyc(56);
     dma_wr16(DAS0L, size);
-    cpu.p |= P_M;
+    cr->p |= P_M;
     cyc(70);
     ppu_wr(VMAIN, 0x80);
     cyc(48);
     dma_wr(A1B0, 0x70);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.p = nz8(cpu.p, 0x01);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->p = nz8(cr->p, 0x01);
     cyc(48);
     mdmaen_wr(MDMAEN, 0x01);
-    op_plp(p);
+    r_plp(cr, p);
     cyc(28);
 }
 
 /* MVN within bank $7F or from $70 to $7F: n bytes from src to dst, a
    byte at a time (read, then write), with M and X 16-bit and P restored
    after (the caller's PHB, PHP, REP #$30 ... PLP, PLB). */
-static void video_mvn(uint32_t src, uint32_t dst, uint16_t n)
+static void video_mvn(Carried *cr, uint32_t src, uint32_t dst, uint16_t n)
 {
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
     unsigned i;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    cr->p &= (uint8_t)~(P_M | P_X);
     cyc(60);
     for (i = 0; i < n; i++)
         { cyc(36); wr8(dst + i, rd8(src + i)); }
-    cpu.a = 0xFFFF;
-    cpu.x = (uint16_t)(src + n);
-    cpu.y = (uint16_t)(dst + n);
-    op_plp(p);
+    cr->a = 0xFFFF;
+    cr->x = (uint16_t)(src + n);
+    cr->y = (uint16_t)(dst + n);
+    r_plp(cr, p);
 }
 
 uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x);
@@ -582,29 +604,42 @@ done:
 }
 
 /* PLP's register effects (its time stated by the typed function). */
-static void pull_p(uint8_t p)
+static void pull_p(Carried *cr, uint8_t p)
 {
-    cpu.p = p;
+    cr->p = p;
     if (p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
 }
 
 /* RaceVideoSetup's exit from P p0 and data bank db0 at its entry. */
-static void race_video_exit(int swapped, uint8_t p0, uint8_t db0, uint16_t a, uint16_t x, uint16_t y)
+static void race_video_exit(Carried *cr, int swapped, uint8_t p0, uint8_t db0, uint16_t a, uint16_t x, uint16_t y)
 {
-    cpu.a = a;
-    cpu.x = x;
-    cpu.y = y;
+    cr->a = a;
+    cr->x = x;
+    cr->y = y;
     if (swapped) {
-        pull_p(db0);
-        cpu.db = p0;
-        cpu.p = nz8(cpu.p, p0);
+        pull_p(cr, db0);
+        cr->db = p0;
+        cr->p = nz8(cr->p, p0);
     } else {
-        cpu.db = db0;
-        pull_p(p0);
+        cr->db = db0;
+        pull_p(cr, p0);
     }
+}
+
+static void race_video_exit_g(int swapped, uint8_t p0, uint8_t db0, uint16_t a, uint16_t x, uint16_t y)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    race_video_exit(&c, swapped, p0, db0, a, x, y);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_RaceVideoSetup(void)
@@ -613,7 +648,7 @@ void abi_RaceVideoSetup(void)
     uint16_t a, x, y;
     int swapped = RaceVideoSetup(cpu.x, &a, &x, &y);
 
-    race_video_exit(swapped, p0, db0, a, x, y);
+    race_video_exit_g(swapped, p0, db0, a, x, y);
 }
 
 static uint8_t rvi_v;                   /* RaceVideoInit's $0D24 */
@@ -666,7 +701,7 @@ void abi_RaceVideoInit(void)
     p1 = (uint8_t)((p1 & ~P_C) | (rvi_v >= 0x03 ? P_C : 0));
     if (rvi_v >= 0x03)
         p1 &= (uint8_t)~P_M;
-    race_video_exit(swapped, p1, 0x03, a, x, y);
+    race_video_exit_g(swapped, p1, 0x03, a, x, y);
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
 }
@@ -678,16 +713,16 @@ void abi_RaceTimeInit(void);
 
 /* LDA #from, STA $F1, LDA (a word of work RAM at w), LDX #vram, JSR
    VramDmaTileFromGsuRam: one tile of the Super FX picture to VRAM. */
-static void hud_tile(uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
+static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
 {
-    cpu.a = from;
+    cr->a = from;
     cyc(34);
     wr16(0x0000F1, from);
     cyc(24);
-    op_lda16(b | w);
-    cpu.x = vram;
-    cpu.p = nz16(cpu.p, vram);
-    (cyc(70), abi_VramDmaTileFromGsuRam());
+    r_lda16(cr, b | w);
+    cr->x = vram;
+    cr->p = nz16(cr->p, vram);
+    (cyc(70), w_VramDmaTileFromGsuRam(cr));
     cyc(6);
 }
 
@@ -716,89 +751,203 @@ void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db);
  * Entry: any widths; D = $0000. Exit: as RaceHudSetup or
  * RaceHudSetupTwoPlayers leaves it.
  */
-void abi_RaceHudLoad(void)
+void RaceHudLoad(Carried *cr)
 {
     cyc(178);
     const uint32_t b = 0x030000;
-    uint8_t pushed[2] = {cpu.p, cpu.db};
+    uint8_t pushed[2] = {cr->p, cr->db};
     uint16_t w, x;
 
-    op_sep(P_M);
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
-    abi_SoundReset();
-    op_sep(P_M);
+    r_sep(cr, P_M);
+    cr->db = 0x03;
+    cr->p = nz8(cr->p, 0x03);
+    SoundReset_cr(cr);
+    r_sep(cr, P_M);
     cyc(46);
-    op_lda8(b | 0x0D4C);
-    if ((uint8_t)cpu.a && (op_lda8(cyc_then(40, b | 0x0D2B)), !(uint8_t)cpu.a)) {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
-        cpu.p = nz8(cpu.p, 0x04);
+    r_lda8(cr, b | 0x0D4C);
+    if ((uint8_t)cr->a && (r_lda8(cr, cyc_then(40, b | 0x0D2B)), !(uint8_t)cr->a)) {
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
+        cr->p = nz8(cr->p, 0x04);
         cyc(56);
         wr8(b | 0x0D89, 0x04);
         cyc(22);                                /* BRA */
     } else
-        { cyc(84); abi_SoundIndicesFromHandlers(); }
-    (cyc(62), abi_CourseSoundLoad());
+        { cyc(84); w_SoundIndicesFromHandlers(cr); }
+    (cyc(62), CourseSoundLoad_cr(cr));
     cyc(18);
-    video_gsu_3000(0x8078, 0x001D, 0);
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    video_gsu_3000(cr, 0x8078, 0x001D, 0);
+    cr->p &= (uint8_t)~(P_M | P_X);
     cyc(162);
     w = rd16(b | 0x0D2B);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (w >> 15));
+    cr->p = (uint8_t)((cr->p & ~P_C) | (w >> 15));
     x = (uint16_t)(w << 1);
-    cpu.a = x;
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
+    cr->a = x;
+    cr->x = x;
+    cr->p = nz16(cr->p, x);
     cyc(46);
     w = rd16(b | (uint16_t)(0xDD56 + x));
     if (w == 0xDDA4) {
         cyc(34);
-        hud_tile(b, 0x30A0, 0x18E5, 0x62F0);
+        hud_tile(cr, b, 0x30A0, 0x18E5, 0x62F0);
         cyc(0);
-        hud_tile(b, 0x30A0, 0x18E7, 0x63E0);
+        hud_tile(cr, b, 0x30A0, 0x18E7, 0x63E0);
         cyc(0);
-        hud_tile(b, 0x30A0, 0x18E9, 0x63F0);
+        hud_tile(cr, b, 0x30A0, 0x18E9, 0x63F0);
         w = 0xDDCE;
     } else { cyc(34); }
     cyc(0);
     if (w == 0xDDCE) {
-        op_sep(P_M);
+        r_sep(cr, P_M);
         cyc(40);
-        op_lda8(b | 0x0D4E);
-        if ((uint8_t)cpu.a)
+        r_lda8(cr, b | 0x0D4E);
+        if ((uint8_t)cr->a)
             w = 0xDD5E;
     }
     if (w == 0xDD94)
-        hud_tile(b, 0x3000, 0x18E5, 0x62F0);
+        hud_tile(cr, b, 0x3000, 0x18E5, 0x62F0);
     cyc(0);
     if (w == 0xDD5E)
-        { cyc(14); video_gsu_ram_dma(0x3080, 0x63F0, 0x0020); } else { cyc(36); }
+        { cyc(14); video_gsu_ram_dma(cr, 0x3080, 0x63F0, 0x0020); } else { cyc(36); }
     cyc(8);
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    hud_tile(b, 0x3000, 0x18E3, 0x62E0);
+    cr->p &= (uint8_t)~(P_M | P_X);
+    hud_tile(cr, b, 0x3000, 0x18E3, 0x62E0);
     cyc(10);
-    video_gsu_vram(0xF845, 0xF804);
+    video_gsu_vram(cr, 0xF845, 0xF804);
     cyc(18);
-    video_gsu_3000(0xD920, 0x0018, 0);
+    video_gsu_3000(cr, 0xD920, 0x0018, 0);
     cyc(182);
-    video_mvn(0x703000, 0x7F63D7, 0x3000);
-    op_sep(P_M);
-    (cyc(110), abi_SoundReset());
-    op_sep(P_M);
-    (cyc(68), abi_RaceTimeInit());
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    video_mvn(cr, 0x703000, 0x7F63D7, 0x3000);
+    r_sep(cr, P_M);
+    (cyc(110), SoundReset_cr(cr));
+    r_sep(cr, P_M);
+    (cyc(68), w_RaceTimeInit(cr));
+    cr->p &= (uint8_t)~(P_M | P_X);
     cyc(46);
     x = (uint16_t)((rd16(b | 0x0E3D) & 0x00FF) << 1);
-    cpu.x = x;
+    cr->x = x;
     cyc(132);
-    cpu.a = rd16(0x03F799 + x);
-    wr16(0x700050, cpu.a);
-    op_sep(P_M);
+    cr->a = rd16(0x03F799 + x);
+    wr16(0x700050, cr->a);
+    r_sep(cr, P_M);
     cyc(46);
-    op_lda8(b | 0x0D62);
-    if ((uint8_t)cpu.a)
-        { cyc(46); RaceHudSetupTwoPlayers(pushed[0], pushed[1]); }
+    r_lda8(cr, b | 0x0D62);
+    if ((uint8_t)cr->a)
+        { cyc(46); RaceHudSetupTwoPlayers_c(cr, pushed[0], pushed[1]); }
     else
-        { cyc(46); RaceHudSetup(pushed[0], pushed[1]); }
+        { cyc(46); RaceHudSetup_c(cr, pushed[0], pushed[1]); }
     cyc(72);
+}
+
+void abi_RaceHudLoad(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceHudLoad(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* GsuCF42ToVram as its adapter leaves the registers. */
+static void w_GsuCF42ToVram(Carried *cr)
+{
+    GsuCF42ToVram(cr->db, cr->x, cr->y);
+    cr->a = 0x0001;
+    cr->x = cr->y;
+    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M);
+}
+
+/* GsuCF42To3000, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuCF42To3000(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuCF42To3000();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* VramDmaTileFromGsuRam as its adapter leaves the registers. */
+static void w_VramDmaTileFromGsuRam(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    VramDmaTileFromGsuRam(cr->a, cr->x, &p);
+    cr->a = 0x0001;
+    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_M));
+}
+
+/* RaceHudSetup, still in registers: its call with the registers loaded and taken
+   back. */
+static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    RaceHudSetup(p, db);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* RaceHudSetupTwoPlayers, still in registers: its call with the registers loaded and taken
+   back. */
+static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    RaceHudSetupTwoPlayers(p, db);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* RaceTimeInit as its adapter leaves the registers. */
+static void w_RaceTimeInit(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+    uint8_t v;
+
+    cr->p = p | P_M | P_X;                      /* what an interrupt pushes */
+    v = RaceTimeInit(cr->db, &x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = x;
+    cr->y &= 0x00FF;
+    cr->p = p;
+}
+
+/* SoundIndicesFromHandlers as its adapter leaves the registers. */
+static void w_SoundIndicesFromHandlers(Carried *cr)
+{
+    uint8_t x;
+
+    cr->a = SoundIndicesFromHandlers(cr->db, &x);
+    cr->x = x;
+    cr->y &= 0x00FF;
 }

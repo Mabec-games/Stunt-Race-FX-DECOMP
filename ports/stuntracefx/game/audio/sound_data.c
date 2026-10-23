@@ -8,6 +8,7 @@
 #include "cpu_ops.h"
 
 #include "audio_calls.h"
+#include "carried.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 void ApuPort1Send05(void);
@@ -402,5 +403,30 @@ void abi_CourseSoundLoad(void)
     if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
+    }
+}
+
+/* CourseSoundLoad on carried registers, as abi_CourseSoundLoad leaves them. */
+void CourseSoundLoad_cr(Carried *cr)
+{
+    CourseSoundLoad(cr->db);
+    switch (csl_kind) {
+    case CSL_EARLY:
+        cr->a = (uint16_t)((cr->a & 0xFF00) | csl_a);
+        break;
+    case CSL_OTHER:
+        cr->a = 0x0004;
+        cr->x = 0x0000;
+        cr->y = (uint8_t)up_y;
+        break;
+    default:
+        cr->a = 0x0000;
+        cr->x = ml_x;
+        cr->y = up_y;
+        break;
+    }
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
 }

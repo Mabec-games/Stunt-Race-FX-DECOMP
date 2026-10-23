@@ -306,17 +306,49 @@ def make_wrapper(n):
 EXTMAP = {'approach_regs': 'r_approach', 'approach_regs_byte': 'r_approach_byte'}
 EXTREG = set()
 EXTROUT = set()
+EXTSIG = {}
 for f, t in src.items():
     if f == FILE:
         continue
     for (s0, e, n, hdr, params, bs) in functions(t):
         if not hdr.startswith('static') and not n.startswith('abi_') and REG.search(t[bs:e]):
             EXTREG.add(n)
+            EXTSIG[n] = (hdr, params)
             # void X(void) whose adapter only calls it: called as the routine
             if params.strip() == 'void' and re.match(r'void\s', hdr) and \
                     re.search(r'^void abi_%s\(void\)\n\{\n\s*%s\(\);\n\}\n' % (n, n), t, re.M):
                 EXTROUT.add(n)
 stops = set()
+extdecl, extsw = [], set()
+def ext_sync(n):
+    if n in extsw:
+        return
+    hdr, params = EXTSIG[n]
+    rt = re.sub(r'\b%s\s*$' % n, '', hdr.strip()).strip()
+    plist = [] if params.strip() in ('void', '') else split_params(params)
+    np = 'Carried *cr' + ''.join(', ' + x for x in plist)
+    call = '%s(%s)' % (n, ', '.join(pname(x) for x in plist))
+    extdecl.append('static %s %s_c(%s);\n' % (rt, n, np))
+    wrapcode.append('''/* %s, still in registers: its call with the registers loaded and taken
+   back. */
+static %s %s_c(%s)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    %s%s;
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;%s
+}
+''' % (n, rt, n, np, '' if rt == 'void' else rt + ' ret_ = ', call, '' if rt == 'void' else '\n    return ret_;'))
+    extsw.add(n)
 
 cvariants = set()
 def rewrite_body(b):
@@ -324,9 +356,13 @@ def rewrite_body(b):
         b = re.sub(r'(?<![\w>.])%s\s*\(' % n, EXTMAP[n] + '(cr, ', b)
     for n in EXTROUT:
         b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % n, 'abi_%s()' % n, b)
+    # other files' register helpers: through a local X_c, which loads the
+    # registers and takes them back
     for n in EXTREG - set(EXTMAP) - EXTROUT:
         if re.search(r'(?<![\w>.])%s\s*\(' % n, b):
-            stops.add(n)
+            ext_sync(n)
+            b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % n, '%s_c(cr)' % n, b)
+            b = re.sub(r'(?<![\w>.])%s\s*\((?!cr\b)' % n, '%s_c(cr, ' % n, b)
     # calls of helpers still in registers: through their _c variants, which
     # load the registers and take them back
     for n in glue:
@@ -641,6 +677,7 @@ if wrapcode or regfn:
             res = re.sub(r'^(?:static )?[A-Za-z_][\w \*]*\b%s\s*\((?!Carried)[^;{)]*\);\n' % n, '', res, flags=re.M)
     fwd += ''.join('static void w_%s(Carried *cr);\n' % n for n in sorted(wrap) if wrap[n].startswith('w_'))
     fwd += ''.join('void %s(Carried *cr);\n' % n for n in sorted(carried_ext))
+    fwd += ''.join(extdecl)
     wcode = '\n'.join(wrapcode)
     protos = []
     for c in sorted(set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', wcode + ''.join(body[n] for n in regfn)))):
@@ -711,6 +748,6 @@ for f, lst in exports.items():
 if stops:
     sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))
 open(os.path.join(G, FILE), 'w').write(res)
-print('converted %d, glue %d (%s), sync wrappers %d (%s)' % (len(regfn), len(glue), ', '.join(sorted(glue)), len(syncw), ', '.join(sorted(syncw))))
+print('converted %d, glue %d (%s), sync wrappers %d (%s)' % (len(regfn), len(glue), ', '.join(sorted(glue)), len(syncw | extsw), ', '.join(sorted(syncw | extsw))))
 for n, w in left.items():
     print('left', n, w)
