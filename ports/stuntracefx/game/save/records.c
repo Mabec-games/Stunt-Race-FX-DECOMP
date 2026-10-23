@@ -8,7 +8,6 @@
 #include "save_calls.h"
 #include "carried.h"
 
-int PlayerSound35(uint8_t bank, uint16_t y);
 #include "audio_calls.h"
 
 /* Sum five bytes from `base` + X with 8-bit adds; X steps past them. */
@@ -42,14 +41,99 @@ uint8_t SaveRecordSumA(uint8_t *x, uint8_t *p)
     return sum5(0x70FC4A, x, p);
 }
 
+void PreviewRowDrawAll_cr(Carried *cr);
+void PreviewRowDrawStunt_cr(Carried *cr);
+void RecordCarTimes12_cr(Carried *cr);
+void RecordCompareTime0_cr(Carried *cr);
+void RecordCompareTime1_cr(Carried *cr);
+void RecordLetterTile_cr(Carried *cr);
+void RecordNameLetters_cr(Carried *cr);
+void RecordNameLettersLarge_cr(Carried *cr);
+void RecordNameLettersSmall_cr(Carried *cr);
+void RecordRow1_cr(Carried *cr);
+void RecordRow1Time0_cr(Carried *cr);
+void RecordRow2_cr(Carried *cr);
+void RecordRow2Time4_cr(Carried *cr);
+void RecordRow3_cr(Carried *cr);
+void RecordRow3Time8_cr(Carried *cr);
+void RecordRowDraw_cr(Carried *cr);
+void RecordRowsFirstTimes_cr(Carried *cr);
+void RecordRowsGroupFirsts(Carried *cr);
+void RecordScoreDigits_cr(Carried *cr);
+void RecordTagCar0_cr(Carried *cr);
+void RecordTagCar4_cr(Carried *cr);
+void RecordTagCar8_cr(Carried *cr);
+void RecordTagCarSet_cr(Carried *cr);
+void RecordTimeCompare_cr(Carried *cr);
+void RecordTimeDigitsLarge_cr(Carried *cr);
+void RecordTimeDigitsSmall_cr(Carried *cr);
+void RecordsCharDrawAll_cr(Carried *cr);
+void RecordsCharDrawStunt_cr(Carried *cr);
+void RecordsCharOffsetAll_cr(Carried *cr);
+void RecordsCharOffsetStunt_cr(Carried *cr);
+void RecordsCharTileAll_cr(Carried *cr);
+void RecordsCharTileStunt_cr(Carried *cr);
+void RecordsEntryLoad_cr(Carried *cr);
+void RecordsLoadCourse_cr(Carried *cr);
+void RecordsLoadCourseLong_cr(Carried *cr);
+void RecordsLoadForCourse_cr(Carried *cr);
+void RecordsLoadSpecialCourse_cr(Carried *cr);
+void RecordsLoadSpecialCourseLong_cr(Carried *cr);
+void RecordsUnpackCourse_cr(Carried *cr);
+void RecordsUnpackCourseRunning(Carried *cr);
+void RecordsUnpackCourseRunningB(Carried *cr);
+void RecordsUnpackCourseTotals(Carried *cr);
+void SaveBlocksCheck_cr(Carried *cr);
+void SaveBlocksFourthBad_cr(Carried *cr);
+void SaveBlocksValidate_cr(Carried *cr);
+void SaveRecordSumA_cr(Carried *cr);
+void SaveRecordSumB_cr(Carried *cr);
+void SaveRecordSumsTimeUp_cr(Carried *cr);
+void SaveRecordsCheckA_cr(Carried *cr);
+void SaveRecordsCheckB_cr(Carried *cr);
+void SaveSumsRecordsB_cr(Carried *cr);
+void SaveTablesCheck_cr(Carried *cr);
+void SaveUnlocksCheck_cr(Carried *cr);
+void SaveValidate_cr(Carried *cr);
+void SpecialRecordInsert_cr(Carried *cr);
+void SpecialRecordsChecksum_cr(Carried *cr);
+void StuntRecordTime_cr(Carried *cr);
+void TimeUpRecordUpdate_cr(Carried *cr);
+static void char_draw_exit(Carried *cr);
+static void char_offset_exit(Carried *cr, uint16_t r);
+static void char_tile_exit(Carried *cr, uint16_t t);
+static void checksum_exit(Carried *cr, uint8_t s);
+static void compare_by_mode_exit(Carried *cr);
+static void load_exit(Carried *cr);
+static void preview_exit(Carried *cr, uint8_t p0);
+static void record_compare_by_mode(Carried *cr, uint8_t bank, uint16_t x);
+static void records_char_jump(Carried *cr, uint8_t bank, uint32_t table);
+static void row_exit(Carried *cr);
+void PlayerSound35_cr(Carried *cr);
+void TimeRunningTotals_cr(Carried *cr);
+void TimeTotalsSum_cr(Carried *cr);
+
+void SaveRecordSumA_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SaveRecordSumA(&x, &p));
+    cr->x = x;
+    cr->y = 0;
+    set_p(cr, p);
+}
+
 void abi_SaveRecordSumA(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SaveRecordSumA(&x, &p));
-    cpu.x = x;
-    cpu.y = 0;
-    cpu.p = p;
+    SaveRecordSumA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -63,14 +147,27 @@ uint8_t SaveRecordSumB(uint8_t *x, uint8_t *p)
     return sum5(0x70FC5E, x, p);
 }
 
+void SaveRecordSumB_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SaveRecordSumB(&x, &p));
+    cr->x = x;
+    cr->y = 0;
+    set_p(cr, p);
+}
+
 void abi_SaveRecordSumB(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SaveRecordSumB(&x, &p));
-    cpu.x = x;
-    cpu.y = 0;
-    cpu.p = p;
+    SaveRecordSumB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -103,17 +200,6 @@ uint8_t SaveSumsRecordsB(void)
     return SaveRecordSumB(&x, &sums_p);
 }
 
-void abi_SaveSumsRecordsB(void)
-{
-    uint8_t a = SaveSumsRecordsB();
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = 20;
-    cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X);
-}
-
-/* SaveSumsRecordsB on carried registers, as abi_SaveSumsRecordsB leaves them. */
 void SaveSumsRecordsB_cr(Carried *cr)
 {
     uint8_t a = SaveSumsRecordsB();
@@ -122,6 +208,19 @@ void SaveSumsRecordsB_cr(Carried *cr)
     cr->x = 20;
     cr->y = 0;
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X));
+}
+
+void abi_SaveSumsRecordsB(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SaveSumsRecordsB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Check `count` records from `base` against their sum bytes at `sums`; a
@@ -181,14 +280,27 @@ uint8_t SaveRecordsCheckA(uint8_t bank, uint8_t *p)
     return check_records(bank, 0xFC4A, 0xFC46, 4, SaveRecordSumA, p);
 }
 
+void SaveRecordsCheckA_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SaveRecordsCheckA(cr->db, &p));
+    cr->x = 20;
+    cr->y = 4;
+    set_p(cr, (uint8_t)((p & ~P_N) | P_M | P_X | P_C | P_Z));
+}
+
 void abi_SaveRecordsCheckA(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SaveRecordsCheckA(cpu.db, &p));
-    cpu.x = 20;
-    cpu.y = 4;
-    cpu.p = (uint8_t)((p & ~P_N) | P_M | P_X | P_C | P_Z);
+    SaveRecordsCheckA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -205,14 +317,27 @@ uint8_t SaveRecordsCheckB(uint8_t bank, uint8_t *p)
     return check_records(bank, 0xFC5E, 0xFC43, 3, SaveRecordSumB, p);
 }
 
+void SaveRecordsCheckB_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SaveRecordsCheckB(cr->db, &p));
+    cr->x = 15;
+    cr->y = 3;
+    set_p(cr, (uint8_t)((p & ~P_N) | P_M | P_X | P_C | P_Z));
+}
+
 void abi_SaveRecordsCheckB(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SaveRecordsCheckB(cpu.db, &p));
-    cpu.x = 15;
-    cpu.y = 3;
-    cpu.p = (uint8_t)((p & ~P_N) | P_M | P_X | P_C | P_Z);
+    SaveRecordsCheckB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 8-bit ADC with carry clear; V as the 65816 sets it. */
@@ -325,15 +450,28 @@ next:
     cyc(74);
 }
 
+void SaveBlocksCheck_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    SaveBlocksCheck(cr->db, &p);
+    cr->a = 0x0210;
+    cr->x = 0x000F;
+    cr->y = 0x0000;
+    set_p(cr, (uint8_t)(((p & ~P_N) | P_M | P_C | P_Z) & ~P_X));
+}
+
 void abi_SaveBlocksCheck(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    SaveBlocksCheck(cpu.db, &p);
-    cpu.a = 0x0210;
-    cpu.x = 0x000F;
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)(((p & ~P_N) | P_M | P_C | P_Z) & ~P_X);
+    SaveBlocksCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -430,15 +568,28 @@ reset:
     return a;
 }
 
+void SaveTablesCheck_cr(Carried *cr)
+{
+    uint8_t p = cr->p, a = SaveTablesCheck(cr->db, &p);
+
+    cr->a = a;
+    cr->x = 0xFFFF;
+    cr->y = 0x0000;
+    set_p(cr, (uint8_t)(((p & ~(P_Z | P_X)) | P_N | P_M)));
+    cyc(36);
+}
+
 void abi_SaveTablesCheck(void)
 {
-    uint8_t p = cpu.p, a = SaveTablesCheck(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = a;
-    cpu.x = 0xFFFF;
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)(((p & ~(P_Z | P_X)) | P_N | P_M));
-    cyc(36);
+    SaveTablesCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One entry byte of SaveBlocksValidate: $FF passes; otherwise `bad` says
@@ -571,15 +722,28 @@ void SaveBlocksValidate(uint8_t bank, uint8_t *p)
     save_blocks_validate(bank, p, 0);
 }
 
+void SaveBlocksValidate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    SaveBlocksValidate(cr->db, &p);
+    cr->a = 0x020C;
+    cr->x = 0x000B;
+    cr->y = 0x0000;
+    set_p(cr, (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z)));
+}
+
 void abi_SaveBlocksValidate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    SaveBlocksValidate(cpu.db, &p);
-    cpu.a = 0x020C;
-    cpu.x = 0x000B;
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z));
+    SaveBlocksValidate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -598,15 +762,45 @@ void SaveBlocksFourthBad(uint8_t bank, uint8_t *p)
     save_blocks_validate(bank, p, 1);
 }
 
+static void SaveBlocksFourthBad_c(Carried *cr, uint8_t bank, uint8_t *p)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    SaveBlocksFourthBad(bank, p);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+void SaveBlocksFourthBad_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    SaveBlocksFourthBad_c(cr, cr->db, &p);
+    cr->a = 0x020C;
+    cr->x = 0x000B;
+    cr->y = 0x0000;
+    set_p(cr, (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z)));
+}
+
 void abi_SaveBlocksFourthBad(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    SaveBlocksFourthBad(cpu.db, &p);
-    cpu.a = 0x020C;
-    cpu.x = 0x000B;
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z));
+    SaveBlocksFourthBad_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -632,11 +826,24 @@ uint8_t SaveValidate(uint8_t bank)
     return a;
 }
 
+void SaveValidate_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x0200 | SaveValidate(cr->db));
+    cr->x = 20;
+    cr->y = 4;
+}
+
 void abi_SaveValidate(void)
 {
-    cpu.a = (uint16_t)(0x0200 | SaveValidate(cpu.db));
-    cpu.x = 20;
-    cpu.y = 4;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SaveValidate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The unlock bytes of the save in the order their checksum adds them. */
@@ -692,11 +899,24 @@ uint8_t SaveUnlocksCheck(void)
     return a;
 }
 
+void SaveUnlocksCheck_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x0200 | SaveUnlocksCheck());
+    cr->x = 20;
+    cr->y = 4;
+}
+
 void abi_SaveUnlocksCheck(void)
 {
-    cpu.a = (uint16_t)(0x0200 | SaveUnlocksCheck());
-    cpu.x = 20;
-    cpu.y = 4;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SaveUnlocksCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_TimeUnpackBcd(void);
@@ -763,36 +983,27 @@ uint8_t RecordsUnpackCourse(uint8_t bank)
     return (uint8_t)a;
 }
 
-void abi_RecordsUnpackCourse(void)
+void RecordsUnpackCourse_cr(Carried *cr)
 {
-    uint8_t a = RecordsUnpackCourse(cpu.db);
+    uint8_t a = RecordsUnpackCourse(cr->db);
 
-    cpu.a = (uint16_t)(unpack_high << 8 | a);
-    cpu.x = unpack_x;
-    cpu.y = unpack_y;
+    cr->a = (uint16_t)(unpack_high << 8 | a);
+    cr->x = unpack_x;
+    cr->y = unpack_y;
 }
 
-void RecordRowsGroupFirsts(Carried *cr);
-void RecordsUnpackCourseRunning(Carried *cr);
-void RecordsUnpackCourseRunningB(Carried *cr);
-void RecordsUnpackCourseTotals(Carried *cr);
-static void char_draw_exit(Carried *cr);
-static void char_offset_exit(Carried *cr, uint16_t r);
-static void char_tile_exit(Carried *cr, uint16_t t);
-static void checksum_exit(Carried *cr, uint8_t s);
-static void compare_by_mode_exit(Carried *cr);
-static void load_exit(Carried *cr);
-static void preview_exit(Carried *cr, uint8_t p0);
-static void record_compare_by_mode(Carried *cr, uint8_t bank, uint16_t x);
-static void records_char_jump(Carried *cr, uint8_t bank, uint32_t table);
-static void row_exit(Carried *cr);
-static void w_PlayerSound35(Carried *cr);
-static void w_RecordRow1Time0(Carried *cr);
-static void w_RecordRow2Time4(Carried *cr);
-static void w_RecordRow3Time8(Carried *cr);
-static void w_RecordsUnpackCourse(Carried *cr);
-static void w_TimeRunningTotals(Carried *cr);
-static void w_TimeTotalsSum(Carried *cr);
+void abi_RecordsUnpackCourse(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsUnpackCourse_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
 
 /*
  * @routine 07:B503 RecordsUnpackCourseTotals
@@ -804,8 +1015,8 @@ static void w_TimeTotalsSum(Carried *cr);
 void RecordsUnpackCourseTotals(Carried *cr)
 {
     cyc(46);
-    w_RecordsUnpackCourse(cr);
-    (cyc(46), w_TimeTotalsSum(cr));
+    RecordsUnpackCourse_cr(cr);
+    (cyc(46), TimeTotalsSum_cr(cr));
     cyc(44);
 }
 
@@ -831,8 +1042,8 @@ void abi_RecordsUnpackCourseTotals(void)
  */
 void RecordsUnpackCourseRunning(Carried *cr)
 {
-    (cyc(46), w_RecordsUnpackCourse(cr));
-    (cyc(46), w_TimeRunningTotals(cr));
+    (cyc(46), RecordsUnpackCourse_cr(cr));
+    (cyc(46), TimeRunningTotals_cr(cr));
     cyc(44);
 }
 
@@ -859,8 +1070,8 @@ void abi_RecordsUnpackCourseRunning(void)
 void RecordsUnpackCourseRunningB(Carried *cr)
 {
     cyc(46);
-    w_RecordsUnpackCourse(cr);
-    (cyc(46), w_TimeRunningTotals(cr));
+    RecordsUnpackCourse_cr(cr);
+    (cyc(46), TimeRunningTotals_cr(cr));
     cyc(42);                            /* RTS */
 }
 
@@ -940,10 +1151,23 @@ uint16_t RecordNameLetters(uint8_t bank, uint16_t letters, uint16_t y)
     return name_letters(bank, 0x039F, clk, letters, y);
 }
 
+void RecordNameLetters_cr(Carried *cr)
+{
+    cr->a = RecordNameLetters(cr->db, cr->a, cr->y);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M))));
+}
+
 void abi_RecordNameLetters(void)
 {
-    cpu.a = RecordNameLetters(cpu.db, cpu.a, cpu.y);
-    cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordNameLetters_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_TimeUnpackBcdLong(void);
@@ -975,12 +1199,25 @@ uint8_t RecordTagCarSet(uint8_t tag)
     return v;
 }
 
+void RecordTagCarSet_cr(Carried *cr)
+{
+    uint8_t t = (uint8_t)cr->a, v = RecordTagCarSet(t);
+
+    set_p(cr, (uint8_t)((nz8(cr->p, v) & ~(P_C | P_M)) | (t >= 0x0C ? P_C : 0)));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+}
+
 void abi_RecordTagCarSet(void)
 {
-    uint8_t t = (uint8_t)cpu.a, v = RecordTagCarSet(t);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.p = (uint8_t)((nz8(cpu.p, v) & ~(P_C | P_M)) | (t >= 0x0C ? P_C : 0));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    RecordTagCarSet_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The time in A unpacked (TimeUnpackBcdLong) with Y kept: the hundredths
@@ -1051,21 +1288,25 @@ uint8_t RecordTimeDigitsLarge(uint8_t bank, uint16_t d, uint16_t packed, uint16_
     return t;
 }
 
-void abi_RecordTimeDigitsLarge(void)
-{
-    uint8_t t = RecordTimeDigitsLarge(cpu.db, cpu.d, cpu.a, cpu.y);
-
-    cpu.a = (uint16_t)(digits_high << 8 | t);
-    cpu.x = digits_x;
-}
-
-/* RecordTimeDigitsLarge on carried registers, as abi_RecordTimeDigitsLarge leaves them. */
 void RecordTimeDigitsLarge_cr(Carried *cr)
 {
     uint8_t t = RecordTimeDigitsLarge(cr->db, cr->d, cr->a, cr->y);
 
     cr->a = (uint16_t)(digits_high << 8 | t);
     cr->x = digits_x;
+}
+
+void abi_RecordTimeDigitsLarge(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordTimeDigitsLarge_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* SEP'd A low byte to `v`, N and Z from it (an 8-bit LDA, AND or LSR). */
@@ -1119,16 +1360,6 @@ uint8_t RecordTimeDigitsSmall(uint8_t bank, uint16_t d, uint16_t packed, uint16_
     return v;
 }
 
-void abi_RecordTimeDigitsSmall(void)
-{
-    uint8_t v = RecordTimeDigitsSmall(cpu.db, cpu.d, cpu.a, cpu.y);
-
-    cpu.a = (uint16_t)(digits_high << 8 | v);
-    cpu.x = digits_x;
-    cpu.p = nz8((uint8_t)((unpack_p(cpu.p) & ~(P_C | P_M)) | nibble_c), v);
-}
-
-/* RecordTimeDigitsSmall on carried registers, as abi_RecordTimeDigitsSmall leaves them. */
 void RecordTimeDigitsSmall_cr(Carried *cr)
 {
     uint8_t v = RecordTimeDigitsSmall(cr->db, cr->d, cr->a, cr->y);
@@ -1136,6 +1367,19 @@ void RecordTimeDigitsSmall_cr(Carried *cr)
     cr->a = (uint16_t)(digits_high << 8 | v);
     cr->x = digits_x;
     set_p(cr, nz8((uint8_t)((unpack_p(cr->p) & ~(P_C | P_M)) | nibble_c), v));
+}
+
+void abi_RecordTimeDigitsSmall(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordTimeDigitsSmall_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1188,18 +1432,6 @@ uint8_t RecordScoreDigits(uint8_t bank, uint16_t d, uint16_t s, uint16_t y)
     return 0;
 }
 
-void abi_RecordScoreDigits(void)
-{
-    if (RecordScoreDigits(cpu.db, cpu.d, cpu.a, cpu.y)) {
-        cpu.a = 0x361D;
-        cpu.p = (uint8_t)(cpu.p & ~(P_N | P_Z | P_C | P_M)) | nibble_c;
-    } else {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
-        cpu.p = (uint8_t)(((cpu.p & ~(P_Z | P_C | P_M)) | P_N) | nibble_c);
-    }
-}
-
-/* RecordScoreDigits on carried registers, as abi_RecordScoreDigits leaves them. */
 void RecordScoreDigits_cr(Carried *cr)
 {
     if (RecordScoreDigits(cr->db, cr->d, cr->a, cr->y)) {
@@ -1209,6 +1441,19 @@ void RecordScoreDigits_cr(Carried *cr)
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
         set_p(cr, (uint8_t)(((cr->p & ~(P_Z | P_C | P_M)) | P_N) | nibble_c));
     }
+}
+
+void abi_RecordScoreDigits(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordScoreDigits_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1251,10 +1496,23 @@ uint16_t RecordLetterTile(uint16_t d, uint16_t letter)
     return a;
 }
 
+void RecordLetterTile_cr(Carried *cr)
+{
+    cr->a = RecordLetterTile(cr->d, cr->a);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | tile_flags));
+}
+
 void abi_RecordLetterTile(void)
 {
-    cpu.a = RecordLetterTile(cpu.d, cpu.a);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | tile_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordLetterTile_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* RecordLetterTile for letter `n`, then its top tile at `at` + Y and its
@@ -1302,17 +1560,23 @@ uint8_t RecordNameLettersLarge(uint8_t bank, uint16_t d, uint16_t letters, uint1
     return v;
 }
 
-void abi_RecordNameLettersLarge(void)
-{
-    cpu.a = RecordNameLettersLarge(cpu.db, cpu.d, cpu.a, cpu.y);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M)) | tile_flags);
-}
-
-/* RecordNameLettersLarge on carried registers, as abi_RecordNameLettersLarge leaves them. */
 void RecordNameLettersLarge_cr(Carried *cr)
 {
     cr->a = RecordNameLettersLarge(cr->db, cr->d, cr->a, cr->y);
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M)) | tile_flags));
+}
+
+void abi_RecordNameLettersLarge(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordNameLettersLarge_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1329,10 +1593,23 @@ uint16_t RecordNameLettersSmall(uint8_t bank, uint16_t letters, uint16_t y)
     return name_letters(bank, 0x03B3, clk, letters, y);
 }
 
+void RecordNameLettersSmall_cr(Carried *cr)
+{
+    cr->a = RecordNameLettersSmall(cr->db, cr->a, cr->y);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M))));
+}
+
 void abi_RecordNameLettersSmall(void)
 {
-    cpu.a = RecordNameLettersSmall(cpu.db, cpu.a, cpu.y);
-    cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordNameLettersSmall_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1415,15 +1692,28 @@ uint16_t RecordRowDraw(uint8_t bank, uint16_t d, uint16_t sprite)
     return r;
 }
 
+void RecordRowDraw_cr(Carried *cr)
+{
+    cr->a = RecordRowDraw(cr->db, cr->d, cr->y);
+    cr->x = row_x;
+    cr->y = row_y;
+    if (row_hidden)
+        set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_V | P_X)) | P_N | P_C | P_M | row_v));
+    else
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M | P_X))));
+}
+
 void abi_RecordRowDraw(void)
 {
-    cpu.a = RecordRowDraw(cpu.db, cpu.d, cpu.y);
-    cpu.x = row_x;
-    cpu.y = row_y;
-    if (row_hidden)
-        cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_V | P_X)) | P_N | P_C | P_M | row_v);
-    else
-        cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M | P_X);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRowDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Row n (0-2): its name entry ($10CF + n * 3) to $F3-$F5, its screen Y
@@ -1464,19 +1754,6 @@ static void row_exit(Carried *cr)
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M | P_X))));
 }
 
-static void row_exit_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    row_exit(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 02:F016 RecordRow1
  * WHAT IT DOES: Draws the first records row (RecordRowDraw) with the first
@@ -1490,10 +1767,23 @@ uint16_t RecordRow1(uint8_t bank, uint16_t d)
     return record_row(bank, d, 0);
 }
 
+void RecordRow1_cr(Carried *cr)
+{
+    cr->a = RecordRow1(cr->db, cr->d);
+    row_exit(cr);
+}
+
 void abi_RecordRow1(void)
 {
-    cpu.a = RecordRow1(cpu.db, cpu.d);
-    row_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRow1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1508,10 +1798,23 @@ uint16_t RecordRow2(uint8_t bank, uint16_t d)
     return record_row(bank, d, 1);
 }
 
+void RecordRow2_cr(Carried *cr)
+{
+    cr->a = RecordRow2(cr->db, cr->d);
+    row_exit(cr);
+}
+
 void abi_RecordRow2(void)
 {
-    cpu.a = RecordRow2(cpu.db, cpu.d);
-    row_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRow2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1526,10 +1829,23 @@ uint16_t RecordRow3(uint8_t bank, uint16_t d)
     return record_row(bank, d, 2);
 }
 
+void RecordRow3_cr(Carried *cr)
+{
+    cr->a = RecordRow3(cr->db, cr->d);
+    row_exit(cr);
+}
+
 void abi_RecordRow3(void)
 {
-    cpu.a = RecordRow3(cpu.db, cpu.d);
-    row_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRow3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1543,10 +1859,23 @@ uint16_t RecordRow1Time0(uint8_t bank, uint16_t d)
     return (cyc(8), record_row_time(d, 0x00), record_row(bank, d, 0));
 }
 
+void RecordRow1Time0_cr(Carried *cr)
+{
+    cr->a = RecordRow1Time0(cr->db, cr->d);
+    row_exit(cr);
+}
+
 void abi_RecordRow1Time0(void)
 {
-    cpu.a = RecordRow1Time0(cpu.db, cpu.d);
-    row_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRow1Time0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1560,10 +1889,23 @@ uint16_t RecordRow2Time4(uint8_t bank, uint16_t d)
     return (cyc(8), record_row_time(d, 0x0C), record_row(bank, d, 1));
 }
 
+void RecordRow2Time4_cr(Carried *cr)
+{
+    cr->a = RecordRow2Time4(cr->db, cr->d);
+    row_exit(cr);
+}
+
 void abi_RecordRow2Time4(void)
 {
-    cpu.a = RecordRow2Time4(cpu.db, cpu.d);
-    row_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRow2Time4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1577,10 +1919,23 @@ uint16_t RecordRow3Time8(uint8_t bank, uint16_t d)
     return (cyc(8), record_row_time(d, 0x18), record_row(bank, d, 2));
 }
 
+void RecordRow3Time8_cr(Carried *cr)
+{
+    cr->a = RecordRow3Time8(cr->db, cr->d);
+    row_exit(cr);
+}
+
 void abi_RecordRow3Time8(void)
 {
-    cpu.a = RecordRow3Time8(cpu.db, cpu.d);
-    row_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRow3Time8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1593,9 +1948,9 @@ void abi_RecordRow3Time8(void)
 void RecordRowsGroupFirsts(Carried *cr)
 {
     cyc(46);
-    w_RecordRow1Time0(cr);
-    (cyc(46), w_RecordRow2Time4(cr));
-    (cyc(46), w_RecordRow3Time8(cr));
+    RecordRow1Time0_cr(cr);
+    (cyc(46), RecordRow2Time4_cr(cr));
+    (cyc(46), RecordRow3Time8_cr(cr));
     cyc(42);
 }
 
@@ -1633,17 +1988,23 @@ uint16_t RecordRowsFirstTimes(uint8_t bank, uint16_t d)
     return a;
 }
 
-void abi_RecordRowsFirstTimes(void)
-{
-    cpu.a = RecordRowsFirstTimes(cpu.db, cpu.d);
-    row_exit_g();
-}
-
-/* RecordRowsFirstTimes on carried registers, as abi_RecordRowsFirstTimes leaves them. */
 void RecordRowsFirstTimes_cr(Carried *cr)
 {
     cr->a = RecordRowsFirstTimes(cr->db, cr->d);
     row_exit(cr);
+}
+
+void abi_RecordRowsFirstTimes(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordRowsFirstTimes_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -1748,21 +2109,25 @@ void RecordTimeCompare(uint8_t bank, uint16_t x)
     compare_result(b, 0x00);
 }
 
-void abi_RecordTimeCompare(void)
-{
-    RecordTimeCompare(cpu.db, cpu.x);
-    cpu.a = (uint16_t)(cmp_high << 8 | cmp_low);
-    cpu.x = cmp_x;
-    cpu.p = (uint8_t)(((cmp_sound ? nz8(cpu.p, cpu.db) : nz8(cpu.p, cmp_low)) & ~P_C) | P_M | cmp_c);
-}
-
-/* RecordTimeCompare on carried registers, as abi_RecordTimeCompare leaves them. */
 void RecordTimeCompare_cr(Carried *cr)
 {
     RecordTimeCompare(cr->db, cr->x);
     cr->a = (uint16_t)(cmp_high << 8 | cmp_low);
     cr->x = cmp_x;
     set_p(cr, (uint8_t)(((cmp_sound ? nz8(cr->p, cr->db) : nz8(cr->p, cmp_low)) & ~P_C) | P_M | cmp_c));
+}
+
+void abi_RecordTimeCompare(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordTimeCompare_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_PlayerSound35(void);
@@ -1786,7 +2151,7 @@ static void record_compare_by_mode(Carried *cr, uint8_t bank, uint16_t x)
     } else {
         cyc(108);
         if (mode_seen == 0x0002)
-            { w_PlayerSound35(cr); cyc(114); }  /* still in registers: it reads Y, the entry's */
+            { PlayerSound35_cr(cr); cyc(114); }  /* still in registers: it reads Y, the entry's */
         else {
             cyc(18);
             RecordTimeCompare(bank, x);
@@ -1819,19 +2184,6 @@ static void compare_by_mode_exit(Carried *cr)
     }
 }
 
-static void compare_by_mode_exit_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    compare_by_mode_exit(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 07:D62C RecordCompareTime0
  * WHAT IT DOES: By mode $0D2B: 0 plays sound $35, 2 PlayerSound35, others
@@ -1844,13 +2196,43 @@ void RecordCompareTime0(uint8_t bank)
     record_compare_by_mode_g(bank, 0x0000);
 }
 
+static void RecordCompareTime0_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    RecordCompareTime0(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+void RecordCompareTime0_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    RecordCompareTime0_c(cr, cr->db);
+    compare_by_mode_exit(cr);
+    set_p(cr, p0);
+}
+
 void abi_RecordCompareTime0(void)
 {
-    uint8_t p0 = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    RecordCompareTime0(cpu.db);
-    compare_by_mode_exit_g();
-    cpu.p = p0;
+    RecordCompareTime0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1865,13 +2247,43 @@ void RecordCompareTime1(uint8_t bank)
     record_compare_by_mode_g(bank, 0x0003);
 }
 
+static void RecordCompareTime1_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    RecordCompareTime1(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+void RecordCompareTime1_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    RecordCompareTime1_c(cr, cr->db);
+    compare_by_mode_exit(cr);
+    set_p(cr, p0);
+}
+
 void abi_RecordCompareTime1(void)
 {
-    uint8_t p0 = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    RecordCompareTime1(cpu.db);
-    compare_by_mode_exit_g();
-    cpu.p = p0;
+    RecordCompareTime1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Swap the words at at + x and at + 2 + x (PHA/PLA through A). */
@@ -2040,27 +2452,27 @@ static void load_exit(Carried *cr)
     }
 }
 
-static void load_exit_g(void)
+void RecordsLoadSpecialCourse_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    load_exit(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    ld_v_set = 0;
+    RecordsLoadSpecialCourse(cr->db, cr->d);
+    load_exit(cr);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_M | P_X)) | ld_flags));
+    if (ld_v_set)
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | ld_v));
 }
 
 void abi_RecordsLoadSpecialCourse(void)
 {
-    ld_v_set = 0;
-    RecordsLoadSpecialCourse(cpu.db, cpu.d);
-    load_exit_g();
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M | P_X)) | ld_flags);
-    if (ld_v_set)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | ld_v);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsLoadSpecialCourse_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2076,17 +2488,6 @@ uint16_t RecordsLoadSpecialCourseLong(uint16_t d)
     return RecordsLoadSpecialCourse(0x07, d);
 }
 
-void abi_RecordsLoadSpecialCourseLong(void)
-{
-    RecordsLoadSpecialCourseLong(cpu.d);
-    load_exit_g();
-    if (cpu.p & P_X) {                  /* the PLP; its time is the caller's */
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
-
-/* RecordsLoadSpecialCourseLong on carried registers, as abi_RecordsLoadSpecialCourseLong leaves them. */
 void RecordsLoadSpecialCourseLong_cr(Carried *cr)
 {
     RecordsLoadSpecialCourseLong(cr->d);
@@ -2095,6 +2496,19 @@ void RecordsLoadSpecialCourseLong_cr(Carried *cr)
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
     }
+}
+
+void abi_RecordsLoadSpecialCourseLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsLoadSpecialCourseLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* TimeUnpackBcd on A, its Y, X, A (8-bit) stored at `to`, + 1, + 2. */
@@ -2152,14 +2566,27 @@ void RecordsLoadCourse(uint8_t bank, uint16_t d)
     cyc(64);                            /* REP, RTS */
 }
 
-void abi_RecordsLoadCourse(void)
+void RecordsLoadCourse_cr(Carried *cr)
 {
     ld_v_set = 0;
-    RecordsLoadCourse(cpu.db, cpu.d);
-    load_exit_g();
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | ld_flags | P_M | P_X);
+    RecordsLoadCourse(cr->db, cr->d);
+    load_exit(cr);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C)) | ld_flags | P_M | P_X));
     if (ld_v_set)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | ld_v);
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | ld_v));
+}
+
+void abi_RecordsLoadCourse(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsLoadCourse_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2187,20 +2614,6 @@ void RecordsLoadForCourse(uint16_t d)
     cyc(tail);                          /* (BRA; BCS taken) SEP, PLB, PLP, RTL */
 }
 
-void abi_RecordsLoadForCourse(void)
-{
-    RecordsLoadForCourse(cpu.d);
-    if (ld_none)
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | ld_a);
-    else
-        load_exit_g();
-    if (cpu.p & P_X) {                  /* the PLP, its time in the tail */
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
-
-/* RecordsLoadForCourse on carried registers, as abi_RecordsLoadForCourse leaves them. */
 void RecordsLoadForCourse_cr(Carried *cr)
 {
     RecordsLoadForCourse(cr->d);
@@ -2212,6 +2625,19 @@ void RecordsLoadForCourse_cr(Carried *cr)
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
     }
+}
+
+void abi_RecordsLoadForCourse(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsLoadForCourse_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2228,17 +2654,6 @@ void RecordsLoadCourseLong(uint16_t d)
     cyc(122);                           /* SEP, PLB, PLP, RTL */
 }
 
-void abi_RecordsLoadCourseLong(void)
-{
-    RecordsLoadCourseLong(cpu.d);
-    load_exit_g();
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
-
-/* RecordsLoadCourseLong on carried registers, as abi_RecordsLoadCourseLong leaves them. */
 void RecordsLoadCourseLong_cr(Carried *cr)
 {
     RecordsLoadCourseLong(cr->d);
@@ -2247,6 +2662,19 @@ void RecordsLoadCourseLong_cr(Carried *cr)
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
     }
+}
+
+void abi_RecordsLoadCourseLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsLoadCourseLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t RecordTagCar0(uint8_t bank);
@@ -2344,22 +2772,22 @@ static void checksum_exit(Carried *cr, uint8_t s)
     set_p(cr, nz8((uint8_t)((cr->p & ~(P_C | P_V | P_M | P_X)) | chk_cv), s));
 }
 
-static void checksum_exit_g(uint8_t s)
+void SpecialRecordsChecksum_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    checksum_exit(&c, s);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    checksum_exit(cr, SpecialRecordsChecksum(cr->db, cr->d));
 }
 
 void abi_SpecialRecordsChecksum(void)
 {
-    checksum_exit_g(SpecialRecordsChecksum(cpu.db, cpu.d));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpecialRecordsChecksum_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Entry +a's word to entry +b (the course's entries, from X). */
@@ -2551,31 +2979,6 @@ none:
     ins_kind = INS_NONE;
 }
 
-void abi_SpecialRecordInsert(void)
-{
-    uint16_t t = cpu.a;
-
-    SpecialRecordInsert(cpu.db, cpu.d, t);
-    if (ins_kind == INS_CHECKSUM) {
-        checksum_exit_g(ins_sum);
-        return;
-    }
-    if (ins_x_set)
-        cpu.x = ins_x;
-    if (ins_y_set)
-        cpu.y = ins_y;
-    if (ins_v_set)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | ins_v);
-    if (ins_kind == INS_NO_PLACE) {
-        cpu.a = 0xFFFF;
-        cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M | P_X)) | P_N | P_C);
-    } else {
-        cpu.a = t;
-        cpu.p = (uint8_t)(nz16(cpu.p, t) | P_C);
-    }
-}
-
-/* SpecialRecordInsert on carried registers, as abi_SpecialRecordInsert leaves them. */
 void SpecialRecordInsert_cr(Carried *cr)
 {
     uint16_t t = cr->a;
@@ -2598,6 +3001,19 @@ void SpecialRecordInsert_cr(Carried *cr)
         cr->a = t;
         set_p(cr, (uint8_t)(nz16(cr->p, t) | P_C));
     }
+}
+
+void abi_SpecialRecordInsert(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpecialRecordInsert_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2629,10 +3045,23 @@ uint16_t RecordCarTimes12(uint8_t bank)
     return a;
 }
 
+void RecordCarTimes12_cr(Carried *cr)
+{
+    cr->a = RecordCarTimes12(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | car12_flags));
+}
+
 void abi_RecordCarTimes12(void)
 {
-    cpu.a = RecordCarTimes12(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordCarTimes12_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* JSR RecordCarTimes12, (CLC, ADC #extra,) STA $10C7. */
@@ -2666,10 +3095,23 @@ uint16_t RecordTagCar0(uint8_t bank)
     return record_tag(bank, 0);
 }
 
+void RecordTagCar0_cr(Carried *cr)
+{
+    cr->a = RecordTagCar0(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | car12_flags));
+}
+
 void abi_RecordTagCar0(void)
 {
-    cpu.a = RecordTagCar0(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordTagCar0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2685,10 +3127,23 @@ uint16_t RecordTagCar4(uint8_t bank)
     return record_tag(bank, 0x0004);
 }
 
+void RecordTagCar4_cr(Carried *cr)
+{
+    cr->a = RecordTagCar4(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | car12_flags));
+}
+
 void abi_RecordTagCar4(void)
 {
-    cpu.a = RecordTagCar4(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordTagCar4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2703,10 +3158,23 @@ uint16_t RecordTagCar8(uint8_t bank)
     return record_tag(bank, 0x0008);
 }
 
+void RecordTagCar8_cr(Carried *cr)
+{
+    cr->a = RecordTagCar8(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | car12_flags));
+}
+
 void abi_RecordTagCar8(void)
 {
-    cpu.a = RecordTagCar8(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | car12_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordTagCar8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 /*
  * @routine 07:ADA3 SaveRecordSumsTimeUp
@@ -2738,14 +3206,27 @@ uint8_t SaveRecordSumsTimeUp(void)
     return v;
 }
 
-void abi_SaveRecordSumsTimeUp(void)
+void SaveRecordSumsTimeUp_cr(Carried *cr)
 {
     uint8_t v = SaveRecordSumsTimeUp();
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = 0x0014;
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = 0x0014;
+    cr->y = 0x0000;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X));
+}
+
+void abi_SaveRecordSumsTimeUp(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SaveRecordSumsTimeUp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* SEP #$20, LDA #v, STA.L $000FA3: player 1's lead byte. */
@@ -2852,22 +3333,6 @@ uint8_t TimeUpRecordUpdate(uint8_t bank)
     return 1;
 }
 
-void abi_TimeUpRecordUpdate(void)
-{
-    if (TimeUpRecordUpdate(cpu.db)) {
-        cpu.a = (uint16_t)(up_high | up_sum);
-        cpu.x = 0x0014;
-        cpu.y = 0x0000;
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | (sums_p & (P_N | P_Z | P_C | P_V)) | P_M | P_X);
-    } else {
-        cpu.a = (uint16_t)((up_t & 0xFF00) | up_lead);
-        cpu.x = up_x;
-        cpu.y = up_y;
-        cpu.p = nz8((uint8_t)((cpu.p & ~(P_C | P_V | P_X)) | P_M | up_cv), up_lead);
-    }
-}
-
-/* TimeUpRecordUpdate on carried registers, as abi_TimeUpRecordUpdate leaves them. */
 void TimeUpRecordUpdate_cr(Carried *cr)
 {
     if (TimeUpRecordUpdate(cr->db)) {
@@ -2881,6 +3346,19 @@ void TimeUpRecordUpdate_cr(Carried *cr)
         cr->y = up_y;
         set_p(cr, nz8((uint8_t)((cr->p & ~(P_C | P_V | P_X)) | P_M | up_cv), up_lead));
     }
+}
+
+void abi_TimeUpRecordUpdate(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimeUpRecordUpdate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3070,18 +3548,49 @@ uint8_t StuntRecordTime(uint8_t bank, uint16_t d)
     return sum;
 }
 
+static uint8_t StuntRecordTime_c(Carried *cr, uint8_t bank, uint16_t d)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = StuntRecordTime(bank, d);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void StuntRecordTime_cr(Carried *cr)
+{
+    StuntRecordTime_c(cr, cr->db, cr->d);
+    cr->a = stunt_a;
+    if (stunt_kind == STUNT_SUMMED) {
+        cr->x = stunt_x;
+        cr->y = 0x0000;
+    } else if (stunt_kind == STUNT_NO_PLACE) {
+        cr->x = stunt_x;
+        cr->y = stunt_y;
+    }
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M | P_X | P_D)) | stunt_flags | stunt_v));
+}
+
 void abi_StuntRecordTime(void)
 {
-    StuntRecordTime(cpu.db, cpu.d);
-    cpu.a = stunt_a;
-    if (stunt_kind == STUNT_SUMMED) {
-        cpu.x = stunt_x;
-        cpu.y = 0x0000;
-    } else if (stunt_kind == STUNT_NO_PLACE) {
-        cpu.x = stunt_x;
-        cpu.y = stunt_y;
-    }
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M | P_X | P_D)) | stunt_flags | stunt_v);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    StuntRecordTime_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3166,22 +3675,22 @@ static void char_offset_exit(Carried *cr, uint16_t r)
     set_p(cr, nz16((uint8_t)((cr->p & ~(P_C | P_V)) | rc_c | rc_v), r));
 }
 
-static void char_offset_exit_g(uint16_t r)
+void RecordsCharOffsetStunt_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    char_offset_exit(&c, r);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    char_offset_exit(cr, RecordsCharOffsetStunt(cr->db));
 }
 
 void abi_RecordsCharOffsetStunt(void)
 {
-    char_offset_exit_g(RecordsCharOffsetStunt(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsCharOffsetStunt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3196,9 +3705,22 @@ uint16_t RecordsCharOffsetAll(uint8_t bank)
     return records_char_offset(bank, 0x07D8E3, 0x07D8EB);
 }
 
+void RecordsCharOffsetAll_cr(Carried *cr)
+{
+    char_offset_exit(cr, RecordsCharOffsetAll(cr->db));
+}
+
 void abi_RecordsCharOffsetAll(void)
 {
-    char_offset_exit_g(RecordsCharOffsetAll(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsCharOffsetAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3254,11 +3776,24 @@ uint16_t RecordsEntryLoad(uint8_t bank)
     return v;
 }
 
+void RecordsEntryLoad_cr(Carried *cr)
+{
+    cr->a = RecordsEntryLoad(cr->db);
+    cr->x = rc_x;
+    set_p(cr, nz16((uint8_t)((cr->p & ~(P_C | P_V)) | rc_c | rc_v), cr->a));
+}
+
 void abi_RecordsEntryLoad(void)
 {
-    cpu.a = RecordsEntryLoad(cpu.db);
-    cpu.x = rc_x;
-    cpu.p = nz16((uint8_t)((cpu.p & ~(P_C | P_V)) | rc_c | rc_v), cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsEntryLoad_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -3410,6 +3945,24 @@ uint16_t RecordsCharTileStunt(uint8_t bank)
     }
 }
 
+static uint16_t RecordsCharTileStunt_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = RecordsCharTileStunt(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 /* The registers a tile routine leaves: A the tile, X the index * 2. */
 static void char_tile_exit(Carried *cr, uint16_t t)
 {
@@ -3422,23 +3975,23 @@ static void char_tile_exit(Carried *cr, uint16_t t)
         set_p(cr, (uint8_t)((cr->p & ~P_V) | rc_v));
 }
 
-static void char_tile_exit_g(uint16_t t)
+void RecordsCharTileStunt_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    char_tile_exit(&c, t);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
+    char_tile_exit(cr, RecordsCharTileStunt_c(cr, cr->db));
 }
 
 void abi_RecordsCharTileStunt(void)
 {
-    rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
-    char_tile_exit_g(RecordsCharTileStunt(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsCharTileStunt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A field of the packed time at $F1 (the seconds, ASL and XBA first, with
@@ -3536,10 +4089,41 @@ uint16_t RecordsCharTileAll(uint8_t bank)
     return a;
 }
 
-void abi_RecordsCharTileAll(void)
+static uint16_t RecordsCharTileAll_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = RecordsCharTileAll(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void RecordsCharTileAll_cr(Carried *cr)
 {
     rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
-    char_tile_exit_g(RecordsCharTileAll(cpu.db));
+    char_tile_exit(cr, RecordsCharTileAll_c(cr, cr->db));
+}
+
+void abi_RecordsCharTileAll(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsCharTileAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The tile's low byte to $7F:93D7 + Y (SEP #$20, TYX, STA.L, REP #$20). */
@@ -3586,6 +4170,24 @@ uint16_t RecordsCharDrawStunt(uint8_t bank)
     return rc_a = t;
 }
 
+static uint16_t RecordsCharDrawStunt_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = RecordsCharDrawStunt(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 /* The registers a records character draw leaves. */
 static void char_draw_exit(Carried *cr)
 {
@@ -3602,24 +4204,24 @@ static void char_draw_exit(Carried *cr)
         set_p(cr, (uint8_t)((cr->p & ~P_V) | rc_v));
 }
 
-static void char_draw_exit_g(void)
+void RecordsCharDrawStunt_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    char_draw_exit(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    rc_preview = 0;
+    RecordsCharDrawStunt_c(cr, cr->db);
+    char_draw_exit(cr);
 }
 
 void abi_RecordsCharDrawStunt(void)
 {
-    rc_preview = 0;
-    RecordsCharDrawStunt(cpu.db);
-    char_draw_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsCharDrawStunt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3650,11 +4252,42 @@ uint16_t RecordsCharDrawAll(uint8_t bank)
     return rc_a = t;
 }
 
-void abi_RecordsCharDrawAll(void)
+static uint16_t RecordsCharDrawAll_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = RecordsCharDrawAll(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void RecordsCharDrawAll_cr(Carried *cr)
 {
     rc_preview = 0;
-    RecordsCharDrawAll(cpu.db);
-    char_draw_exit_g();
+    RecordsCharDrawAll_c(cr, cr->db);
+    char_draw_exit(cr);
+}
+
+void abi_RecordsCharDrawAll(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RecordsCharDrawAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* PHP, SEP #$20, PHB, PHK, PLB, REP #$20, the JSR, SEP #$20, PLB, PLP. */
@@ -3681,6 +4314,24 @@ uint16_t PreviewRowDrawStunt(void)
     return a;
 }
 
+static uint16_t PreviewRowDrawStunt_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = PreviewRowDrawStunt();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
 /* The draws' registers with the caller's P (PLP). */
 static void preview_exit(Carried *cr, uint8_t p0)
 {
@@ -3692,25 +4343,25 @@ static void preview_exit(Carried *cr, uint8_t p0)
     }
 }
 
-static void preview_exit_g(uint8_t p0)
+void PreviewRowDrawStunt_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    preview_exit(&c, p0);
+    uint8_t p0 = cr->p;
 
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    PreviewRowDrawStunt_c(cr);
+    preview_exit(cr, p0);
 }
 
 void abi_PreviewRowDrawStunt(void)
 {
-    uint8_t p0 = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    PreviewRowDrawStunt();
-    preview_exit_g(p0);
+    PreviewRowDrawStunt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3731,76 +4382,42 @@ uint16_t PreviewRowDrawAll(void)
     return a;
 }
 
+static uint16_t PreviewRowDrawAll_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = PreviewRowDrawAll();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void PreviewRowDrawAll_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    PreviewRowDrawAll_c(cr);
+    preview_exit(cr, p0);
+}
+
 void abi_PreviewRowDrawAll(void)
 {
-    uint8_t p0 = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    PreviewRowDrawAll();
-    preview_exit_g(p0);
+    PreviewRowDrawAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
-/* RecordsUnpackCourse as its adapter leaves the registers. */
-static void w_RecordsUnpackCourse(Carried *cr)
-{
-    uint8_t a = RecordsUnpackCourse(cr->db);
-
-    cr->a = (uint16_t)(unpack_high << 8 | a);
-    cr->x = unpack_x;
-    cr->y = unpack_y;
-}
-
-/* TimeTotalsSum as its adapter leaves the registers. */
-static void w_TimeTotalsSum(Carried *cr)
-{
-    uint8_t p0 = cr->p, v;
-
-    set_p(cr, p0 | P_M | P_X | P_D);       /* what an interrupt pushes */
-    v = TimeTotalsSum(cr->db, p0);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x = 0x21;
-    cr->y &= 0x00FF;
-    set_p(cr, p0);
-}
-
-/* TimeRunningTotals as its adapter leaves the registers. */
-static void w_TimeRunningTotals(Carried *cr)
-{
-    uint8_t p0 = cr->p, v;
-
-    set_p(cr, p0 | P_M | P_X | P_D);       /* what an interrupt pushes */
-    v = TimeRunningTotals(cr->db, p0);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x = 0x1E;
-    cr->y &= 0x00FF;
-    set_p(cr, p0);
-}
-
-/* RecordRow1Time0 as its adapter leaves the registers. */
-static void w_RecordRow1Time0(Carried *cr)
-{
-    cr->a = RecordRow1Time0(cr->db, cr->d);
-    row_exit(cr);
-}
-
-/* RecordRow2Time4 as its adapter leaves the registers. */
-static void w_RecordRow2Time4(Carried *cr)
-{
-    cr->a = RecordRow2Time4(cr->db, cr->d);
-    row_exit(cr);
-}
-
-/* RecordRow3Time8 as its adapter leaves the registers. */
-static void w_RecordRow3Time8(Carried *cr)
-{
-    cr->a = RecordRow3Time8(cr->db, cr->d);
-    row_exit(cr);
-}
-
-/* PlayerSound35 as its adapter leaves the registers. */
-static void w_PlayerSound35(Carried *cr)
-{
-    int c = PlayerSound35(cr->db, cr->y);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x35);
-    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~P_C) | P_M | (c ? P_C : 0)));
-}

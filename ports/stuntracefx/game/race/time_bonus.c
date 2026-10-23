@@ -62,6 +62,17 @@ static uint16_t digit_a(uint8_t bank, uint16_t d, uint8_t mode)
     return (uint16_t)((rd16((uint32_t)bank << 16 | (uint16_t)(0x8E3E + (d << 1))) & 0xFF00) | mode);
 }
 
+void GsuBonusDigitsBounce_cr(Carried *cr);
+void GsuBonusDigitsFull_cr(Carried *cr);
+void GsuBonusDigitsGrow_cr(Carried *cr);
+void GsuDigitPair0E74At_cr(Carried *cr);
+void GsuTimeDigits_cr(Carried *cr);
+void GsuTimeDigitsFull_cr(Carried *cr);
+void GsuTimeDigitsGrow_cr(Carried *cr);
+void TimeBonusTally_cr(Carried *cr);
+void TimeBonusTransfer_cr(Carried *cr);
+void TimeDigitBytes_cr(Carried *cr);
+void TimeLeftDigits_cr(Carried *cr);
 static void bonus_exit(Carried *cr, uint16_t a, int32_t x);
 static void digit_exit(Carried *cr, uint16_t a);
 
@@ -72,19 +83,6 @@ static void digit_exit(Carried *cr, uint16_t a)
     cr->a = a;
     cr->x = 0xF15B;
     set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_C | P_M | P_X)));
-}
-
-static void digit_exit_g(uint16_t a)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    digit_exit(&c, a);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* The body of GsuTimeDigits; returns the last digit drawn, *mode the screen
@@ -145,15 +143,22 @@ uint16_t GsuTimeDigits(uint8_t bank, int x8)
     return digit_a(bank, d, mode);
 }
 
-void abi_GsuTimeDigits(void)
-{
-    digit_exit_g(GsuTimeDigits(cpu.db, cpu.p & P_X));
-}
-
-/* GsuTimeDigits on carried registers, as abi_GsuTimeDigits leaves them. */
 void GsuTimeDigits_cr(Carried *cr)
 {
     digit_exit(cr, GsuTimeDigits(cr->db, cr->p & P_X));
+}
+
+void abi_GsuTimeDigits(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuTimeDigits_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -178,9 +183,22 @@ uint16_t GsuTimeDigitsGrow(uint8_t bank, int x8)
     return GsuTimeDigits(bank, x8);
 }
 
+void GsuTimeDigitsGrow_cr(Carried *cr)
+{
+    digit_exit(cr, GsuTimeDigitsGrow(cr->db, cr->p & P_X));
+}
+
 void abi_GsuTimeDigitsGrow(void)
 {
-    digit_exit_g(GsuTimeDigitsGrow(cpu.db, cpu.p & P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuTimeDigitsGrow_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -198,15 +216,22 @@ uint16_t GsuTimeDigitsFull(uint8_t bank, int x8)
     return GsuTimeDigits(bank, x8);
 }
 
-void abi_GsuTimeDigitsFull(void)
-{
-    digit_exit_g(GsuTimeDigitsFull(cpu.db, cpu.p & P_X));
-}
-
-/* GsuTimeDigitsFull on carried registers, as abi_GsuTimeDigitsFull leaves them. */
 void GsuTimeDigitsFull_cr(Carried *cr)
 {
     digit_exit(cr, GsuTimeDigitsFull(cr->db, cr->p & P_X));
+}
+
+void abi_GsuTimeDigitsFull(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuTimeDigitsFull_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t GsuDigitPair0E74A(uint8_t bank);
@@ -245,19 +270,6 @@ static void bonus_exit(Carried *cr, uint16_t a, int32_t x)
     set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
 }
 
-static void bonus_exit_g(uint16_t a, int32_t x)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    bonus_exit(&c, a, x);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 static uint16_t bd_x;                   /* the step $0D6B the size came by */
 
 /*
@@ -280,11 +292,24 @@ uint16_t GsuBonusDigitsGrow(uint8_t bank)
     return bonus_digits(bank, rd16(SIZE_GROW + bd_x));
 }
 
+void GsuBonusDigitsGrow_cr(Carried *cr)
+{
+    uint16_t a = GsuBonusDigitsGrow(cr->db);
+
+    bonus_exit(cr, a, bd_x);
+}
+
 void abi_GsuBonusDigitsGrow(void)
 {
-    uint16_t a = GsuBonusDigitsGrow(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    bonus_exit_g(a, bd_x);
+    GsuBonusDigitsGrow_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -303,11 +328,24 @@ uint16_t GsuBonusDigitsBounce(uint8_t bank)
     return bonus_digits(bank, rd16(SIZE_BOUNCE + bd_x));
 }
 
+void GsuBonusDigitsBounce_cr(Carried *cr)
+{
+    uint16_t a = GsuBonusDigitsBounce(cr->db);
+
+    bonus_exit(cr, a, bd_x);
+}
+
 void abi_GsuBonusDigitsBounce(void)
 {
-    uint16_t a = GsuBonusDigitsBounce(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    bonus_exit_g(a, bd_x);
+    GsuBonusDigitsBounce_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -323,9 +361,22 @@ uint16_t GsuBonusDigitsFull(uint8_t bank)
     return bonus_digits(bank, 0x0020);
 }
 
+void GsuBonusDigitsFull_cr(Carried *cr)
+{
+    bonus_exit(cr, GsuBonusDigitsFull(cr->db), -1);
+}
+
 void abi_GsuBonusDigitsFull(void)
 {
-    bonus_exit_g(GsuBonusDigitsFull(cpu.db), -1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBonusDigitsFull_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The 65816's 16-bit ADC and SBC, binary or decimal as the D flag in *p
@@ -528,12 +579,25 @@ uint16_t TimeDigitBytes(uint8_t bank, uint16_t a, uint8_t *p)
     return (uint16_t)((v & 0xFF00) | 0xB6);
 }
 
+void TimeDigitBytes_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = TimeDigitBytes(cr->db, cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_TimeDigitBytes(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = TimeDigitBytes(cpu.db, cpu.a, &p);
-    cpu.p = p;
+    TimeDigitBytes_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The calls of the routines below, each with the registers its adapter
@@ -1212,20 +1276,6 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
     }
 }
 
-void abi_TimeBonusTally(void)
-{
-    uint8_t p = cpu.p;
-    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
-
-    TimeBonusTally(cpu.db, &r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.p = p;
-    cyc(70);
-}
-
-/* TimeBonusTally on carried registers, as abi_TimeBonusTally leaves them. */
 void TimeBonusTally_cr(Carried *cr)
 {
     uint8_t p = cr->p;
@@ -1237,6 +1287,19 @@ void TimeBonusTally_cr(Carried *cr)
     cr->y = r.y;
     set_p(cr, p);
     cyc(70);
+}
+
+void abi_TimeBonusTally(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimeBonusTally_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Register-level steps for the routines below, whose exit registers and
@@ -1464,19 +1527,6 @@ void TimeBonusTransfer(uint8_t bank, TbRegs *r)
     }
 }
 
-void abi_TimeBonusTransfer(void)
-{
-    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
-
-    TimeBonusTransfer(cpu.db, &r);
-    cyc(42);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.p = r.p;
-}
-
-/* TimeBonusTransfer on carried registers, as abi_TimeBonusTransfer leaves them. */
 void TimeBonusTransfer_cr(Carried *cr)
 {
     TbRegs r = {cr->a, cr->x, cr->y, cr->p};
@@ -1487,6 +1537,19 @@ void TimeBonusTransfer_cr(Carried *cr)
     cr->x = r.x;
     cr->y = r.y;
     set_p(cr, r.p);
+}
+
+void abi_TimeBonusTransfer(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimeBonusTransfer_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1642,18 +1705,6 @@ void TimeLeftDigits(uint8_t bank, TbRegs *r)
     cyc(time_left_digits(bank, r));
 }
 
-void abi_TimeLeftDigits(void)
-{
-    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
-
-    TimeLeftDigits(cpu.db, &r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.p = r.p;
-}
-
-/* TimeLeftDigits on carried registers, as abi_TimeLeftDigits leaves them. */
 void TimeLeftDigits_cr(Carried *cr)
 {
     TbRegs r = {cr->a, cr->x, cr->y, cr->p};
@@ -1663,6 +1714,19 @@ void TimeLeftDigits_cr(Carried *cr)
     cr->x = r.x;
     cr->y = r.y;
     set_p(cr, r.p);
+}
+
+void abi_TimeLeftDigits(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimeLeftDigits_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* SEP #$20, REP #$10, LDX #$F15B, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
@@ -1715,18 +1779,6 @@ void GsuDigitPair0E74At(uint8_t bank, TbRegs *r)
     cyc(64);
 }
 
-void abi_GsuDigitPair0E74At(void)
-{
-    TbRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
-
-    GsuDigitPair0E74At(cpu.db, &r);
-    cpu.a = r.a;
-    cpu.x = r.x;
-    cpu.y = r.y;
-    cpu.p = r.p;
-}
-
-/* GsuDigitPair0E74At on carried registers, as abi_GsuDigitPair0E74At leaves them. */
 void GsuDigitPair0E74At_cr(Carried *cr)
 {
     TbRegs r = {cr->a, cr->x, cr->y, cr->p};
@@ -1736,6 +1788,19 @@ void GsuDigitPair0E74At_cr(Carried *cr)
     cr->x = r.x;
     cr->y = r.y;
     set_p(cr, r.p);
+}
+
+void abi_GsuDigitPair0E74At(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuDigitPair0E74At_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

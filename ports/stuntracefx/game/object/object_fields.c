@@ -9,6 +9,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "object_calls.h"
+#include "carried.h"
+
 
 #define FIELDS_SCRATCH 0x00003Eu
 
@@ -23,10 +25,32 @@ uint16_t ObjectStubZero(void)
     return 0x0000;
 }
 
+void ObjectPlaceAtOffset_cr(Carried *cr);
+void ObjectStepByte17_cr(Carried *cr);
+void ObjectStopX_cr(Carried *cr);
+void ObjectStopY_cr(Carried *cr);
+void ObjectStubNothing_cr(Carried *cr);
+void ObjectStubSwapTwice_cr(Carried *cr);
+void ObjectStubZero_cr(Carried *cr);
+void ObjectStubZeroCopy_cr(Carried *cr);
+
+void ObjectStubZero_cr(Carried *cr)
+{
+    cr->a = (cyc(112), ObjectStubZero());
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
+}
+
 void abi_ObjectStubZero(void)
 {
-    cpu.a = (cyc(112), ObjectStubZero());
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStubZero_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -40,10 +64,23 @@ uint16_t ObjectStubZeroCopy(void)
     return 0x0000;
 }
 
+void ObjectStubZeroCopy_cr(Carried *cr)
+{
+    cr->a = (cyc(112), ObjectStubZeroCopy());
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
+}
+
 void abi_ObjectStubZeroCopy(void)
 {
-    cpu.a = (cyc(112), ObjectStubZeroCopy());
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStubZeroCopy_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -84,13 +121,26 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     return v;
 }
 
+void ObjectPlaceAtOffset_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectPlaceAtOffset(cr->db, cr->x, cr->y, &p);
+    set_p(cr, p);
+    cyc(44);                            /* RTL */
+}
+
 void abi_ObjectPlaceAtOffset(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ObjectPlaceAtOffset(cpu.db, cpu.x, cpu.y, &p);
-    cpu.p = p;
-    cyc(44);                            /* RTL */
+    ObjectPlaceAtOffset_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -159,12 +209,25 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     return v;
 }
 
+void ObjectStepByte17_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = ObjectStepByte17(cr->db, (uint8_t)cr->a, cr->x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, p);
+}
+
 void abi_ObjectStepByte17(void)
 {
-    uint8_t p = cpu.p, v = ObjectStepByte17(cpu.db, (uint8_t)cpu.a, cpu.x, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = p;
+    ObjectStepByte17_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -178,10 +241,23 @@ void ObjectStubNothing(void)
     cyc(88);
 }
 
-void abi_ObjectStubNothing(void)
+void ObjectStubNothing_cr(Carried *cr)
 {
     ObjectStubNothing();
-    cpu.p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+}
+
+void abi_ObjectStubNothing(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStubNothing_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -197,13 +273,26 @@ void ObjectStubSwapTwice(int x8)
     cyc(x8 ? 216 : 248);
 }
 
+void ObjectStubSwapTwice_cr(Carried *cr)
+{
+    int x8 = (cr->p & P_X) != 0;
+
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    ObjectStubSwapTwice(x8);
+    set_p(cr, x8 ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
+}
+
 void abi_ObjectStubSwapTwice(void)
 {
-    int x8 = (cpu.p & P_X) != 0;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.p |= P_M;
-    ObjectStubSwapTwice(x8);
-    cpu.p = x8 ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+    ObjectStubSwapTwice_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -228,11 +317,24 @@ void ObjectStopX(uint8_t bank, uint16_t obj)
     wr8(b | (uint16_t)(0x2017 + obj), 0x00);
 }
 
+void ObjectStopX_cr(Carried *cr)
+{
+    ObjectStopX(cr->db, cr->x);
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    cyc(44);                            /* RTL */
+}
+
 void abi_ObjectStopX(void)
 {
-    ObjectStopX(cpu.db, cpu.x);
-    cpu.p |= P_M;
-    cyc(44);                            /* RTL */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStopX_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -256,10 +358,24 @@ void ObjectStopY(uint8_t bank, uint16_t obj)
     wr8(b | (uint16_t)(0x2017 + obj), 0x00);
 }
 
-void abi_ObjectStopY(void)
+void ObjectStopY_cr(Carried *cr)
 {
-    ObjectStopY(cpu.db, cpu.y);
-    cpu.a = 0x0000;
-    cpu.p = (uint8_t)(nz16(cpu.p, 0x0000) | P_M);
+    ObjectStopY(cr->db, cr->y);
+    cr->a = 0x0000;
+    set_p(cr, (uint8_t)(nz16(cr->p, 0x0000) | P_M));
     cyc(44);                            /* RTL */
 }
+
+void abi_ObjectStopY(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStopY_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

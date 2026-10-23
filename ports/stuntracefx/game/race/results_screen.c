@@ -12,13 +12,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-uint16_t DigitTiles1184(void);
 void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap);
-uint16_t SelectionSave(uint8_t bank, uint16_t *x);
-#include "audio_calls.h"
-uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *set);
-void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a, uint8_t entry);
-#include "hud_calls.h"
 
 void abi_SoundPort0QueuePush(void);
 void abi_SoundPort0QueuePushX8(void);
@@ -109,24 +103,24 @@ static void sound(Carried *cr, uint8_t s);
 static uint16_t step_dispatch(Carried *cr, uint32_t b, uint16_t t);
 static void total_line(Carried *cr, uint32_t b);
 static void total_line_end(Carried *cr, uint32_t b, uint16_t at);
-static void w_DigitTiles1184(Carried *cr);
 static void w_OamTextLine(Carried *cr);
-static void w_SelectionSave(Carried *cr);
-static void w_SoundPort0QueuePushRaw(Carried *cr);
-static void w_SoundPort0QueuePushRawX8(Carried *cr);
-static void w_SpritePieces3(Carried *cr);
-static void w_TilemapPaletteFill(Carried *cr);
-static void w_TimeUnpackBcd(Carried *cr);
+void DigitTiles1184_cr(Carried *cr);
 void GsuCF42To3000_cr(Carried *cr);
 void GsuCF42To4000_cr(Carried *cr);
 void OamWordRow5_cr(Carried *cr);
 void RecordsUnpackCourseRunning(Carried *cr);
+void SelectionSave_cr(Carried *cr);
 void SoundPort0QueuePushRawWide_cr(Carried *cr);
+void SoundPort0QueuePushRawX8_cr(Carried *cr);
+void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePushX8(Carried *cr);
+void SpritePieces3_cr(Carried *cr);
 void TilemapPaletteCycle_cr(Carried *cr);
+void TilemapPaletteFill_cr(Carried *cr);
 void TilemapRow187Palette4_cr(Carried *cr);
 void TilemapRow207Palette4_cr(Carried *cr);
 void TilemapRow287Palette4_cr(Carried *cr);
+void TimeUnpackBcd_cr(Carried *cr);
 
 /* LDA #v (8-bit). */
 static void lda8_imm(Carried *cr, uint8_t v)
@@ -377,7 +371,7 @@ static void record_cars(Carried *cr, uint32_t b, uint16_t empty)
         r_rep(cr, P_M);
         cr->y = (uint16_t)(0x0130 + 0x10 * n);
         set_p(cr, nz16(cr->p, cr->y));
-        (cyc(86), w_SpritePieces3(cr));
+        (cyc(86), SpritePieces3_cr(cr));
         r_sep(cr, P_M);
         lda8_imm(cr, 0x60);
         cyc(62);
@@ -821,7 +815,7 @@ static void panel(Carried *cr, uint16_t x, uint16_t pic)
     cr->y = 0x9817;
     cr->db = db;
     r_plp(cr, p);
-    w_DigitTiles1184(cr);
+    DigitTiles1184_cr(cr);
 }
 
 /*
@@ -929,7 +923,7 @@ void TimedRecordsDraw(Carried *cr)
         r_cmp16(cr, 0xFFFF);
         if (cr->a == 0xFFFF)
             { broke = 1; break; } else { cyc(86); }
-        w_TimeUnpackBcd(cr);
+        TimeUnpackBcd_cr(cr);
         KeepTimeDigits(cr);
         if (n)
             r_rep(cr, P_X);
@@ -1353,7 +1347,7 @@ static void car_change(Carried *cr, uint32_t b, int right)
     cyc(86);
     r_lda8(cr, 0x07CE93 + cr->x);
     wr8(0x0018CB, (uint8_t)cr->a);
-    (cyc(62), w_SelectionSave(cr));
+    (cyc(62), SelectionSave_cr(cr));
     r_sep(cr, P_M);
     lda8_imm(cr, 0x12);
     cyc(62);
@@ -1624,7 +1618,7 @@ void ResultsWaitWindow(Carried *cr)
         inc8_mem(cr, b | 0x0D59);
         cyc(24);
         lda8_imm(cr, 0x28);
-        w_SoundPort0QueuePushRaw(cr);
+        SoundPort0QueuePushRaw_cr(cr);
     } else { cyc(30); }
     lda8_imm(cr, 0x06);
     cyc(32);
@@ -1959,7 +1953,7 @@ static void lap_char(Carried *cr)
         if (v == 0x0B) {
             cyc(34);
             lda8_imm(cr, 0x3F);
-            (cyc(8), w_SoundPort0QueuePushRaw(cr));
+            (cyc(8), SoundPort0QueuePushRaw_cr(cr));
             at = 0x00F4;
         } else
             at = 0x0074;
@@ -2185,7 +2179,7 @@ static void palette_fill(Carried *cr, uint16_t x, uint16_t y, uint8_t f, unsigne
     lda8_imm(cr, f);
     cyc(t);
     wr8(0x0000F1, f);
-    w_TilemapPaletteFill(cr);
+    TilemapPaletteFill_cr(cr);
 }
 
 /*
@@ -2216,7 +2210,7 @@ void ResultsBlinkWait(Carried *cr)
     inc8_mem(cr, b | 0x0D59);
     cyc(24);
     lda8_imm(cr, 0x28);
-    w_SoundPort0QueuePushRaw(cr);
+    SoundPort0QueuePushRaw_cr(cr);
     palette_fill(cr, 0x038F, 0x0007, 0x00, 94);
     cyc(42);
 }
@@ -2456,7 +2450,7 @@ void ResultsBonusCount(Carried *cr)
         wr8(b | 0x10A2, 0x02);
         cyc(24);
         lda8_imm(cr, 0x3F);
-        w_SoundPort0QueuePushRawX8(cr);
+        SoundPort0QueuePushRawX8_cr(cr);
         cyc(24);                        /* JMP */
         goto tiles;
     }
@@ -2494,7 +2488,7 @@ void ResultsBonusCount(Carried *cr)
                 wr8(b | 0x10A2, 0x02);
                 cyc(24);
                 lda8_imm(cr, 0x3F);
-                w_SoundPort0QueuePushRaw(cr);
+                SoundPort0QueuePushRaw_cr(cr);
             } else { cyc(30); }
             cyc(8);
             bcd_add(cr, b, 0x0EED, 0x01, 1);
@@ -2716,58 +2710,6 @@ void abi_RecordTimeTiles(void)
     cpu.db = r.db;
 }
 
-/* SpritePieces3 as its adapter leaves the registers. */
-static void w_SpritePieces3(Carried *cr)
-{
-    uint8_t p = cr->p, attr;
-    uint16_t set;
-
-    attr = SpritePieces3(cr->db, &cr->x, &cr->y, &p, &set);
-    cr->a = (uint16_t)((set & 0xFF00) | attr);
-    set_p(cr, p);
-}
-
-/* DigitTiles1184 as its adapter leaves the registers. */
-static void w_DigitTiles1184(Carried *cr)
-{
-    cr->a = DigitTiles1184();
-    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
-}
-
-/* TimeUnpackBcd as its adapter leaves the registers. */
-static void w_TimeUnpackBcd(Carried *cr)
-{
-    uint16_t min, sec, hund;
-    uint8_t p = cr->p;
-
-    TimeUnpackBcd(cr->a, &min, &sec, &hund, &p);
-    cr->a = min;
-    cr->x = sec;
-    cr->y = hund;
-    set_p(cr, p);
-}
-
-/* SelectionSave as its adapter leaves the registers. */
-static void w_SelectionSave(Carried *cr)
-{
-    uint16_t x;
-
-    cr->a = SelectionSave(cr->db, &x);
-    cr->x = x;
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
-}
-
-/* SoundPort0QueuePushRaw as its adapter leaves the registers. */
-static void w_SoundPort0QueuePushRaw(Carried *cr)
-{
-    SoundPort0QueuePushRaw((uint8_t)cr->a);
-    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
-    cyc(8);
-}
-
 /* OamTextLine as its adapter leaves the registers. */
 static void w_OamTextLine(Carried *cr)
 {
@@ -2778,18 +2720,4 @@ static void w_OamTextLine(Carried *cr)
     cr->x = cr->p & P_X ? (uint16_t)(x & 0xFF) : x;
     cr->y = cr->p & P_X ? (uint16_t)(y & 0xFF) : y;
     cyc(86);
-}
-
-/* TilemapPaletteFill as its adapter leaves the registers. */
-static void w_TilemapPaletteFill(Carried *cr)
-{
-    TilemapPaletteFill(&cr->x, &cr->y, &cr->a, 78);
-    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
-}
-
-/* SoundPort0QueuePushRawX8 as its adapter leaves the registers. */
-static void w_SoundPort0QueuePushRawX8(Carried *cr)
-{
-    SoundPort0QueuePushRawX8((uint8_t)cr->a);
-    set_p(cr, nz8(cr->p, cr->db));
 }

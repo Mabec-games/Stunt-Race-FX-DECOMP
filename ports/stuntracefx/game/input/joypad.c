@@ -6,6 +6,8 @@
 #include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
+#include "carried.h"
+
 
 /*
  * @routine 7E:B1AE JoypadRead
@@ -45,11 +47,30 @@ uint16_t JoypadRead(void)
     return now1;
 }
 
+void FrameSoundAndJoypads(Carried *cr);
+void JoypadAccumulate_cr(Carried *cr);
+void JoypadPortCheck_cr(Carried *cr);
+void JoypadRead_cr(Carried *cr);
+void SoundPortsSend_cr(Carried *cr);
+
+void JoypadRead_cr(Carried *cr)
+{
+    cr->a = JoypadRead();
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
 void abi_JoypadRead(void)
 {
-    cpu.a = JoypadRead();
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    JoypadRead_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -101,9 +122,22 @@ uint16_t JoypadAccumulate(void)
     return held;
 }
 
+void JoypadAccumulate_cr(Carried *cr)
+{
+    cr->a = JoypadAccumulate();
+}
+
 void abi_JoypadAccumulate(void)
 {
-    cpu.a = JoypadAccumulate();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    JoypadAccumulate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ROL $1182 with the carry `bit`. */
@@ -212,13 +246,26 @@ int JoypadPortCheck(uint8_t bank, uint8_t port)
     return port_check((uint32_t)bank << 16, port, 0, 0);
 }
 
+void JoypadPortCheck_cr(Carried *cr)
+{
+    uint8_t port = (uint8_t)cr->a;
+
+    cr->a = JoypadPortCheck(cr->db, port) ? 0x0000 : (uint16_t)(cr->a & 0xFF00);
+    cr->x = port;
+    cr->y = 0x00FF;
+}
+
 void abi_JoypadPortCheck(void)
 {
-    uint8_t port = (uint8_t)cpu.a;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = JoypadPortCheck(cpu.db, port) ? 0x0000 : (uint16_t)(cpu.a & 0xFF00);
-    cpu.x = port;
-    cpu.y = 0x00FF;
+    JoypadPortCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -276,23 +323,37 @@ void abi_JoypadRead(void);
  * HOW: 16-bit ORs through the data bank.
  * Entry: as JoypadRead. Exit: A = $118D; M 16-bit; N, Z from it.
  */
-void abi_FrameSoundAndJoypads(void)
+void FrameSoundAndJoypads(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     unsigned i;
 
-    (cyc(46), abi_SoundPortsSend());
-    (cyc(46), abi_JoypadRead());
-    cpu.p &= (uint8_t)~P_M;
+    (cyc(46), SoundPortsSend_cr(cr));
+    (cyc(46), JoypadRead_cr(cr));
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(92);
     for (i = 0; i < 2; i++) {
         cyc(24);
-        cpu.a = rd16(b | (uint16_t)(0x118B + i * 2));
+        cr->a = rd16(b | (uint16_t)(0x118B + i * 2));
         cyc(24);
-        cpu.a |= rd16(b | (uint16_t)(0x0311 + i * 2));
-        cpu.p = nz16(cpu.p, cpu.a);
+        cr->a |= rd16(b | (uint16_t)(0x0311 + i * 2));
+        set_p(cr, nz16(cr->p, cr->a));
         cyc(24);
-        wr16(b | (uint16_t)(0x118B + i * 2), cpu.a);
+        wr16(b | (uint16_t)(0x118B + i * 2), cr->a);
     }
     cyc(42);
 }
+
+void abi_FrameSoundAndJoypads(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameSoundAndJoypads(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

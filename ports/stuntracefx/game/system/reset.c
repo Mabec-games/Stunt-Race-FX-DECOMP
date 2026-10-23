@@ -7,6 +7,11 @@
 #include "cpu_ops.h"
 #include "hw.h"
 #include "audio_calls.h"
+#include "carried.h"
+
+void abi_BootColdStart(void);
+void abi_BootStart(void);
+void abi_BootWarm(void);
 
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count);
@@ -24,21 +29,32 @@ static void reset_fill(uint8_t bank, uint16_t x, uint16_t y, uint32_t pre)
     cyc(44);                            /* RTL */
 }
 
+void SoftResetApu_cr(Carried *cr);
+void SoftResetApuLong(Carried *cr);
+void SoftResetCheck_cr(Carried *cr);
+void SoftResetLong_cr(Carried *cr);
+void SoftResetWarmBoot(Carried *cr);
+int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a);
+int SoftResetLong(Carried *cr, int x16, uint16_t *a);
+static void reset_jump(Carried *cr, uint8_t bank, int started);
+static void w_BootStart(Carried *cr);
+static void w_BootWarm(Carried *cr);
+
 /* The jump to 03:8B34 with the registers the reset leaves: A = $FFFF,
    X = $2800, Y = $2801 (the MVN's), M 8-bit, X 16-bit, C set when this
    call started the reset (the CMP of the buttons), N, Z from the data
    bank. */
-static void reset_jump(uint8_t bank, int started)
+static void reset_jump(Carried *cr, uint8_t bank, int started)
 {
-    cpu.a = 0xFFFF;
-    cpu.x = 0x2800;
-    cpu.y = 0x2801;
-    cpu.db = bank;
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cr->a = 0xFFFF;
+    cr->x = 0x2800;
+    cr->y = 0x2801;
+    cr->db = bank;
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     if (started)
-        cpu.p |= P_C;
-    cpu.p = nz8(cpu.p, bank);
-    jump_routine(0x038B34);
+        set_p(cr, (uint8_t)(cr->p | (P_C)));
+    set_p(cr, nz8(cr->p, bank));
+    w_BootStart(cr);
 }
 
 /*
@@ -48,10 +64,23 @@ static void reset_jump(uint8_t bank, int started)
  * HOW: A long jump.
  * Entry: any. Exit: never returns.
  */
-void abi_SoftResetWarmBoot(void)
+void SoftResetWarmBoot(Carried *cr)
 {
     cyc(32);
-    jump_routine(0x038BAA);
+    w_BootWarm(cr);
+}
+
+void abi_SoftResetWarmBoot(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoftResetWarmBoot(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -69,7 +98,7 @@ void abi_SoftResetWarmBoot(void)
  * Entry: any widths; DB = $07. Exit: P unchanged; A = the buttons masked
  * (no reset); the reset never returns.
  */
-int SoftResetCheck(uint8_t bank, int x16, uint16_t *a)
+int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
@@ -137,16 +166,29 @@ int SoftResetCheck(uint8_t bank, int x16, uint16_t *a)
     for (i = 0; i <= 0x27FF; i++)
         { cyc(36); wr8(0x700001u + i, rd8(0x700000u + i)); }
     cyc(58 + 42);
-    reset_jump(bank, started);
+    reset_jump(cr, bank, started);
     return 1;
+}
+
+void SoftResetCheck_cr(Carried *cr)
+{
+    uint16_t a;
+
+    if (!SoftResetCheck(cr, cr->db, !(cr->p & P_X), &a))
+        cr->a = a;
 }
 
 void abi_SoftResetCheck(void)
 {
-    uint16_t a;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    if (!SoftResetCheck(cpu.db, !(cpu.p & P_X), &a))
-        cpu.a = a;
+    SoftResetCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -156,29 +198,42 @@ void abi_SoftResetCheck(void)
  * Entry: any widths. Exit: as SoftResetCheck, then P and the data bank put
  * back.
  */
-int SoftResetLong(int x16, uint16_t *a)
+int SoftResetLong(Carried *cr, int x16, uint16_t *a)
 {
     int r;
 
     cyc(162);
-    r = SoftResetCheck(0x07, x16, a);
+    r = SoftResetCheck(cr, 0x07, x16, a);
     cyc(42 + 80);
     return r;
 }
 
-void abi_SoftResetLong(void)
+void SoftResetLong_cr(Carried *cr)
 {
-    uint8_t p0 = cpu.p, db = cpu.db;
+    uint8_t p0 = cr->p, db = cr->db;
     uint16_t a;
 
-    if (!SoftResetLong(!(cpu.p & P_X), &a))
-        cpu.a = a;
-    cpu.db = db;
-    cpu.p = p0;
+    if (!SoftResetLong(cr, !(cr->p & P_X), &a))
+        cr->a = a;
+    cr->db = db;
+    set_p(cr, p0);
     if (p0 & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_SoftResetLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoftResetLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -198,7 +253,7 @@ void abi_ResetVector(void)
     cpu.e = 0;
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : (cyc(88), 0)));
     cpu.p &= (uint8_t)~P_D;
-    jump_routine(0x038AA9);
+    abi_BootColdStart();
 }
 
 /*
@@ -255,13 +310,26 @@ uint16_t SoftResetApu(void)
     return end.offset;
 }
 
+void SoftResetApu_cr(Carried *cr)
+{
+    cr->y = SoftResetApu();
+    cr->a = 0x0000;
+    cr->x = 0x0000;
+    if (cr->p & P_X)
+        cr->y &= 0x00FF;
+}
+
 void abi_SoftResetApu(void)
 {
-    cpu.y = SoftResetApu();
-    cpu.a = 0x0000;
-    cpu.x = 0x0000;
-    if (cpu.p & P_X)
-        cpu.y &= 0x00FF;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoftResetApu_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -270,8 +338,59 @@ void abi_SoftResetApu(void)
  * HOW: A near call, then a long return.
  * Entry: any widths. Exit: as SoftResetApu.
  */
+void SoftResetApuLong(Carried *cr)
+{
+    SoftResetApu_cr(cr);
+    cyc(44); /* RTL */
+}
+
 void abi_SoftResetApuLong(void)
 {
-    abi_SoftResetApu();
-    cyc(44); /* RTL */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoftResetApuLong(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* BootStart, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_BootStart(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_BootStart();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* BootWarm, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_BootWarm(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_BootWarm();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }

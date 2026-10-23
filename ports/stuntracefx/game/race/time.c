@@ -5,6 +5,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "race_calls.h"
+#include "carried.h"
+
 
 uint8_t CourseIndex12(uint8_t a, uint8_t *p);
 
@@ -64,12 +66,30 @@ uint16_t RaceTimeAddD815(uint16_t *x, uint8_t *p)
     return add_course_value(0x03D815, 0, x, p);
 }
 
+void RaceClockStep_cr(Carried *cr);
+void RaceTimeAddD814_cr(Carried *cr);
+void RaceTimeAddD815_cr(Carried *cr);
+void RaceTimeInit_cr(Carried *cr);
+
+void RaceTimeAddD815_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = RaceTimeAddD815(&cr->x, &p);
+    set_p(cr, (uint8_t)((p & ~P_D) | P_M));
+}
+
 void abi_RaceTimeAddD815(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = RaceTimeAddD815(&cpu.x, &p);
-    cpu.p = (uint8_t)((p & ~P_D) | P_M);
+    RaceTimeAddD815_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -83,12 +103,25 @@ uint16_t RaceTimeAddD814(uint16_t *x, uint8_t *p)
     return add_course_value(0x03D814, 22, x, p);
 }
 
+void RaceTimeAddD814_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = RaceTimeAddD814(&cr->x, &p);
+    set_p(cr, (uint8_t)((p & ~P_D) | P_M));
+}
+
 void abi_RaceTimeAddD814(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = RaceTimeAddD814(&cpu.x, &p);
-    cpu.p = (uint8_t)((p & ~P_D) | P_M);
+    RaceTimeAddD814_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ASL A, 8-bit: C from bit 7, N and Z from the result, in *p. */
@@ -173,18 +206,31 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
     return v;
 }
 
-void abi_RaceTimeInit(void)
+void RaceTimeInit_cr(Carried *cr)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
     uint8_t v;
 
-    cpu.p = p | P_M | P_X;                      /* what an interrupt pushes */
-    v = RaceTimeInit(cpu.db, &x, &p);
+    set_p(cr, p | P_M | P_X);                      /* what an interrupt pushes */
+    v = RaceTimeInit(cr->db, &x, &p);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = x;
-    cpu.y &= 0x00FF;
-    cpu.p = p;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = x;
+    cr->y &= 0x00FF;
+    set_p(cr, p);
+}
+
+void abi_RaceTimeInit(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceTimeInit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -278,12 +324,26 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
     return acc;
 }
 
+void RaceClockStep_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    cr->a = RaceClockStep(cr->db, cr->a, p0);
+    set_p(cr, p0);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
 void abi_RaceClockStep(void)
 {
-    uint8_t p0 = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = RaceClockStep(cpu.db, cpu.a, p0);
-    cpu.p = p0;
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+    RaceClockStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

@@ -18,13 +18,7 @@
 #include "carried.h"
 
 #include "video_calls.h"
-void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out);
 uint16_t MenuCourseScreenSetup(uint8_t bank);
-void OamBufferClear(void);
-void OamDmaAll(void);
-void OamFromList(uint8_t bank, uint16_t *x, uint16_t *y);
-#include "video_palette_calls.h"
-#include "hud_calls.h"
 
 void abi_SoundFromTableD89(void);
 void abi_OamBufferClear(void);
@@ -131,15 +125,15 @@ static void race_hud_setup_two(Carried *cr);
 static void slide_word(Carried *cr, uint16_t v);
 static void time_tiles(Carried *cr, uint8_t min, uint8_t sec, uint8_t hund);
 static void w_GradientFillCgadd(Carried *cr);
-static void w_GsuCF42ToVram(Carried *cr);
 static void w_MenuCourseScreenSetup(Carried *cr);
-static void w_OamBufferClear(Carried *cr);
-static void w_OamDmaAll(Carried *cr);
-static void w_OamFromList(Carried *cr);
-static void w_PaletteCourseLoad(Carried *cr);
-static void w_SoundFromTableD89(Carried *cr);
-static void w_TimeUnpackBcdLong(Carried *cr);
+void GsuCF42ToVram_cr(Carried *cr);
+void OamBufferClear_cr(Carried *cr);
+void OamDmaAll_cr(Carried *cr);
+void OamFromList_cr(Carried *cr);
+void PaletteCourseLoad_cr(Carried *cr);
 void RaceVarsReset(Carried *cr);
+void SoundFromTableD89_cr(Carried *cr);
+void TimeUnpackBcdLong_cr(Carried *cr);
 
 /* LDA #v with M 8-bit. */
 static void lda8(Carried *cr, uint8_t v)
@@ -268,7 +262,7 @@ void HudBestTimeDigits(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    (cyc(84), w_TimeUnpackBcdLong(cr));
+    (cyc(84), TimeUnpackBcdLong_cr(cr));
     r_sep(cr, P_M | P_X);
     time_tiles(cr, (uint8_t)cr->a, (uint8_t)cr->x, (uint8_t)cr->y);
     HudBestTimeSprites(cr);
@@ -483,7 +477,7 @@ static void mode_stunt(Carried *cr, uint32_t b)
             no_time(cr);
         } else {
             cyc(108);
-            w_TimeUnpackBcdLong(cr);
+            TimeUnpackBcdLong_cr(cr);
             r_sep(cr, P_M | P_X);
             time_tiles(cr, (uint8_t)cr->a, (uint8_t)cr->x, (uint8_t)cr->y);
             HudBestTimeSprites(cr);
@@ -590,23 +584,23 @@ static void race_hud_setup(Carried *cr)
     static const uint16_t hdma_bytes[9] = {0x20, 0x13, 0x40, 0x12, 0x40, 0x12, 0x01, 0x13, 0x00};
 
     r_sep(cr, P_M);
-    (cyc(84), w_SoundFromTableD89(cr));
+    (cyc(84), SoundFromTableD89_cr(cr));
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0xA325);
     cyc(18);
     wr16(0x70004E, 0xA325);
-    (cyc(62), w_OamBufferClear(cr));
+    (cyc(62), OamBufferClear_cr(cr));
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->x = 0x0000;
     cr->y = 0x0000;
     set_p(cr, nz16(cr->p, 0));
-    (cyc(116), w_OamFromList(cr));
+    (cyc(116), OamFromList_cr(cr));
     cyc(42);                            /* RTS */
     cr->x = 0x0200;
     cr->y = 0x01AA;
     set_p(cr, nz16(cr->p, 0x01AA));
-    (cyc(52), w_OamFromList(cr));
+    (cyc(52), OamFromList_cr(cr));
     r_sep(cr, P_M | P_X);
     b = (uint32_t)cr->db << 16;
     cyc(24);
@@ -630,7 +624,7 @@ static void race_hud_setup(Carried *cr)
     cyc(100);
     r_sep(cr, P_M);
     r_rep(cr, P_X);
-    w_OamDmaAll(cr);
+    OamDmaAll_cr(cr);
     r_sep(cr, P_M | P_X);
     b = (uint32_t)cr->db << 16;
     cyc(24);
@@ -812,7 +806,7 @@ static void race_hud_setup_two(Carried *cr)
     cyc(18);
     wr16(0x7001C4, 0x0002);
     (cyc(62), w_MenuCourseScreenSetup(cr));
-    (cyc(46), w_PaletteCourseLoad(cr));
+    (cyc(46), PaletteCourseLoad_cr(cr));
     r_rep(cr, P_M | P_X);
     b = (uint32_t)cr->db << 16;
     cr->x = 0x00BC;
@@ -900,7 +894,7 @@ static void race_hud_setup_two(Carried *cr)
     cr->y = 0xF845;
     cr->x = 0xF804;
     set_p(cr, nz16(cr->p, 0xF804));
-    w_GsuCF42ToVram(cr);
+    GsuCF42ToVram_cr(cr);
     (cyc(0), hud_end(cr));
 }
 
@@ -1047,78 +1041,12 @@ void abi_RaceHudSetupTwoPlayers(void)
     cpu.db = r.db;
 }
 
-/* TimeUnpackBcdLong as its adapter leaves the registers. */
-static void w_TimeUnpackBcdLong(Carried *cr)
-{
-    uint16_t min, sec, hund;
-    uint8_t p = cr->p;
-
-    TimeUnpackBcdLong(cr->a, &min, &sec, &hund, &p);
-    cr->a = min;
-    cr->x = sec;
-    cr->y = hund;
-    set_p(cr, p);
-}
-
 /* GradientFillCgadd as its adapter leaves the registers. */
 static void w_GradientFillCgadd(Carried *cr)
 {
     cr->x = GradientFillCgadd(cr->a, cr->x, cr->y);
     cr->y = 0;
     set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
-}
-
-/* OamBufferClear as its adapter leaves the registers. */
-static void w_OamBufferClear(Carried *cr)
-{
-    OamBufferClear();
-    cr->a = 0x0000;
-    cr->x = (cr->p & P_X) ? 0x00FE : 0xFFFE;
-}
-
-/* OamDmaAll as its adapter leaves the registers. */
-static void w_OamDmaAll(Carried *cr)
-{
-    OamDmaAll();
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->x = (cr->p & P_X) ? (cyc(0), 0x00) : 0x0400;
-    cr->y = (cr->p & P_X) ? 0x20 : 0x0220;
-}
-
-/* OamFromList as its adapter leaves the registers. */
-static void w_OamFromList(Carried *cr)
-{
-    OamFromList(cr->db, &cr->x, &cr->y);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
-    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_C));
-}
-
-/* SoundFromTableD89, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SoundFromTableD89(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SoundFromTableD89();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* GsuCF42ToVram as its adapter leaves the registers. */
-static void w_GsuCF42ToVram(Carried *cr)
-{
-    GsuCF42ToVram(cr->db, cr->x, cr->y);
-    cr->a = 0x0001;
-    cr->x = cr->y;
-    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M));
 }
 
 /* MenuCourseScreenSetup as its adapter leaves the registers. */
@@ -1128,11 +1056,4 @@ static void w_MenuCourseScreenSetup(Carried *cr)
     cr->a = MenuCourseScreenSetup(cr->db);
     cr->x = 0x0020;
     cr->y = 0x0020;
-}
-
-/* PaletteCourseLoad as its adapter leaves the registers. */
-static void w_PaletteCourseLoad(Carried *cr)
-{
-    cr->a = PaletteCourseLoad(cr->db, &cr->x, &cr->y, &cr->p);
-    cyc(64);
 }

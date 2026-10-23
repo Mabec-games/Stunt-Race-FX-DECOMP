@@ -10,6 +10,8 @@
  */
 #include "machine.h"
 #include "system_calls.h"
+#include "carried.h"
+
 
 #define NUM_BYTE 0x0006E7u
 #define NUM_VALUE 0x000042u
@@ -50,18 +52,43 @@ void DebugHexByte(uint8_t bank, uint8_t byte, DebugRegs *r)
     cyc(42);                                    /* PLP */
 }
 
+void DebugDecimalByte_cr(Carried *cr);
+void DebugHexByte_cr(Carried *cr);
+void DebugPrintBinaryByte_cr(Carried *cr);
+void DebugPrintDecimalByte_cr(Carried *cr);
+void DebugPrintDecimalWord_cr(Carried *cr);
+void DebugPrintHexByte_cr(Carried *cr);
+void DebugPrintHexWord_cr(Carried *cr);
+void DebugPrintSignedByte_cr(Carried *cr);
+void DebugSignedByte_cr(Carried *cr);
+static void dec_regs(Carried *cr);
+static void long_regs(Carried *cr, uint16_t a);
+
+void DebugHexByte_cr(Carried *cr)
+{
+    DebugRegs r = {cr->a, cr->x, cr->y};
+
+    DebugHexByte(cr->db, (uint8_t)cr->a, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_DebugHexByte(void)
 {
-    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    DebugHexByte(cpu.db, (uint8_t)cpu.a, &r);
+    DebugHexByte_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* What DebugDecimalByte leaves in P besides what it leaves unchanged: C
@@ -81,13 +108,13 @@ static uint8_t dec_sbc(uint8_t a, uint8_t m)
     return (uint8_t)r;
 }
 
-static void dec_regs(void)
+static void dec_regs(Carried *cr)
 {
-    uint8_t p = (uint8_t)((cpu.p & ~P_C) | (dec_c ? P_C : 0));
+    uint8_t p = (uint8_t)((cr->p & ~P_C) | (dec_c ? P_C : 0));
 
     if (dec_v >= 0)
         p = (uint8_t)((p & ~P_V) | (dec_v ? P_V : 0));
-    cpu.p = nz8(p, dec_units);
+    set_p(cr, nz8(p, dec_units));
 }
 
 /*
@@ -133,15 +160,28 @@ void DebugDecimalByte(uint8_t bank, uint8_t byte, DebugRegs *r)
     cyc(42); /* RTS */
 }
 
+void DebugDecimalByte_cr(Carried *cr)
+{
+    DebugRegs r = {cr->a, cr->x, cr->y};
+
+    DebugDecimalByte(cr->db, (uint8_t)cr->a, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    dec_regs(cr);
+}
+
 void abi_DebugDecimalByte(void)
 {
-    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    DebugDecimalByte(cpu.db, (uint8_t)cpu.a, &r);
+    DebugDecimalByte_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
-    dec_regs();
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -169,15 +209,28 @@ void DebugSignedByte(uint8_t bank, uint8_t byte, DebugRegs *r)
     DebugDecimalByte(bank, v, r);
 }
 
+void DebugSignedByte_cr(Carried *cr)
+{
+    DebugRegs r = {cr->a, cr->x, cr->y};
+
+    DebugSignedByte(cr->db, (uint8_t)cr->a, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    dec_regs(cr);
+}
+
 void abi_DebugSignedByte(void)
 {
-    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    DebugSignedByte(cpu.db, (uint8_t)cpu.a, &r);
+    DebugSignedByte_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
-    dec_regs();
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The long wrappers: every register and P saved (`p` is the P it comes
@@ -206,11 +259,11 @@ static uint16_t long_wrapper(void (*print)(uint8_t, uint8_t, DebugRegs *),
 /* The long wrappers' registers: X, Y, DB, P kept but N, Z, which the final
    PLB sets from the data bank; A kept with M 16-bit, its low byte only
    with M 8-bit (its high byte the printer's). */
-static void long_regs(uint16_t a)
+static void long_regs(Carried *cr, uint16_t a)
 {
-    if (cpu.p & P_M)
-        cpu.a = (uint16_t)((a & 0xFF00) | (cpu.a & 0x00FF));
-    cpu.p = nz8(cpu.p, cpu.db);
+    if (cr->p & P_M)
+        cr->a = (uint16_t)((a & 0xFF00) | (cr->a & 0x00FF));
+    set_p(cr, nz8(cr->p, cr->db));
 }
 
 /*
@@ -228,9 +281,22 @@ uint16_t DebugPrintHexByte(uint8_t bank, uint8_t byte, uint8_t p)
     return long_wrapper(DebugHexByte, bank, byte, p);
 }
 
+void DebugPrintHexByte_cr(Carried *cr)
+{
+    long_regs(cr, DebugPrintHexByte(cr->db, (uint8_t)cr->a, cr->p));
+}
+
 void abi_DebugPrintHexByte(void)
 {
-    long_regs(DebugPrintHexByte(cpu.db, (uint8_t)cpu.a, cpu.p));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPrintHexByte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -245,9 +311,22 @@ uint16_t DebugPrintDecimalByte(uint8_t bank, uint8_t byte, uint8_t p)
     return long_wrapper(DebugDecimalByte, bank, byte, p);
 }
 
+void DebugPrintDecimalByte_cr(Carried *cr)
+{
+    long_regs(cr, DebugPrintDecimalByte(cr->db, (uint8_t)cr->a, cr->p));
+}
+
 void abi_DebugPrintDecimalByte(void)
 {
-    long_regs(DebugPrintDecimalByte(cpu.db, (uint8_t)cpu.a, cpu.p));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPrintDecimalByte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -262,9 +341,22 @@ uint16_t DebugPrintSignedByte(uint8_t bank, uint8_t byte, uint8_t p)
     return long_wrapper(DebugSignedByte, bank, byte, p);
 }
 
+void DebugPrintSignedByte_cr(Carried *cr)
+{
+    long_regs(cr, DebugPrintSignedByte(cr->db, (uint8_t)cr->a, cr->p));
+}
+
 void abi_DebugPrintSignedByte(void)
 {
-    long_regs(DebugPrintSignedByte(cpu.db, (uint8_t)cpu.a, cpu.p));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPrintSignedByte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -298,12 +390,25 @@ uint16_t DebugPrintHexWord(uint8_t bank, uint16_t a, uint8_t p)
     return (p & P_M) ? (uint16_t)((pos & 0xFF00) | (a & 0x00FF)) : a;
 }
 
+void DebugPrintHexWord_cr(Carried *cr)
+{
+    uint16_t a = cr->a;
+
+    cr->a = DebugPrintHexWord(cr->db, a, cr->p);
+    set_p(cr, (cr->p & P_M) ? nz8(cr->p, (uint8_t)a) : nz16(cr->p, a));
+}
+
 void abi_DebugPrintHexWord(void)
 {
-    uint16_t a = cpu.a;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = DebugPrintHexWord(cpu.db, a, cpu.p);
-    cpu.p = (cpu.p & P_M) ? nz8(cpu.p, (uint8_t)a) : nz16(cpu.p, a);
+    DebugPrintHexWord_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -376,9 +481,22 @@ void DebugPrintDecimalWord(uint16_t value)
     cyc(drawn ? 300 : 230);
 }
 
+void DebugPrintDecimalWord_cr(Carried *cr)
+{
+    DebugPrintDecimalWord(cr->a);
+}
+
 void abi_DebugPrintDecimalWord(void)
 {
-    DebugPrintDecimalWord(cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPrintDecimalWord_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -420,12 +538,26 @@ void DebugPrintBinaryByte(uint8_t bank, uint8_t byte, DebugRegs *r)
     cyc(42);                                    /* PLP */
 }
 
+void DebugPrintBinaryByte_cr(Carried *cr)
+{
+    DebugRegs r = {cr->a, cr->x, cr->y};
+
+    DebugPrintBinaryByte(cr->db, (uint8_t)cr->a, &r);
+    cr->a = r.a;
+    cr->x = r.x & 0x00FF;               /* DebugHexByte ran with 8-bit X and Y */
+    cr->y = r.y & 0x00FF;
+}
+
 void abi_DebugPrintBinaryByte(void)
 {
-    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    DebugPrintBinaryByte(cpu.db, (uint8_t)cpu.a, &r);
+    DebugPrintBinaryByte_cr(&r);
     cpu.a = r.a;
-    cpu.x = r.x & 0x00FF;               /* DebugHexByte ran with 8-bit X and Y */
-    cpu.y = r.y & 0x00FF;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

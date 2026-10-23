@@ -10,6 +10,7 @@
 #include "video_calls.h"
 #include "carried.h"
 
+
 /* Per-brightness fade-in steps, in the frame code's RAM copy at $7E:AC9D. */
 #define FADE_IN_STEPS 0x7EAC9Du
 
@@ -87,19 +88,27 @@ uint16_t FadeStepFixed(void)
     return level;
 }
 
-void abi_FadeStepFixed(void)
-{
-    fade_p = cpu.p;
-    cpu.a = FadeStepFixed();
-    cpu.p = fade_p;
-}
+void FadeStep_cr(Carried *cr);
+void FadeStepFixed_cr(Carried *cr);
 
-/* FadeStepFixed on carried registers, as abi_FadeStepFixed leaves them. */
 void FadeStepFixed_cr(Carried *cr)
 {
     fade_p = cr->p;
     cr->a = FadeStepFixed();
     set_p(cr, fade_p);
+}
+
+void abi_FadeStepFixed(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FadeStepFixed_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -130,17 +139,6 @@ uint16_t FadeStep(void)
     return level;
 }
 
-void abi_FadeStep(void)
-{
-    fade_p = cpu.p;
-    fade_x = -1;
-    cpu.a = FadeStep();
-    if (fade_x >= 0)
-        cpu.x = (uint16_t)fade_x;
-    cpu.p = fade_p;
-}
-
-/* FadeStep on carried registers, as abi_FadeStep leaves them. */
 void FadeStep_cr(Carried *cr)
 {
     fade_p = cr->p;
@@ -150,3 +148,17 @@ void FadeStep_cr(Carried *cr)
         cr->x = (uint16_t)fade_x;
     set_p(cr, fade_p);
 }
+
+void abi_FadeStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FadeStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

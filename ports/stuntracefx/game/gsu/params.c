@@ -3,6 +3,8 @@
  */
 #include "machine.h"
 #include "gsu_calls.h"
+#include "carried.h"
+
 
 /*
  * @routine 7E:E2C9 GsuParamsUpdate
@@ -32,9 +34,53 @@ uint16_t GsuParamsUpdate(void)
     return v;
 }
 
+void GsuBytes200_0F010B_cr(Carried *cr);
+void GsuBytes200_0F0405_cr(Carried *cr);
+void GsuBytes200_0F050E_cr(Carried *cr);
+void GsuBytes200_0F060E_cr(Carried *cr);
+void GsuBytes200_0F0708_cr(Carried *cr);
+void GsuBytes200_0F080E_cr(Carried *cr);
+void GsuBytes200_0F090A_cr(Carried *cr);
+void GsuBytes200_0F0D03_cr(Carried *cr);
+void GsuBytes200_BF10B9_cr(Carried *cr);
+void GsuBytes200_BF11BD_cr(Carried *cr);
+void GsuBytes200_BF12B6_cr(Carried *cr);
+void GsuBytes200_BFB2B3_cr(Carried *cr);
+void GsuBytes200_BFB3BE_cr(Carried *cr);
+void GsuBytes200_BFB3BE_D8FE_cr(Carried *cr);
+void GsuBytes200_BFB5BB_cr(Carried *cr);
+void GsuBytes200_BFB7B6_cr(Carried *cr);
+void GsuBytes200_BFB7B6_D8C4_cr(Carried *cr);
+void GsuBytes200_BFBAB9_cr(Carried *cr);
+void GsuBytes200_BFBAB9_D8E1_cr(Carried *cr);
+void GsuBytes200_BFBABD_cr(Carried *cr);
+void GsuBytes200_BFBBBE_cr(Carried *cr);
+void GsuBytes200_BFBCBD_cr(Carried *cr);
+void GsuParam216A_cr(Carried *cr);
+void GsuParam216B_cr(Carried *cr);
+void GsuParamsFromDp_cr(Carried *cr);
+void GsuParamsUpdate_cr(Carried *cr);
+void GsuRecordsUpload_cr(Carried *cr);
+void GsuTableEntryNext_cr(Carried *cr);
+void GsuTableEntryTo1F4C_cr(Carried *cr);
+static void abi_param_216(Carried *cr, uint16_t table);
+
+void GsuParamsUpdate_cr(Carried *cr)
+{
+    cr->a = GsuParamsUpdate();
+}
+
 void abi_GsuParamsUpdate(void)
 {
-    cpu.a = GsuParamsUpdate();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuParamsUpdate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -65,10 +111,23 @@ uint16_t GsuParamsFromDp(uint8_t bank)
     return v;
 }
 
+void GsuParamsFromDp_cr(Carried *cr)
+{
+    cr->a = GsuParamsFromDp(cr->db);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
+}
+
 void abi_GsuParamsFromDp(void)
 {
-    cpu.a = GsuParamsFromDp(cpu.db);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuParamsFromDp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* $70:0216 = the word at `table` + index in the data bank. */
@@ -82,16 +141,16 @@ static uint16_t param_216(uint8_t bank, uint16_t table, uint16_t index)
 }
 
 /* Registers: the index is A * 2, kept to 8 bits when X is 8-bit. */
-static void abi_param_216(uint16_t table)
+static void abi_param_216(Carried *cr, uint16_t table)
 {
     cyc(24);
-    uint16_t a = cpu.a, x = (uint16_t)(a << 1);
+    uint16_t a = cr->a, x = (uint16_t)(a << 1);
 
-    if (cpu.p & P_X)
+    if (cr->p & P_X)
         x &= 0x00FF;
-    cpu.x = x;
-    cpu.a = param_216(cpu.db, table, x);
-    cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_C) | (a & 0x8000 ? P_C : (cyc(42), 0)));
+    cr->x = x;
+    cr->a = param_216(cr->db, table, x);
+    set_p(cr, (uint8_t)((nz16(cr->p, cr->a) & ~P_C) | (a & 0x8000 ? P_C : (cyc(42), 0))));
 }
 
 /*
@@ -108,9 +167,22 @@ uint16_t GsuParam216A(uint8_t bank, uint16_t index)
     return param_216(bank, 0x8E3E, index);
 }
 
+void GsuParam216A_cr(Carried *cr)
+{
+    abi_param_216(cr, 0x8E3E);
+}
+
 void abi_GsuParam216A(void)
 {
-    abi_param_216(0x8E3E);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuParam216A_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -125,9 +197,22 @@ uint16_t GsuParam216B(uint8_t bank, uint16_t index)
     return param_216(bank, 0x8E52, index);
 }
 
+void GsuParam216B_cr(Carried *cr)
+{
+    abi_param_216(cr, 0x8E52);
+}
+
 void abi_GsuParam216B(void)
 {
-    abi_param_216(0x8E52);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuParam216B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -168,12 +253,25 @@ uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
     return v;
 }
 
+void GsuTableEntryTo1F4C_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = GsuTableEntryTo1F4C(cr->db, cr->a, &p);
+    set_p(cr, nz16(p, cr->x));
+}
+
 void abi_GsuTableEntryTo1F4C(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = GsuTableEntryTo1F4C(cpu.db, cpu.a, &p);
-    cpu.p = nz16(p, cpu.x);
+    GsuTableEntryTo1F4C_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -204,10 +302,23 @@ void GsuBytes200_BFB7B6(void)
     gsu_200(0xBF, 0xB7, 0xB6);
 }
 
-void abi_GsuBytes200_BFB7B6(void)
+void GsuBytes200_BFB7B6_cr(Carried *cr)
 {
     GsuBytes200_BFB7B6();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xB6);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xB6);
+}
+
+void abi_GsuBytes200_BFB7B6(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFB7B6_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -226,9 +337,22 @@ uint8_t GsuBytes200_0F060E(void)
     return v;
 }
 
+void GsuBytes200_0F060E_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_0F060E());
+}
+
 void abi_GsuBytes200_0F060E(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_0F060E());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F060E_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -248,9 +372,22 @@ uint8_t GsuBytes200_0F010B(void)
     return v;
 }
 
+void GsuBytes200_0F010B_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_0F010B());
+}
+
 void abi_GsuBytes200_0F010B(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_0F010B());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F010B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -264,11 +401,24 @@ void GsuBytes200_BFB5BB(void)
     gsu_200(0xBF, 0xB5, 0xBB);
 }
 
-void abi_GsuBytes200_BFB5BB(void)
+void GsuBytes200_BFB5BB_cr(Carried *cr)
 {
     cyc(0);
     GsuBytes200_BFB5BB();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xBB);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xBB);
+}
+
+void abi_GsuBytes200_BFB5BB(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFB5BB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -283,11 +433,24 @@ void GsuBytes200_BFBCBD(void)
     gsu_200(0xBF, 0xBC, 0xBD);
 }
 
-void abi_GsuBytes200_BFBCBD(void)
+void GsuBytes200_BFBCBD_cr(Carried *cr)
 {
     GsuBytes200_BFBCBD();
     cyc(22);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xBD);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xBD);
+}
+
+void abi_GsuBytes200_BFBCBD(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFBCBD_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -311,9 +474,22 @@ uint8_t GsuBytes200_BFBAB9A(void)
     return gsu_200(0xBF, 0xBA, 0xB9);
 }
 
+void GsuBytes200_BFBAB9_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFBAB9A());
+}
+
 void abi_GsuBytes200_BFBAB9(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBAB9A());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFBAB9_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -331,9 +507,22 @@ uint8_t GsuBytes200_BFB3BE(void)
     return v;
 }
 
+void GsuBytes200_BFB3BE_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFB3BE());
+}
+
 void abi_GsuBytes200_BFB3BE(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB3BE());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFB3BE_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -351,9 +540,22 @@ uint8_t GsuBytes200_BFB2B3(void)
     return v;
 }
 
+void GsuBytes200_BFB2B3_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFB2B3());
+}
+
 void abi_GsuBytes200_BFB2B3(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB2B3());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFB2B3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -371,9 +573,22 @@ uint8_t GsuBytes200_BF12B6(void)
     return v;
 }
 
+void GsuBytes200_BF12B6_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BF12B6());
+}
+
 void abi_GsuBytes200_BF12B6(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BF12B6());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BF12B6_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -391,9 +606,22 @@ uint8_t GsuBytes200_BF11BD(void)
     return v;
 }
 
+void GsuBytes200_BF11BD_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BF11BD());
+}
+
 void abi_GsuBytes200_BF11BD(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BF11BD());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BF11BD_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -411,9 +639,22 @@ uint8_t GsuBytes200_BF10B9(void)
     return v;
 }
 
+void GsuBytes200_BF10B9_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BF10B9());
+}
+
 void abi_GsuBytes200_BF10B9(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BF10B9());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BF10B9_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -433,9 +674,22 @@ uint8_t GsuBytes200_BFB7B6_D8C4(void)
     return v;
 }
 
+void GsuBytes200_BFB7B6_D8C4_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFB7B6_D8C4());
+}
+
 void abi_GsuBytes200_BFB7B6_D8C4(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB7B6_D8C4());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFB7B6_D8C4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -454,9 +708,22 @@ uint8_t GsuBytes200_BFBAB9_D8E1(void)
     return v;
 }
 
+void GsuBytes200_BFBAB9_D8E1_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFBAB9_D8E1());
+}
+
 void abi_GsuBytes200_BFBAB9_D8E1(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBAB9_D8E1());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFBAB9_D8E1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -475,9 +742,22 @@ uint8_t GsuBytes200_BFB3BE_D8FE(void)
     return v;
 }
 
+void GsuBytes200_BFB3BE_D8FE_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFB3BE_D8FE());
+}
+
 void abi_GsuBytes200_BFB3BE_D8FE(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB3BE_D8FE());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFB3BE_D8FE_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -496,9 +776,22 @@ uint8_t GsuBytes200_BFBBBE(void)
     return v;
 }
 
+void GsuBytes200_BFBBBE_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFBBBE());
+}
+
 void abi_GsuBytes200_BFBBBE(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBBBE());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFBBBE_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -513,9 +806,22 @@ void GsuBytes200_0F0405(void)
     gsu_200(0x0F, 0x04, 0x05);
 }
 
+void GsuBytes200_0F0405_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | gsu_200(0x0F, 0x04, 0x05));
+}
+
 void abi_GsuBytes200_0F0405(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x04, 0x05));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F0405_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -530,9 +836,22 @@ void GsuBytes200_0F090A(void)
     gsu_200(0x0F, 0x09, 0x0A);
 }
 
+void GsuBytes200_0F090A_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | gsu_200(0x0F, 0x09, 0x0A));
+}
+
 void abi_GsuBytes200_0F090A(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x09, 0x0A));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F090A_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -547,9 +866,22 @@ void GsuBytes200_0F050E(void)
     cyc(72);
 }
 
+void GsuBytes200_0F050E_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | gsu_200(0x0F, 0x05, 0x0E));
+}
+
 void abi_GsuBytes200_0F050E(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x05, 0x0E));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F050E_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -564,9 +896,22 @@ void GsuBytes200_0F080E(void)
     cyc(72);
 }
 
+void GsuBytes200_0F080E_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | gsu_200(0x0F, 0x08, 0x0E));
+}
+
 void abi_GsuBytes200_0F080E(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x08, 0x0E));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F080E_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -601,12 +946,25 @@ uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
     return (uint16_t)(a + 1);
 }
 
+void GsuTableEntryNext_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = GsuTableEntryNext(cr->db, cr->a, &p);
+    set_p(cr, nz16(p, cr->x));
+}
+
 void abi_GsuTableEntryNext(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = GsuTableEntryNext(cpu.db, cpu.a, &p);
-    cpu.p = nz16(p, cpu.x);
+    GsuTableEntryNext_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -656,15 +1014,28 @@ uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
 }
 
 
+void GsuRecordsUpload_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p;
+
+    cr->a = GsuRecordsUpload(&x, &y, &p);
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, (uint8_t)(nz8(p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GsuRecordsUpload(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = GsuRecordsUpload(&x, &y, &p);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
+    GsuRecordsUpload_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 /*
  * @routine 04:D7A2 GsuBytes200_BFBABD
@@ -682,9 +1053,22 @@ uint8_t GsuBytes200_BFBABD(void)
     return v;
 }
 
+void GsuBytes200_BFBABD_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuBytes200_BFBABD());
+}
+
 void abi_GsuBytes200_BFBABD(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBABD());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_BFBABD_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -699,10 +1083,23 @@ void GsuBytes200_0F0708(void)
     gsu_200(0x0F, 0x07, 0x08);
 }
 
-void abi_GsuBytes200_0F0708(void)
+void GsuBytes200_0F0708_cr(Carried *cr)
 {
     GsuBytes200_0F0708();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
+}
+
+void abi_GsuBytes200_0F0708(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F0708_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -716,8 +1113,22 @@ void GsuBytes200_0F0D03(void)
     gsu_200(0x0F, 0x0D, 0x03);
 }
 
-void abi_GsuBytes200_0F0D03(void)
+void GsuBytes200_0F0D03_cr(Carried *cr)
 {
     GsuBytes200_0F0D03();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
 }
+
+void abi_GsuBytes200_0F0D03(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuBytes200_0F0D03_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

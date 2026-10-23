@@ -9,6 +9,10 @@
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
+#include "system_calls.h"
+#include "video_calls.h"
 
 void Set7EBC2BTrio(uint8_t v);
 void WaitScanline(uint8_t bank);
@@ -44,9 +48,47 @@ void ScrollRegsClear(uint8_t bank)
     cyc(72);
 }
 
+void ColoursClear_cr(Carried *cr);
+void ColoursRedDouble_cr(Carried *cr);
+void HardwareRegsInit02_cr(Carried *cr);
+void HardwareRegsInit02Long_cr(Carried *cr);
+void ObjectLinkBobStartLong(Carried *cr);
+void PaletteLoad70_cr(Carried *cr);
+void PaletteToBuffers_cr(Carried *cr);
+void ScreenBlankAndWait_cr(Carried *cr);
+void ScrollRegsClear_cr(Carried *cr);
+void Set7EBC2AValues_cr(Carried *cr);
+void TileRowBuild_cr(Carried *cr);
+void TileRowBuildLong_cr(Carried *cr);
+void TileRowBuildZero(Carried *cr);
+void TileRowUpload_cr(Carried *cr);
+void TileRowUploadLong_cr(Carried *cr);
+void UnusedScreenSetup(Carried *cr);
+void UnusedScreenStart(Carried *cr);
+void UnusedScreenTiles_cr(Carried *cr);
+void UnusedScreenTilesLocked(Carried *cr);
+static void w_SpriteSlotFirstLong(Carried *cr);
+void GsuClearScreenIfSet_cr(Carried *cr);
+void ObjectLinkBobStart(Carried *cr);
+void Set7EBC2BTrio_cr(Carried *cr);
+void WaitScanline_cr(Carried *cr);
+
+void ScrollRegsClear_cr(Carried *cr)
+{
+    ScrollRegsClear(cr->db);
+}
+
 void abi_ScrollRegsClear(void)
 {
-    ScrollRegsClear(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ScrollRegsClear_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -80,15 +122,28 @@ uint8_t PaletteLoad70(uint8_t bank, uint8_t index, uint16_t *x)
     return v;
 }
 
+void PaletteLoad70_cr(Carried *cr)
+{
+    uint16_t o = (uint16_t)((uint8_t)cr->a << 5), x;
+    uint8_t v = PaletteLoad70(cr->db, (uint8_t)cr->a, &x);
+
+    cr->a = (uint16_t)((o & 0xFF00) | v);
+    cr->x = x;
+    cr->y = 0x0020;
+    r_plp(cr, cr->p);
+}
+
 void abi_PaletteLoad70(void)
 {
-    uint16_t o = (uint16_t)((uint8_t)cpu.a << 5), x;
-    uint8_t v = PaletteLoad70(cpu.db, (uint8_t)cpu.a, &x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((o & 0xFF00) | v);
-    cpu.x = x;
-    cpu.y = 0x0020;
-    op_plp(cpu.p);
+    PaletteLoad70_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -123,14 +178,27 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
     return w;
 }
 
-void abi_PaletteToBuffers(void)
+void PaletteToBuffers_cr(Carried *cr)
 {
     uint16_t x;
 
-    cpu.a = PaletteToBuffers((uint8_t)cpu.a, &x);
-    cpu.x = x;
-    cpu.y = 0x0020;
-    op_plp(cpu.p);
+    cr->a = PaletteToBuffers((uint8_t)cr->a, &x);
+    cr->x = x;
+    cr->y = 0x0020;
+    r_plp(cr, cr->p);
+}
+
+void abi_PaletteToBuffers(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteToBuffers_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -174,10 +242,23 @@ void ColoursRedDouble(void)
     cyc(172); /* PLB, PLX, PLY, PLP, RTL */
 }
 
-void abi_ColoursRedDouble(void)
+void ColoursRedDouble_cr(Carried *cr)
 {
     ColoursRedDouble();
-    cpu.a = 0x0000;
+    cr->a = 0x0000;
+}
+
+void abi_ColoursRedDouble(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColoursRedDouble_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -198,11 +279,24 @@ void ColoursClear(uint8_t bank)
     cyc(110);
 }
 
+void ColoursClear_cr(Carried *cr)
+{
+    ColoursClear(cr->db);
+    cr->a = (uint16_t)(cr->a & 0xFF00);
+    set_p(cr, nz16((uint8_t)(cr->p | P_M), cr->x));
+}
+
 void abi_ColoursClear(void)
 {
-    ColoursClear(cpu.db);
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    cpu.p = nz16((uint8_t)(cpu.p | P_M), cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColoursClear_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -223,10 +317,23 @@ void Set7EBC2AValues(void)
     cyc(72); /* PLP, RTL */
 }
 
-void abi_Set7EBC2AValues(void)
+void Set7EBC2AValues_cr(Carried *cr)
 {
     Set7EBC2AValues();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x32);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x32);
+}
+
+void abi_Set7EBC2AValues(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Set7EBC2AValues_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -253,10 +360,23 @@ void ScreenBlankAndWait(uint8_t bank)
     cyc(116); /* SEP, REP, PLP, RTL */
 }
 
+void ScreenBlankAndWait_cr(Carried *cr)
+{
+    ScreenBlankAndWait(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x8C);
+}
+
 void abi_ScreenBlankAndWait(void)
 {
-    ScreenBlankAndWait(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x8C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ScreenBlankAndWait_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -308,13 +428,26 @@ void HardwareRegsInit02(void)
     cyc(70);
 }
 
-void abi_HardwareRegsInit02(void)
+void HardwareRegsInit02_cr(Carried *cr)
 {
     HardwareRegsInit02();
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    cpu.x = 0x00FF;
-    cpu.y = 0x0030;
-    cpu.db = 0x00;
+    cr->a = (uint16_t)(cr->a & 0xFF00);
+    cr->x = 0x00FF;
+    cr->y = 0x0030;
+    cr->db = 0x00;
+}
+
+void abi_HardwareRegsInit02(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HardwareRegsInit02_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -328,10 +461,23 @@ void HardwareRegsInit02Long(void)
     HardwareRegsInit02();
 }
 
+void HardwareRegsInit02Long_cr(Carried *cr)
+{
+    (cyc(46), HardwareRegsInit02_cr(cr));
+    cyc(44); /* RTL */
+}
+
 void abi_HardwareRegsInit02Long(void)
 {
-    (cyc(46), abi_HardwareRegsInit02());
-    cyc(44); /* RTL */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HardwareRegsInit02Long_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -408,9 +554,22 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
     return 0x0001;
 }
 
+void TileRowBuild_cr(Carried *cr)
+{
+    cr->a = TileRowBuild(cr->db, &cr->x, &cr->y, &cr->p);
+}
+
 void abi_TileRowBuild(void)
 {
-    cpu.a = TileRowBuild(cpu.db, &cpu.x, &cpu.y, &cpu.p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TileRowBuild_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -423,10 +582,23 @@ void abi_TileRowBuild(void)
  * Entry: M, X 16-bit; D = $0000. Exit: as TileRowBuild when it reaches its
  * row pick.
  */
-void abi_TileRowBuildZero(void)
+void TileRowBuildZero(Carried *cr)
 {
     cyc(30);
-    cpu.a = tile_row_pick(cpu.db, 0x0000, 0, &cpu.x, &cpu.y, &cpu.p);
+    cr->a = tile_row_pick(cr->db, 0x0000, 0, &cr->x, &cr->y, &cr->p);
+}
+
+void abi_TileRowBuildZero(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TileRowBuildZero(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -440,10 +612,23 @@ uint16_t TileRowBuildLong(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return TileRowBuild(bank, x, y, p);
 }
 
+void TileRowBuildLong_cr(Carried *cr)
+{
+    (cyc(46), TileRowBuild_cr(cr));
+    cyc(44); /* RTL */
+}
+
 void abi_TileRowBuildLong(void)
 {
-    (cyc(46), abi_TileRowBuild());
-    cyc(44); /* RTL */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TileRowBuildLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -466,11 +651,24 @@ void TileRowUpload(uint8_t bank)
     cyc(42); /* RTS */
 }
 
+void TileRowUpload_cr(Carried *cr)
+{
+    TileRowUpload(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0x0040;
+}
+
 void abi_TileRowUpload(void)
 {
-    TileRowUpload(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = 0x0040;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TileRowUpload_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -486,17 +684,29 @@ void TileRowUploadLong(uint8_t bank)
     TileRowUpload(bank);
 }
 
-void abi_TileRowUploadLong(void)
+void TileRowUploadLong_cr(Carried *cr)
 {
     cyc(112);
-    TileRowUpload(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = 0x0040;
+    TileRowUpload(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0x0040;
     cyc(30);
-    op_plp(cpu.p);
+    r_plp(cr, cr->p);
 }
 
-void CrashWhite(uint8_t bank);
+void abi_TileRowUploadLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TileRowUploadLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 void abi_SpriteSlotFirstLong(void);
 void abi_Set7EBC2BTrio(void);
 void abi_WaitScanline(void);
@@ -575,12 +785,25 @@ uint16_t UnusedScreenTiles(void)
     return r;
 }
 
+void UnusedScreenTiles_cr(Carried *cr)
+{
+    cr->a = UnusedScreenTiles();
+    cr->x = 0xFFFF;
+    cr->y = 0x0000;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_X | P_V)) | P_M | P_C));
+}
+
 void abi_UnusedScreenTiles(void)
 {
-    cpu.a = UnusedScreenTiles();
-    cpu.x = 0xFFFF;
-    cpu.y = 0x0000;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_X | P_V)) | P_M | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    UnusedScreenTiles_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -592,15 +815,28 @@ void abi_UnusedScreenTiles(void)
  * Entry: any widths. Exit: A = UnusedScreenTiles' high byte and TIMEUP's
  * value; X = $FFFF, Y = 0 (their low bytes when X is 8-bit); P unchanged.
  */
+void UnusedScreenTilesLocked(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    (cyc(98), UnusedScreenTiles_cr(cr));
+    cyc(32);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | hw_rd(TIMEUP));
+    cyc(44);
+    r_plp(cr, p);
+}
+
 void abi_UnusedScreenTilesLocked(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    (cyc(98), abi_UnusedScreenTiles());
-    cyc(32);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | hw_rd(TIMEUP));
-    cyc(44);
-    op_plp(p);
+    UnusedScreenTilesLocked(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -628,15 +864,15 @@ void abi_UnusedScreenTilesLocked(void)
  * byte 0); X = 0, Y = $20; I clear, N, Z from A; C and V as TileRowBuild
  * left them (C from bit 3 of $4F when it built nothing).
  */
-void abi_UnusedScreenSetup(void)
+void UnusedScreenSetup(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t a;
     uint8_t v;
     int i, j;
 
-    op_sep(P_M | P_X);
-    cpu.p |= P_I;
+    r_sep(cr, P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(38);
     hw_wr(b | 0x4200, 0x00);
     cyc(16);
@@ -645,12 +881,12 @@ void abi_UnusedScreenSetup(void)
     wr8(b | 0x084C, 0x00);
     cyc(24);
     hw_rd(b | 0x4211);
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(32);
     hw_rd16(0x003030);
     cyc(48);
     wr16(b | 0x0374, 0x0021);
-    (cyc(62), abi_ScreenBlankAndWait());
+    (cyc(62), ScreenBlankAndWait_cr(cr));
     cyc(24);
     ppu_wr16(b | 0x2121, 0x0000);
     cyc(24);
@@ -669,15 +905,15 @@ void abi_UnusedScreenSetup(void)
             cyc(24);
             ppu_wr16(b | 0x2119, 0x0000);
         } }
-    op_rep(P_M | P_X);
+    r_rep(cr, P_M | P_X);
     cyc(108);
     ppu_wr16(b | 0x2116, 0x2C00);
     cyc(12);
     for (i = 0x400; i; i--)
         { cyc(60); ppu_wr16(b | 0x2118, 0x01A1); }
     cyc(136);
-    op_sep(P_M);
-    abi_UnusedScreenTiles();
+    r_sep(cr, P_M);
+    UnusedScreenTiles_cr(cr);
     cyc(62);
     wr16(0x00004E, 0x0000);
     cyc(40);
@@ -692,7 +928,7 @@ void abi_UnusedScreenSetup(void)
     hw_wr(b | 0x3038, (uint8_t)(v >> 2));
     cyc(16);
     v = rd8(0x00004F);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x08 ? P_C : 0));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v & 0x08 ? P_C : 0)));
     cyc(96);
     ppu_wr(b | 0x210B, (uint8_t)(v >> 4 | 0x50));
     cyc(40);
@@ -703,13 +939,13 @@ void abi_UnusedScreenSetup(void)
     ppu_wr(b | 0x2108, 0x73);
     cyc(40);
     ppu_wr(b | 0x2105, 0x02);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    (cyc(62), abi_TileRowBuildLong());
-    (cyc(62), abi_TileRowUploadLong());
-    op_sep(P_M);
-    op_rep(P_X);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    (cyc(100), abi_PaletteLoad70());
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+    (cyc(62), TileRowBuildLong_cr(cr));
+    (cyc(62), TileRowUploadLong_cr(cr));
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    (cyc(100), PaletteLoad70_cr(cr));
     cyc(40);
     dma_wr(b | 0x4301, 0x22);
     cyc(40);
@@ -746,8 +982,8 @@ void abi_UnusedScreenSetup(void)
     ppu_wr(b | 0x212C, 0x17);
     cyc(40);
     ppu_wr(b | 0x212D, 0x07);
-    (cyc(62), abi_Set7EBC2AValues());
-    op_sep(P_M);
+    (cyc(62), Set7EBC2AValues_cr(cr));
+    r_sep(cr, P_M);
     cyc(62);
     dma_wr(b | 0x4310, 0x00);
     cyc(40);
@@ -800,14 +1036,14 @@ void abi_UnusedScreenSetup(void)
     wr16(b | 0x0840, 0xB9E4);
     cyc(24);
     wr8(b | 0x0842, 0x00);
-    (cyc(62), abi_ScrollRegsClear());
-    op_sep(P_M);
+    (cyc(62), ScrollRegsClear_cr(cr));
+    r_sep(cr, P_M);
     cyc(70);
     hw_wr16(b | 0x4209, 0x008F);
     cyc(48);
     hw_wr16(b | 0x4207, 0x0000);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
-    (cyc(78), abi_Set7EBC2BTrio());
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
+    (cyc(78), Set7EBC2BTrio_cr(cr));
     cyc(24);
     ppu_wr(b | 0x2100, 0x80);
     cyc(24);
@@ -816,10 +1052,10 @@ void abi_UnusedScreenSetup(void)
     hdmaen_wr(b | 0x420C, 0x02);
     cyc(40);
     wr8(b | 0x06E3, 0xBE);
-    (cyc(62), abi_WaitScanline());
+    (cyc(62), WaitScanline_cr(cr));
     cyc(84);
     wr8(b | 0x06E3, 0x64);
-    (cyc(62), abi_WaitScanline());
+    (cyc(62), WaitScanline_cr(cr));
     cyc(68);
     hw_rd(b | 0x4210);
     cyc(40);
@@ -828,11 +1064,24 @@ void abi_UnusedScreenSetup(void)
     wr8(b | 0x05D9, 0xFF);
     cyc(32);
     v = hw_rd(TIMEUP);
-    a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.a = a;
-    cpu.x = 0x0000;
-    cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_I);
+    a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->a = a;
+    cr->x = 0x0000;
+    set_p(cr, (uint8_t)(nz8(cr->p, v) & ~P_I));
     cyc(58); /* CLI, RTL */
+}
+
+void abi_UnusedScreenSetup(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    UnusedScreenSetup(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -845,12 +1094,12 @@ void abi_UnusedScreenSetup(void)
  * the data bank; 8-bit A, 16-bit index registers.
  * Entry: D = $0000. Exit: never returns.
  */
-void abi_UnusedScreenStart(void)
+void UnusedScreenStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
-    op_sep(P_M);
-    op_rep(P_X);
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
     while (rd8(cyc_then(60, 0x000000)))
         ;
     cyc(48);
@@ -860,13 +1109,26 @@ void abi_UnusedScreenStart(void)
     while (!rd8(cyc_then(24, b | 0x0854)))
         ;
     cyc(78);
-    abi_GsuClearScreenIfSet();
+    GsuClearScreenIfSet_cr(cr);
     while (rd8(cyc_then(24, b | 0x0854)) != 0x02)
         cyc(38); /* CMP, BNE taken */
     cyc(56);
     wr8(b | 0x0854, 0x00);
-    (cyc(62), abi_SpriteSlotFirstLong());
-    (cyc(62), CrashWhite(cpu.db));
+    (cyc(62), w_SpriteSlotFirstLong(cr));
+    (cyc(62), CrashWhite(cr->db));
+}
+
+void abi_UnusedScreenStart(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    UnusedScreenStart(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectLinkBobStart(void);
@@ -880,7 +1142,29 @@ void abi_ObjectLinkBobStart(void);
  * Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
  * (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
  */
+void ObjectLinkBobStartLong(Carried *cr)
+{
+    ObjectLinkBobStart(cr);
+}
+
 void abi_ObjectLinkBobStartLong(void)
 {
-    abi_ObjectLinkBobStart();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLinkBobStartLong(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* SpriteSlotFirstLong as its adapter leaves the registers. */
+static void w_SpriteSlotFirstLong(Carried *cr)
+{
+    uint16_t x = cr->x;
+
+    cr->a = SpriteSlotFirstLong(cr->db, &x, (cr->p & P_X) != 0);
+    cr->x = x;
 }

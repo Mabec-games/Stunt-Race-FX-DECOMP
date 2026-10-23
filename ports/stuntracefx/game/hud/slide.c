@@ -49,7 +49,11 @@ void HudSlideIn(void)
     hud_slide_in(&p);
 }
 
+void HudPanelASlide_cr(Carried *cr);
+void HudPanelBSlide_cr(Carried *cr);
+void HudPanelsStep_cr(Carried *cr);
 void HudSlideIn_cr(Carried *cr);
+void HudSlideOut_cr(Carried *cr);
 static void panel_exit(Carried *cr, uint8_t a, uint16_t x);
 
 void HudSlideIn_cr(Carried *cr)
@@ -268,12 +272,25 @@ uint8_t HudSlideOut(uint8_t bank)
     return v;
 }
 
+void HudSlideOut_cr(Carried *cr)
+{
+    uint8_t v = HudSlideOut(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, nz8((uint8_t)((cr->p & ~(P_C | P_V)) | out_cv), out_nz));
+}
+
 void abi_HudSlideOut(void)
 {
-    uint8_t v = HudSlideOut(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8((uint8_t)((cpu.p & ~(P_C | P_V)) | out_cv), out_nz);
+    HudSlideOut_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* AE18 and AE30's body: $F9 = the panel's Y offset, x its sprites; by stage
@@ -334,28 +351,22 @@ static void panel_exit(Carried *cr, uint8_t a, uint16_t x)
     cr->x = (cr->p & P_X) ? (uint8_t)x : x;
 }
 
-static void panel_exit_g(uint8_t a, uint16_t x)
+void HudPanelASlide_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    panel_exit(&c, a, x);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    panel_exit(cr, HudPanelASlide(cr->db, cr->d), 0x0020);
 }
 
 void abi_HudPanelASlide(void)
 {
-    panel_exit_g(HudPanelASlide(cpu.db, cpu.d), 0x0020);
-}
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-/* HudPanelASlide on carried registers, as abi_HudPanelASlide leaves them. */
-void HudPanelASlide_cr(Carried *cr)
-{
-    panel_exit(cr, HudPanelASlide(cr->db, cr->d), 0x0020);
+    HudPanelASlide_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -370,15 +381,22 @@ uint8_t HudPanelBSlide(uint8_t bank, uint16_t d)
     return hud_panel_slide(bank, d, 0x4A, 0x0120, 0);
 }
 
-void abi_HudPanelBSlide(void)
-{
-    panel_exit_g(HudPanelBSlide(cpu.db, cpu.d), 0x0120);
-}
-
-/* HudPanelBSlide on carried registers, as abi_HudPanelBSlide leaves them. */
 void HudPanelBSlide_cr(Carried *cr)
 {
     panel_exit(cr, HudPanelBSlide(cr->db, cr->d), 0x0120);
+}
+
+void abi_HudPanelBSlide(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudPanelBSlide_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -470,16 +488,6 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
     cyc(42);                            /* PLP */
 }
 
-void abi_HudPanelsStep(void)
-{
-    HudPanelsStep(cpu.db, cpu.d);
-    if (step_a_set)
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | step_a);
-    cpu.x = step_x;
-    cpu.y &= 0x00FF;
-}
-
-/* HudPanelsStep on carried registers, as abi_HudPanelsStep leaves them. */
 void HudPanelsStep_cr(Carried *cr)
 {
     HudPanelsStep(cr->db, cr->d);
@@ -487,5 +495,18 @@ void HudPanelsStep_cr(Carried *cr)
         cr->a = (uint16_t)((cr->a & 0xFF00) | step_a);
     cr->x = step_x;
     cr->y &= 0x00FF;
+}
+
+void abi_HudPanelsStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudPanelsStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

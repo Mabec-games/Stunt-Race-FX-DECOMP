@@ -83,12 +83,30 @@ uint16_t SoundDataLoad(uint16_t which, uint16_t input)
     return up_y;
 }
 
+void CourseSoundLoad_cr(Carried *cr);
+void MusicLoadForCourse_cr(Carried *cr);
+void SoundDataLoad_cr(Carried *cr);
+static void music_exit(Carried *cr);
+
+void SoundDataLoad_cr(Carried *cr)
+{
+    cr->y = SoundDataLoad(cr->a, cr->y);
+    cr->a = 0x0000;
+    cr->x = 0x0000;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_M | P_X)) | P_Z | P_C));
+}
+
 void abi_SoundDataLoad(void)
 {
-    cpu.y = SoundDataLoad(cpu.a, cpu.y);
-    cpu.a = 0x0000;
-    cpu.x = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_M | P_X)) | P_Z | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundDataLoad_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The table index for music `n`: n * 3, through direct page $F1. */
@@ -189,8 +207,6 @@ void MusicLoadForCourse(uint8_t bank, uint16_t music)
     cyc(42);
 }
 
-static void music_exit(Carried *cr);
-
 /* The registers MusicLoadForCourse leaves. */
 static void music_exit(Carried *cr)
 {
@@ -203,24 +219,24 @@ static void music_exit(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_M | P_X)) | P_Z | P_C));
 }
 
-static void music_exit_g(void)
+void MusicLoadForCourse_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    music_exit(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    ml_uploaded = 0;
+    MusicLoadForCourse(cr->db, cr->a);
+    music_exit(cr);
 }
 
 void abi_MusicLoadForCourse(void)
 {
-    ml_uploaded = 0;
-    MusicLoadForCourse(cpu.db, cpu.a);
-    music_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MusicLoadForCourse_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA #$4000, DEC A until 0 (16-bit A). */
@@ -398,31 +414,6 @@ void CourseSoundLoad(uint8_t bank)
     csl_kind = CSL_COURSE;
 }
 
-void abi_CourseSoundLoad(void)
-{
-    CourseSoundLoad(cpu.db);
-    switch (csl_kind) {
-    case CSL_EARLY:
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | csl_a);
-        break;
-    case CSL_OTHER:
-        cpu.a = 0x0004;
-        cpu.x = 0x0000;
-        cpu.y = (uint8_t)up_y;
-        break;
-    default:
-        cpu.a = 0x0000;
-        cpu.x = ml_x;
-        cpu.y = up_y;
-        break;
-    }
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
-
-/* CourseSoundLoad on carried registers, as abi_CourseSoundLoad leaves them. */
 void CourseSoundLoad_cr(Carried *cr)
 {
     CourseSoundLoad(cr->db);
@@ -446,4 +437,18 @@ void CourseSoundLoad_cr(Carried *cr)
         cr->y &= 0x00FF;
     }
 }
+
+void abi_CourseSoundLoad(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseSoundLoad_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 

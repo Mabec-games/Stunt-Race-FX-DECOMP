@@ -64,12 +64,82 @@ void MenuActorPoolInit(uint8_t bank)
     cyc(94);
 }
 
+void MenuActorAddX_cr(Carried *cr);
+void MenuActorAddY_cr(Carried *cr);
+void MenuActorAlloc_cr(Carried *cr);
+void MenuActorAnimate_cr(Carried *cr);
+void MenuActorAnimateFrame_cr(Carried *cr);
+void MenuActorAnimateOnly_cr(Carried *cr);
+void MenuActorAnimateThenExit_cr(Carried *cr);
+void MenuActorApplyPalette_cr(Carried *cr);
+void MenuActorBlink_cr(Carried *cr);
+void MenuActorCopyGroup_cr(Carried *cr);
+void MenuActorCountdown_cr(Carried *cr);
+void MenuActorFind_cr(Carried *cr);
+void MenuActorFollowSlide194_cr(Carried *cr);
+void MenuActorFollowSlide1CF_cr(Carried *cr);
+void MenuActorFree_cr(Carried *cr);
+void MenuActorNew_cr(Carried *cr);
+void MenuActorPoolInit_cr(Carried *cr);
+void MenuActorSetTiles_cr(Carried *cr);
+void MenuActorSpawn_cr(Carried *cr);
+void MenuActorSpawnList_cr(Carried *cr);
+void MenuActorUploadFrames_cr(Carried *cr);
+void MenuActorsKind2Lower_cr(Carried *cr);
+void MenuActorsSet10_cr(Carried *cr);
+void MenuChoiceAnimations_cr(Carried *cr);
+void MenuChoiceObject00_cr(Carried *cr);
+void MenuChoiceObject00Start_cr(Carried *cr);
+void MenuChoiceObject12_cr(Carried *cr);
+void MenuChoiceObject12Copy_cr(Carried *cr);
+void MenuChoiceObject12Start_cr(Carried *cr);
+void MenuChoiceObject24_cr(Carried *cr);
+void MenuChoiceObject24Start_cr(Carried *cr);
+void MenuChoiceObject48_cr(Carried *cr);
+void MenuChoiceObjectFrames_cr(Carried *cr);
+void MenuChoiceObjectUpdate_cr(Carried *cr);
+void MenuDropAway_cr(Carried *cr);
+void MenuDropAwayCheck_cr(Carried *cr);
+void MenuDropAwayFinish_cr(Carried *cr);
+void MenuDropAwayFinishCurrent_cr(Carried *cr);
+void MenuDropBounce_cr(Carried *cr);
+void MenuDropStart_cr(Carried *cr);
+void MenuFadeInHandler_cr(Carried *cr);
+void MenuFadeOutHandler_cr(Carried *cr);
+void MenuFadeUpHandler_cr(Carried *cr);
+void MenuFixedColourDown_cr(Carried *cr);
+void MenuFixedColourUp_cr(Carried *cr);
+void MenuOamBuild_cr(Carried *cr);
+void MenuRowBlinkSettings_cr(Carried *cr);
+void MenuRowPalette5_cr(Carried *cr);
+void MenuRowStart_cr(Carried *cr);
+void MenuSelectArrive_cr(Carried *cr);
+void MenuSelectConfirm_cr(Carried *cr);
+void MenuSetPairAnimations_cr(Carried *cr);
+void MenuSinePosition_cr(Carried *cr);
+void MenuSinePosition7F_cr(Carried *cr);
+void MenuSlideInDone_cr(Carried *cr);
+void MenuSlideInHandler_cr(Carried *cr);
+
+void MenuActorPoolInit_cr(Carried *cr)
+{
+    MenuActorPoolInit(cr->db);
+    cr->a = 0x2802;
+    cr->x = 0x162D;
+    cr->y = 0x002C;
+}
+
 void abi_MenuActorPoolInit(void)
 {
-    MenuActorPoolInit(cpu.db);
-    cpu.a = 0x2802;
-    cpu.x = 0x162D;
-    cpu.y = 0x002C;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorPoolInit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -103,15 +173,28 @@ uint16_t MenuActorAlloc(uint8_t bank, uint8_t *p)
     return rec;
 }
 
-void abi_MenuActorAlloc(void)
+void MenuActorAlloc_cr(Carried *cr)
 {
-    uint8_t p = cpu.p;
-    uint16_t rec = MenuActorAlloc(cpu.db, &p);
+    uint8_t p = cr->p;
+    uint16_t rec = MenuActorAlloc(cr->db, &p);
 
     if (rec != 0xFFFF)
-        cpu.a = rec;
-    cpu.x = rec;
-    cpu.p = p;
+        cr->a = rec;
+    cr->x = rec;
+    set_p(cr, p);
+}
+
+void abi_MenuActorAlloc(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorAlloc_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -137,12 +220,25 @@ uint16_t MenuActorFree(uint8_t bank, uint16_t rec, uint16_t slot)
     return moved;
 }
 
+void MenuActorFree_cr(Carried *cr)
+{
+    cr->a = MenuActorFree(cr->db, cr->x, cr->y);
+    cr->x = 0xFFFF;
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
+    cyc(42);
+}
+
 void abi_MenuActorFree(void)
 {
-    cpu.a = MenuActorFree(cpu.db, cpu.x, cpu.y);
-    cpu.x = 0xFFFF;
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorFree_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Compare as CMP does: C when a >= b; N, Z from a - b. */
@@ -229,27 +325,6 @@ int MenuActorFindA(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_
     return r;
 }
 
-void abi_MenuActorFind(void)
-{
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p, a8 = (uint8_t)cpu.a;
-
-    if (cpu.p & P_M) {
-        MenuActorFind8(cpu.db, a8, &x, &y, &p, &a8);
-        cpu.x = x;
-        cpu.y = y;
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | a8);
-        cpu.p = p;
-        return;
-    }
-    MenuActorFind(cpu.db, cpu.a, &x, &y, &p);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.a = find_last_kind;
-    cpu.p = p;
-}
-
-/* MenuActorFind on carried registers, as abi_MenuActorFind leaves them. */
 void MenuActorFind_cr(Carried *cr)
 {
     uint16_t x = cr->x, y = cr->y;
@@ -268,6 +343,19 @@ void MenuActorFind_cr(Carried *cr)
     cr->y = y;
     cr->a = find_last_kind;
     set_p(cr, p);
+}
+
+void abi_MenuActorFind(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorFind_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -300,13 +388,26 @@ uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p
     return a;
 }
 
+void MenuActorsSet10_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorsSet10(cr->db, cr->a, cr->y, &p);
+    cr->y = 0xFFFE;
+    set_p(cr, nz16(p, cr->x));
+}
+
 void abi_MenuActorsSet10(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorsSet10(cpu.db, cpu.a, cpu.y, &p);
-    cpu.y = 0xFFFE;
-    cpu.p = nz16(p, cpu.x);
+    MenuActorsSet10_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -353,13 +454,26 @@ uint16_t MenuActorApplyPalette(uint8_t bank, uint16_t rec, uint16_t *y, uint8_t 
     return a;
 }
 
+void MenuActorApplyPalette_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    uint16_t a = MenuActorApplyPalette(cr->db, cr->x, &cr->y, &p);
+
+    cr->a = a;
+    set_p(cr, p);
+}
+
 void abi_MenuActorApplyPalette(void)
 {
-    uint8_t p = cpu.p;
-    uint16_t a = MenuActorApplyPalette(cpu.db, cpu.x, &cpu.y, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = a;
-    cpu.p = p;
+    MenuActorApplyPalette_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -418,10 +532,23 @@ uint16_t MenuActorBlink(uint8_t bank, uint16_t *x)
     return a;
 }
 
+void MenuActorBlink_cr(Carried *cr)
+{
+    cr->a = MenuActorBlink(cr->db, &cr->x);
+    set_p(cr, nz16(cr->p, cr->a));
+}
+
 void abi_MenuActorBlink(void)
 {
-    cpu.a = MenuActorBlink(cpu.db, &cpu.x);
-    cpu.p = nz16(cpu.p, cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorBlink_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -495,13 +622,26 @@ uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
     return t;
 }
 
-void abi_MenuActorAnimate(void)
+void MenuActorAnimate_cr(Carried *cr)
 {
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
     cyc(88);
-    cpu.a = MenuActorAnimate(cpu.db, cpu.x, &cpu.x, &p);
-    cpu.p = p;
+    cr->a = MenuActorAnimate(cr->db, cr->x, &cr->x, &p);
+    set_p(cr, p);
+}
+
+void abi_MenuActorAnimate(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorAnimate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -532,14 +672,27 @@ int MenuActorCountdown(uint16_t rec, uint8_t *p)
     return 1;
 }
 
+void MenuActorCountdown_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    if (MenuActorCountdown(cr->x, &p))
+        cr->a = 0x0000;
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuActorCountdown(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    if (MenuActorCountdown(cpu.x, &p))
-        cpu.a = 0x0000;
-    cpu.p = p;
-    cyc(42);
+    MenuActorCountdown_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The two sine positions: the table byte for the angle in +$0A - $40
@@ -587,12 +740,25 @@ uint16_t MenuSinePosition(uint8_t bank, uint16_t *x, uint8_t *p)
     return sine_position(bank, x, 0x0001, p);
 }
 
+void MenuSinePosition_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSinePosition(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSinePosition(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSinePosition(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuSinePosition_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -609,12 +775,25 @@ uint16_t MenuSinePosition7F(uint8_t bank, uint16_t *x, uint8_t *p)
     return sine_position(bank, x, 0xFFFF, p);
 }
 
+void MenuSinePosition7F_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSinePosition7F(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSinePosition7F(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSinePosition7F(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuSinePosition7F_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -657,12 +836,25 @@ uint16_t MenuActorSetTiles(uint8_t bank, uint16_t rec, uint16_t i, uint16_t off,
     return w;
 }
 
+void MenuActorSetTiles_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorSetTiles(cr->db, cr->x, cr->a, cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorSetTiles(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorSetTiles(cpu.db, cpu.x, cpu.a, cpu.y, &p);
-    cpu.p = p;
+    MenuActorSetTiles_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The 32-bit field at rec + to plus the one at rec + from (CLC, two ADCs):
@@ -704,12 +896,25 @@ uint16_t MenuActorAddX(uint16_t rec, uint8_t *p)
     return a;
 }
 
+void MenuActorAddX_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorAddX(cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorAddX(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorAddX(cpu.x, &p);
-    cpu.p = p;
+    MenuActorAddX_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -729,12 +934,25 @@ uint16_t MenuActorAddY(uint16_t rec, uint8_t *p)
     return a;
 }
 
+void MenuActorAddY_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorAddY(cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorAddY(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorAddY(cpu.x, &p);
-    cpu.p = p;
+    MenuActorAddY_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -777,16 +995,29 @@ void MenuActorsKind2Lower(uint8_t bank, uint16_t *x, uint16_t *y_out, uint16_t *
     *y_out = yy;
 }
 
+void MenuActorsKind2Lower_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y, a = cr->a;
+    uint8_t p = cr->p;
+
+    MenuActorsKind2Lower(cr->db, &x, &y, &a, &p);
+    cr->x = x;
+    cr->y = y;
+    cr->a = a;
+    set_p(cr, p);
+}
+
 void abi_MenuActorsKind2Lower(void)
 {
-    uint16_t x = cpu.x, y = cpu.y, a = cpu.a;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuActorsKind2Lower(cpu.db, &x, &y, &a, &p);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.a = a;
-    cpu.p = p;
+    MenuActorsKind2Lower_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -820,12 +1051,25 @@ uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+void MenuActorAnimateFrame_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorAnimateFrame(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorAnimateFrame(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorAnimateFrame(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuActorAnimateFrame_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Starts animation a on record rec unless it is already the one playing:
@@ -875,12 +1119,25 @@ uint16_t MenuSetPairAnimations(uint8_t bank, uint16_t pair, uint16_t *x, uint16_
     return first;
 }
 
+void MenuSetPairAnimations_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSetPairAnimations(cr->db, cr->a, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSetPairAnimations(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSetPairAnimations(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSetPairAnimations_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -927,12 +1184,25 @@ uint16_t MenuChoiceAnimations(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     return anim;
 }
 
+void MenuChoiceAnimations_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceAnimations(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceAnimations(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceAnimations(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceAnimations_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Sets animation a on record rec unless it already has it, comparing the
@@ -988,15 +1258,28 @@ int MenuSlideInDone(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *y, uint8_
     return 1;
 }
 
+void MenuSlideInDone_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    if (MenuSlideInDone(cr->db, cr->x, &cr->a, &cr->y, &p))
+        cr->x = 0xFFFF;
+    cyc(42);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuSlideInDone(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    if (MenuSlideInDone(cpu.db, cpu.x, &cpu.a, &cpu.y, &p))
-        cpu.x = 0xFFFF;
-    cyc(42);
-    cpu.p = p;
-    cyc(42);
+    MenuSlideInDone_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1078,12 +1361,25 @@ uint16_t MenuChoiceObjectUpdate(uint16_t rec, uint8_t *p)
     return a;
 }
 
+void MenuChoiceObjectUpdate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObjectUpdate(cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObjectUpdate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObjectUpdate(cpu.x, &p);
-    cpu.p = p;
+    MenuChoiceObjectUpdate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuRowPosition(uint16_t rec, uint8_t *p);
@@ -1126,12 +1422,25 @@ uint16_t MenuRowPalette5(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return entry_palette5(n, p);
 }
 
+void MenuRowPalette5_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuRowPalette5(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuRowPalette5(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuRowPalette5(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuRowPalette5_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1166,12 +1475,25 @@ uint16_t MenuRowBlinkSettings(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     return a;
 }
 
+void MenuRowBlinkSettings_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuRowBlinkSettings(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuRowBlinkSettings(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuRowBlinkSettings(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuRowBlinkSettings_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void VramDmaQueueAdd(void);
@@ -1266,13 +1588,26 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint1
     return s;
 }
 
+void MenuActorUploadFrames_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorUploadFrames(cr->db, cr->x, cr->a, &cr->x, &p);
+    cr->y = 0xFFFF;
+    set_p(cr, p);
+}
+
 void abi_MenuActorUploadFrames(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorUploadFrames(cpu.db, cpu.x, cpu.a, &cpu.x, &p);
-    cpu.y = 0xFFFF;
-    cpu.p = p;
+    MenuActorUploadFrames_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1286,14 +1621,9 @@ uint16_t MenuActorAnimateOnly(uint8_t bank, uint16_t *x, uint8_t *p)
     return MenuActorAnimateFrame(bank, x, p);
 }
 
-void MenuActorAnimateOnly_cr(Carried *cr);
-void MenuDropAwayFinishCurrent_cr(Carried *cr);
-static void w_MenuActorAnimateFrame(Carried *cr);
-static void w_MenuDropAwayFinish(Carried *cr);
-
 void MenuActorAnimateOnly_cr(Carried *cr)
 {
-    w_MenuActorAnimateFrame(cr);
+    MenuActorAnimateFrame_cr(cr);
     cyc(42);
 }
 
@@ -1337,12 +1667,25 @@ uint16_t MenuActorFollowSlide1CF(uint8_t bank, uint16_t *x, uint8_t *p)
     return follow_slide(bank, 0x01CF, x, p);
 }
 
+void MenuActorFollowSlide1CF_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorFollowSlide1CF(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorFollowSlide1CF(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorFollowSlide1CF(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuActorFollowSlide1CF_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1356,12 +1699,25 @@ uint16_t MenuActorFollowSlide194(uint8_t bank, uint16_t *x, uint8_t *p)
     return follow_slide(bank, 0x0194, x, p);
 }
 
+void MenuActorFollowSlide194_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorFollowSlide194(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorFollowSlide194(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorFollowSlide194(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuActorFollowSlide194_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1394,13 +1750,26 @@ uint16_t MenuActorAnimateThenExit(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+void MenuActorAnimateThenExit_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorAnimateThenExit(cr->db, &cr->x, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuActorAnimateThenExit(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorAnimateThenExit(cpu.db, &cpu.x, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuActorAnimateThenExit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuChoiceUpDownY(uint8_t bank, uint16_t *y);
@@ -1450,12 +1819,25 @@ uint16_t MenuSlideInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+void MenuSlideInHandler_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSlideInHandler(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSlideInHandler(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSlideInHandler(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSlideInHandler_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor);
@@ -1501,13 +1883,26 @@ uint16_t MenuFadeInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+void MenuFadeInHandler_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuFadeInHandler(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuFadeInHandler(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuFadeInHandler(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuFadeInHandler_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1582,12 +1977,25 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     return a;
 }
 
+void MenuChoiceObjectFrames_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObjectFrames(cr->db, cr->a, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObjectFrames(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObjectFrames(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObjectFrames_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A choice object's frame: MenuChoiceObjectUpdate, $11E3 = the first frame
@@ -1620,12 +2028,25 @@ uint16_t MenuChoiceObject00(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return choice_object(bank, 0x0000, x, y, p);
 }
 
+void MenuChoiceObject00_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject00(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject00(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject00(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject00_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1639,12 +2060,25 @@ uint16_t MenuChoiceObject12(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return choice_object(bank, 0x0012, x, y, p);
 }
 
+void MenuChoiceObject12_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject12(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject12(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject12(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject12_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1658,12 +2092,25 @@ uint16_t MenuChoiceObject24(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return choice_object(bank, 0x0024, x, y, p);
 }
 
+void MenuChoiceObject24_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject24(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject24(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject24(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject24_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1677,12 +2124,25 @@ uint16_t MenuChoiceObject48(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return choice_object(bank, 0x0048, x, y, p);
 }
 
+void MenuChoiceObject48_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject48(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject48(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject48(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject48_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1699,12 +2159,25 @@ uint16_t MenuChoiceObject12Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
     return MenuChoiceObject12(bank, x, y, p);
 }
 
+void MenuChoiceObject12Start_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject12Start(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject12Start(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject12Start(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject12Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void Hang(void);
@@ -1772,12 +2245,25 @@ uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p)
     return a;
 }
 
+void MenuActorCopyGroup_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorCopyGroup(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorCopyGroup(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuActorCopyGroup(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuActorCopyGroup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value);
@@ -1822,13 +2308,26 @@ uint16_t MenuFixedColourDown(uint8_t bank, uint16_t x, uint8_t *p)
     return cyc_then(144, fixed_colour_set(bank, v));
 }
 
+void MenuFixedColourDown_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuFixedColourDown(cr->db, cr->x, &p);
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
+    cyc(64);
+}
+
 void abi_MenuFixedColourDown(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuFixedColourDown(cpu.db, cpu.x, &p);
-    cpu.p = (uint8_t)(p & ~(P_M | P_X));
-    cyc(64);
+    MenuFixedColourDown_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1857,12 +2356,25 @@ uint16_t MenuFixedColourUp(uint8_t bank, uint16_t x, uint8_t *p)
     return cyc_then(120, fixed_colour_set(bank, v));
 }
 
+void MenuFixedColourUp_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuFixedColourUp(cr->db, cr->x, &p);
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
+}
+
 void abi_MenuFixedColourUp(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuFixedColourUp(cpu.db, cpu.x, &p);
-    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+    MenuFixedColourUp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1901,12 +2413,25 @@ uint16_t MenuFadeUpHandler(uint8_t bank, uint16_t x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+void MenuFadeUpHandler_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuFadeUpHandler(cr->db, cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuFadeUpHandler(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuFadeUpHandler(cpu.db, cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuFadeUpHandler_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1946,13 +2471,26 @@ uint16_t MenuFadeOutHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+void MenuFadeOutHandler_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuFadeOutHandler(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+    cyc(84);
+}
+
 void abi_MenuFadeOutHandler(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuFadeOutHandler(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
-    cyc(84);
+    MenuFadeOutHandler_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A choice object's first frame: its own sprite group (MenuActorCopyGroup)
@@ -1980,12 +2518,25 @@ uint16_t MenuChoiceObject00Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
     return MenuChoiceObject00(bank, x, y, p);
 }
 
+void MenuChoiceObject00Start_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject00Start(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject00Start(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject00Start(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject00Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2003,13 +2554,26 @@ void MenuChoiceObject12Copy(uint8_t bank, uint16_t *x, uint8_t *p)
     cyc(42);
 }
 
+void MenuChoiceObject12Copy_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    MenuChoiceObject12Copy(cr->db, &cr->x, &p);
+    cr->a = 0xCB01;
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject12Copy(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuChoiceObject12Copy(cpu.db, &cpu.x, &p);
-    cpu.a = 0xCB01;
-    cpu.p = p;
+    MenuChoiceObject12Copy_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2025,12 +2589,25 @@ uint16_t MenuChoiceObject24Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
     return MenuChoiceObject24(bank, x, y, p);
 }
 
+void MenuChoiceObject24Start_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject24Start(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject24Start(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject24Start(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject24Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2056,13 +2633,26 @@ void MenuRowStart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     MenuActorIdleC47B();
 }
 
+void MenuRowStart_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    MenuRowStart(cr->db, &cr->x, &cr->y, &p);
+    cr->a = 0xC47B;
+    set_p(cr, p);
+}
+
 void abi_MenuRowStart(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuRowStart(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.a = 0xC47B;
-    cpu.p = p;
+    MenuRowStart_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* BG1's vertical scroll = -pos, queued for the next vertical blank as two
@@ -2132,13 +2722,26 @@ uint16_t MenuDropStart(uint8_t bank, uint16_t rec, uint16_t a, uint8_t *p)
     return (uint16_t)((uint16_t)(0 - h) & 0xFF00) | 0x04;
 }
 
+void MenuDropStart_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuDropStart(cr->db, cr->x, cr->a, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuDropStart(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuDropStart(cpu.db, cpu.x, cpu.a, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuDropStart_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -2208,13 +2811,26 @@ uint16_t MenuDropBounce(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+void MenuDropBounce_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuDropBounce(cr->db, &cr->x, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuDropBounce(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuDropBounce(cpu.db, &cpu.x, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuDropBounce_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A list of PPU register writes for the next vertical blank, in order. */
@@ -2297,13 +2913,26 @@ uint16_t MenuDropAway(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+void MenuDropAway_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuDropAway(cr->db, &cr->x, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuDropAway(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuDropAway(cpu.db, &cpu.x, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuDropAway_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2344,14 +2973,27 @@ uint16_t MenuDropAwayFinish(uint8_t bank, uint8_t *p)
     return x;
 }
 
+void MenuDropAwayFinish_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->x = MenuDropAwayFinish(cr->db, &p);
+    cr->a = 0x0040;
+    cr->y = 0xFFFE;
+    set_p(cr, p);
+}
+
 void abi_MenuDropAwayFinish(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.x = MenuDropAwayFinish(cpu.db, &p);
-    cpu.a = 0x0040;
-    cpu.y = 0xFFFE;
-    cpu.p = p;
+    MenuDropAwayFinish_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2380,13 +3022,26 @@ uint16_t MenuDropAwayCheck(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return 0x0040;
 }
 
+void MenuDropAwayCheck_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuDropAwayCheck(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuDropAwayCheck(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuDropAwayCheck(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuDropAwayCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuPictureDC8CGrid58(uint8_t bank);
@@ -2481,12 +3136,25 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
     return d;
 }
 
+void MenuSelectArrive_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSelectArrive(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSelectArrive(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSelectArrive(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuSelectArrive_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2515,9 +3183,22 @@ uint16_t MenuActorNew(uint8_t bank, uint16_t *a)
     return rec;
 }
 
+void MenuActorNew_cr(Carried *cr)
+{
+    cr->x = MenuActorNew(cr->db, &cr->a);
+}
+
 void abi_MenuActorNew(void)
 {
-    cpu.x = MenuActorNew(cpu.db, &cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorNew_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2565,12 +3246,25 @@ uint16_t MenuActorSpawn(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y, u
     return rec;
 }
 
+void MenuActorSpawn_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->x = MenuActorSpawn(cr->db, cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuActorSpawn(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.x = MenuActorSpawn(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    MenuActorSpawn_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SystemHaltSpawn(void);
@@ -2610,9 +3304,22 @@ uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *
     return x;
 }
 
+void MenuActorSpawnList_cr(Carried *cr)
+{
+    cr->x = MenuActorSpawnList(cr->db, cr->x, &cr->a, &cr->y);
+}
+
 void abi_MenuActorSpawnList(void)
 {
-    cpu.x = MenuActorSpawnList(cpu.db, cpu.x, &cpu.a, &cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorSpawnList_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2654,12 +3361,25 @@ int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return 1;
 }
 
+void MenuSelectConfirm_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSelectConfirm(cr->db, &cr->x, &cr->y, &p) ? 0xFF46 : 0x0000;
+    set_p(cr, p);
+}
+
 void abi_MenuSelectConfirm(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSelectConfirm(cpu.db, &cpu.x, &cpu.y, &p) ? 0xFF46 : 0x0000;
-    cpu.p = p;
+    MenuSelectConfirm_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2677,7 +3397,7 @@ void MenuDropAwayFinishCurrent(uint8_t bank, uint8_t *p)
 
 void MenuDropAwayFinishCurrent_cr(Carried *cr)
 {
-    (cyc(40), w_MenuDropAwayFinish(cr));
+    (cyc(40), MenuDropAwayFinish_cr(cr));
     cyc(42);
 }
 
@@ -2963,9 +3683,22 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
     return w;
 }
 
+void MenuOamBuild_cr(Carried *cr)
+{
+    cr->a = MenuOamBuild(&cr->x, &cr->y);
+}
+
 void abi_MenuOamBuild(void)
 {
-    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuOamBuild_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3016,22 +3749,3 @@ void abi_MenuActorsRun(void)
     MenuActorsRun();
 }
 
-/* MenuActorAnimateFrame as its adapter leaves the registers. */
-static void w_MenuActorAnimateFrame(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MenuActorAnimateFrame(cr->db, &cr->x, &p);
-    set_p(cr, p);
-}
-
-/* MenuDropAwayFinish as its adapter leaves the registers. */
-static void w_MenuDropAwayFinish(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->x = MenuDropAwayFinish(cr->db, &p);
-    cr->a = 0x0040;
-    cr->y = 0xFFFE;
-    set_p(cr, p);
-}

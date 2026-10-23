@@ -8,6 +8,8 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "carried.h"
+
 
 uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram, uint16_t *next);
 void CgramDmaIfPending(void);
@@ -94,18 +96,40 @@ uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
     return a;
 }
 
-void abi_GsuPictureUploadStep(void)
+void GsuPictureUploadStep_cr(Carried *cr);
+void VblankUpdates_cr(Carried *cr);
+void WindowOpenCloseStep_cr(Carried *cr);
+static void w_HalfRateApproach(Carried *cr);
+void ByteWritesIfPending_cr(Carried *cr);
+void CgramDmaIfPending_cr(Carried *cr);
+void OamDmaIfPending_cr(Carried *cr);
+void VramDmaQueueFlush_cr(Carried *cr);
+
+void GsuPictureUploadStep_cr(Carried *cr)
 {
     int copied;
-    uint16_t a = GsuPictureUploadStep(cpu.db, &copied);
+    uint16_t a = GsuPictureUploadStep(cr->db, &copied);
 
     if (!copied) {
-        cpu.x = 0x0006;
+        cr->x = 0x0006;
         return;
     } else { cyc(0); }
-    cpu.a = a;
-    cpu.x = 0x00FF;
-    cpu.y = 0x0001;
+    cr->a = a;
+    cr->x = 0x00FF;
+    cr->y = 0x0001;
+}
+
+void abi_GsuPictureUploadStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPictureUploadStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 #define WINDOW_MODE 0x001905u    /* 0 idle, 1 opening, 2 closing, 3 set */
@@ -226,13 +250,26 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
     return t;
 }
 
+void WindowOpenCloseStep_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = WindowOpenCloseStep(cr->db, &p);
+    set_p(cr, p);
+    cyc(64);
+}
+
 void abi_WindowOpenCloseStep(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = WindowOpenCloseStep(cpu.db, &p);
-    cpu.p = p;
-    cyc(64);
+    WindowOpenCloseStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_WindowOpenCloseStep(void);
@@ -320,41 +357,61 @@ void VblankUpdates(uint8_t bank)
     vblank_end(bank);
 }
 
-void abi_VblankUpdates(void)
+void VblankUpdates_cr(Carried *cr)
 {
-    uint8_t p0 = cpu.p;
+    uint8_t p0 = cr->p;
     uint16_t v;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    wr16(dbw(cpu.db, 0x11D8), cyc_then(68, 0x0000));
-    (cyc(46), abi_GsuPictureUploadStep());
-    (cyc(46), abi_WindowOpenCloseStep());
-    cpu.p |= P_M;
-    v = rd8(cyc_then(46, dbw(cpu.db, 0x11D7))) & 0x20;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, (uint8_t)v);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
+    wr16(dbw(cr->db, 0x11D8), cyc_then(68, 0x0000));
+    (cyc(46), GsuPictureUploadStep_cr(cr));
+    (cyc(46), WindowOpenCloseStep_cr(cr));
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    v = rd8(cyc_then(46, dbw(cr->db, 0x11D7))) & 0x20;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, nz8(cr->p, (uint8_t)v));
     if (!v) {
         cyc(78);
-        abi_CgramDmaIfPending();
-        (cyc(46), abi_VramDmaQueueFlush());
-        (cyc(46), abi_OamDmaIfPending());
+        CgramDmaIfPending_cr(cr);
+        (cyc(46), VramDmaQueueFlush_cr(cr));
+        (cyc(46), OamDmaIfPending_cr(cr));
     } else { cyc(38); }
     cyc(46);
-    abi_ByteWritesIfPending();
-    cpu.p &= (uint8_t)~P_M;
+    ByteWritesIfPending_cr(cr);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(54);
     v = rd16(0x0018B9);
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
+    cr->a = v;
+    set_p(cr, nz16(cr->p, v));
     if (v) {
         uint8_t last;
 
-        cpu.x = blink_colour(cpu.db, &last);
-        cpu.a = (uint16_t)((cpu.x & 0xFF00) | last);
+        cr->x = blink_colour(cr->db, &last);
+        cr->a = (uint16_t)((cr->x & 0xFF00) | last);
     } else { cyc(22); }
     cyc(68);
-    cpu.p &= (uint8_t)~P_M;
-    abi_HalfRateApproach();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | vblank_end(cpu.db));
-    cpu.p = p0;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
+    w_HalfRateApproach(cr);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | vblank_end(cr->db));
+    set_p(cr, p0);
+}
+
+void abi_VblankUpdates(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VblankUpdates_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* HalfRateApproach as its adapter leaves the registers. */
+static void w_HalfRateApproach(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | HalfRateApproach());
+    cyc(70);
 }

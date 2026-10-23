@@ -8,17 +8,8 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a);
-#include "system_calls.h"
 #include "video_calls.h"
 uint8_t HudDrawTime(uint16_t *x, int *x_set);
-uint16_t JoypadAccumulate(void);
-uint16_t JoypadRead(void);
-void OamDmaAll(void);
-#include "video_palette_calls.h"
-#include "race_calls.h"
-#include "audio_calls.h"
-uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram);
 
 /*
  * @routine 7E:A2FD WaitHBlank
@@ -40,12 +31,80 @@ uint8_t WaitHBlank(void)
     return v;
 }
 
-void abi_WaitHBlank(void)
+void RasterIrq(Carried *cr);
+void RasterStage(Carried *cr);
+void TimeMarkEnd(Carried *cr);
+void TimeMarkStart(Carried *cr);
+void WaitHBlank_cr(Carried *cr);
+void WaitScanline_cr(Carried *cr);
+void WindowTable7F(Carried *cr);
+void WindowTable7FLong(Carried *cr);
+static void copy8(Carried *cr, uint32_t to, uint32_t from);
+static void frame_counts(Carried *cr, uint32_t b);
+static void hblank_inline(Carried *cr);
+static void inc8(Carried *cr, uint32_t addr);
+static void irq_ack(Carried *cr);
+static void ldx8(Carried *cr, uint8_t v);
+static void put8(Carried *cr, uint32_t addr, uint8_t v);
+static void split_bg2(Carried *cr, uint8_t v, uint8_t ylo, uint8_t yhi_pos, uint8_t yneg, uint8_t xlo);
+static uint16_t time_stamp(Carried *cr);
+static void window_colours(Carried *cr, uint32_t b, uint16_t first);
+static void w_GradientPointersToBank7F(Carried *cr);
+static void w_HudDrawTime(Carried *cr);
+void AnimTilesQueueNext_cr(Carried *cr);
+void Bg2ScrollFromTable_cr(Carried *cr);
+void BobWindowsRun(Carried *cr);
+void FadeStepFixed_cr(Carried *cr);
+void FadeStep_cr(Carried *cr);
+void FrameCountAndPortsEnd_cr(Carried *cr);
+void FrameInputAndCountEnd_cr(Carried *cr);
+void FrameSoundAndJoypads(Carried *cr);
+void HudPanelASlide_cr(Carried *cr);
+void HudPanelBSlide_cr(Carried *cr);
+void HudPanelsStep_cr(Carried *cr);
+void JoypadAccumulate_cr(Carried *cr);
+void JoypadRead_cr(Carried *cr);
+void NmiFrameUpload_cr(Carried *cr);
+void OamDirectStage_cr(Carried *cr);
+void OamDmaAll_cr(Carried *cr);
+void PaletteKeptColoursStep_cr(Carried *cr);
+void PalettesStep_cr(Carried *cr);
+void RaceClockStep_cr(Carried *cr);
+void RasterColoursUnless0D22_cr(Carried *cr);
+void RasterColours_cr(Carried *cr);
+void RasterPaletteUpload_cr(Carried *cr);
+void SoundPortsSend_cr(Carried *cr);
+void VblankUpdates_cr(Carried *cr);
+void VramDmaFromGsuRam_cr(Carried *cr);
+void WindowBandsAnimate_cr(Carried *cr);
+void WindowHdmaBands_cr(Carried *cr);
+void WindowHdmaNormal_cr(Carried *cr);
+void WindowLayoutStepForScreen_cr(Carried *cr);
+void WindowSlideCheck_cr(Carried *cr);
+void WindowSlideOrOscillate(Carried *cr);
+void WindowSplitAnimate_cr(Carried *cr);
+void WindowSweepIfOn(Carried *cr);
+void WindowsSetupSelect_cr(Carried *cr);
+
+void WaitHBlank_cr(Carried *cr)
 {
     uint8_t v = WaitHBlank();
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_Z);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) & ~P_Z));
+}
+
+void abi_WaitHBlank(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WaitHBlank_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -74,9 +133,22 @@ void WaitScanline(uint8_t bank)
     cyc(182);
 }
 
+void WaitScanline_cr(Carried *cr)
+{
+    WaitScanline(cr->db);
+}
+
 void abi_WaitScanline(void)
 {
-    WaitScanline(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WaitScanline_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -97,60 +169,6 @@ static void put7f(uint32_t addr, uint8_t v)
     reg_wr(addr, v);
     cyc(20);
 }
-
-void RasterIrq(Carried *cr);
-void RasterStage(Carried *cr);
-void TimeMarkEnd(Carried *cr);
-void TimeMarkStart(Carried *cr);
-void WindowTable7F(Carried *cr);
-void WindowTable7FLong(Carried *cr);
-static void copy8(Carried *cr, uint32_t to, uint32_t from);
-static void frame_counts(Carried *cr, uint32_t b);
-static void hblank_inline(Carried *cr);
-static void inc8(Carried *cr, uint32_t addr);
-static void irq_ack(Carried *cr);
-static void ldx8(Carried *cr, uint8_t v);
-static void put8(Carried *cr, uint32_t addr, uint8_t v);
-static void split_bg2(Carried *cr, uint8_t v, uint8_t ylo, uint8_t yhi_pos, uint8_t yneg, uint8_t xlo);
-static uint16_t time_stamp(Carried *cr);
-static void window_colours(Carried *cr, uint32_t b, uint16_t first);
-static void w_AnimTilesQueueNext(Carried *cr);
-static void w_FrameCountAndPortsEnd(Carried *cr);
-static void w_FrameSoundAndJoypads(Carried *cr);
-static void w_GradientPointersToBank7F(Carried *cr);
-static void w_HudDrawTime(Carried *cr);
-static void w_JoypadAccumulate(Carried *cr);
-static void w_JoypadRead(Carried *cr);
-static void w_NmiFrameUpload(Carried *cr);
-static void w_OamDmaAll(Carried *cr);
-static void w_PalettesStep(Carried *cr);
-static void w_RaceClockStep(Carried *cr);
-static void w_RasterColours(Carried *cr);
-static void w_RasterColoursUnless0D22(Carried *cr);
-static void w_RasterPaletteUpload(Carried *cr);
-static void w_SoundPortsSend(Carried *cr);
-static void w_VblankUpdates(Carried *cr);
-static void w_VramDmaFromGsuRam(Carried *cr);
-static void w_WaitHBlank(Carried *cr);
-static void w_WindowBandsAnimate(Carried *cr);
-static void w_WindowHdmaBands(Carried *cr);
-static void w_WindowHdmaNormal(Carried *cr);
-static void w_WindowLayoutStepForScreen(Carried *cr);
-static void w_WindowSlideCheck(Carried *cr);
-static void w_WindowSplitAnimate(Carried *cr);
-void Bg2ScrollFromTable_cr(Carried *cr);
-void BobWindowsRun(Carried *cr);
-void FadeStepFixed_cr(Carried *cr);
-void FadeStep_cr(Carried *cr);
-void FrameInputAndCountEnd_cr(Carried *cr);
-void HudPanelASlide_cr(Carried *cr);
-void HudPanelBSlide_cr(Carried *cr);
-void HudPanelsStep_cr(Carried *cr);
-void OamDirectStage_cr(Carried *cr);
-void PaletteKeptColoursStep_cr(Carried *cr);
-void WindowSlideOrOscillate(Carried *cr);
-void WindowSweepIfOn(Carried *cr);
-void WindowsSetupSelect_cr(Carried *cr);
 
 void WindowTable7F(Carried *cr)
 {
@@ -426,7 +444,7 @@ void RasterStage(Carried *cr)
     switch (rd16(0x7E0000 | (uint16_t)(0xA30D + cr->x))) {
     case 0xA330:
         cyc(46);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         copy8(cr, INIDISP, b | 0x0D61);
         put8(cr, VTIMEL, 0xC8);
         irq_ack(cr);
@@ -435,7 +453,7 @@ void RasterStage(Carried *cr)
         break;
     case 0xA34D:
         cyc(46);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         put8(cr, INIDISP, 0x80);
         put8(cr, VTIMEL, 0x17);
         irq_ack(cr);
@@ -443,13 +461,13 @@ void RasterStage(Carried *cr)
         wr8(b | 0x0D3F, 0x00);
         put8(cr, b | 0x0D52, 0xFF);
         put8(cr, HDMAEN, 0x02);
-        (cyc(46), w_JoypadRead(cr));
-        (cyc(132), w_OamDmaAll(cr));
-        (cyc(46), w_SoundPortsSend(cr));
+        (cyc(46), JoypadRead_cr(cr));
+        (cyc(132), OamDmaAll_cr(cr));
+        (cyc(46), SoundPortsSend_cr(cr));
         break;
     case 0xA375:
         cyc(68);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         put8(cr, TM, 0x13);
         copy8(cr, BG2VOFS, b | 0x0E37);
         copy8(cr, BG2VOFS, b | 0x0E34);
@@ -457,14 +475,14 @@ void RasterStage(Carried *cr)
         irq_ack(cr);
         put8(cr, b | 0x0D3F, 0x12);
         frame_counts(cr, b);
-        (cyc(46), w_JoypadRead(cr));
+        (cyc(46), JoypadRead_cr(cr));
         (cyc(46), FadeStepFixed_cr(cr));
-        (cyc(46), w_SoundPortsSend(cr));
+        (cyc(46), SoundPortsSend_cr(cr));
         break;
     case 0xA3A8: cyc(68); {
         uint8_t c;
 
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         put8(cr, INIDISP, 0x80);
         put8(cr, VTIMEL, 0x37);
         irq_ack(cr);
@@ -473,7 +491,7 @@ void RasterStage(Carried *cr)
         copy8(cr, CGADSUB, b | 0x0D47);
         put8(cr, b | 0x0D3F, 0x10);
         put8(cr, b | 0x0D52, 0xFF);
-        (cyc(62), w_OamDmaAll(cr));
+        (cyc(62), OamDmaAll_cr(cr));
         copy8(cr, BG2VOFS, b | 0x0E33);
         copy8(cr, BG2VOFS, b | 0x0E34);
         cyc(32);
@@ -520,7 +538,7 @@ void RasterStage(Carried *cr)
             cr->y = 0x0400;
             r_lda16_imm(cr, 0x0800);
             fx_op_upload(1);
-            (cyc(80), w_VramDmaFromGsuRam(cr));
+            (cyc(80), VramDmaFromGsuRam_cr(cr));
             fx_op_upload(0);
             r_rep(cr, P_M);
             r_lda16_imm(cr, 0xFFFF);
@@ -547,29 +565,29 @@ void RasterStage(Carried *cr)
         frame_counts(cr, b);
         put8(cr, b | 0x0D52, 0xFF);
         (cyc(46), FadeStep_cr(cr));
-        (cyc(46), w_JoypadAccumulate(cr));
-        (cyc(46), w_SoundPortsSend(cr));
-        (cyc(46), w_RaceClockStep(cr));
+        (cyc(46), JoypadAccumulate_cr(cr));
+        (cyc(46), SoundPortsSend_cr(cr));
+        (cyc(46), RaceClockStep_cr(cr));
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x01D8);
         cyc(10);
         wr16(b | 0x0E60, 0x01D8);
         w_HudDrawTime(cr);
         (cyc(46), HudPanelsStep_cr(cr));
-        (cyc(46), w_PalettesStep(cr));
+        (cyc(46), PalettesStep_cr(cr));
         break;
     case 0xA53D:
         put8(cr, VTIMEL, 0xD0);
         irq_ack(cr);
         put8(cr, b | 0x0D3F, 0x06);
-        (cyc(62), w_WindowHdmaNormal(cr));
-        (cyc(62), w_WindowLayoutStepForScreen(cr));
+        (cyc(62), WindowHdmaNormal_cr(cr));
+        (cyc(62), WindowLayoutStepForScreen_cr(cr));
         (cyc(62), WindowSlideOrOscillate(cr));
         (cyc(62), WindowSweepIfOn(cr));
-        (cyc(62), w_WindowSlideCheck(cr));
+        (cyc(62), WindowSlideCheck_cr(cr));
         (cyc(62), BobWindowsRun(cr));
-        (cyc(62), w_WindowBandsAnimate(cr));
-        (cyc(62), w_WindowSplitAnimate(cr));
+        (cyc(62), WindowBandsAnimate_cr(cr));
+        (cyc(62), WindowSplitAnimate_cr(cr));
         break;
     case 0xA56B:
         cyc(16);
@@ -577,9 +595,9 @@ void RasterStage(Carried *cr)
         hblank_inline(cr);
         cyc(56);
         ppu_wr(INIDISP, (uint8_t)cr->x);
-        (cyc(46), w_NmiFrameUpload(cr));
+        (cyc(46), NmiFrameUpload_cr(cr));
         (cyc(46), OamDirectStage_cr(cr));
-        (cyc(46), w_RasterColoursUnless0D22(cr));
+        (cyc(46), RasterColoursUnless0D22_cr(cr));
         r_sep(cr, P_M);
         b = (uint32_t)cr->db << 16;
         cyc(22);
@@ -595,7 +613,7 @@ void RasterStage(Carried *cr)
     case 0xA5B6:
         cyc(24);
         ldx8(cr, cyc_then(46, rd8(b | 0x0D61)));
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0x6F);
@@ -608,7 +626,7 @@ void RasterStage(Carried *cr)
         frame_counts(cr, b);
         put8(cr, b | 0x0D52, 0xFF);
         (cyc(46), FadeStep_cr(cr));
-        (cyc(46), w_RaceClockStep(cr));
+        (cyc(46), RaceClockStep_cr(cr));
         r_sep(cr, P_M);
         cyc(22);
         put8(cr, TM, 0x13);
@@ -619,7 +637,7 @@ void RasterStage(Carried *cr)
         w_HudDrawTime(cr);
         (cyc(46), HudPanelASlide_cr(cr));
         (cyc(46), HudPanelBSlide_cr(cr));
-        (cyc(46), w_SoundPortsSend(cr));
+        (cyc(46), SoundPortsSend_cr(cr));
         r_sep(cr, P_M | P_X);
         cr->y = 0x01;
         ldx8(cr, 0x02);
@@ -628,7 +646,7 @@ void RasterStage(Carried *cr)
     case 0xA60F:
         cyc(62);
         ldx8(cr, 0x80);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         cyc(38);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0x77);
@@ -651,12 +669,12 @@ void RasterStage(Carried *cr)
         cyc(62);
         ldx8(cr, 0x02);
         Bg2ScrollFromTable_cr(cr);
-        (cyc(46), w_RasterColours(cr));
+        (cyc(46), RasterColours_cr(cr));
         break;
     case 0xA681:
         cyc(24);
         ldx8(cr, cyc_then(46, rd8(b | 0x0D61)));
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0xD7);
@@ -671,23 +689,23 @@ void RasterStage(Carried *cr)
         cr->y = 0x00;
         ldx8(cr, 0x00);
         PaletteKeptColoursStep_cr(cr);
-        (cyc(62), w_WindowSplitAnimate(cr));
+        (cyc(62), WindowSplitAnimate_cr(cr));
         break;
     case 0xA6B0:
         cyc(62);
         ldx8(cr, 0x80);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
-        (cyc(46), w_NmiFrameUpload(cr));
-        (cyc(62), w_OamDmaAll(cr));
-        (cyc(62), w_WindowLayoutStepForScreen(cr));
-        (cyc(46), w_RasterPaletteUpload(cr));
-        (cyc(46), w_JoypadAccumulate(cr));
-        (cyc(62), w_WindowHdmaBands(cr));
-        (cyc(62), w_WindowLayoutStepForScreen(cr));
+        (cyc(46), NmiFrameUpload_cr(cr));
+        (cyc(62), OamDmaAll_cr(cr));
+        (cyc(62), WindowLayoutStepForScreen_cr(cr));
+        (cyc(46), RasterPaletteUpload_cr(cr));
+        (cyc(46), JoypadAccumulate_cr(cr));
+        (cyc(62), WindowHdmaBands_cr(cr));
+        (cyc(62), WindowLayoutStepForScreen_cr(cr));
         (cyc(62), BobWindowsRun(cr));
-        (cyc(62), w_WindowBandsAnimate(cr));
+        (cyc(62), WindowBandsAnimate_cr(cr));
         r_sep(cr, P_M | P_X);
         b = (uint32_t)cr->db << 16;
         cyc(24);
@@ -723,11 +741,11 @@ void RasterStage(Carried *cr)
         break;
     case 0xA763:
         cyc(46);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         put8(cr, INIDISP, 0x80);
-        (cyc(62), w_VblankUpdates(cr));
-        (cyc(46), w_FrameSoundAndJoypads(cr));
-        (cyc(62), w_FrameCountAndPortsEnd(cr));
+        (cyc(62), VblankUpdates_cr(cr));
+        (cyc(46), FrameSoundAndJoypads(cr));
+        (cyc(62), FrameCountAndPortsEnd_cr(cr));
         r_sep(cr, P_M);
         cyc(22);
         put8(cr, VTIMEL, 0xE0);
@@ -735,11 +753,11 @@ void RasterStage(Carried *cr)
         break;
     case 0xA781:
         cyc(46);
-        w_WaitHBlank(cr);
+        WaitHBlank_cr(cr);
         put8(cr, INIDISP, 0x80);
-        (cyc(62), w_AnimTilesQueueNext(cr));
-        (cyc(62), w_VblankUpdates(cr));
-        (cyc(46), w_FrameSoundAndJoypads(cr));
+        (cyc(62), AnimTilesQueueNext_cr(cr));
+        (cyc(62), VblankUpdates_cr(cr));
+        (cyc(46), FrameSoundAndJoypads(cr));
         (cyc(62), FrameInputAndCountEnd_cr(cr));
         r_sep(cr, P_M);
         cyc(22);
@@ -975,50 +993,6 @@ void abi_TimeMarkEnd(void)
     cpu.db = r.db;
 }
 
-/* AnimTilesQueueNext as its adapter leaves the registers. */
-static void w_AnimTilesQueueNext(Carried *cr)
-{
-    uint16_t a;
-    uint8_t f = AnimTilesQueueNext(cr->db, &a);
-
-    cr->a = (uint16_t)((a & 0xFF00) | f);
-}
-
-/* FrameCountAndPortsEnd as its adapter leaves the registers. */
-static void w_FrameCountAndPortsEnd(Carried *cr)
-{
-    uint16_t high;
-    int checked;
-    uint8_t lum = FrameCountAndPortsEnd(cr->db, &high, &checked);
-
-    cr->a = (uint16_t)(high | lum);
-    if (checked) {
-        cr->x = 0x0001;
-        cr->y = 0x00FF;
-    }
-    cyc(44);
-    set_p(cr, (uint8_t)(nz8(cr->p, lum) | P_M));
-}
-
-/* FrameSoundAndJoypads, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_FrameSoundAndJoypads(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_FrameSoundAndJoypads();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* GradientPointersToBank7F as its adapter leaves the registers. */
 static void w_GradientPointersToBank7F(Carried *cr)
 {
@@ -1036,237 +1010,4 @@ static void w_HudDrawTime(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     if (x_set)
         cr->x = (cr->p & P_X) ? (uint8_t)x : x;
-}
-
-/* JoypadAccumulate as its adapter leaves the registers. */
-static void w_JoypadAccumulate(Carried *cr)
-{
-    cr->a = JoypadAccumulate();
-}
-
-/* JoypadRead as its adapter leaves the registers. */
-static void w_JoypadRead(Carried *cr)
-{
-    cr->a = JoypadRead();
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
-/* NmiFrameUpload, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_NmiFrameUpload(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_NmiFrameUpload();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* OamDmaAll as its adapter leaves the registers. */
-static void w_OamDmaAll(Carried *cr)
-{
-    OamDmaAll();
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->x = (cr->p & P_X) ? (cyc(0), 0x00) : 0x0400;
-    cr->y = (cr->p & P_X) ? 0x20 : 0x0220;
-}
-
-/* PalettesStep as its adapter leaves the registers. */
-static void w_PalettesStep(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-    uint16_t a0 = cr->a, x;
-    int ran;
-    uint16_t a = PalettesStep(cr->db, &ran, &x);
-
-    if (ran) {
-        cr->a = a;
-        cr->x = x;
-        cr->y = 0x0000;
-    } else {
-        cr->a = (uint16_t)(a0 & 0xFF00);
-    }
-    set_p(cr, p0);
-    if (p0 & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
-}
-
-/* RaceClockStep as its adapter leaves the registers. */
-static void w_RaceClockStep(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-
-    cr->a = RaceClockStep(cr->db, cr->a, p0);
-    set_p(cr, p0);
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
-/* RasterColours as its adapter leaves the registers. */
-static void w_RasterColours(Carried *cr)
-{
-    uint8_t v = RasterColours();
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M | P_X));
-    cyc(18);
-}
-
-/* RasterColoursUnless0D22 as its adapter leaves the registers. */
-static void w_RasterColoursUnless0D22(Carried *cr)
-{
-    int ran;
-    uint8_t v = RasterColoursUnless0D22(cr->db, &ran);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    if (ran)
-        cr->x = 0;
-    cyc(70);
-}
-
-/* RasterPaletteUpload as its adapter leaves the registers. */
-static void w_RasterPaletteUpload(Carried *cr)
-{
-    int animating;
-    uint8_t v = RasterPaletteUpload(&animating);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
-    if (animating) {
-        cr->x = 0xB0;
-        cr->y = 0x20;
-        set_p(cr, (uint8_t)(cr->p | (P_X)));
-    }
-    cyc(18);
-}
-
-/* SoundPortsSend as its adapter leaves the registers. */
-static void w_SoundPortsSend(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-    SoundPortsEnd end = SoundPortsSend(cr->db, (uint8_t)cr->x);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | end.a);
-    cr->x = end.x;
-    cr->y &= 0x00FF;
-    set_p(cr, p0);
-}
-
-/* VblankUpdates, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_VblankUpdates(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_VblankUpdates();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* VramDmaFromGsuRam as its adapter leaves the registers. */
-static void w_VramDmaFromGsuRam(Carried *cr)
-{
-    uint8_t mode = VramDmaFromGsuRam(cr->a, cr->x, cr->y);
-
-    cr->a = (uint16_t)(0x1800 | mode);
-    set_p(cr, (uint8_t)(nz8(cr->p, mode) | P_M));
-}
-
-/* WaitHBlank as its adapter leaves the registers. */
-static void w_WaitHBlank(Carried *cr)
-{
-    uint8_t v = WaitHBlank();
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    set_p(cr, (uint8_t)(nz8(cr->p, v) & ~P_Z));
-}
-
-/* WindowBandsAnimate as its adapter leaves the registers. */
-static void w_WindowBandsAnimate(Carried *cr)
-{
-    WindowRegs r = {cr->a, cr->x, cr->y};
-
-    r = WindowBandsAnimate(r, cr->p);
-    cr->a = r.a;
-    cr->x = r.x;
-    cr->y = r.y;
-}
-
-/* WindowHdmaBands as its adapter leaves the registers. */
-static void w_WindowHdmaBands(Carried *cr)
-{
-    uint8_t last;
-
-    if (WindowHdmaBands(&last))
-        cr->a = 0xF857;
-    else
-        cr->a = (uint16_t)((cr->a & 0xFF00) | last);
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
-/* WindowHdmaNormal as its adapter leaves the registers. */
-static void w_WindowHdmaNormal(Carried *cr)
-{
-    uint8_t last;
-
-    if (WindowHdmaNormal(&last))
-        cr->a = 0xF857;
-    else
-        cr->a = (uint16_t)((cr->a & 0xFF00) | last);
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
-/* WindowLayoutStepForScreen as its adapter leaves the registers. */
-static void w_WindowLayoutStepForScreen(Carried *cr)
-{
-    uint16_t x = cr->x, y;
-
-    cr->a = WindowLayoutStepForScreen(cr->a, &x, &y);
-    cr->x = x;
-    cr->y = y;
-}
-
-/* WindowSlideCheck as its adapter leaves the registers. */
-static void w_WindowSlideCheck(Carried *cr)
-{
-    WindowRegs r = {cr->a, cr->x, cr->y};
-
-    r = WindowSlideCheck(r, cr->p, cr->d);
-    cr->a = r.a;
-    cr->x = r.x;
-    cr->y = r.y;
-}
-
-/* WindowSplitAnimate as its adapter leaves the registers. */
-static void w_WindowSplitAnimate(Carried *cr)
-{
-    WindowRegs r = {cr->a, cr->x, cr->y};
-
-    r = WindowSplitAnimate(r, cr->p);
-    cr->a = r.a;
-    cr->x = r.x;
-    cr->y = r.y;
 }

@@ -8,6 +8,8 @@
  */
 #include "machine.h"
 #include "object_calls.h"
+#include "carried.h"
+
 
 /* Go on at the long address at +addr_at (bank at +bank_at) of object obj
    in bank `db`: returns it (bank << 16 | address) for the caller to go on
@@ -32,14 +34,25 @@ static uint32_t continue_at(uint8_t db, uint16_t obj, uint16_t addr_at, uint16_t
     return (uint32_t)bank << 16 | addr;
 }
 
+void ObjectContinue1A_cr(Carried *cr);
+void ObjectContinue1D_cr(Carried *cr);
+void ObjectSet39To0Continue_cr(Carried *cr);
+void ObjectSet39To1Continue_cr(Carried *cr);
+void ObjectSet39To2Continue_cr(Carried *cr);
+void ObjectSet39To3Continue_cr(Carried *cr);
+void ObjectSet39To4Continue_cr(Carried *cr);
+void ObjectSet39To5Continue_cr(Carried *cr);
+void ObjectStep39Continue_cr(Carried *cr);
+static void continue_regs(Carried *cr, uint32_t target, uint16_t a);
+
 /* The register exit of the commands above: A as given, M 8-bit, N and Z
    from A (16-bit); then on to `target` in the command's own frame. */
-static void continue_regs(uint32_t target, uint16_t a)
+static void continue_regs(Carried *cr, uint32_t target, uint16_t a)
 {
-    cpu.a = a;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
+    cr->a = a;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
     if (target)
-        jump_routine(target);
+        carried_jump(cr, target);
 }
 
 /*
@@ -58,12 +71,25 @@ uint32_t ObjectContinue1A(uint8_t bank, uint16_t obj, uint16_t *a)
     return continue_at(bank, obj, 0x201A, 0x201C, a);
 }
 
-void abi_ObjectContinue1A(void)
+void ObjectContinue1A_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectContinue1A(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectContinue1A(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectContinue1A(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectContinue1A_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -78,12 +104,25 @@ uint32_t ObjectContinue1D(uint8_t bank, uint16_t obj, uint16_t *a)
     return continue_at(bank, obj, 0x201D, 0x201F, a);
 }
 
-void abi_ObjectContinue1D(void)
+void ObjectContinue1D_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectContinue1D(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectContinue1D(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectContinue1D(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectContinue1D_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -124,12 +163,25 @@ uint32_t ObjectStep39Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, (uint8_t)(v + 1), a);
 }
 
-void abi_ObjectStep39Continue(void)
+void ObjectStep39Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectStep39Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectStep39Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectStep39Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStep39Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -144,12 +196,25 @@ uint32_t ObjectSet39To0Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, 0x00, a);
 }
 
-void abi_ObjectSet39To0Continue(void)
+void ObjectSet39To0Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectSet39To0Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectSet39To0Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectSet39To0Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSet39To0Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -164,12 +229,25 @@ uint32_t ObjectSet39To1Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, 0x01, a);
 }
 
-void abi_ObjectSet39To1Continue(void)
+void ObjectSet39To1Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectSet39To1Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectSet39To1Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectSet39To1Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSet39To1Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -184,12 +262,25 @@ uint32_t ObjectSet39To2Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, 0x02, a);
 }
 
-void abi_ObjectSet39To2Continue(void)
+void ObjectSet39To2Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectSet39To2Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectSet39To2Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectSet39To2Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSet39To2Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -204,12 +295,25 @@ uint32_t ObjectSet39To3Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, 0x03, a);
 }
 
-void abi_ObjectSet39To3Continue(void)
+void ObjectSet39To3Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectSet39To3Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectSet39To3Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectSet39To3Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSet39To3Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -224,12 +328,25 @@ uint32_t ObjectSet39To4Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, 0x04, a);
 }
 
-void abi_ObjectSet39To4Continue(void)
+void ObjectSet39To4Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectSet39To4Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectSet39To4Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
+}
+
+void abi_ObjectSet39To4Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSet39To4Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -244,10 +361,24 @@ uint32_t ObjectSet39To5Continue(uint8_t bank, uint16_t obj, uint16_t *a)
     return set_39(bank, obj, 0x05, a);
 }
 
-void abi_ObjectSet39To5Continue(void)
+void ObjectSet39To5Continue_cr(Carried *cr)
 {
     uint16_t a;
-    uint32_t target = ObjectSet39To5Continue(cpu.db, cpu.x, &a);
+    uint32_t target = ObjectSet39To5Continue(cr->db, cr->x, &a);
 
-    continue_regs(target, a);
+    continue_regs(cr, target, a);
 }
+
+void abi_ObjectSet39To5Continue(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSet39To5Continue_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

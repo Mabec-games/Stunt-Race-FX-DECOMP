@@ -14,6 +14,8 @@
 #include "wram.h"
 #include "cpu_ops.h"
 #include "video_calls.h"
+#include "carried.h"
+
 
 uint8_t TilemapRowsTo5C00(uint8_t bank);
 
@@ -51,11 +53,45 @@ void VramDmaFromBank7F(uint16_t size, uint16_t src, uint16_t vram)
     cyc(42);
 }
 
+void AnimTilesQueueNext_cr(Carried *cr);
+void CgramDma_cr(Carried *cr);
+void CgramDmaAll_cr(Carried *cr);
+void CgramUploadAll_cr(Carried *cr);
+void CoursePictureToVram_cr(Carried *cr);
+void DmaFromDescriptor_cr(Carried *cr);
+void NmiFrameUpload_cr(Carried *cr);
+void NmiFrameUploadRace_cr(Carried *cr);
+void NmiFrameUploadSprites_cr(Carried *cr);
+void OamDma_cr(Carried *cr);
+void OamDmaAll_cr(Carried *cr);
+void VramClearWords_cr(Carried *cr);
+void VramDmaFromBank7F_cr(Carried *cr);
+void VramDmaFromGsuRam_cr(Carried *cr);
+void VramDmaRowsFromGsuRam_cr(Carried *cr);
+void VramDmaWideRowsFromGsuRam_cr(Carried *cr);
+void VramRowsCopyUnused_cr(Carried *cr);
+void VramUploadGsuBuffer_cr(Carried *cr);
+void VramWriteRowFromGsuRam_cr(Carried *cr);
+static void upload_exit(Carried *cr);
+
+void VramDmaFromBank7F_cr(Carried *cr)
+{
+    VramDmaFromBank7F(cr->a, cr->x, cr->y);
+    cr->a = 0x1801;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
 void abi_VramDmaFromBank7F(void)
 {
-    VramDmaFromBank7F(cpu.a, cpu.x, cpu.y);
-    cpu.a = 0x1801;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramDmaFromBank7F_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -90,12 +126,25 @@ uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram)
     return mode;
 }
 
+void VramDmaFromGsuRam_cr(Carried *cr)
+{
+    uint8_t mode = VramDmaFromGsuRam(cr->a, cr->x, cr->y);
+
+    cr->a = (uint16_t)(0x1800 | mode);
+    set_p(cr, (uint8_t)(nz8(cr->p, mode) | P_M));
+}
+
 void abi_VramDmaFromGsuRam(void)
 {
-    uint8_t mode = VramDmaFromGsuRam(cpu.a, cpu.x, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x1800 | mode);
-    cpu.p = (uint8_t)(nz8(cpu.p, mode) | P_M);
+    VramDmaFromGsuRam_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -146,22 +195,35 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     return mode;
 }
 
-void abi_VramDmaRowsFromGsuRam(void)
+void VramDmaRowsFromGsuRam_cr(Carried *cr)
 {
-    uint8_t rows = (uint8_t)cpu.y;
-    uint16_t last = (uint16_t)(cpu.a + 0x0200 * (uint8_t)(rows - 2));
-    uint16_t mode = VramDmaRowsFromGsuRam(cpu.a, cpu.x, rows);
+    uint8_t rows = (uint8_t)cr->y;
+    uint16_t last = (uint16_t)(cr->a + 0x0200 * (uint8_t)(rows - 2));
+    uint16_t mode = VramDmaRowsFromGsuRam(cr->a, cr->x, rows);
 
     if (rows != 1) {
         uint32_t sum = (uint32_t)last + 0x0200;
-        cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
-                          | ((~(last ^ 0x0200) & (last ^ sum) & 0x8000) ? P_V : 0));
+        set_p(cr, (uint8_t)((cr->p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
+                          | ((~(last ^ 0x0200) & (last ^ sum) & 0x8000) ? P_V : 0)));
     }
-    cpu.a = mode;
-    cpu.x = 0x01;
-    cpu.y = 0;
-    cpu.p = (uint8_t)(nz16(cpu.p, mode) | P_X);
+    cr->a = mode;
+    cr->x = 0x01;
+    cr->y = 0;
+    set_p(cr, (uint8_t)(nz16(cr->p, mode) | P_X));
     cyc(42);
+}
+
+void abi_VramDmaRowsFromGsuRam(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramDmaRowsFromGsuRam_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -191,12 +253,25 @@ void OamDma(uint16_t src, uint16_t size)
     cyc(42);
 }
 
+void OamDma_cr(Carried *cr)
+{
+    OamDma(cr->x, cr->y);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0x0400;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z))));
+}
+
 void abi_OamDma(void)
 {
-    OamDma(cpu.x, cpu.y);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = 0x0400;
-    cpu.p &= (uint8_t)~(P_N | P_Z);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamDma_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -214,12 +289,25 @@ void OamDmaAll(void)
     cyc(72);
 }
 
-void abi_OamDmaAll(void)
+void OamDmaAll_cr(Carried *cr)
 {
     OamDmaAll();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = (cpu.p & P_X) ? (cyc(0), 0x00) : 0x0400;
-    cpu.y = (cpu.p & P_X) ? 0x20 : 0x0220;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = (cr->p & P_X) ? (cyc(0), 0x00) : 0x0400;
+    cr->y = (cr->p & P_X) ? 0x20 : 0x0220;
+}
+
+void abi_OamDmaAll(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamDmaAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -247,14 +335,27 @@ void CgramDma(uint16_t src, uint8_t colour, uint16_t size)
     mdmaen_wr(MDMAEN, 0x01);
 }
 
+void CgramDma_cr(Carried *cr)
+{
+    CgramDma(cr->a, (uint8_t)cr->x, cr->y);
+    cr->a = 0x2201;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M | P_X));
+    cyc(42);
+}
+
 void abi_CgramDma(void)
 {
-    CgramDma(cpu.a, (uint8_t)cpu.x, cpu.y);
-    cpu.a = 0x2201;
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M | P_X);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CgramDma_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Work RAM $7E:FD65: the full 512-byte palette as the game last built it. */
@@ -274,12 +375,25 @@ void CgramDmaAll(void)
     cyc(114);                           /* RTS, PLP, RTL */
 }
 
-void abi_CgramDmaAll(void)
+void CgramDmaAll_cr(Carried *cr)
 {
     CgramDmaAll();
-    cpu.a = 0x2201;
-    cpu.x = 0;
-    cpu.y = 0;
+    cr->a = 0x2201;
+    cr->x = 0;
+    cr->y = 0;
+}
+
+void abi_CgramDmaAll(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CgramDmaAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -319,15 +433,28 @@ uint16_t VramWriteRowFromGsuRam(uint16_t vram)
     return src;
 }
 
+void VramWriteRowFromGsuRam_cr(Carried *cr)
+{
+    cr->a = VramWriteRowFromGsuRam(cr->a);
+    cr->x = row_x;
+    cr->y = 0xFFFF;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_VramWriteRowFromGsuRam(void)
 {
-    cpu.a = VramWriteRowFromGsuRam(cpu.a);
-    cpu.x = row_x;
-    cpu.y = 0xFFFF;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramWriteRowFromGsuRam_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -386,14 +513,27 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     return mode;
 }
 
-void abi_VramDmaWideRowsFromGsuRam(void)
+void VramDmaWideRowsFromGsuRam_cr(Carried *cr)
 {
     uint16_t next;
-    uint8_t mode = VramDmaWideRowsFromGsuRam((uint8_t)cpu.a, cpu.x, cpu.y, &next);
+    uint8_t mode = VramDmaWideRowsFromGsuRam((uint8_t)cr->a, cr->x, cr->y, &next);
 
-    cpu.a = (uint16_t)((next & 0xFF00) | mode);
-    cpu.x = 0x00FF;
-    cpu.y = 0x0001;
+    cr->a = (uint16_t)((next & 0xFF00) | mode);
+    cr->x = 0x00FF;
+    cr->y = 0x0001;
+}
+
+void abi_VramDmaWideRowsFromGsuRam(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramDmaWideRowsFromGsuRam_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -435,16 +575,29 @@ int VramUploadGsuBuffer(void)
     return 1;
 }
 
-void abi_VramUploadGsuBuffer(void)
+void VramUploadGsuBuffer_cr(Carried *cr)
 {
     if (VramUploadGsuBuffer()) {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-        cpu.x = upload_src;
-        cpu.p &= (uint8_t)~(P_N | P_Z);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+        cr->x = upload_src;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z))));
     } else {
-        cpu.a &= 0xFF00;
-        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+        cr->a &= 0xFF00;
+        set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
     }
+}
+
+void abi_VramUploadGsuBuffer(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramUploadGsuBuffer_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -470,11 +623,24 @@ void DmaFromDescriptor(uint8_t bank, uint16_t desc)
     cyc(70);
 }
 
+void DmaFromDescriptor_cr(Carried *cr)
+{
+    DmaFromDescriptor(cr->db, cr->a);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->y = 0x00FF;
+}
+
 void abi_DmaFromDescriptor(void)
 {
-    DmaFromDescriptor(cpu.db, cpu.a);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.y = 0x00FF;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DmaFromDescriptor_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -514,18 +680,31 @@ uint16_t CoursePictureToVram(uint8_t bank)
     return cyc_then(72, VramWriteRowFromGsuRam(0x65C0));
 }
 
-void abi_CoursePictureToVram(void)
+void CoursePictureToVram_cr(Carried *cr)
 {
     cyc(98);
-    uint16_t a = CoursePictureToVram(cpu.db);
+    uint16_t a = CoursePictureToVram(cr->db);
 
-    cpu.a = a;
-    cpu.x = (uint16_t)(a - 0x0200 + 0x80);
-    cpu.y = 0xFFFF;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+    cr->a = a;
+    cr->x = (uint16_t)(a - 0x0200 + 0x80);
+    cr->y = 0xFFFF;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_CoursePictureToVram(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CoursePictureToVram_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t VramDmaQueueAddA(uint16_t a);
@@ -570,12 +749,25 @@ uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
     return f;
 }
 
-void abi_AnimTilesQueueNext(void)
+void AnimTilesQueueNext_cr(Carried *cr)
 {
     uint16_t a;
-    uint8_t f = AnimTilesQueueNext(cpu.db, &a);
+    uint8_t f = AnimTilesQueueNext(cr->db, &a);
 
-    cpu.a = (uint16_t)((a & 0xFF00) | f);
+    cr->a = (uint16_t)((a & 0xFF00) | f);
+}
+
+void abi_AnimTilesQueueNext(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    AnimTilesQueueNext_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -596,12 +788,25 @@ void CgramUploadAll(uint8_t bank, int x8)
         cyc(70);
 }
 
+void CgramUploadAll_cr(Carried *cr)
+{
+    CgramUploadAll(cr->db, (cr->p & P_X) != 0);
+    cr->a = 0x2201;
+    cr->x = 0x0000;
+    cr->y = 0x0000;
+}
+
 void abi_CgramUploadAll(void)
 {
-    CgramUploadAll(cpu.db, (cpu.p & P_X) != 0);
-    cpu.a = 0x2201;
-    cpu.x = 0x0000;
-    cpu.y = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CgramUploadAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -957,28 +1162,41 @@ void NmiFrameUpload(uint8_t bank)
 
 /* The stages' registers over the current ones; P restored by the caller's
    PLP keeps X's and Y's low bytes only with 8-bit index registers. */
-static void upload_exit(void)
+static void upload_exit(Carried *cr)
 {
     if (u_set & 8)
-        cpu.a = u_a;
+        cr->a = u_a;
     else if (u_set & 1)
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | (u_a & 0x00FF));
+        cr->a = (uint16_t)((cr->a & 0xFF00) | (u_a & 0x00FF));
     if (u_set & 2)
-        cpu.x = u_x;
+        cr->x = u_x;
     if (u_set & 4)
-        cpu.y = u_y;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->y = u_y;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void NmiFrameUpload_cr(Carried *cr)
+{
+    u_set = 0;
+    u_y = cr->y;
+    NmiFrameUpload(cr->db);
+    upload_exit(cr);
 }
 
 void abi_NmiFrameUpload(void)
 {
-    u_set = 0;
-    u_y = cpu.y;
-    NmiFrameUpload(cpu.db);
-    upload_exit();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    NmiFrameUpload_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* NmiFrameUpload's race screen stage: X = $0D7D, the stage by the table at
@@ -1161,18 +1379,49 @@ int NmiFrameUploadRace(uint8_t bank)
     return p;
 }
 
-void abi_NmiFrameUploadRace(void)
+static int NmiFrameUploadRace_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    int ret_ = NmiFrameUploadRace(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void NmiFrameUploadRace_cr(Carried *cr)
 {
     int p;
 
     u_set = 0;
-    u_y = cpu.y;
-    p = NmiFrameUploadRace(cpu.db);
+    u_y = cr->y;
+    p = NmiFrameUploadRace_c(cr, cr->db);
     if (p >= 0)
-        cpu.p = (uint8_t)p;
+        set_p(cr, (uint8_t)p);
     else
-        cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X)), race_x);  /* REP #$30, LDX: CgramUploadAll's PLP gives it back */
-    upload_exit();
+        set_p(cr, nz16((uint8_t)(cr->p & ~(P_M | P_X)), race_x));  /* REP #$30, LDX: CgramUploadAll's PLP gives it back */
+    upload_exit(cr);
+}
+
+void abi_NmiFrameUploadRace(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    NmiFrameUploadRace_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1203,11 +1452,24 @@ uint16_t VramRowsCopyUnused(uint8_t bank, uint16_t *x, uint16_t n)
     return a;
 }
 
+void VramRowsCopyUnused_cr(Carried *cr)
+{
+    cr->a = VramRowsCopyUnused(cr->db, &cr->x, cr->y);
+    cr->y = 0x0000;
+    set_p(cr, nz16(cr->p, 0x0000));
+}
+
 void abi_VramRowsCopyUnused(void)
 {
-    cpu.a = VramRowsCopyUnused(cpu.db, &cpu.x, cpu.y);
-    cpu.y = 0x0000;
-    cpu.p = nz16(cpu.p, 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramRowsCopyUnused_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1232,12 +1494,43 @@ uint8_t NmiFrameUploadSprites(uint8_t bank)
     return p;
 }
 
-void abi_NmiFrameUploadSprites(void)
+static uint8_t NmiFrameUploadSprites_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = NmiFrameUploadSprites(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void NmiFrameUploadSprites_cr(Carried *cr)
 {
     u_set = 0;
-    u_y = cpu.y;
-    cpu.p = NmiFrameUploadSprites(cpu.db);
-    upload_exit();
+    u_y = cr->y;
+    set_p(cr, NmiFrameUploadSprites_c(cr, cr->db));
+    upload_exit(cr);
+}
+
+void abi_NmiFrameUploadSprites(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    NmiFrameUploadSprites_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1268,11 +1561,25 @@ void VramClearWords(uint8_t bank, uint16_t at, uint16_t n)
     cyc(72);
 }
 
+void VramClearWords_cr(Carried *cr)
+{
+    VramClearWords(cr->db, cr->a, cr->x);
+    cr->a = 0x0000;
+    cr->x = 0x0000;
+    cr->y = 0x0080;
+    set_p(cr, nz16(cr->p, 0x0000));
+}
+
 void abi_VramClearWords(void)
 {
-    VramClearWords(cpu.db, cpu.a, cpu.x);
-    cpu.a = 0x0000;
-    cpu.x = 0x0000;
-    cpu.y = 0x0080;
-    cpu.p = nz16(cpu.p, 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramClearWords_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

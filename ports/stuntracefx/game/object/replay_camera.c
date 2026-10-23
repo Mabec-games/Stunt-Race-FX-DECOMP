@@ -15,12 +15,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-#include "gsu_calls.h"
 int ObjectPathStart(uint8_t bank, uint16_t obj, uint16_t path, uint16_t *a, uint16_t *y, uint8_t *p);
-uint16_t ObjectSyncAngles(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
-uint16_t ObjectSyncToRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
-uint16_t ObjectVelocityFromRecordOf(uint8_t bank, uint16_t obj, uint16_t from, uint8_t *p);
-uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y);
 
 void abi_CameraFollowLink(void);
 void abi_CameraPointFromTable(void);
@@ -130,14 +125,7 @@ static void tail(Carried *cr);
 static void track_half_frame(Carried *cr);
 static void view(Carried *cr, uint8_t v);
 static void zoom_frame(Carried *cr, uint16_t to, uint16_t (*fn)(uint16_t, int *));
-static void w_GsuTableEntryNext(Carried *cr);
-static void w_GsuTableEntryTo1F4C(Carried *cr);
 static void w_ObjectPathStart(Carried *cr);
-static void w_ObjectSyncAngles(Carried *cr);
-static void w_ObjectSyncToRecord(Carried *cr);
-static void w_ObjectVelocityFromRecordOf(Carried *cr);
-static void w_RecordContactSummary(Carried *cr);
-static void w_ScaleThreeQuarters(Carried *cr);
 void CameraApproachTarget(Carried *cr);
 void CameraDirectorSkip2(Carried *cr);
 void CameraDirectorTable(Carried *cr);
@@ -145,9 +133,16 @@ void CameraFollowLink(Carried *cr);
 void CameraFollowStep_cr(Carried *cr);
 void CameraPointFromTable(Carried *cr);
 void GsuRecordNewCamera_cr(Carried *cr);
+void GsuTableEntryNext_cr(Carried *cr);
+void GsuTableEntryTo1F4C_cr(Carried *cr);
 void ObjectFaceTied_cr(Carried *cr);
 void ObjectGsu80BCThen81E3_cr(Carried *cr);
 void ObjectGsu81E3_cr(Carried *cr);
+void ObjectSyncAngles_cr(Carried *cr);
+void ObjectSyncToRecord_cr(Carried *cr);
+void ObjectVelocityFromRecordOf_cr(Carried *cr);
+void RecordContactSummary_cr(Carried *cr);
+void ScaleThreeQuarters_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 
 static uint32_t db(Carried *cr)
@@ -450,7 +445,7 @@ static void overhead_frame(Carried *cr)
     r_lda16(cr, cyc_then(58, F(0x200C, cr->y)));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     cr->a = alu_sbc16(cr->a, rd16(cyc_then(38, db(cr) | 0x1F4C)), &cr->p);
-    (cyc(56), w_ScaleThreeQuarters(cr));       /* JSL, less the SBC's 6 */
+    (cyc(56), ScaleThreeQuarters_cr(cr));       /* JSL, less the SBC's 6 */
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cr->a = alu_adc16(cr->a, rd16(cyc_then(82, db(cr) | 0x1F4C)), &cr->p);
     cyc(22);
@@ -458,7 +453,7 @@ static void overhead_frame(Carried *cr)
     r_lda16(cr, cyc_then(30, F(0x2010, cr->y)));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     cr->a = alu_sbc16(cr->a, rd16(cyc_then(38, db(cr) | 0x1F50)), &cr->p);
-    (cyc(56), w_ScaleThreeQuarters(cr));       /* JSL, less the SBC's 6 */
+    (cyc(56), ScaleThreeQuarters_cr(cr));       /* JSL, less the SBC's 6 */
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cr->a = alu_adc16(cr->a, rd16(cyc_then(82, db(cr) | 0x1F50)), &cr->p);
     cyc(22);
@@ -790,7 +785,7 @@ static void drift_shot(Carried *cr, uint16_t f, uint8_t n, int flat)
     mode(cr, 0x0003);
     st8i(cr, F(0x2048, cr->x), cyc_then(28, n));
     car(cr);
-    w_ObjectVelocityFromRecordOf(cr);
+    ObjectVelocityFromRecordOf_cr(cr);
     if (flat)
         st16i(cr, F(0x2030, cr->x), 0x0000);
 }
@@ -1000,8 +995,8 @@ static void fixed_shot(Carried *cr, uint16_t f, int n, uint16_t dx, uint16_t dz)
     set_p(cr, nz16(cr->p, sx));
     cyc(36);
     while (n--)
-        { cyc(62); w_GsuTableEntryNext(cr); }
-    (cyc(62), w_GsuTableEntryTo1F4C(cr));
+        { cyc(62); GsuTableEntryNext_cr(cr); }
+    (cyc(62), GsuTableEntryTo1F4C_cr(cr));
     link(cr);
     r_lda16(cr, cyc_then(24, db(cr) | 0x1F4C));
     if (dx)
@@ -1551,13 +1546,13 @@ static void follower_frame(Carried *cr)
     set_p(cr, nz16(cr->p, cr->x));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     st8i(cr, (cyc(36), db(cr)) | 0x1F41, 0xFF);
-    (cyc(62), w_ObjectSyncAngles(cr));
+    (cyc(62), ObjectSyncAngles_cr(cr));
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     cyc(16);                            /* AND #$01 */
     if ((uint8_t)cr->a) {
         cyc(16);                        /* BEQ not taken */
-        (cyc(62), w_RecordContactSummary(cr));
+        (cyc(62), RecordContactSummary_cr(cr));
         cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x18));
         set_p(cr, nz8(cr->p, (uint8_t)cr->a));
         if ((uint8_t)cr->a) {
@@ -1598,7 +1593,7 @@ void CameraFollowCar(Carried *cr)
     handler(cr, cr->x, 0x95C7);
     (cyc(62), GsuRecordNewCamera_cr(cr));
     follow_step(cr);
-    (cyc(148), w_ObjectSyncToRecord(cr));
+    (cyc(148), ObjectSyncToRecord_cr(cr));
     cyc(44); /* RTL */
 }
 
@@ -1758,8 +1753,8 @@ void CameraTrackHalf(Carried *cr)
     handler(cr, cr->x, 0x9825);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(52, F(0x2029, cr->x)));
-    (cyc(62), w_GsuTableEntryNext(cr));
-    (cyc(62), w_GsuTableEntryTo1F4C(cr));
+    (cyc(62), GsuTableEntryNext_cr(cr));
+    (cyc(62), GsuTableEntryTo1F4C_cr(cr));
     copy16x(cr, dpa(cr, 0x04), db(cr) | 0x1F4C, 24, 16);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(24, db(cr) | 0x1F4E));
@@ -1767,7 +1762,7 @@ void CameraTrackHalf(Carried *cr)
     r_lda16(cr, cyc_then(24, db(cr) | 0x1F50));
     wr16(db(cr) | 0x05F2, cyc_then(24, cr->a));
     r_lda16(cr, cyc_then(30, F(0x2029, cr->x)));
-    (cyc(62), w_GsuTableEntryTo1F4C(cr));
+    (cyc(62), GsuTableEntryTo1F4C_cr(cr));
     r_lda16(cr, cyc_then(24, db(cr) | 0x1F4E));
     r_add16(cr, 0xFE0C);
     wr16(db(cr) | 0x1F4E, cyc_then(62, cr->a));
@@ -2589,25 +2584,6 @@ void abi_CameraPathLow875B(void)
     cpu.db = r.db;
 }
 
-/* ScaleThreeQuarters, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ScaleThreeQuarters(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ScaleThreeQuarters();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* ObjectPathStart as its adapter leaves the registers. */
 static void w_ObjectPathStart(Carried *cr)
 {
@@ -2615,57 +2591,4 @@ static void w_ObjectPathStart(Carried *cr)
 
     ObjectPathStart(cr->db, cr->x, cr->y, &cr->a, &cr->y, &p);
     set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
-}
-
-/* ObjectVelocityFromRecordOf as its adapter leaves the registers. */
-static void w_ObjectVelocityFromRecordOf(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectVelocityFromRecordOf(cr->db, cr->x, cr->y, &p);
-    set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
-}
-
-/* GsuTableEntryNext as its adapter leaves the registers. */
-static void w_GsuTableEntryNext(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuTableEntryNext(cr->db, cr->a, &p);
-    set_p(cr, nz16(p, cr->x));
-}
-
-/* GsuTableEntryTo1F4C as its adapter leaves the registers. */
-static void w_GsuTableEntryTo1F4C(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuTableEntryTo1F4C(cr->db, cr->a, &p);
-    set_p(cr, nz16(p, cr->x));
-}
-
-/* ObjectSyncAngles as its adapter leaves the registers. */
-static void w_ObjectSyncAngles(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncAngles(cr->db, cr->x, &cr->y, &p);
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* RecordContactSummary as its adapter leaves the registers. */
-static void w_RecordContactSummary(Carried *cr)
-{
-    cr->a = RecordContactSummary(cr->db, cr->x, &cr->y);
-    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
-    cyc(66);
-}
-
-/* ObjectSyncToRecord as its adapter leaves the registers. */
-static void w_ObjectSyncToRecord(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncToRecord(cr->db, cr->x, &cr->y, &p);
-    set_p(cr, (uint8_t)(p | P_M));
 }

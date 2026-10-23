@@ -7,8 +7,6 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-void OamHide36And96(uint8_t bank);
-uint8_t WindowSlideUpSound(uint8_t bank, int x16);
 void abi_RaceEndLeave(void);
 void abi_RaceRestart(void);
 
@@ -54,12 +52,68 @@ uint16_t TilemapRowFromGsuRam(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y
     return tilemap_row(bank, a, x, y, p);
 }
 
+void BackdropAnglesFromView_cr(Carried *cr);
+void BackdropRowsUpdate_cr(Carried *cr);
+void ChampionshipScreenLoop(Carried *cr);
+void ChampionshipScreenStep(Carried *cr);
+void DigitTiles1184_cr(Carried *cr);
+void ScreenFrameAndPictures_cr(Carried *cr);
+void TilemapLevelColumns_cr(Carried *cr);
+void TilemapPaletteCycle_cr(Carried *cr);
+void TilemapPaletteCycle107_cr(Carried *cr);
+void TilemapPaletteCycle187_cr(Carried *cr);
+void TilemapPaletteCycle87_cr(Carried *cr);
+void TilemapPaletteFill_cr(Carried *cr);
+void TilemapRow107Palette5_cr(Carried *cr);
+void TilemapRow187Palette4_cr(Carried *cr);
+void TilemapRow187Palette5_cr(Carried *cr);
+void TilemapRow207Palette4_cr(Carried *cr);
+void TilemapRow287Palette4_cr(Carried *cr);
+void TilemapRow87Palette5_cr(Carried *cr);
+void TilemapRowFrom7FBBD7_cr(Carried *cr);
+void TilemapRowFromFB4E_cr(Carried *cr);
+void TilemapRowFromGsuRam_cr(Carried *cr);
+void TilemapRowToE3D7_cr(Carried *cr);
+void TilemapRowsTo5C00_cr(Carried *cr);
+void TimesKeepAndAdvance_cr(Carried *cr);
+void VramDmaTileFromGsuRam_cr(Carried *cr);
+void VramFillGradient_cr(Carried *cr);
+void VramFrameRows1B0_cr(Carried *cr);
+void VramFrameRows2B0_cr(Carried *cr);
+void VramNoiseTiles_cr(Carried *cr);
+void VramPictureRows1B0_cr(Carried *cr);
+void VramPictureRows2B0_cr(Carried *cr);
+void WindowClosedDigitStep(Carried *cr);
+static void abi_row_mark(Carried *cr, uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits);
+static void bg2_scroll_corner(Carried *cr, uint32_t b);
+static void palette_cycle_exit(Carried *cr, int r);
+static void stage_next(Carried *cr, uint32_t b);
+static void w_RaceRestart(Carried *cr);
+void GsuCF42To3000_cr(Carried *cr);
+void OamHide36And96_cr(Carried *cr);
+void OverlaySpritesStep_cr(Carried *cr);
+void RaceEndLeave(Carried *cr);
+void WindowSlideUpSound_cr(Carried *cr);
+
+void TilemapRowFromGsuRam_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = TilemapRowFromGsuRam(cr->db, cr->a, &cr->x, &cr->y, &p);
+    set_p(cr, (uint8_t)((p & ~P_N) | P_Z));
+}
+
 void abi_TilemapRowFromGsuRam(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = TilemapRowFromGsuRam(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
-    cpu.p = (uint8_t)((p & ~P_N) | P_Z);
+    TilemapRowFromGsuRam_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -108,14 +162,27 @@ uint16_t VramFillGradient(uint16_t start, uint8_t *p)
     return a;
 }
 
+void VramFillGradient_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = VramFillGradient(cr->a, &p);
+    cr->x = 0;
+    cr->y = 0;
+    set_p(cr, (uint8_t)((p & ~P_N) | P_Z));
+}
+
 void abi_VramFillGradient(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = VramFillGradient(cpu.a, &p);
-    cpu.x = 0;
-    cpu.y = 0;
-    cpu.p = (uint8_t)((p & ~P_N) | P_Z);
+    VramFillGradient_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -151,13 +218,26 @@ void VramDmaTileFromGsuRam(uint16_t tile, uint16_t vram, uint8_t *p)
     cyc(64);
 }
 
+void VramDmaTileFromGsuRam_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    VramDmaTileFromGsuRam(cr->a, cr->x, &p);
+    cr->a = 0x0001;
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_M)));
+}
+
 void abi_VramDmaTileFromGsuRam(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    VramDmaTileFromGsuRam(cpu.a, cpu.x, &p);
-    cpu.a = 0x0001;
-    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_M));
+    VramDmaTileFromGsuRam_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -230,10 +310,23 @@ uint8_t VramFrameRows2B0(uint8_t bank, uint8_t p)
     return frame_rows(bank, 0x02B0, p);
 }
 
+void VramFrameRows2B0_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(nz16(VramFrameRows2B0(cr->db, cr->p), cr->a) & ~(P_M | P_X)));
+    cr->x = 0;
+}
+
 void abi_VramFrameRows2B0(void)
 {
-    cpu.p = (uint8_t)(nz16(VramFrameRows2B0(cpu.db, cpu.p), cpu.a) & ~(P_M | P_X));
-    cpu.x = 0;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramFrameRows2B0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -247,10 +340,23 @@ uint8_t VramFrameRows1B0(uint8_t bank, uint8_t p)
     return frame_rows(bank, 0x01B0, p);
 }
 
+void VramFrameRows1B0_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(nz16(VramFrameRows1B0(cr->db, cr->p), cr->a) & ~(P_M | P_X)));
+    cr->x = 0;
+}
+
 void abi_VramFrameRows1B0(void)
 {
-    cpu.p = (uint8_t)(nz16(VramFrameRows1B0(cpu.db, cpu.p), cpu.a) & ~(P_M | P_X));
-    cpu.x = 0;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramFrameRows1B0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -267,10 +373,23 @@ uint8_t VramPictureRows2B0(uint8_t p)
     return picture_rows(0x02B0, p);
 }
 
+void VramPictureRows2B0_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(nz16(VramPictureRows2B0(cr->p), cr->a) & ~(P_M | P_X)));
+    cr->x = 0x0180;
+}
+
 void abi_VramPictureRows2B0(void)
 {
-    cpu.p = (uint8_t)(nz16(VramPictureRows2B0(cpu.p), cpu.a) & ~(P_M | P_X));
-    cpu.x = 0x0180;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramPictureRows2B0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -284,10 +403,23 @@ uint8_t VramPictureRows1B0(uint8_t p)
     return picture_rows(0x01B0, p);
 }
 
+void VramPictureRows1B0_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(nz16(VramPictureRows1B0(cr->p), cr->a) & ~(P_M | P_X)));
+    cr->x = 0x0180;
+}
+
 void abi_VramPictureRows1B0(void)
 {
-    cpu.p = (uint8_t)(nz16(VramPictureRows1B0(cpu.p), cpu.a) & ~(P_M | P_X));
-    cpu.x = 0x0180;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramPictureRows1B0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Step X by $40 as TXA / CLC / ADC #$40 / TAX does; A = the new X. */
@@ -328,12 +460,25 @@ uint16_t TilemapRowFrom7FBBD7(uint16_t *x, uint8_t *p)
     return step_40(x, p);
 }
 
+void TilemapRowFrom7FBBD7_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = TilemapRowFrom7FBBD7(&cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_TilemapRowFrom7FBBD7(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = TilemapRowFrom7FBBD7(&cpu.x, &p);
-    cpu.p = p;
+    TilemapRowFrom7FBBD7_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -356,12 +501,25 @@ uint16_t TilemapRowFromFB4E(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return step_40(x, p);
 }
 
+void TilemapRowFromFB4E_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = TilemapRowFromFB4E(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_TilemapRowFromFB4E(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = TilemapRowFromFB4E(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    TilemapRowFromFB4E_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -389,10 +547,23 @@ void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a, uint8_t entry)
     cyc(100);
 }
 
+void TilemapPaletteFill_cr(Carried *cr)
+{
+    TilemapPaletteFill(&cr->x, &cr->y, &cr->a, 78);
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
 void abi_TilemapPaletteFill(void)
 {
-    TilemapPaletteFill(&cpu.x, &cpu.y, &cpu.a, 78);
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapPaletteFill_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -440,28 +611,6 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     return mode >= 2 ? 2 : 1;
 }
 
-void ChampionshipScreenLoop(Carried *cr);
-void ChampionshipScreenStep(Carried *cr);
-void TilemapRow107Palette5_cr(Carried *cr);
-void TilemapRow187Palette4_cr(Carried *cr);
-void TilemapRow187Palette5_cr(Carried *cr);
-void TilemapRow207Palette4_cr(Carried *cr);
-void TilemapRow287Palette4_cr(Carried *cr);
-void TilemapRow87Palette5_cr(Carried *cr);
-void WindowClosedDigitStep(Carried *cr);
-static void abi_row_mark(Carried *cr, uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits);
-static void bg2_scroll_corner(Carried *cr, uint32_t b);
-static void palette_cycle_exit(Carried *cr, int r);
-static void stage_next(Carried *cr, uint32_t b);
-static void w_DigitTiles1184(Carried *cr);
-static void w_OamHide36And96(Carried *cr);
-static void w_RaceRestart(Carried *cr);
-static void w_TimesKeepAndAdvance(Carried *cr);
-static void w_WindowSlideUpSound(Carried *cr);
-void GsuCF42To3000_cr(Carried *cr);
-void OverlaySpritesStep_cr(Carried *cr);
-void RaceEndLeave(Carried *cr);
-
 /* TilemapPaletteCycle's exit flags from its result. */
 static void palette_cycle_exit(Carried *cr, int r)
 {
@@ -472,22 +621,22 @@ static void palette_cycle_exit(Carried *cr, int r)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
 }
 
-static void palette_cycle_exit_g(int r)
+void TilemapPaletteCycle_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    palette_cycle_exit(&c, r);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    palette_cycle_exit(cr, TilemapPaletteCycle(cr->db, &cr->x, &cr->y, &cr->a));
 }
 
 void abi_TilemapPaletteCycle(void)
 {
-    palette_cycle_exit_g(TilemapPaletteCycle(cpu.db, &cpu.x, &cpu.y, &cpu.a));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapPaletteCycle_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -523,12 +672,25 @@ void ScreenFrameAndPictures(uint8_t bank)
     cyc(70);
 }
 
+void ScreenFrameAndPictures_cr(Carried *cr)
+{
+    ScreenFrameAndPictures(cr->db);
+    cr->a = 0x7E40;
+    cr->x = 0x0180;
+    cr->y = 0x0000;
+}
+
 void abi_ScreenFrameAndPictures(void)
 {
-    ScreenFrameAndPictures(cpu.db);
-    cpu.a = 0x7E40;
-    cpu.x = 0x0180;
-    cpu.y = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ScreenFrameAndPictures_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t RandomWordStep(uint8_t bank);
@@ -566,11 +728,24 @@ uint16_t VramNoiseTiles(uint8_t bank)
     return v;
 }
 
+void VramNoiseTiles_cr(Carried *cr)
+{
+    cr->a = VramNoiseTiles(cr->db);
+    cr->x = 0;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_M | P_X)) | P_Z));
+}
+
 void abi_VramNoiseTiles(void)
 {
-    cpu.a = VramNoiseTiles(cpu.db);
-    cpu.x = 0;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M | P_X)) | P_Z);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramNoiseTiles_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint8_t Bg2ScrollFromTable(uint16_t band);
@@ -617,14 +792,27 @@ uint8_t TilemapRowsTo5C00(uint8_t bank)
     return cyc_then(84, Bg2ScrollFromTable(0));
 }
 
+void TilemapRowsTo5C00_cr(Carried *cr)
+{
+    uint8_t v = TilemapRowsTo5C00(cr->db);
+
+    cr->a = (uint16_t)(0x5E00 | v);
+    cr->x = 0;
+    cr->y = 0;
+    set_p(cr, (uint8_t)(((nz8(cr->p, v) & ~(P_V | P_X)) | P_C | P_M)));
+}
+
 void abi_TilemapRowsTo5C00(void)
 {
-    uint8_t v = TilemapRowsTo5C00(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x5E00 | v);
-    cpu.x = 0;
-    cpu.y = 0;
-    cpu.p = (uint8_t)(((nz8(cpu.p, v) & ~(P_V | P_X)) | P_C | P_M));
+    TilemapRowsTo5C00_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -702,14 +890,27 @@ uint16_t TilemapLevelColumns(void)
     return a;
 }
 
+void TilemapLevelColumns_cr(Carried *cr)
+{
+    cr->a = TilemapLevelColumns();
+    cr->x = cr->a;
+    cr->y = 0x000C;
+    if (cr->p & P_X)
+        cr->x &= 0x00FF;
+    cyc(98);
+}
+
 void abi_TilemapLevelColumns(void)
 {
-    cpu.a = TilemapLevelColumns();
-    cpu.x = cpu.a;
-    cpu.y = 0x000C;
-    if (cpu.p & P_X)
-        cpu.x &= 0x00FF;
-    cyc(98);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapLevelColumns_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -749,10 +950,23 @@ uint16_t TilemapRowToE3D7(uint8_t bank, uint16_t *x, uint16_t *y)
     return v;
 }
 
+void TilemapRowToE3D7_cr(Carried *cr)
+{
+    cr->a = TilemapRowToE3D7(cr->db, &cr->x, &cr->y);
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
 void abi_TilemapRowToE3D7(void)
 {
-    cpu.a = TilemapRowToE3D7(cpu.db, &cpu.x, &cpu.y);
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapRowToE3D7_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t ObjectLinkFlag4000Step(void);
@@ -846,13 +1060,26 @@ uint16_t BackdropRowsUpdate(uint8_t bank, uint16_t *x, uint16_t *y)
     return backdrop_rows_update(bank, x, y);
 }
 
+void BackdropRowsUpdate_cr(Carried *cr)
+{
+    cr->a = BackdropRowsUpdate(cr->db, &cr->x, &cr->y);
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_BackdropRowsUpdate(void)
 {
-    cpu.a = BackdropRowsUpdate(cpu.db, &cpu.x, &cpu.y);
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BackdropRowsUpdate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -893,10 +1120,23 @@ uint16_t BackdropAnglesFromView(uint8_t bank)
     return w;
 }
 
+void BackdropAnglesFromView_cr(Carried *cr)
+{
+    cr->a = BackdropAnglesFromView(cr->db);
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : (cyc(130), nz16(cr->p, cr->y)));
+}
+
 void abi_BackdropAnglesFromView(void)
 {
-    cpu.a = BackdropAnglesFromView(cpu.db);
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : (cyc(130), nz16(cpu.p, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BackdropAnglesFromView_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -918,10 +1158,23 @@ int TilemapPaletteCycle87(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     return r;
 }
 
+void TilemapPaletteCycle87_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle87(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
 void abi_TilemapPaletteCycle87(void)
 {
-    cpu.p &= (uint8_t)~P_X;
-    palette_cycle_exit_g(TilemapPaletteCycle87(cpu.db, &cpu.x, &cpu.y, &cpu.a));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapPaletteCycle87_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -943,10 +1196,23 @@ int TilemapPaletteCycle107(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     return r;
 }
 
+void TilemapPaletteCycle107_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle107(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
 void abi_TilemapPaletteCycle107(void)
 {
-    cpu.p &= (uint8_t)~P_X;
-    palette_cycle_exit_g(TilemapPaletteCycle107(cpu.db, &cpu.x, &cpu.y, &cpu.a));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapPaletteCycle107_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -968,10 +1234,23 @@ int TilemapPaletteCycle187(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     return r;
 }
 
+void TilemapPaletteCycle187_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle187(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
 void abi_TilemapPaletteCycle187(void)
 {
-    cpu.p &= (uint8_t)~P_X;
-    palette_cycle_exit_g(TilemapPaletteCycle187(cpu.db, &cpu.x, &cpu.y, &cpu.a));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapPaletteCycle187_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Fill a row with palette `bits`, then give the entry at `mark` (an
@@ -1228,10 +1507,23 @@ uint16_t DigitTiles1184(void)
     return a;
 }
 
+void DigitTiles1184_cr(Carried *cr)
+{
+    cr->a = DigitTiles1184();
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
+}
+
 void abi_DigitTiles1184(void)
 {
-    cpu.a = DigitTiles1184();
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DigitTiles1184_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1263,11 +1555,24 @@ void TimesKeepAndAdvance(uint8_t bank)
     cyc(42);
 }
 
+void TimesKeepAndAdvance_cr(Carried *cr)
+{
+    TimesKeepAndAdvance(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
 void abi_TimesKeepAndAdvance(void)
 {
-    TimesKeepAndAdvance(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimesKeepAndAdvance_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1406,9 +1711,9 @@ void ChampionshipScreenStep(Carried *cr)
         wr8(b | 0x19DF, 0x00);
         cyc(24);
         wr8(b | 0x10A2, 0x00);
-        (cyc(62), w_WindowSlideUpSound(cr));
+        (cyc(62), WindowSlideUpSound_cr(cr));
         stage_next(cr, b);
-        (cyc(46), w_OamHide36And96(cr));
+        (cyc(46), OamHide36And96_cr(cr));
         break;
     case 0xBA56:
         r_sep(cr, P_M);
@@ -1466,7 +1771,7 @@ void ChampionshipScreenStep(Carried *cr)
         r_plp(cr, p1);
         cr->db = db1;
         set_p(cr, nz8(cr->p, db1));
-        w_DigitTiles1184(cr);
+        DigitTiles1184_cr(cr);
         r_sep(cr, P_M);
         cyc(22);
         stage_next(cr, (uint32_t)cr->db << 16);
@@ -1491,7 +1796,7 @@ void ChampionshipScreenStep(Carried *cr)
         break;
     }
     case 0xD029:
-        w_TimesKeepAndAdvance(cr);
+        TimesKeepAndAdvance_cr(cr);
         return;
     default:
         carried_jump(cr, 0x070000 | t);
@@ -1589,61 +1894,4 @@ static void w_RaceRestart(Carried *cr)
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
-}
-
-/* DigitTiles1184 as its adapter leaves the registers. */
-static void w_DigitTiles1184(Carried *cr)
-{
-    cr->a = DigitTiles1184();
-    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
-}
-
-/* OamHide36And96 as its adapter leaves the registers. */
-static void w_OamHide36And96(Carried *cr)
-{
-    OamHide36And96(cr->db);
-    cr->a &= 0xFF00;
-    cr->x = cr->p & P_X ? 0x00C0 : 0x01C0;  /* the final pull restores X's width */
-    cr->y = 0x0000;
-}
-
-/* TimesKeepAndAdvance as its adapter leaves the registers. */
-static void w_TimesKeepAndAdvance(Carried *cr)
-{
-    TimesKeepAndAdvance(cr->db);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
-    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
-}
-
-/* WindowSlideUpSound as its adapter leaves the registers. */
-static void w_WindowSlideUpSound(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
-}
-
-/* TilemapPaletteCycle on carried registers, as abi_TilemapPaletteCycle leaves them. */
-void TilemapPaletteCycle_cr(Carried *cr)
-{
-    palette_cycle_exit(cr, TilemapPaletteCycle(cr->db, &cr->x, &cr->y, &cr->a));
-}
-
-/* TilemapPaletteCycle87 on carried registers, as abi_TilemapPaletteCycle87 leaves them. */
-void TilemapPaletteCycle87_cr(Carried *cr)
-{
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
-    palette_cycle_exit(cr, TilemapPaletteCycle87(cr->db, &cr->x, &cr->y, &cr->a));
-}
-
-/* TilemapPaletteCycle107 on carried registers, as abi_TilemapPaletteCycle107 leaves them. */
-void TilemapPaletteCycle107_cr(Carried *cr)
-{
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
-    palette_cycle_exit(cr, TilemapPaletteCycle107(cr->db, &cr->x, &cr->y, &cr->a));
-}
-
-/* TilemapPaletteCycle187 on carried registers, as abi_TilemapPaletteCycle187 leaves them. */
-void TilemapPaletteCycle187_cr(Carried *cr)
-{
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
-    palette_cycle_exit(cr, TilemapPaletteCycle187(cr->db, &cr->x, &cr->y, &cr->a));
 }

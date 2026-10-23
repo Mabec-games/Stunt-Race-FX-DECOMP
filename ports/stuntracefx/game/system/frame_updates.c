@@ -68,13 +68,37 @@ void OamDmaIfPending(void)
     oam_flags = oam_dma_if_pending(&oam_ran);
 }
 
-void abi_OamDmaIfPending(void)
+void ByteWritesIfPending_cr(Carried *cr);
+void CgramDmaIfPending_cr(Carried *cr);
+void FrameByteWritePush_cr(Carried *cr);
+void FrameCountAndPortsEnd_cr(Carried *cr);
+void FrameInputAndCountEnd_cr(Carried *cr);
+void OamDmaIfPending_cr(Carried *cr);
+void VramDmaQueueAdd_cr(Carried *cr);
+void VramDmaQueueFlush_cr(Carried *cr);
+void WordListAAppend_cr(Carried *cr);
+void WordListBAppend_cr(Carried *cr);
+
+void OamDmaIfPending_cr(Carried *cr)
 {
     OamDmaIfPending();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_flags);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | oam_flags);
     if (oam_ran)
-        cpu.x = 0;
+        cr->x = 0;
     cyc(70);
+}
+
+void abi_OamDmaIfPending(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamDmaIfPending_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -124,13 +148,26 @@ void CgramDmaIfPending(void)
     cgram_flags = cgram_dma_if_pending(&cgram_ran);
 }
 
-void abi_CgramDmaIfPending(void)
+void CgramDmaIfPending_cr(Carried *cr)
 {
     CgramDmaIfPending();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_flags);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | cgram_flags);
     if (cgram_ran)
-        cpu.y = 0x0200;
+        cr->y = 0x0200;
     cyc(70);
+}
+
+void abi_CgramDmaIfPending(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CgramDmaIfPending_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -196,18 +233,31 @@ void ByteWritesIfPending(uint8_t bank)
     byte_writes_end = byte_writes_if_pending(bank, 0, 0);
 }
 
-void abi_ByteWritesIfPending(void)
+void ByteWritesIfPending_cr(Carried *cr)
 {
     ByteWritesEnd end;
 
-    ByteWritesIfPending(cpu.db);
+    ByteWritesIfPending(cr->db);
     end = byte_writes_end;
-    cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
+    cr->a = (uint16_t)(((end.ran ? end.a : cr->a) & 0xFF00) | end.flags);
     if (end.looped) {
-        cpu.x = end.x;
-        cpu.y = end.y;
+        cr->x = end.x;
+        cr->y = end.y;
     }
     cyc(70);
+}
+
+void abi_ByteWritesIfPending(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ByteWritesIfPending_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -271,8 +321,6 @@ uint16_t VramDmaQueueAddTimed(uint16_t a)
     return a;
 }
 
-void VramDmaQueueAdd_cr(Carried *cr);
-
 void VramDmaQueueAdd_cr(Carried *cr)
 {
     cr->a = VramDmaQueueAddTimed(cr->a);
@@ -320,11 +368,24 @@ uint16_t WordListAAppend(uint16_t value)
     return word_list_append(0x001191, 0x001195, value);
 }
 
+void WordListAAppend_cr(Carried *cr)
+{
+    uint16_t x = WordListAAppend(cr->a);
+
+    cr->x = (cr->p & P_X) ? (uint8_t)x : x;
+}
+
 void abi_WordListAAppend(void)
 {
-    uint16_t x = WordListAAppend(cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    WordListAAppend_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -338,11 +399,24 @@ uint16_t WordListBAppend(uint16_t value)
     return word_list_append(0x001193, 0x0011B5, value);
 }
 
+void WordListBAppend_cr(Carried *cr)
+{
+    uint16_t x = WordListBAppend(cr->a);
+
+    cr->x = (cr->p & P_X) ? (uint8_t)x : x;
+}
+
 void abi_WordListBAppend(void)
 {
-    uint16_t x = WordListBAppend(cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    WordListBAppend_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -416,16 +490,29 @@ void VramDmaQueueFlush(void)
     flush_end = vram_dma_queue_flush();
 }
 
-void abi_VramDmaQueueFlush(void)
+void VramDmaQueueFlush_cr(Carried *cr)
 {
     FlushEnd end;
 
     VramDmaQueueFlush();
     end = flush_end;
-    cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
+    cr->a = (uint16_t)(((end.ran ? end.a : cr->a) & 0xFF00) | end.flags);
     if (end.looped)
-        cpu.x = end.x;
+        cr->x = end.x;
     cyc(70);
+}
+
+void abi_VramDmaQueueFlush(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramDmaQueueFlush_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SystemHalt(void);
@@ -459,9 +546,22 @@ uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
     return x;
 }
 
+void FrameByteWritePush_cr(Carried *cr)
+{
+    cr->x = FrameByteWritePush(cr->db, cr->x, (uint8_t)cr->a);
+}
+
 void abi_FrameByteWritePush(void)
 {
-    cpu.x = FrameByteWritePush(cpu.db, cpu.x, (uint8_t)cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameByteWritePush_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The body; returns the value the abi_ wrapper needs. */
@@ -519,17 +619,6 @@ uint8_t FrameInputAndCountEnd(uint8_t bank)
     return frame_input_and_count_end(bank, &input_hi, &input_x);
 }
 
-void abi_FrameInputAndCountEnd(void)
-{
-    uint8_t v = FrameInputAndCountEnd(cpu.db);
-    uint16_t hi = input_hi, x = input_x;
-
-    cpu.a = (uint16_t)(hi | v);
-    cpu.x = (cpu.p & P_X) ? (cyc(44), (uint8_t)x) : x;
-    cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
-}
-
-/* FrameInputAndCountEnd on carried registers, as abi_FrameInputAndCountEnd leaves them. */
 void FrameInputAndCountEnd_cr(Carried *cr)
 {
     uint8_t v = FrameInputAndCountEnd(cr->db);
@@ -538,6 +627,19 @@ void FrameInputAndCountEnd_cr(Carried *cr)
     cr->a = (uint16_t)(hi | v);
     cr->x = (cr->p & P_X) ? (cyc(44), (uint8_t)x) : x;
     set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
+}
+
+void abi_FrameInputAndCountEnd(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameInputAndCountEnd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 int JoypadPortCheck(uint8_t bank, uint8_t port);
@@ -589,18 +691,31 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     return lum;
 }
 
-void abi_FrameCountAndPortsEnd(void)
+void FrameCountAndPortsEnd_cr(Carried *cr)
 {
     uint16_t high;
     int checked;
-    uint8_t lum = FrameCountAndPortsEnd(cpu.db, &high, &checked);
+    uint8_t lum = FrameCountAndPortsEnd(cr->db, &high, &checked);
 
-    cpu.a = (uint16_t)(high | lum);
+    cr->a = (uint16_t)(high | lum);
     if (checked) {
-        cpu.x = 0x0001;
-        cpu.y = 0x00FF;
+        cr->x = 0x0001;
+        cr->y = 0x00FF;
     }
     cyc(44);
-    cpu.p = (uint8_t)(nz8(cpu.p, lum) | P_M);
+    set_p(cr, (uint8_t)(nz8(cr->p, lum) | P_M));
+}
+
+void abi_FrameCountAndPortsEnd(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameCountAndPortsEnd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

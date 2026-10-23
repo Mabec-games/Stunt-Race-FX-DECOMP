@@ -6,6 +6,8 @@
  * returns it with carry set (it was already there).
  */
 #include "machine.h"
+#include "carried.h"
+
 
 #define APPROACH_VALUE 0x00003Eu
 
@@ -100,9 +102,38 @@ uint8_t ApproachExitP(uint8_t p, uint16_t v, int wide, int moved)
     return p;
 }
 
-static void approach_exit(uint16_t v, int wide, int moved)
+void ApproachEighthMin8_cr(Carried *cr);
+void ApproachEighthMin8Byte_cr(Carried *cr);
+void ApproachHalfMin2_cr(Carried *cr);
+void ApproachHalfMin2Byte_cr(Carried *cr);
+void ApproachOneTwentyEighthMin128_cr(Carried *cr);
+void ApproachOneTwentyEighthMin128Byte_cr(Carried *cr);
+void ApproachQuarterMin4_cr(Carried *cr);
+void ApproachQuarterMin4Byte_cr(Carried *cr);
+void ApproachSixteenthMin16_cr(Carried *cr);
+void ApproachSixteenthMin16Byte_cr(Carried *cr);
+void ApproachSixtyFourthMin64_cr(Carried *cr);
+void ApproachSixtyFourthMin64Byte_cr(Carried *cr);
+void ApproachThirtySecondMin32_cr(Carried *cr);
+void ApproachThirtySecondMin32Byte_cr(Carried *cr);
+static void approach_exit(Carried *cr, uint16_t v, int wide, int moved);
+
+static void approach_exit(Carried *cr, uint16_t v, int wide, int moved)
 {
-    cpu.p = ApproachExitP(cpu.p, v, wide, moved);
+    set_p(cr, ApproachExitP(cr->p, v, wide, moved));
+}
+
+static void approach_exit_g(uint16_t v, int wide, int moved)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    approach_exit(&c, v, wide, moved);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 
@@ -114,7 +145,7 @@ void approach_regs(uint16_t (*f)(uint16_t, int *))
     int moved;
 
     cpu.a = f(cpu.a, &moved);
-    approach_exit(cpu.a, 1, moved);
+    approach_exit_g(cpu.a, 1, moved);
 }
 
 void approach_regs_byte(uint8_t (*f)(uint8_t, int *))
@@ -123,7 +154,7 @@ void approach_regs_byte(uint8_t (*f)(uint8_t, int *))
     uint8_t v = f((uint8_t)cpu.a, &moved);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_exit_g(v, 0, moved);
 }
 
 /*
@@ -137,9 +168,22 @@ uint16_t ApproachHalfMin2(uint16_t target, int *moved)
     return approach(target, 1, 2, 1, moved);
 }
 
+void ApproachHalfMin2_cr(Carried *cr)
+{
+    r_approach(cr, ApproachHalfMin2);
+}
+
 void abi_ApproachHalfMin2(void)
 {
-    approach_regs(ApproachHalfMin2);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachHalfMin2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -156,9 +200,22 @@ uint16_t ApproachQuarterMin4(uint16_t target, int *moved)
     return approach(target, 1, 4, 2, moved);
 }
 
+void ApproachQuarterMin4_cr(Carried *cr)
+{
+    r_approach(cr, ApproachQuarterMin4);
+}
+
 void abi_ApproachQuarterMin4(void)
 {
-    approach_regs(ApproachQuarterMin4);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachQuarterMin4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -173,9 +230,22 @@ uint16_t ApproachEighthMin8(uint16_t target, int *moved)
     return approach(target, 1, 8, 3, moved);
 }
 
+void ApproachEighthMin8_cr(Carried *cr)
+{
+    r_approach(cr, ApproachEighthMin8);
+}
+
 void abi_ApproachEighthMin8(void)
 {
-    approach_regs(ApproachEighthMin8);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachEighthMin8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -189,9 +259,22 @@ uint16_t ApproachSixteenthMin16(uint16_t target, int *moved)
     return approach(target, 1, 16, 4, moved);
 }
 
+void ApproachSixteenthMin16_cr(Carried *cr)
+{
+    r_approach(cr, ApproachSixteenthMin16);
+}
+
 void abi_ApproachSixteenthMin16(void)
 {
-    approach_regs(ApproachSixteenthMin16);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachSixteenthMin16_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -205,9 +288,22 @@ uint16_t ApproachThirtySecondMin32(uint16_t target, int *moved)
     return approach(target, 1, 32, 5, moved);
 }
 
+void ApproachThirtySecondMin32_cr(Carried *cr)
+{
+    r_approach(cr, ApproachThirtySecondMin32);
+}
+
 void abi_ApproachThirtySecondMin32(void)
 {
-    approach_regs(ApproachThirtySecondMin32);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachThirtySecondMin32_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -221,9 +317,22 @@ uint16_t ApproachSixtyFourthMin64(uint16_t target, int *moved)
     return approach(target, 1, 64, 6, moved);
 }
 
+void ApproachSixtyFourthMin64_cr(Carried *cr)
+{
+    r_approach(cr, ApproachSixtyFourthMin64);
+}
+
 void abi_ApproachSixtyFourthMin64(void)
 {
-    approach_regs(ApproachSixtyFourthMin64);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachSixtyFourthMin64_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -237,9 +346,22 @@ uint16_t ApproachOneTwentyEighthMin128(uint16_t target, int *moved)
     return approach(target, 1, 128, 7, moved);
 }
 
+void ApproachOneTwentyEighthMin128_cr(Carried *cr)
+{
+    r_approach(cr, ApproachOneTwentyEighthMin128);
+}
+
 void abi_ApproachOneTwentyEighthMin128(void)
 {
-    approach_regs(ApproachOneTwentyEighthMin128);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachOneTwentyEighthMin128_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -253,9 +375,22 @@ uint8_t ApproachHalfMin2Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 2, 1, moved);
 }
 
+void ApproachHalfMin2Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachHalfMin2Byte);
+}
+
 void abi_ApproachHalfMin2Byte(void)
 {
-    approach_regs_byte(ApproachHalfMin2Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachHalfMin2Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -269,9 +404,22 @@ uint8_t ApproachEighthMin8Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 8, 3, moved);
 }
 
+void ApproachEighthMin8Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachEighthMin8Byte);
+}
+
 void abi_ApproachEighthMin8Byte(void)
 {
-    approach_regs_byte(ApproachEighthMin8Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachEighthMin8Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -286,9 +434,22 @@ uint8_t ApproachQuarterMin4Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 4, 2, moved);
 }
 
+void ApproachQuarterMin4Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachQuarterMin4Byte);
+}
+
 void abi_ApproachQuarterMin4Byte(void)
 {
-    approach_regs_byte(ApproachQuarterMin4Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachQuarterMin4Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -305,9 +466,22 @@ uint8_t ApproachSixteenthMin16Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 16, 4, moved);
 }
 
+void ApproachSixteenthMin16Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachSixteenthMin16Byte);
+}
+
 void abi_ApproachSixteenthMin16Byte(void)
 {
-    approach_regs_byte(ApproachSixteenthMin16Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachSixteenthMin16Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -324,9 +498,22 @@ uint8_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 32, 5, moved);
 }
 
+void ApproachThirtySecondMin32Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachThirtySecondMin32Byte);
+}
+
 void abi_ApproachThirtySecondMin32Byte(void)
 {
-    approach_regs_byte(ApproachThirtySecondMin32Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachThirtySecondMin32Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -343,9 +530,22 @@ uint8_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 64, 6, moved);
 }
 
+void ApproachSixtyFourthMin64Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachSixtyFourthMin64Byte);
+}
+
 void abi_ApproachSixtyFourthMin64Byte(void)
 {
-    approach_regs_byte(ApproachSixtyFourthMin64Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachSixtyFourthMin64Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -362,7 +562,21 @@ uint8_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 128, 7, moved);
 }
 
+void ApproachOneTwentyEighthMin128Byte_cr(Carried *cr)
+{
+    r_approach_byte(cr, ApproachOneTwentyEighthMin128Byte);
+}
+
 void abi_ApproachOneTwentyEighthMin128Byte(void)
 {
-    approach_regs_byte(ApproachOneTwentyEighthMin128Byte);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachOneTwentyEighthMin128Byte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

@@ -9,30 +9,8 @@
 
 void ApproachTargetFull(uint8_t bank);
 void ApproachTargetZero(uint8_t bank);
-#include "system_calls.h"
-uint16_t MenuActorFree(uint8_t bank, uint16_t rec, uint16_t slot);
-void MenuActorPoolInit(uint8_t bank);
-uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y);
-uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p);
 uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
-uint16_t MenuChoiceRepeat(uint16_t *x, uint8_t *p);
-uint16_t MenuFixedColourDown(uint8_t bank, uint16_t x, uint8_t *p);
-void MenuHdmaSetupB(uint8_t bank);
-uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
-uint16_t MenuPaletteLoad(void);
-uint16_t MenuPaletteSave(void);
-uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y);
-uint16_t MenuPictureDC8CGrid0(uint8_t bank);
-uint16_t MenuPictureToVram(uint8_t bank, uint16_t in68, uint16_t in6a, uint16_t *x);
-void MenuScrollReset(void);
-void MenuSet1A66(uint8_t bank, uint16_t i);
-uint16_t MenuSetPairAnimations(uint8_t bank, uint16_t pair, uint16_t *x, uint16_t *y, uint8_t *p);
-uint16_t MenuSinePosition(uint8_t bank, uint16_t *x, uint8_t *p);
-#include "menu_calls.h"
 uint8_t SaveChecksum(void);
-uint16_t SelectionCommit(uint8_t bank, uint16_t *x);
-uint16_t SelectionSave(uint8_t bank, uint16_t *x);
-#include "audio_calls.h"
 void abi_TitleScreenRun(void);
 
 void abi_MenuFixedColourDown(void);
@@ -74,43 +52,43 @@ static void preview_picture(Carried *cr, uint16_t vram, uint16_t pic);
 static void wr_m(Carried *cr, uint32_t a, uint16_t v);
 static void w_ApproachTargetFull(Carried *cr);
 static void w_ApproachTargetZero(Carried *cr);
-static void w_FrameByteWritePush(Carried *cr);
-static void w_MenuActorFree(Carried *cr);
-static void w_MenuActorPoolInit(Carried *cr);
-static void w_MenuActorSpawnList(Carried *cr);
 static void w_MenuActorsRun(Carried *cr);
-static void w_MenuActorsSet10(Carried *cr);
 static void w_MenuChoicePressesP2(Carried *cr);
-static void w_MenuChoiceRepeat(Carried *cr);
-static void w_MenuFixedColourDown(Carried *cr);
-static void w_MenuHdmaSetupB(Carried *cr);
-static void w_MenuLoadBlank0800(Carried *cr);
-static void w_MenuLoadBlank1000(Carried *cr);
-static void w_MenuLoadBlank1800(Carried *cr);
-static void w_MenuLoadClearGsu(Carried *cr);
-static void w_MenuLoadPicturesTo7F(Carried *cr);
-static void w_MenuOamBuild(Carried *cr);
-static void w_MenuPaletteLoad(Carried *cr);
-static void w_MenuPaletteSave(Carried *cr);
-static void w_MenuPaletteScale(Carried *cr);
-static void w_MenuPictureDC8CGrid0(Carried *cr);
-static void w_MenuPictureToVram(Carried *cr);
-static void w_MenuRunFrames(Carried *cr);
-static void w_MenuScrollReset(Carried *cr);
-static void w_MenuSet1A66(Carried *cr);
-static void w_MenuSetPairAnimations(Carried *cr);
-static void w_MenuSinePosition(Carried *cr);
-static void w_MenuWaitFrame(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
-static void w_SelectionCommit(Carried *cr);
-static void w_SelectionSave(Carried *cr);
-static void w_SoundPort0QueuePushRaw(Carried *cr);
-static void w_SoundReset(Carried *cr);
+void FrameByteWritePush_cr(Carried *cr);
 void MenuActorFind_cr(Carried *cr);
+void MenuActorFree_cr(Carried *cr);
+void MenuActorPoolInit_cr(Carried *cr);
+void MenuActorSpawnList_cr(Carried *cr);
+void MenuActorsSet10_cr(Carried *cr);
+void MenuChoiceRepeat_cr(Carried *cr);
+void MenuFixedColourDown_cr(Carried *cr);
+void MenuHdmaSetupB_cr(Carried *cr);
+void MenuLoadBlank0800_cr(Carried *cr);
+void MenuLoadBlank1000_cr(Carried *cr);
+void MenuLoadBlank1800_cr(Carried *cr);
+void MenuLoadClearGsu_cr(Carried *cr);
+void MenuLoadPicturesTo7F_cr(Carried *cr);
+void MenuOamBuild_cr(Carried *cr);
+void MenuPaletteLoad_cr(Carried *cr);
+void MenuPaletteSave_cr(Carried *cr);
+void MenuPaletteScale_cr(Carried *cr);
+void MenuPictureDC8CGrid0_cr(Carried *cr);
+void MenuPictureToVram_cr(Carried *cr);
+void MenuRunFrames_cr(Carried *cr);
+void MenuScrollReset_cr(Carried *cr);
+void MenuSet1A66_cr(Carried *cr);
+void MenuSetPairAnimations_cr(Carried *cr);
+void MenuSinePosition_cr(Carried *cr);
+void MenuWaitFrame_cr(Carried *cr);
 void RaceFrameStep(Carried *cr);
 void RaceStart(Carried *cr);
+void SelectionCommit_cr(Carried *cr);
+void SelectionSave_cr(Carried *cr);
+void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
+void SoundReset_cr(Carried *cr);
 void TitleScreenRun(Carried *cr);
 
 /* The preview's frame: the fixed colour stepped down `n` times
@@ -119,7 +97,7 @@ void TitleScreenRun(Carried *cr);
 static uint16_t preview_frame(Carried *cr, unsigned n)
 {
     while (cyc_loop(46, n--))
-        w_MenuFixedColourDown(cr);
+        MenuFixedColourDown_cr(cr);
     cyc(8);
     cr->a = 0x0000;
     RaceFrameStep(cr);
@@ -137,10 +115,10 @@ static void groups_45(Carried *cr, uint16_t y)
 {
     cr->a = 0x0004;
     cr->y = y;
-    (cyc(94), w_MenuActorsSet10(cr));
+    (cyc(94), MenuActorsSet10_cr(cr));
     cr->a = 0x0005;
     cr->y = y;
-    (cyc(94), w_MenuActorsSet10(cr));
+    (cyc(94), MenuActorsSet10_cr(cr));
 }
 
 /* `channels` pushed for HDMAEN ($420C) on the frame write list; X kept,
@@ -153,7 +131,7 @@ static void hdma_on(Carried *cr, uint8_t channels)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | channels);
     cr->x = 0x420C;
-    (cyc(198), w_FrameByteWritePush(cr));
+    (cyc(198), FrameByteWritePush_cr(cr));
     cr->x = x;
     set_p(cr, nz16(cr->p, x));  /* PLX, X 16-bit */
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -203,11 +181,11 @@ void MenuPreviewIdle(Carried *cr)
     cr->a = 0xBCD2;
     cyc(46);
     wr16(ACTOR(x, 0x08), 0xBCD2);
-    (cyc(46), w_MenuChoiceRepeat(cr));
+    (cyc(46), MenuChoiceRepeat_cr(cr));
     cyc(74);                            /* RTS, the LDA long's fetch */
     cr->a = rd16(0x0018C9);
-    (cyc(46), w_MenuSet1A66(cr));
-    w_MenuSetPairAnimations(cr);
+    (cyc(46), MenuSet1A66_cr(cr));
+    MenuSetPairAnimations_cr(cr);
     cr->a = 0x0000;
     (cyc(8), RaceFrameStep(cr));
     cyc(42);
@@ -302,7 +280,7 @@ void MenuPreviewCountdown(Carried *cr)
             cyc(108);
             set_p(cr, (uint8_t)(cr->p | (P_M)));
             cr->a = (uint16_t)((cr->a & 0xFF00) | 0x3F);
-            w_SoundPort0QueuePushRaw(cr);
+            SoundPort0QueuePushRaw_cr(cr);
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         } else { cyc(22); }
         cyc(52);
@@ -313,7 +291,7 @@ void MenuPreviewCountdown(Carried *cr)
     } else { cyc(22); }
     cyc(24);
     cr->x = rd16(0x0011F9);
-    (cyc(46), w_MenuFixedColourDown(cr));
+    (cyc(46), MenuFixedColourDown_cr(cr));
     cr->a = 0x0000;
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
@@ -365,7 +343,7 @@ void MenuPreviewCountdown(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
     cr->y = rd16(0x0011FB);
-    (cyc(46), w_MenuActorFree(cr));
+    (cyc(46), MenuActorFree_cr(cr));
     cyc(42);
 }
 
@@ -430,7 +408,7 @@ static void preview_picture(Carried *cr, uint16_t vram, uint16_t pic)
     wr16(0x0011D5, cr->a);
     cr->a = pic;
     cr->x = 0x0017;
-    (cyc(138), w_MenuPictureToVram(cr));
+    (cyc(138), MenuPictureToVram_cr(cr));
 }
 
 /*
@@ -495,13 +473,13 @@ void MenuScreenOpenPreview(Carried *cr)
     cyc(24);
     wr16(0x0011EB, 0x0000);
     cr->a = 0x1234;
-    (cyc(62), w_MenuActorPoolInit(cr));
-    (cyc(46), w_MenuHdmaSetupB(cr));
+    (cyc(62), MenuActorPoolInit_cr(cr));
+    (cyc(46), MenuHdmaSetupB_cr(cr));
     cr->x = 0x0010;
-    (cyc(86), w_MenuActorSpawnList(cr));
+    (cyc(86), MenuActorSpawnList_cr(cr));
     (cyc(62), RaceStart(cr));
     (cyc(62), w_MenuActorsRun(cr));
-    (cyc(62), w_MenuOamBuild(cr));
+    (cyc(62), MenuOamBuild_cr(cr));
     cyc(0);
     wr_m(cr, 0x0011ED, 0x0000);
     wr_m(cr, 0x0011EF, 0x0000);
@@ -510,7 +488,7 @@ void MenuScreenOpenPreview(Carried *cr)
         { cyc(ppu[i].cost); reg_wr(ppu[i].reg, ppu[i].v); }
     cyc(46);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x12);
-    w_MenuScrollReset(cr);
+    MenuScrollReset_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(62);
     wr16(0x0000FB, 0xE3AC);
@@ -518,29 +496,29 @@ void MenuScreenOpenPreview(Carried *cr)
     wr16(0x0000FD, 0x001C);
     cr->a = 0x001C;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
-    (cyc(112), w_MenuPaletteLoad(cr));
+    (cyc(112), MenuPaletteLoad_cr(cr));
     cr->a = 0x0000;
     cyc(56);
     wr16(0x7EFD65, 0x0000);
-    (cyc(46), w_MenuPaletteSave(cr));
+    (cyc(46), MenuPaletteSave_cr(cr));
     cyc(48);
     wr16(0x0011DF, 0x0020);
     cr->a = 0x0020;
     cr->y = 0x0007;
     cr->x = 0x0120;
-    (cyc(110), w_MenuPaletteScale(cr));
+    (cyc(110), MenuPaletteScale_cr(cr));
     cr->a = 0x0020;
     cyc(48);
     wr16(0x0011DF, 0x0020);
     cr->y = 0x0007;
     cr->x = 0x01A0;
-    (cyc(110), w_MenuPaletteScale(cr));
+    (cyc(110), MenuPaletteScale_cr(cr));
     cyc(28);
     preview_picture(cr, 0x3000, 0xCC78);
     cyc(50);
     preview_picture(cr, 0x6800, 0xCE78);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
-    (cyc(90), w_MenuPictureDC8CGrid0(cr));
+    (cyc(90), MenuPictureDC8CGrid0_cr(cr));
     cyc(72);
     ppu_wr16(0x002116, 0x6000);
     for (x = 0; x != 0x1000; x = (uint16_t)(x + 2))
@@ -551,11 +529,11 @@ void MenuScreenOpenPreview(Carried *cr)
     cr->x = 0x1601;
     cyc(114);
     wr16(0x0011F9, 0x1601);
-    (cyc(46), w_MenuLoadPicturesTo7F(cr));
-    (cyc(46), w_MenuLoadClearGsu(cr));
-    (cyc(46), w_MenuLoadBlank0800(cr));
-    (cyc(46), w_MenuLoadBlank1000(cr));
-    (cyc(46), w_MenuLoadBlank1800(cr));
+    (cyc(46), MenuLoadPicturesTo7F_cr(cr));
+    (cyc(46), MenuLoadClearGsu_cr(cr));
+    (cyc(46), MenuLoadBlank0800_cr(cr));
+    (cyc(46), MenuLoadBlank1000_cr(cr));
+    (cyc(46), MenuLoadBlank1800_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(62);
     wr8(0x000D3F, 0x20);
@@ -568,21 +546,21 @@ void MenuScreenOpenPreview(Carried *cr)
     cyc(70);
     wr8(0x0010DA, 0x00);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    (cyc(62), w_SoundReset(cr));
+    (cyc(62), SoundReset_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x21);
     cyc(62);
     hw_wr(0x004200, 0x21);
-    (cyc(46), w_MenuWaitFrame(cr));
-    (cyc(46), w_MenuWaitFrame(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
     (cyc(62), w_MenuActorsRun(cr));
-    (cyc(62), w_MenuOamBuild(cr));
+    (cyc(62), MenuOamBuild_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(62);
     hdmaen_wr(0x00420C, 0x90);
     cyc(24);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
-    (cyc(46), w_MenuWaitFrame(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
     cr->db = db;
     set_p(cr, p);
     cyc(98);
@@ -611,7 +589,7 @@ static void frame_write(Carried *cr, uint8_t v, uint16_t reg)
     set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = reg;
-    w_FrameByteWritePush(cr);
+    FrameByteWritePush_cr(cr);
     cr->x = x;
 }
 
@@ -626,7 +604,7 @@ static void palette_scale(Carried *cr, uint16_t level, int word, uint16_t x, uin
     cr->a = word ? level : (uint16_t)((cr->a & 0xFF00) | (uint8_t)level);
     cr->y = y;
     cr->x = x;
-    w_MenuPaletteScale(cr);
+    MenuPaletteScale_cr(cr);
 }
 
 /*
@@ -693,13 +671,13 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cyc(48);
     wr16(0x0011EF, 0x0000);
     cr->a = 0x0000;
-    (cyc(62), w_MenuActorPoolInit(cr));
+    (cyc(62), MenuActorPoolInit_cr(cr));
     cr->x = 0x0010;
-    (cyc(86), w_MenuActorSpawnList(cr));
+    (cyc(86), MenuActorSpawnList_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     wr8(0x0011D7, 0x00);
-    (cyc(46), w_MenuWaitFrame(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(40);
     wr8(0x000D3F, 0x20);
@@ -728,9 +706,9 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cr->x = x;
     cr->y = y;
     RaceStart(cr);
-    (cyc(46), w_MenuHdmaSetupB(cr));
+    (cyc(46), MenuHdmaSetupB_cr(cr));
     (cyc(62), w_MenuActorsRun(cr));
-    (cyc(62), w_MenuOamBuild(cr));
+    (cyc(62), MenuOamBuild_cr(cr));
     cyc(122);
     for (i = 0; i < sizeof first / sizeof first[0]; i++)
         { frame_write(cr, first[i].v, first[i].reg);
@@ -742,7 +720,7 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     wr8(0x001909, 0x20);
     do {
         cyc(46);
-        w_MenuWaitFrame(cr);
+        MenuWaitFrame_cr(cr);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(62);
         palette_scale(cr, (uint8_t)(0x20 - rd8(0x001909)), 0, 0x0000, 0x0007);
@@ -759,7 +737,7 @@ void MenuScreenOpenPreviewFade(Carried *cr)
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } while (cyc_loop(22, !(v & 0x80)));
     cyc(62);
-    w_MenuWaitFrame(cr);
+    MenuWaitFrame_cr(cr);
     cyc(44);
     for (i = 0; i < sizeof full / sizeof full[0]; i++)
         { cyc(!i ? 100 : full[i].lda ? 244 : 228); frame_write(cr, full[i].v, full[i].reg); }
@@ -770,26 +748,26 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     wr16(0x0000FD, 0x001C);
     cr->a = 0x001C;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
-    (cyc(112), w_MenuPaletteLoad(cr));
+    (cyc(112), MenuPaletteLoad_cr(cr));
     cr->a = 0x0000;
     cyc(56);
     wr16(0x7EFD65, 0x0000);
-    (cyc(46), w_MenuPaletteSave(cr));
+    (cyc(46), MenuPaletteSave_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     palette_scale(cr, 0x0020, 1, 0x0120, 0x0007);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     palette_scale(cr, 0x0020, 1, 0x01A0, 0x0007);
     set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     (cyc(106), w_MenuActorsRun(cr));
-    (cyc(62), w_MenuOamBuild(cr));
+    (cyc(62), MenuOamBuild_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0B)));
-    (cyc(46), w_MenuWaitFrame(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
-    (cyc(46), w_MenuWaitFrame(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
     cr->db = db;
     set_p(cr, p);
 }
@@ -850,7 +828,7 @@ void MenuSlideToPreview(Carried *cr)
     }
     cyc(4);
     wr16(dpx(cr, 0x0A), cyc_then(106, cr->a));
-    (cyc(46), w_MenuSinePosition(cr));
+    (cyc(46), MenuSinePosition_cr(cr));
     cr->a = rd16(cyc_then(22, dpx(cr, 0x0A)));
     r_cmp16(cr, 0x0080);
     if (cr->a != 0x0080)
@@ -874,8 +852,8 @@ void MenuSlideToPreview(Carried *cr)
     cyc(32);
     cr->a = rd16(0x0018CB);
     set_p(cr, nz16(cr->p, cr->a));
-    (cyc(46), w_MenuSet1A66(cr));
-    w_MenuSetPairAnimations(cr);
+    (cyc(46), MenuSet1A66_cr(cr));
+    MenuSetPairAnimations_cr(cr);
     cr->a = 0x0000;
     set_p(cr, nz16(cr->p, 0));
     (cyc(8), RaceFrameStep(cr));
@@ -914,7 +892,7 @@ static void preview_menu_loop(Carried *cr)
 
     do {
         cyc(68);
-        w_MenuWaitFrame(cr);
+        MenuWaitFrame_cr(cr);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cr->a = 0x0000;
         cyc(56);
@@ -922,7 +900,7 @@ static void preview_menu_loop(Carried *cr)
         cyc(24);
         wr16(b | 0x11DD, cyc_then(14, (uint16_t)(rd16(b | 0x11DD) + 1)));
         (cyc(62), w_MenuActorsRun(cr));
-        (cyc(62), w_MenuOamBuild(cr));
+        (cyc(62), MenuOamBuild_cr(cr));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(46);
         wr16(b | 0x118B, 0x0000);
@@ -943,7 +921,7 @@ static void preview_menu_loop(Carried *cr)
     SoundPort1QueuePush_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     (cyc(68), w_ApproachTargetZero(cr));
-    (cyc(46), w_MenuRunFrames(cr));
+    (cyc(46), MenuRunFrames_cr(cr));
 }
 
 /*
@@ -958,7 +936,7 @@ void MenuPreviewRun(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     MenuScreenOpenPreview(cr);
-    (cyc(46), w_MenuWaitFrame(cr));
+    (cyc(46), MenuWaitFrame_cr(cr));
     (cyc(46), w_ApproachTargetFull(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     (cyc(24), preview_menu_loop(cr));
@@ -1085,9 +1063,9 @@ chosen:
     r_lda16(cr, 0x0018C3);
     r_cmp16(cr, 0x0002);
     if (cr->p & P_Z)
-        { cyc(108); w_SelectionCommit(cr); }
+        { cyc(108); SelectionCommit_cr(cr); }
     else
-        w_SelectionSave(cr);
+        SelectionSave_cr(cr);
     cyc(22);
     r_sep(cr, P_M);
     b = (uint32_t)cr->db << 16;
@@ -1161,8 +1139,8 @@ void MenuPreviewBackOut(Carried *cr)
     wr16(0x0018D3, 0x0000);
     cyc(32);
     cr->a = rd16(0x0018CB);
-    (cyc(46), w_MenuSet1A66(cr));
-    w_MenuSetPairAnimations(cr);
+    (cyc(46), MenuSet1A66_cr(cr));
+    MenuSetPairAnimations_cr(cr);
     cr->a = 0x0000;
     (cyc(8), RaceFrameStep(cr));
     cyc(42);
@@ -1275,71 +1253,6 @@ void abi_MenuPreviewBackEnd(void)
     cpu.db = r.db;
 }
 
-/* MenuFixedColourDown as its adapter leaves the registers. */
-static void w_MenuFixedColourDown(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MenuFixedColourDown(cr->db, cr->x, &p);
-    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
-    cyc(64);
-}
-
-/* MenuActorsSet10 as its adapter leaves the registers. */
-static void w_MenuActorsSet10(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MenuActorsSet10(cr->db, cr->a, cr->y, &p);
-    cr->y = 0xFFFE;
-    set_p(cr, nz16(p, cr->x));
-}
-
-/* FrameByteWritePush as its adapter leaves the registers. */
-static void w_FrameByteWritePush(Carried *cr)
-{
-    cr->x = FrameByteWritePush(cr->db, cr->x, (uint8_t)cr->a);
-}
-
-/* MenuChoiceRepeat as its adapter leaves the registers. */
-static void w_MenuChoiceRepeat(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MenuChoiceRepeat(&cr->x, &p);
-    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
-}
-
-/* MenuSet1A66 as its adapter leaves the registers. */
-static void w_MenuSet1A66(Carried *cr)
-{
-    MenuSet1A66(cr->db, cr->a);
-    cr->x = (uint16_t)(cr->a << 1);
-    cr->y = 0x1A64;
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
-}
-
-/* MenuSetPairAnimations as its adapter leaves the registers. */
-static void w_MenuSetPairAnimations(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MenuSetPairAnimations(cr->db, cr->a, &cr->x, &cr->y, &p);
-    set_p(cr, p);
-}
-
-/* MenuActorFree as its adapter leaves the registers. */
-static void w_MenuActorFree(Carried *cr)
-{
-    cr->a = MenuActorFree(cr->db, cr->x, cr->y);
-    cr->x = 0xFFFF;
-    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
-    cyc(42);
-}
-
 /* MenuChoicePressesP2 as its adapter leaves the registers. */
 static void w_MenuChoicePressesP2(Carried *cr)
 {
@@ -1347,35 +1260,6 @@ static void w_MenuChoicePressesP2(Carried *cr)
 
     cr->a = MenuChoicePressesP2(cr->db, &cr->x, &cr->y, &p);
     set_p(cr, p);
-}
-
-/* SoundPort0QueuePushRaw as its adapter leaves the registers. */
-static void w_SoundPort0QueuePushRaw(Carried *cr)
-{
-    SoundPort0QueuePushRaw((uint8_t)cr->a);
-    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
-    cyc(8);
-}
-
-/* MenuPictureToVram as its adapter leaves the registers. */
-static void w_MenuPictureToVram(Carried *cr)
-{
-    cr->a = MenuPictureToVram(cr->db, cr->a, cr->x, &cr->x);
-}
-
-/* MenuActorPoolInit as its adapter leaves the registers. */
-static void w_MenuActorPoolInit(Carried *cr)
-{
-    MenuActorPoolInit(cr->db);
-    cr->a = 0x2802;
-    cr->x = 0x162D;
-    cr->y = 0x002C;
-}
-
-/* MenuActorSpawnList as its adapter leaves the registers. */
-static void w_MenuActorSpawnList(Carried *cr)
-{
-    cr->x = MenuActorSpawnList(cr->db, cr->x, &cr->a, &cr->y);
 }
 
 /* MenuActorsRun, still in registers: its call with the registers loaded and taken
@@ -1397,199 +1281,10 @@ static void w_MenuActorsRun(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* MenuHdmaSetupB as its adapter leaves the registers. */
-static void w_MenuHdmaSetupB(Carried *cr)
-{
-    MenuHdmaSetupB(cr->db);
-    cr->a = 0x00A8;
-    cr->x = 0x1353;
-}
-
-/* MenuLoadBlank0800, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuLoadBlank0800(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuLoadBlank0800();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* MenuLoadBlank1000, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuLoadBlank1000(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuLoadBlank1000();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* MenuLoadBlank1800, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuLoadBlank1800(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuLoadBlank1800();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* MenuLoadClearGsu, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuLoadClearGsu(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuLoadClearGsu();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* MenuLoadPicturesTo7F, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuLoadPicturesTo7F(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuLoadPicturesTo7F();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* MenuOamBuild as its adapter leaves the registers. */
-static void w_MenuOamBuild(Carried *cr)
-{
-    cr->a = MenuOamBuild(&cr->x, &cr->y);
-}
-
-/* MenuPaletteLoad as its adapter leaves the registers. */
-static void w_MenuPaletteLoad(Carried *cr)
-{
-    cr->a = MenuPaletteLoad();
-    cr->x = cr->y = 0x0200;
-}
-
-/* MenuPaletteSave as its adapter leaves the registers. */
-static void w_MenuPaletteSave(Carried *cr)
-{
-    cr->a = MenuPaletteSave();
-    cr->x = 0x0200;
-}
-
-/* MenuPaletteScale as its adapter leaves the registers. */
-static void w_MenuPaletteScale(Carried *cr)
-{
-    cr->a = MenuPaletteScale(cr->db, &cr->x, &cr->y);
-}
-
-/* MenuPictureDC8CGrid0 as its adapter leaves the registers. */
-static void w_MenuPictureDC8CGrid0(Carried *cr)
-{
-    cr->a = MenuPictureDC8CGrid0(cr->db);
-    cr->x = 0x0700;
-    cr->y = 0xFFFF;
-}
-
-/* MenuScrollReset as its adapter leaves the registers. */
-static void w_MenuScrollReset(Carried *cr)
-{
-    MenuScrollReset();
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
-/* MenuWaitFrame as its adapter leaves the registers. */
-static void w_MenuWaitFrame(Carried *cr)
-{
-    MenuWaitFrame(cr->db);
-    cr->a = 0x0000;
-}
-
-/* SoundReset as its adapter leaves the registers. */
-static void w_SoundReset(Carried *cr)
-{
-    SoundReset();
-    cr->a &= 0xFF00;
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
-/* MenuSinePosition as its adapter leaves the registers. */
-static void w_MenuSinePosition(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = MenuSinePosition(cr->db, &cr->x, &p);
-    set_p(cr, p);
-}
-
 /* ApproachTargetZero as its adapter leaves the registers. */
 static void w_ApproachTargetZero(Carried *cr)
 {
     ApproachTargetZero(cr->db);
-}
-
-/* MenuRunFrames, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuRunFrames(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuRunFrames();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* ApproachTargetFull as its adapter leaves the registers. */
@@ -1603,26 +1298,4 @@ static void w_ApproachTargetFull(Carried *cr)
 static void w_SaveChecksum(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | SaveChecksum());
-}
-
-/* SelectionCommit as its adapter leaves the registers. */
-static void w_SelectionCommit(Carried *cr)
-{
-    uint16_t x;
-
-    cr->a = SelectionCommit(cr->db, &x);
-    cr->x = (cr->p & P_X) ? (cyc(72), (uint8_t)x) : (cyc(72), x);
-}
-
-/* SelectionSave as its adapter leaves the registers. */
-static void w_SelectionSave(Carried *cr)
-{
-    uint16_t x;
-
-    cr->a = SelectionSave(cr->db, &x);
-    cr->x = x;
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
 }

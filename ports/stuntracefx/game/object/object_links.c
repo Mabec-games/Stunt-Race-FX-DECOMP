@@ -7,6 +7,8 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
 
 void abi_ObjectFreeLong(void);
 void ObjectInit(uint16_t obj);
@@ -14,31 +16,43 @@ int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y);
 
 #define LINKS_SCRATCH 0x00003Eu
 
+void ObjectChildFindTagX_cr(Carried *cr);
+void ObjectChildFindTagY_cr(Carried *cr);
+void ObjectLinkChild_cr(Carried *cr);
+void ObjectListFreeAll_cr(Carried *cr);
+void ObjectListFreeAllCopy_cr(Carried *cr);
+void ObjectSpawnA040_cr(Carried *cr);
+void ObjectListFreeAll(Carried *cr);
+void ObjectListFreeAllCopy(Carried *cr);
+void ObjectListTableFirst(Carried *cr);
+static void free_list(Carried *cr);
+void ObjectFreeLong_cr(Carried *cr);
+
 /* ObjectListFreeAll and its copy: free each object of the list at $0325
    in turn, reading the next link before the free rewrites it. */
-static void free_list(void)
+static void free_list(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x = cpu.x, obj, next;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint16_t x = cr->x, obj, next;
     int first = 1;
 
-    cpu.p &= (uint8_t)~P_X;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
     cyc(76);
     obj = rd16(b | 0x0325);
     while (obj) {
         cyc(first ? 46 : 102);  /* later ones: PLY, TYX, BNE taken */
         first = 0;
         next = rd16(b | (uint16_t)(0x2000 + obj));
-        cpu.p |= P_M;
-        cpu.x = obj;
-        cpu.y = next;
-        (cyc(114), abi_ObjectFreeLong());
-        cpu.y = next;
+        set_p(cr, (uint8_t)(cr->p | (P_M)));
+        cr->x = obj;
+        cr->y = next;
+        (cyc(114), ObjectFreeLong_cr(cr));
+        cr->y = next;
         obj = next;
     }
     cyc(first ? 102 : 146);
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
+    cr->x = x;
+    set_p(cr, nz16(cr->p, x));
 }
 
 /*
@@ -57,18 +71,18 @@ static void free_list(void)
  * not empty: A = 0, Y = 10 when an entry was written, else 0; empty: A, Y
  * unchanged.
  */
-void ObjectListTableFirst(void)
+void ObjectListTableFirst(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p;
-    uint16_t x, a = cpu.a, at, v, t = 132;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint8_t p = cr->p;
+    uint16_t x, a = cr->a, at, v, t = 132;
 
     cyc(68);
     wr16(b | 0x0D04, 0x0000);
     cyc(24);
     x = rd16(b | 0x0325);
     if (x) {
-        cpu.y = 0x0000;
+        cr->y = 0x0000;
         if (a & 0x00FF) {
             cyc(156);
             a = rd16(b | (uint16_t)(0x2008 + x));
@@ -97,7 +111,7 @@ void ObjectListTableFirst(void)
                 v = rd16(b | 0x0D04);
                 cyc(14);
                 wr16(b | 0x0D04, (uint16_t)(v + 1));
-                cpu.y = 0x000A;
+                cr->y = 0x000A;
             } else { t = 112; /* BIT, BNE taken */ }
         } else { cyc(66); }
         do {
@@ -106,16 +120,29 @@ void ObjectListTableFirst(void)
             t = 154; /* later objects: BNE taken at the top */
         } while (x);
         cyc(8);
-        cpu.a = 0x0000;
+        cr->a = 0x0000;
     }
     cyc(52);
-    cpu.x = 0x0000;
-    op_plp(p);
+    cr->x = 0x0000;
+    r_plp(cr, p);
+}
+
+void ObjectListTableFirst_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    ObjectListTableFirst(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_ObjectListTableFirst(void)
 {
-    ObjectListTableFirst();
+    ObjectListTableFirst_g();
 }
 
 /*
@@ -128,14 +155,27 @@ void abi_ObjectListTableFirst(void)
  * the list was not empty, M 8-bit, Y = 0 and A from the last free (the free
  * list's old head); otherwise A, Y and M unchanged.
  */
-void ObjectListFreeAll(void)
+void ObjectListFreeAll(Carried *cr)
 {
-    free_list();
+    free_list(cr);
+}
+
+void ObjectListFreeAll_cr(Carried *cr)
+{
+    free_list(cr);
 }
 
 void abi_ObjectListFreeAll(void)
 {
-    free_list();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectListFreeAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -144,14 +184,27 @@ void abi_ObjectListFreeAll(void)
  * HOW: As ObjectListFreeAll.
  * Entry: as ObjectListFreeAll. Exit: as ObjectListFreeAll.
  */
-void ObjectListFreeAllCopy(void)
+void ObjectListFreeAllCopy(Carried *cr)
 {
-    free_list();
+    free_list(cr);
+}
+
+void ObjectListFreeAllCopy_cr(Carried *cr)
+{
+    free_list(cr);
 }
 
 void abi_ObjectListFreeAllCopy(void)
 {
-    free_list();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectListFreeAllCopy_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -198,11 +251,24 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     cyc(66);                            /* SEP, RTL */
 }
 
+void ObjectLinkChild_cr(Carried *cr)
+{
+    ObjectLinkChild(cr->db, (uint8_t)cr->a, cr->x, cr->y);
+    cr->a = cr->y;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->y) | P_M));
+}
+
 void abi_ObjectLinkChild(void)
 {
-    ObjectLinkChild(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y);
-    cpu.a = cpu.y;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.y) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectLinkChild_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The two chain searches: from `from`, follow +$27 until a child whose
@@ -248,13 +314,26 @@ uint16_t ObjectChildFindTagX(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a
     return find_tag(bank, tag, obj, a, p);
 }
 
+void ObjectChildFindTagX_cr(Carried *cr)
+{
+    uint8_t a = (uint8_t)cr->a, p = cr->p;
+
+    cr->y = ObjectChildFindTagX(cr->db, (uint8_t)cr->a, cr->x, &a, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, nz16(p, cr->x));
+}
+
 void abi_ObjectChildFindTagX(void)
 {
-    uint8_t a = (uint8_t)cpu.a, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.y = ObjectChildFindTagX(cpu.db, (uint8_t)cpu.a, cpu.x, &a, &p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = nz16(p, cpu.x);
+    ObjectChildFindTagX_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -270,13 +349,26 @@ uint16_t ObjectChildFindTagY(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a
     return find_tag(bank, tag, obj, a, p);
 }
 
+void ObjectChildFindTagY_cr(Carried *cr)
+{
+    uint8_t a = (uint8_t)cr->a, p = cr->p;
+
+    cr->x = ObjectChildFindTagY(cr->db, (uint8_t)cr->a, cr->y, &a, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, nz16(p, cr->y));
+}
+
 void abi_ObjectChildFindTagY(void)
 {
-    uint8_t a = (uint8_t)cpu.a, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.x = ObjectChildFindTagY(cpu.db, (uint8_t)cpu.a, cpu.y, &a, &p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = nz16(p, cpu.y);
+    ObjectChildFindTagY_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -307,11 +399,25 @@ int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
     return 1;
 }
 
-void abi_ObjectSpawnA040(void)
+void ObjectSpawnA040_cr(Carried *cr)
 {
-    if (ObjectSpawnA040(&cpu.a, &cpu.x, &cpu.y))
-        cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_C);
+    if (ObjectSpawnA040(&cr->a, &cr->x, &cr->y))
+        set_p(cr, (uint8_t)((nz16(cr->p, cr->a) & ~P_M) | P_C));
     else
-        cpu.p = (uint8_t)(nz16(cpu.p, 0) & ~P_C);
+        set_p(cr, (uint8_t)(nz16(cr->p, 0) & ~P_C));
     cyc(58);
 }
+
+void abi_ObjectSpawnA040(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectSpawnA040_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

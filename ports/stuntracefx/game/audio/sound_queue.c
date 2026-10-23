@@ -65,11 +65,34 @@ void SoundPort0QueuePushRaw(uint8_t command)
     queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
 }
 
+void SoundPort0QueuePush_cr(Carried *cr);
+void SoundPort0QueuePushRaw_cr(Carried *cr);
+void SoundPort0QueuePushRawWide_cr(Carried *cr);
+void SoundPort0QueuePushRawX8_cr(Carried *cr);
+void SoundPort0QueuePushX8(Carried *cr);
+void SoundPort1QueuePush_cr(Carried *cr);
+void SoundPort1QueuePushX8(Carried *cr);
+void SoundPortsSend_cr(Carried *cr);
+void SoundReset_cr(Carried *cr);
+
+void SoundPort0QueuePushRaw_cr(Carried *cr)
+{
+    SoundPort0QueuePushRaw((uint8_t)cr->a);
+    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
+    cyc(8);
+}
+
 void abi_SoundPort0QueuePushRaw(void)
 {
-    SoundPort0QueuePushRaw((uint8_t)cpu.a);
-    cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
-    cyc(8);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundPort0QueuePushRaw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* From a caller with M and X 8-bit: the pulls take no extra byte. */
@@ -78,10 +101,23 @@ void SoundPort0QueuePushRawX8(uint8_t command)
     SoundPort0QueuePushRaw(command);
 }
 
+void SoundPort0QueuePushRawX8_cr(Carried *cr)
+{
+    SoundPort0QueuePushRawX8((uint8_t)cr->a);
+    set_p(cr, nz8(cr->p, cr->db));
+}
+
 void abi_SoundPort0QueuePushRawX8(void)
 {
-    SoundPort0QueuePushRawX8((uint8_t)cpu.a);
-    cpu.p = nz8(cpu.p, cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundPort0QueuePushRawX8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* With the caller's widths: wide as for SoundPort0QueuePushW (the entry's
@@ -93,17 +129,23 @@ void SoundPort0QueuePushRawWide(uint8_t command, unsigned wide)
     cyc(wide);
 }
 
-void abi_SoundPort0QueuePushRawWide(void)
-{
-    SoundPort0QueuePushRawWide((uint8_t)cpu.a, push_wide(cpu.p));
-    cpu.p = nz8(cpu.p, cpu.db);
-}
-
-/* SoundPort0QueuePushRawWide on carried registers, as abi_SoundPort0QueuePushRawWide leaves them. */
 void SoundPort0QueuePushRawWide_cr(Carried *cr)
 {
     SoundPort0QueuePushRawWide((uint8_t)cr->a, push_wide(cr->p));
     set_p(cr, nz8(cr->p, cr->db));
+}
+
+void abi_SoundPort0QueuePushRawWide(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundPort0QueuePushRawWide_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -130,11 +172,6 @@ void SoundPort0QueuePush(uint8_t command)
 {
     SoundPort0QueuePushW(command, 16);
 }
-
-void SoundPort0QueuePush_cr(Carried *cr);
-void SoundPort0QueuePushX8(Carried *cr);
-void SoundPort1QueuePush_cr(Carried *cr);
-void SoundPort1QueuePushX8(Carried *cr);
 
 void SoundPort0QueuePush_cr(Carried *cr)
 {
@@ -266,12 +303,25 @@ void SoundReset(void)
     cyc(72);
 }
 
-void abi_SoundReset(void)
+void SoundReset_cr(Carried *cr)
 {
     SoundReset();
-    cpu.a &= 0xFF00;
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+    cr->a &= 0xFF00;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
+void abi_SoundReset(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundReset_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One ring to its port: 0 when the port still shows a command, else the
@@ -409,14 +459,27 @@ done:
     return end;
 }
 
+void SoundPortsSend_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+    SoundPortsEnd end = SoundPortsSend(cr->db, (uint8_t)cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | end.a);
+    cr->x = end.x;
+    cr->y &= 0x00FF;
+    set_p(cr, p0);
+}
+
 void abi_SoundPortsSend(void)
 {
-    uint8_t p0 = cpu.p;
-    SoundPortsEnd end = SoundPortsSend(cpu.db, (uint8_t)cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | end.a);
-    cpu.x = end.x;
-    cpu.y &= 0x00FF;
-    cpu.p = p0;
+    SoundPortsSend_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

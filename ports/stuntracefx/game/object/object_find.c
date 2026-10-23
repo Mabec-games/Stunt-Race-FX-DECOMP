@@ -11,6 +11,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "object_calls.h"
+#include "carried.h"
+
 
 #define LIST_HEAD 0x0325u
 #define RESUME 0x1F30u
@@ -150,14 +152,49 @@ none:
     return 0;
 }
 
+void ObjectAtPoint_cr(Carried *cr);
+void ObjectCountOfKind_cr(Carried *cr);
+void ObjectDistanceApprox_cr(Carried *cr);
+void ObjectDistanceXY_cr(Carried *cr);
+void ObjectFirstOfKind_cr(Carried *cr);
+void ObjectFirstWithin_cr(Carried *cr);
+void ObjectNearestOfKind_cr(Carried *cr);
+void ObjectNextFlagged_cr(Carried *cr);
+void ObjectNextOfKind_cr(Carried *cr);
+void ObjectOffsetDistanceXZ_cr(Carried *cr);
+void ObjectPairGsu81E3_cr(Carried *cr);
+void ObjectPairOffsetGsu81E3_cr(Carried *cr);
+void ObjectPairOffsetPitchGsu81E3_cr(Carried *cr);
+void ObjectPairPitchGsu81E3_cr(Carried *cr);
+void ObjectPointDistanceXY_cr(Carried *cr);
+void ObjectPointDistanceXZ_cr(Carried *cr);
+void ObjectPointGsu81E3_cr(Carried *cr);
+void ObjectVelocityAddFrom_cr(Carried *cr);
+static void distance_exit(Carried *cr, uint16_t a);
+static void pair_exit(Carried *cr, uint16_t a);
+static void within_exit(Carried *cr, uint16_t y);
+
+void ObjectAtPoint_cr(Carried *cr)
+{
+    cr->x = ObjectAtPoint(cr->db);
+    if (ex_set & 1)
+        cr->a = ex_a;
+    if (ex_set & 2)
+        cr->y = ex_y;
+    set_p(cr, find_flags(cr->p, cr->x ? cr->a : 0x0000));
+}
+
 void abi_ObjectAtPoint(void)
 {
-    cpu.x = ObjectAtPoint(cpu.db);
-    if (ex_set & 1)
-        cpu.a = ex_a;
-    if (ex_set & 2)
-        cpu.y = ex_y;
-    cpu.p = find_flags(cpu.p, cpu.x ? cpu.a : 0x0000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectAtPoint_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -233,11 +270,24 @@ any:
     return y;
 }
 
+void ObjectNextOfKind_cr(Carried *cr)
+{
+    cr->y = ObjectNextOfKind(cr->db, cr->a, cr->x);
+    cr->x = ex_x;
+    set_p(cr, find_flags(cr->p, ex_x));
+}
+
 void abi_ObjectNextOfKind(void)
 {
-    cpu.y = ObjectNextOfKind(cpu.db, cpu.a, cpu.x);
-    cpu.x = ex_x;
-    cpu.p = find_flags(cpu.p, ex_x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectNextOfKind_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -342,15 +392,28 @@ found:
     return y;
 }
 
+void ObjectNextFlagged_cr(Carried *cr)
+{
+    cr->y = ObjectNextFlagged(cr->db, cr->a, cr->x);
+    cr->x = ex_x;
+    if (ex_set & 1)
+        cr->a = ex_a;
+    if (ex_set & 4)
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
+    set_p(cr, find_flags(cr->p, ex_x));
+}
+
 void abi_ObjectNextFlagged(void)
 {
-    cpu.y = ObjectNextFlagged(cpu.db, cpu.a, cpu.x);
-    cpu.x = ex_x;
-    if (ex_set & 1)
-        cpu.a = ex_a;
-    if (ex_set & 4)
-        cpu.p &= (uint8_t)~P_M;
-    cpu.p = find_flags(cpu.p, ex_x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectNextFlagged_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y);
@@ -479,20 +542,33 @@ done:
 }
 
 /* The registers ObjectNearestOfKind and ObjectFirstWithin leave. */
-static void within_exit(uint16_t y)
+static void within_exit(Carried *cr, uint16_t y)
 {
-    cpu.y = y;
-    cpu.x = ex_x;
+    cr->y = y;
+    cr->x = ex_x;
     if (ex_set & 1)
-        cpu.a = ex_a;
+        cr->a = ex_a;
     if (ex_set & 4)
-        cpu.p &= (uint8_t)~P_M;
-    cpu.p = find_flags(cpu.p, ex_x);
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
+    set_p(cr, find_flags(cr->p, ex_x));
+}
+
+void ObjectNearestOfKind_cr(Carried *cr)
+{
+    within_exit(cr, ObjectNearestOfKind(cr->db, cr->a, cr->x));
 }
 
 void abi_ObjectNearestOfKind(void)
 {
-    within_exit(ObjectNearestOfKind(cpu.db, cpu.a, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectNearestOfKind_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -590,9 +666,22 @@ done:
     return y;
 }
 
+void ObjectFirstWithin_cr(Carried *cr)
+{
+    within_exit(cr, ObjectFirstWithin(cr->db, cr->a, cr->x));
+}
+
 void abi_ObjectFirstWithin(void)
 {
-    within_exit(ObjectFirstWithin(cpu.db, cpu.a, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFirstWithin_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -625,10 +714,23 @@ uint16_t ObjectFirstOfKind(uint8_t b, uint16_t a)
     return x;
 }
 
+void ObjectFirstOfKind_cr(Carried *cr)
+{
+    cr->x = ObjectFirstOfKind(cr->db, cr->a);
+    cr->y = ex_y;
+}
+
 void abi_ObjectFirstOfKind(void)
 {
-    cpu.x = ObjectFirstOfKind(cpu.db, cpu.a);
-    cpu.y = ex_y;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFirstOfKind_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -663,11 +765,24 @@ uint16_t ObjectCountOfKind(uint8_t b, uint16_t a)
     return n;
 }
 
+void ObjectCountOfKind_cr(Carried *cr)
+{
+    cr->a = ObjectCountOfKind(cr->db, cr->a);
+    cr->x = ex_x;
+    cr->y = 0x0000;
+}
+
 void abi_ObjectCountOfKind(void)
 {
-    cpu.a = ObjectCountOfKind(cpu.db, cpu.a);
-    cpu.x = ex_x;
-    cpu.y = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectCountOfKind_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA; CMP #$8000; ROR: halves keeping the sign, C = the bit shifted out. */
@@ -762,16 +877,29 @@ uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y)
 }
 
 /* The distances' exit: A the result, M 8-bit, the flags of its last step. */
-static void distance_exit(uint16_t a)
+static void distance_exit(Carried *cr, uint16_t a)
 {
-    cpu.a = a;
-    cpu.p = (uint8_t)(find_flags(cpu.p, a) | P_M);
+    cr->a = a;
+    set_p(cr, (uint8_t)(find_flags(cr->p, a) | P_M));
+}
+
+void ObjectDistanceApprox_cr(Carried *cr)
+{
+    fcv_set = 0;
+    distance_exit(cr, ObjectDistanceApprox(cr->db, cr->x, cr->y));
 }
 
 void abi_ObjectDistanceApprox(void)
 {
-    fcv_set = 0;
-    distance_exit(ObjectDistanceApprox(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDistanceApprox_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -819,9 +947,22 @@ uint16_t ObjectDistanceXY(uint8_t b, uint16_t x, uint16_t y)
     return a;
 }
 
+void ObjectDistanceXY_cr(Carried *cr)
+{
+    distance_exit(cr, ObjectDistanceXY(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectDistanceXY(void)
 {
-    distance_exit(ObjectDistanceXY(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDistanceXY_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t Gsu81E3Long(void);
@@ -891,9 +1032,22 @@ uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y)
     return a;
 }
 
+void ObjectOffsetDistanceXZ_cr(Carried *cr)
+{
+    distance_exit(cr, ObjectOffsetDistanceXZ(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectOffsetDistanceXZ(void)
 {
-    distance_exit(ObjectOffsetDistanceXZ(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectOffsetDistanceXZ_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ObjectPointDistanceXZ and ObjectPointDistanceXY: from object X to the
@@ -937,9 +1091,22 @@ uint16_t ObjectPointDistanceXZ(uint8_t b, uint16_t x)
     return point_distance(b, x, w(b, 0x05F2), 0x10);
 }
 
+void ObjectPointDistanceXZ_cr(Carried *cr)
+{
+    distance_exit(cr, ObjectPointDistanceXZ(cr->db, cr->x));
+}
+
 void abi_ObjectPointDistanceXZ(void)
 {
-    distance_exit(ObjectPointDistanceXZ(cpu.db, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPointDistanceXZ_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -956,9 +1123,22 @@ uint16_t ObjectPointDistanceXY(uint8_t b, uint16_t x)
     return point_distance(b, x, 0x00000A, 0x0E);
 }
 
+void ObjectPointDistanceXY_cr(Carried *cr)
+{
+    distance_exit(cr, ObjectPointDistanceXY(cr->db, cr->x));
+}
+
 void abi_ObjectPointDistanceXY(void)
 {
-    distance_exit(ObjectPointDistanceXY(cpu.db, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPointDistanceXY_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -981,10 +1161,23 @@ uint16_t ObjectPointGsu81E3(uint8_t b, uint16_t x)
     return (uint16_t)(a >> 8);
 }
 
+void ObjectPointGsu81E3_cr(Carried *cr)
+{
+    cr->a = ObjectPointGsu81E3(cr->db, cr->x);
+    set_p(cr, (uint8_t)((find_flags(cr->p, cr->x) | P_M) & ~P_X));
+}
+
 void abi_ObjectPointGsu81E3(void)
 {
-    cpu.a = ObjectPointGsu81E3(cpu.db, cpu.x);
-    cpu.p = (uint8_t)((find_flags(cpu.p, cpu.x) | P_M) & ~P_X);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPointGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1023,9 +1216,22 @@ uint16_t ObjectVelocityAddFrom(uint8_t b, uint16_t x, uint16_t y)
     return a;
 }
 
+void ObjectVelocityAddFrom_cr(Carried *cr)
+{
+    distance_exit(cr, ObjectVelocityAddFrom(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectVelocityAddFrom(void)
 {
-    distance_exit(ObjectVelocityAddFrom(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectVelocityAddFrom_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The Gsu81E3Long wrappers: X and Y pushed and pulled, 16-bit after. */
@@ -1038,10 +1244,10 @@ static uint16_t gsu_pair_end(void)
 }
 
 /* The pair routines' exit: M and X 16-bit; N, Z from X. */
-static void pair_exit(uint16_t a)
+static void pair_exit(Carried *cr, uint16_t a)
 {
-    cpu.a = a;
-    cpu.p = find_flags((uint8_t)(cpu.p & ~(P_M | P_X)), cpu.x);
+    cr->a = a;
+    set_p(cr, find_flags((uint8_t)(cr->p & ~(P_M | P_X)), cr->x));
 }
 
 /*
@@ -1070,10 +1276,23 @@ uint16_t ObjectPairGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     return gsu_pair_end();
 }
 
-void abi_ObjectPairGsu81E3(void)
+void ObjectPairGsu81E3_cr(Carried *cr)
 {
     fcv_set = 0;
-    pair_exit(ObjectPairGsu81E3(cpu.db, cpu.x, cpu.y));
+    pair_exit(cr, ObjectPairGsu81E3(cr->db, cr->x, cr->y));
+}
+
+void abi_ObjectPairGsu81E3(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPairGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1102,9 +1321,22 @@ uint16_t ObjectPairPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     return gsu_pair_end();
 }
 
+void ObjectPairPitchGsu81E3_cr(Carried *cr)
+{
+    pair_exit(cr, ObjectPairPitchGsu81E3(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectPairPitchGsu81E3(void)
 {
-    pair_exit(ObjectPairPitchGsu81E3(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPairPitchGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1144,9 +1376,22 @@ uint16_t ObjectPairOffsetGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     return gsu_pair_end();
 }
 
+void ObjectPairOffsetGsu81E3_cr(Carried *cr)
+{
+    pair_exit(cr, ObjectPairOffsetGsu81E3(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectPairOffsetGsu81E3(void)
 {
-    pair_exit(ObjectPairOffsetGsu81E3(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPairOffsetGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1178,7 +1423,21 @@ uint16_t ObjectPairOffsetPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     return gsu_pair_end();
 }
 
+void ObjectPairOffsetPitchGsu81E3_cr(Carried *cr)
+{
+    pair_exit(cr, ObjectPairOffsetPitchGsu81E3(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectPairOffsetPitchGsu81E3(void)
 {
-    pair_exit(ObjectPairOffsetPitchGsu81E3(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectPairOffsetPitchGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

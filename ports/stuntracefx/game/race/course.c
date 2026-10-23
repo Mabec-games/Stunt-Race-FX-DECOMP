@@ -5,14 +5,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-void ColourMathA3(void);
-uint16_t FlashingMetaspriteDraw(uint8_t bank, uint16_t *x, uint16_t *y);
-uint16_t FlashingMetaspriteDraw0(uint8_t bank, uint16_t *x, uint16_t *y);
-uint16_t FlashingMetaspriteDrawByMode(uint8_t bank, uint16_t *x, uint16_t *y);
 uint8_t SaveChecksum(void);
-uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x);
-uint16_t TilemapLevelColumns(void);
-#include "video_calls.h"
 void abi_AllRecordsScreen(void);
 void abi_BattleRecordsScreen(void);
 void abi_CourseScreenFadeBack(void);
@@ -60,26 +53,6 @@ uint8_t CourseFromSelection(uint8_t bank, uint8_t *p)
     return (uint8_t)s;
 }
 
-void abi_CourseFromSelection(void)
-{
-    cyc(24);
-    uint8_t p = cpu.p;
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | CourseFromSelection(cpu.db, &p));
-    cpu.p = p;
-}
-
-/*
- * @routine 02:EB4D CourseFromSelectionLong
- * WHAT IT DOES: CourseFromSelection for callers in other banks.
- * HOW: JSR to it, then RTL.
- * Entry: as CourseFromSelection. Exit: as CourseFromSelection.
- */
-uint8_t CourseFromSelectionLong(uint8_t bank, uint8_t *p)
-{
-    return CourseFromSelection(bank, p);
-}
-
 void BattleCourseSelectStep(Carried *cr);
 void CourseCursorAt0(Carried *cr);
 void CourseCursorAt1(Carried *cr);
@@ -88,6 +61,7 @@ void CourseCursorAt2Open(Carried *cr);
 void CourseCursorAt3(Carried *cr);
 void CourseCursorAt3Open(Carried *cr);
 void CourseCursorStep(Carried *cr);
+void CourseFromSelection_cr(Carried *cr);
 void CourseFromSelectionLong_cr(Carried *cr);
 void CoursePreviewReset(Carried *cr);
 void CoursePreviewRowsAll(Carried *cr);
@@ -163,38 +137,70 @@ static void wipe_in_body(Carried *cr);
 static void wipe_out_body(Carried *cr);
 static void zoom_in_body(Carried *cr);
 static void zoom_out_body(Carried *cr);
-static void w_BlendStepDown(Carried *cr);
-static void w_BlendStepUp(Carried *cr);
-static void w_ColourMathA3(Carried *cr);
-static void w_CourseFromSelection(Carried *cr);
 static void w_CourseScreenNothing(Carried *cr);
-static void w_FlashingMetaspriteDraw(Carried *cr);
-static void w_FlashingMetaspriteDraw0(Carried *cr);
-static void w_FlashingMetaspriteDrawByMode(Carried *cr);
-static void w_PreviewRowDrawAll(Carried *cr);
-static void w_PreviewRowDrawStunt(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
-static void w_Set0D37FromTable(Carried *cr);
-static void w_TilemapLevelColumns(Carried *cr);
-static void w_WindowEdgesStep(Carried *cr);
 void AllRecordsScreen(Carried *cr);
 void BattleRecordsScreen(Carried *cr);
+void BlendStepDown_cr(Carried *cr);
+void BlendStepUp_cr(Carried *cr);
 void ColourMathA3Long_cr(Carried *cr);
+void ColourMathA3_cr(Carried *cr);
 void ColourMathOffLong_cr(Carried *cr);
 void FixedColourFromStep_cr(Carried *cr);
+void FlashingMetaspriteDraw0_cr(Carried *cr);
+void FlashingMetaspriteDrawByMode_cr(Carried *cr);
+void FlashingMetaspriteDraw_cr(Carried *cr);
 void MenuCursorFourWay_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
+void PreviewRowDrawAll_cr(Carried *cr);
+void PreviewRowDrawStunt_cr(Carried *cr);
 void RecordsLoadForCourse_cr(Carried *cr);
 void RecordsUnpackCourseTotals(Carried *cr);
+void Set0D37FromTable_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SpeedRecordsScreen(Carried *cr);
 void StuntRecordsScreen(Carried *cr);
+void TilemapLevelColumns_cr(Carried *cr);
+void WindowEdgesStep_cr(Carried *cr);
 void WindowTable7FLong(Carried *cr);
+
+void CourseFromSelection_cr(Carried *cr)
+{
+    cyc(24);
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | CourseFromSelection(cr->db, &p));
+    set_p(cr, p);
+}
+
+void abi_CourseFromSelection(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseFromSelection_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/*
+ * @routine 02:EB4D CourseFromSelectionLong
+ * WHAT IT DOES: CourseFromSelection for callers in other banks.
+ * HOW: JSR to it, then RTL.
+ * Entry: as CourseFromSelection. Exit: as CourseFromSelection.
+ */
+uint8_t CourseFromSelectionLong(uint8_t bank, uint8_t *p)
+{
+    return CourseFromSelection(bank, p);
+}
 
 void CourseFromSelectionLong_cr(Carried *cr)
 {
     cyc(46);
-    w_CourseFromSelection(cr);
+    CourseFromSelection_cr(cr);
     cyc(44);
 }
 
@@ -513,7 +519,7 @@ void CourseZoomInStep(Carried *cr)
 
     ColourMathA3Long_cr(cr);
     r_rep(cr, P_M | P_X);
-    (cyc(62), w_BlendStepUp(cr));
+    (cyc(62), BlendStepUp_cr(cr));
     (cyc(62), FixedColourFromStep_cr(cr));
     cyc(32);
     r_lda8(cr, 0x7F3408);
@@ -660,7 +666,7 @@ static void course_zoom(Carried *cr, uint16_t x, uint16_t y)
     set_p(cr, nz8(cr->p, 0x03));
     r_rep(cr, P_M | P_X);
     CourseWindowZoomSetup(cr);
-    w_ColourMathA3(cr);
+    ColourMathA3_cr(cr);
     (cyc(62), OamBufferHideLargeLong_cr(cr));
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
@@ -1052,7 +1058,7 @@ static void speed_select_body(Carried *cr)
         set_p(cr, nz8(cr->p, (uint8_t)cr->x));
         LevelColumnsSet4(cr);
     }
-    (cyc(46), w_TilemapLevelColumns(cr));
+    (cyc(46), TilemapLevelColumns_cr(cr));
     cyc(24);                           /* its end is TilemapLevelColumns' now */
     r_lda8(cr, b | 0x0D61);
     v = (uint8_t)cr->a;
@@ -1075,7 +1081,7 @@ static void speed_select_body(Carried *cr)
             sel_scroll(cr, b, v);
             return;
         }
-        (cyc(84), w_FlashingMetaspriteDrawByMode(cr));
+        (cyc(84), FlashingMetaspriteDrawByMode_cr(cr));
         cyc(24);
         r_lda8(cr, b | 0x0D4A);
         if (!(uint8_t)cr->a) {
@@ -1124,7 +1130,7 @@ static void speed_select_body(Carried *cr)
         sel_scroll(cr, b, v);
         return;
     } else { cyc(92); }
-    w_FlashingMetaspriteDrawByMode(cr);
+    FlashingMetaspriteDrawByMode_cr(cr);
     cyc(24);
     r_lda8(cr, b | 0x0D4A);
     v = (uint8_t)cr->a;
@@ -1238,8 +1244,8 @@ void StuntCourseSelectStep(Carried *cr)
             cyc(42);
             return;
         }
-        (cyc(84), w_Set0D37FromTable(cr));
-        (cyc(46), w_FlashingMetaspriteDraw(cr));
+        (cyc(84), Set0D37FromTable_cr(cr));
+        (cyc(46), FlashingMetaspriteDraw_cr(cr));
         cyc(24);
         if (sel_pressed16(cr, b, 0x9000)) {
             cyc(102);
@@ -1264,7 +1270,7 @@ void StuntCourseSelectStep(Carried *cr)
         return;
     } else { cyc(68); }
     TimeUpSelectDraw(cr);  /* TimeUpSelectDraw */
-    (cyc(46), w_FlashingMetaspriteDraw(cr));
+    (cyc(46), FlashingMetaspriteDraw_cr(cr));
     cyc(24);
     if (sel_pressed16(cr, b, 0x9000)) {
         r_sep(cr, P_M);
@@ -1316,8 +1322,8 @@ void BattleCourseSelectStep(Carried *cr)
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0)));
     if (v != 0x0F)
         { cyc(74); return; }
-    (cyc(84), w_Set0D37FromTable(cr));
-    (cyc(46), w_FlashingMetaspriteDraw(cr));
+    (cyc(84), Set0D37FromTable_cr(cr));
+    (cyc(46), FlashingMetaspriteDraw_cr(cr));
     cyc(24);
     if (sel_pressed16(cr, b, 0x9000)) {
         cyc(102);
@@ -1625,7 +1631,7 @@ static int records_key(Carried *cr, uint32_t b)
             set_p(cr, nz8(cr->p, 0));
             cyc(84);
             wr8(b | 0x0D35, 0x00);
-            (cyc(46), w_FlashingMetaspriteDraw0(cr));
+            (cyc(46), FlashingMetaspriteDraw0_cr(cr));
             return 0;
         } else { cyc(56); }
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x46);
@@ -2120,7 +2126,7 @@ void abi_BattleCourseSelectStep(void);
  */
 void CourseScreenWindowStep(Carried *cr)
 {
-    (cyc(62), w_WindowEdgesStep(cr));
+    (cyc(62), WindowEdgesStep_cr(cr));
     cyc(42);
 }
 
@@ -2327,9 +2333,9 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
     for (first = 1;; first = 0) {
         cyc(first ? 62 : 84);               /* JSL; after the first, BRA back too */
         if (all)
-            w_PreviewRowDrawAll(cr);
+            PreviewRowDrawAll_cr(cr);
         else
-            w_PreviewRowDrawStunt(cr);
+            PreviewRowDrawStunt_cr(cr);
         cyc(24);   /* PreviewRowDraw* state their tail */
         r_lda16(cr, b | 0x0FA8);
         v = (uint16_t)(cr->a + 1);
@@ -2738,7 +2744,7 @@ void CourseRecordsDispatch(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
-    w_TilemapLevelColumns(cr);
+    TilemapLevelColumns_cr(cr);
     r_sep(cr, P_M);
     cyc(46);                           /* its end is TilemapLevelColumns' now */
     r_lda8(cr, b | 0x0D61);
@@ -2986,7 +2992,7 @@ void abi_CourseScreenState8(void)
 static int fade_step(Carried *cr)
 {
     r_rep(cr, P_M);
-    (cyc(62), w_BlendStepDown(cr));
+    (cyc(62), BlendStepDown_cr(cr));
     r_rep(cr, P_M);
     cyc(32);
     r_lda16(cr, 0x7F3408);
@@ -3098,145 +3104,6 @@ static void fade_back_body(Carried *cr)
     SoundPort0QueuePush_cr(cr);
 }
 
-/* CourseFromSelection as its adapter leaves the registers. */
-static void w_CourseFromSelection(Carried *cr)
-{
-    cyc(24);
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | CourseFromSelection(cr->db, &p));
-    set_p(cr, p);
-}
-
-/* BlendStepUp, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_BlendStepUp(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_BlendStepUp();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* ColourMathA3 as its adapter leaves the registers. */
-static void w_ColourMathA3(Carried *cr)
-{
-    ColourMathA3();
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xA3);
-    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
-}
-
-/* FlashingMetaspriteDrawByMode as its adapter leaves the registers. */
-static void w_FlashingMetaspriteDrawByMode(Carried *cr)
-{
-    cr->a = FlashingMetaspriteDrawByMode(cr->db, &cr->x, &cr->y);
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
-}
-
-/* TilemapLevelColumns as its adapter leaves the registers. */
-static void w_TilemapLevelColumns(Carried *cr)
-{
-    cr->a = TilemapLevelColumns();
-    cr->x = cr->a;
-    cr->y = 0x000C;
-    if (cr->p & P_X)
-        cr->x &= 0x00FF;
-    cyc(98);
-}
-
-/* FlashingMetaspriteDraw as its adapter leaves the registers. */
-static void w_FlashingMetaspriteDraw(Carried *cr)
-{
-    cr->a = FlashingMetaspriteDraw(cr->db, &cr->x, &cr->y);
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
-}
-
-/* Set0D37FromTable as its adapter leaves the registers. */
-static void w_Set0D37FromTable(Carried *cr)
-{
-    uint16_t x;
-
-    cr->a = Set0D37FromTable(cr->db, &x);
-    cr->x = (cr->p & P_X) ? (cyc(70), (uint8_t)x) : x;
-}
-
-/* FlashingMetaspriteDraw0 as its adapter leaves the registers. */
-static void w_FlashingMetaspriteDraw0(Carried *cr)
-{
-    cr->a = FlashingMetaspriteDraw0(cr->db, &cr->x, &cr->y);
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
-    cyc(0);
-}
-
-/* WindowEdgesStep as its adapter leaves the registers. */
-static void w_WindowEdgesStep(Carried *cr)
-{
-    uint8_t x, p, a;
-
-    r_sep(cr, P_M | P_X);
-    p = cr->p;
-    a = WindowEdgesStep(cr->db, &p, &x);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
-    cr->x = x;
-    set_p(cr, p);
-}
-
-/* PreviewRowDrawAll, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_PreviewRowDrawAll(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_PreviewRowDrawAll();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* PreviewRowDrawStunt, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_PreviewRowDrawStunt(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_PreviewRowDrawStunt();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* CourseScreenNothing as its adapter leaves the registers. */
 static void w_CourseScreenNothing(Carried *cr)
 {
@@ -3247,23 +3114,4 @@ static void w_CourseScreenNothing(Carried *cr)
 static void w_SaveChecksum(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | SaveChecksum());
-}
-
-/* BlendStepDown, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_BlendStepDown(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_BlendStepDown();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }

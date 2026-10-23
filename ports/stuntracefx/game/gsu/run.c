@@ -12,6 +12,13 @@
 #include "hw.h"
 #include "wram.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
+#include "video_calls.h"
+#include "hud_calls.h"
+#include "object_calls.h"
+#include "system_calls.h"
+void abi_HudColourStep(void);
 
 /* Poll until the Super FX stops (status bit 5 clear), counting each poll:
    an 8-bit INC of $FE, and of $FF only when $FE wraps to 0. `first` is
@@ -62,12 +69,58 @@ uint8_t GsuWait(void)
     return cyc_then(42, gsu_scmr_back());
 }
 
-void abi_GsuWait(void)
+void FrameRunGsuAB13A(Carried *cr);
+void FrameRunGsuAB13B(Carried *cr);
+void GsuAB13WithParams_cr(Carried *cr);
+void GsuRun_cr(Carried *cr);
+void GsuWait_cr(Carried *cr);
+void HudFrameWhileGsuRuns(Carried *cr);
+void FrameObjectsWhileGsuRuns(Carried *cr);
+void FrameRunGsu8FCA(Carried *cr);
+static void run_cmp8(Carried *cr, uint8_t v, uint8_t m);
+static void start_ab13(Carried *cr, uint32_t b);
+static void w_BackdropScrollFromView(Carried *cr);
+static void w_FrameObjectsWhileGsuRuns(Carried *cr);
+static void w_MapMarkersPanelA(Carried *cr);
+static void w_MapMarkersPanelB(Carried *cr);
+static void w_ObjectDrawListBuild(Carried *cr);
+static void w_SlideStep(Carried *cr);
+void BackdropRowsUpdate_cr(Carried *cr);
+void BucketTriggersFixedArea_cr(Carried *cr);
+void BucketTriggersFromView_cr(Carried *cr);
+void DataBankTest_cr(Carried *cr);
+void FadeValueStep_cr(Carried *cr);
+void GsuParamsUpdate_cr(Carried *cr);
+void GsuRecordsUpload_cr(Carried *cr);
+void HudColourStep_cr(Carried *cr);
+void HudDigitSprites62_cr(Carried *cr);
+void HudDrawDigits19EC_cr(Carried *cr);
+void HudDrawValueA_cr(Carried *cr);
+void HudDrawValueB_cr(Carried *cr);
+void HudDrawValueC_cr(Carried *cr);
+void HudGaugesPanelA_cr(Carried *cr);
+void HudGaugesPanelB_cr(Carried *cr);
+void ObjectGroupsActivate_cr(Carried *cr);
+
+void GsuWait_cr(Carried *cr)
 {
     uint8_t mode = GsuWait();
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
-    cpu.p = (uint8_t)(nz8(cpu.p, mode) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
+    set_p(cr, (uint8_t)(nz8(cr->p, mode) | P_M));
+}
+
+void abi_GsuWait(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuWait_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -94,13 +147,26 @@ uint8_t GsuRun(uint8_t bank, uint16_t start)
     return gsu_scmr_back();
 }
 
+void GsuRun_cr(Carried *cr)
+{
+    uint8_t mode = GsuRun((uint8_t)cr->a, cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
+    set_p(cr, nz8(cr->p, cr->db));
+    cyc(72);                            /* PLB, RTL */
+}
+
 void abi_GsuRun(void)
 {
-    uint8_t mode = GsuRun((uint8_t)cpu.a, cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
-    cpu.p = nz8(cpu.p, cpu.db);
-    cyc(72);                            /* PLB, RTL */
+    GsuRun_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t GsuParamsUpdate(void);
@@ -154,13 +220,26 @@ uint8_t GsuAB13WithParams(uint8_t bank)
     return gsu_ab13_with_params(bank, &last);
 }
 
-void abi_GsuAB13WithParams(void)
+void GsuAB13WithParams_cr(Carried *cr)
 {
     uint16_t last;
-    uint8_t mode = gsu_ab13_with_params(cpu.db, &last);
+    uint8_t mode = gsu_ab13_with_params(cr->db, &last);
 
-    cpu.a = (uint16_t)((last & 0xFF00) | mode);
-    cpu.x = (cpu.p & P_X) ? 0x0013 : (cyc(72), 0xAB13);
+    cr->a = (uint16_t)((last & 0xFF00) | mode);
+    cr->x = (cr->p & P_X) ? 0x0013 : (cyc(72), 0xAB13);
+}
+
+void abi_GsuAB13WithParams(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuAB13WithParams_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_BucketTriggersFromView(void);
@@ -180,19 +259,32 @@ void abi_GsuRecordsUpload(void);
  * HOW: Six calls in turn.
  * Entry: X 16-bit, D = $0000. Exit: as GsuRecordsUpload leaves it.
  */
-void FrameObjectsWhileGsuRuns(void)
+void FrameObjectsWhileGsuRuns(Carried *cr)
 {
-    (cyc(46), abi_BucketTriggersFromView());
-    (cyc(46), abi_ObjectDrawListBuild());
-    (cyc(46), abi_BucketTriggersFixedArea());
-    (cyc(46), abi_ObjectGroupsActivate());
-    (cyc(46), abi_GsuWait());
-    (cyc(62), abi_GsuRecordsUpload());
+    (cyc(46), BucketTriggersFromView_cr(cr));
+    (cyc(46), w_ObjectDrawListBuild(cr));
+    (cyc(46), BucketTriggersFixedArea_cr(cr));
+    (cyc(46), ObjectGroupsActivate_cr(cr));
+    (cyc(46), GsuWait_cr(cr));
+    (cyc(62), GsuRecordsUpload_cr(cr));
+}
+
+void FrameObjectsWhileGsuRuns_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    FrameObjectsWhileGsuRuns(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_FrameObjectsWhileGsuRuns(void)
 {
-    FrameObjectsWhileGsuRuns();
+    FrameObjectsWhileGsuRuns_g();
 }
 
 /*
@@ -206,41 +298,54 @@ void abi_FrameObjectsWhileGsuRuns(void)
  * Entry: D = $0000. Exit: A = the poll count; X, Y as GsuRecordsUpload
  * leaves them; M 8-bit, X 16-bit; N, Z from the data bank pulled back.
  */
-void FrameRunGsu8FCA(void)
+void FrameRunGsu8FCA(Carried *cr)
 {
-    uint8_t db = cpu.db;
+    uint8_t db = cr->db;
     uint16_t n;
 
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cyc(60);
     wr8(0x0000FE, 0x00);
     cyc(16);
     wr8(0x0000FF, 0x00);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
-    cpu.x = 0x8FCA;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
+    cr->x = 0x8FCA;
     cyc(72);
     hw_wr(GSU_PBR, 0x04);
-    cpu.db = 0x00;
+    cr->db = 0x00;
     cyc(112);
     hw_wr(GSU_SCMR, cyc_then(40, (uint8_t)(rd8(GSU_SCMR_SHADOW) | 0x18)));
     cyc(24);
     hw_wr(GSU_SFR, 0x00);
     cyc(24);
     hw_wr16(GSU_R15, 0x8FCA);
-    (cyc(46), FrameObjectsWhileGsuRuns());
+    (cyc(46), FrameObjectsWhileGsuRuns(cr));
     cyc(80);
     n = rd16(0x0000FE);
     cyc(24);
     wr16(0x001F1F, n);
-    cpu.a = n;
-    cpu.db = db;
-    cpu.p = (uint8_t)(nz8(cpu.p | P_M, db) & ~P_X);
+    cr->a = n;
+    cr->db = db;
+    set_p(cr, (uint8_t)(nz8(cr->p | P_M, db) & ~P_X));
     cyc(94);
+}
+
+void FrameRunGsu8FCA_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    FrameRunGsu8FCA(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_FrameRunGsu8FCA(void)
 {
-    FrameRunGsu8FCA();
+    FrameRunGsu8FCA_g();
 }
 
 void abi_SlideStep(void);
@@ -260,9 +365,9 @@ void abi_MapMarkersPanelA(void);
 void abi_MapMarkersPanelB(void);
 
 /* CMP # (8-bit): N, Z and C. */
-static void run_cmp8(uint8_t v, uint8_t m)
+static void run_cmp8(Carried *cr, uint8_t v, uint8_t m)
 {
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(8), P_C) : (cyc(2), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(8), P_C) : (cyc(2), 0))));
 }
 
 /*
@@ -278,69 +383,82 @@ static void run_cmp8(uint8_t v, uint8_t m)
  * through call_routine.
  * Entry: any widths; D = $0000. Exit: as the last call leaves it.
  */
-void abi_HudFrameWhileGsuRuns(void)
+void HudFrameWhileGsuRuns(Carried *cr)
 {
     cyc(62);
     uint32_t b;
     uint8_t v;
 
-    abi_SlideStep();
-    (cyc(62), abi_FadeValueStep());
-    (cyc(62), abi_DataBankTest());
-    op_sep(P_M | P_X);
-    b = (uint32_t)cpu.db << 16;
+    w_SlideStep(cr);
+    (cyc(62), FadeValueStep_cr(cr));
+    (cyc(62), DataBankTest_cr(cr));
+    r_sep(cr, P_M | P_X);
+    b = (uint32_t)cr->db << 16;
     cyc(24);
-    op_lda8(b | 0x0D62);
-    if ((uint8_t)cpu.a) {
+    r_lda8(cr, b | 0x0D62);
+    if ((uint8_t)cr->a) {
         cyc(72);
-        op_lda8(0x000D7F);
-        cpu.y = (uint8_t)cpu.a;
+        r_lda8(cr, 0x000D7F);
+        cr->y = (uint8_t)cr->a;
         cyc(90);
-        run_cmp8((uint8_t)cpu.y, 0x01);
-        v = (uint8_t)cpu.y;
-        abi_BackdropScrollFromView();
+        run_cmp8(cr, (uint8_t)cr->y, 0x01);
+        v = (uint8_t)cr->y;
+        w_BackdropScrollFromView(cr);
         if (v == 0x01)
-            { cyc(46); abi_HudDrawValueC(); }
+            { cyc(46); HudDrawValueC_cr(cr); }
         else
-            { cyc(46); abi_HudDrawValueB(); }
+            { cyc(46); HudDrawValueB_cr(cr); }
         cyc(0);
         return;
     }
-    cpu.x = 0x00;
+    cr->x = 0x00;
     cyc(70);
-    op_lda8(0x000D2B);
-    v = (uint8_t)cpu.a;
+    r_lda8(cr, 0x000D2B);
+    v = (uint8_t)cr->a;
     cyc(42);
-    run_cmp8(v, 0x01);
+    run_cmp8(cr, v, 0x01);
     if (v != 0x01) {
-        run_cmp8(v, 0x03);
+        run_cmp8(cr, v, 0x03);
         if (v != 0x03)
-            { cyc(64); abi_HudDigitSprites62(); }
+            { cyc(64); HudDigitSprites62_cr(cr); }
         cyc(12);
     }
     if (v != 0x03)
-        { cyc(34); abi_HudDrawDigits19EC(); }
+        { cyc(34); HudDrawDigits19EC_cr(cr); }
     cyc(46);
-    abi_BackdropRowsUpdate();
-    (cyc(46), abi_HudDrawValueA());
+    BackdropRowsUpdate_cr(cr);
+    (cyc(46), HudDrawValueA_cr(cr));
     cyc(62);
-    call_routine(0x7EE34F, 1);
+    HudColourStep_cr(cr);
+}
+
+void abi_HudFrameWhileGsuRuns(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudFrameWhileGsuRuns(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Super FX program $01:AB13 started (program bank 1, screen mode $0374 |
    $18, the status cleared, R15 = $AB13) with M 8-bit and X 16-bit. */
-static void start_ab13(uint32_t b)
+static void start_ab13(Carried *cr, uint32_t b)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = 0xAB13;
-    cpu.p = nz16(cpu.p, 0xAB13);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0xAB13;
+    set_p(cr, nz16(cr->p, 0xAB13));
     cyc(64);
     hw_wr(b | 0x3034, 0x01);
     cyc(24);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(rd8(b | 0x0374) | 0x18));
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(b | 0x0374) | 0x18));
+    set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     cyc(40);
-    hw_wr(b | 0x303A, (uint8_t)cpu.a);
+    hw_wr(b | 0x303A, (uint8_t)cr->a);
     cyc(24);
     hw_wr(b | 0x3030, 0x00);
     cyc(24);
@@ -360,38 +478,51 @@ static void start_ab13(uint32_t b)
  * waiting.
  * Entry: D = $0000. Exit: as MapMarkersPanelB leaves it.
  */
-void abi_FrameRunGsuAB13B(void)
+void FrameRunGsuAB13B(Carried *cr)
 {
     uint32_t b;
 
-    op_sep(P_M);
-    op_rep(P_X);
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
     cyc(38);
     wr8(0x0000FE, 0x00);
     cyc(16);
     wr8(0x0000FF, 0x00);
-    abi_GsuParamsUpdate();
-    b = (uint32_t)cpu.db << 16;
-    start_ab13(b);
-    abi_HudFrameWhileGsuRuns();
-    (cyc(88), abi_HudGaugesPanelB());
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
+    GsuParamsUpdate_cr(cr);
+    b = (uint32_t)cr->db << 16;
+    start_ab13(cr, b);
+    HudFrameWhileGsuRuns(cr);
+    (cyc(88), HudGaugesPanelB_cr(cr));
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
     cyc(46);
-    op_lda8(b | 0x0D62);
-    if ((uint8_t)cpu.a)
-        { cyc(62); abi_FrameObjectsWhileGsuRuns(); cyc(88); }
+    r_lda8(cr, b | 0x0D62);
+    if ((uint8_t)cr->a)
+        { cyc(62); w_FrameObjectsWhileGsuRuns(cr); cyc(88); }
     else
         cyc(68);                        /* the branch over the call, then the call to GsuWait */
-    abi_GsuWait();
-    op_rep(P_M);
-    b = (uint32_t)cpu.db << 16;
+    GsuWait_cr(cr);
+    r_rep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
     cyc(16);
-    op_lda16(0x0000FE);
+    r_lda16(cr, 0x0000FE);
     cyc(24);
-    wr16(b | 0x1F21, cpu.a);
-    (cyc(46), abi_MapMarkersPanelB());
+    wr16(b | 0x1F21, cr->a);
+    (cyc(46), w_MapMarkersPanelB(cr));
     cyc(44);                            /* RTL */
+}
+
+void abi_FrameRunGsuAB13B(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameRunGsuAB13B(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -404,22 +535,106 @@ void abi_FrameRunGsuAB13B(void)
  * HOW: As FrameRunGsuAB13B, without the objects or the poll count kept.
  * Entry: D = $0000. Exit: as MapMarkersPanelA leaves it.
  */
-void abi_FrameRunGsuAB13A(void)
+void FrameRunGsuAB13A(Carried *cr)
 {
     uint32_t b;
 
-    op_sep(P_M);
-    op_rep(P_X);
-    (cyc(22), abi_GsuParamsUpdate());
-    b = (uint32_t)cpu.db << 16;
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
+    (cyc(22), GsuParamsUpdate_cr(cr));
+    b = (uint32_t)cr->db << 16;
     cyc(24);
     wr8(b | 0x1F21, 0x00);
     cyc(24);
     wr8(b | 0x1F22, 0x00);
-    start_ab13(b);
-    abi_HudFrameWhileGsuRuns();
-    (cyc(88), abi_HudGaugesPanelA());
-    (cyc(46), abi_GsuWait());
-    (cyc(46), abi_MapMarkersPanelA());
+    start_ab13(cr, b);
+    HudFrameWhileGsuRuns(cr);
+    (cyc(88), HudGaugesPanelA_cr(cr));
+    (cyc(46), GsuWait_cr(cr));
+    (cyc(46), w_MapMarkersPanelA(cr));
     cyc(44);                            /* RTL */
+}
+
+void abi_FrameRunGsuAB13A(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameRunGsuAB13A(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* ObjectDrawListBuild as its adapter leaves the registers. */
+static void w_ObjectDrawListBuild(Carried *cr)
+{
+    uint8_t p = cr->p;
+    ObjectDrawListEnd e = ObjectDrawListBuild(cr->y);
+
+    cr->a = 0;
+    cr->x = e.x;
+    cr->y = e.y;
+    set_p(cr, p);
+}
+
+/* BackdropScrollFromView as its adapter leaves the registers. */
+static void w_BackdropScrollFromView(Carried *cr)
+{
+    cr->a = BackdropScrollFromView(cr->db, &cr->x, !(cr->p & P_M));
+}
+
+/* SlideStep as its adapter leaves the registers. */
+static void w_SlideStep(Carried *cr)
+{
+    cr->a = SlideStep(cr->a);
+    cyc(100);
+}
+
+/* FrameObjectsWhileGsuRuns as its adapter leaves the registers. */
+static void w_FrameObjectsWhileGsuRuns(Carried *cr)
+{
+    FrameObjectsWhileGsuRuns(cr);
+}
+
+/* MapMarkersPanelB as its adapter leaves the registers. */
+static void w_MapMarkersPanelB(Carried *cr)
+{
+    uint16_t x, y;
+    uint8_t p0 = cr->p;
+
+    set_p(cr, (uint8_t)((p0 | P_M) & ~(P_N | P_Z)));
+    if (!MapMarkersPanelB(cr->db, &x, &y)) {
+        set_p(cr, p0);
+        cr->a &= 0xFF00;
+        set_p(cr, (uint8_t)(nz8(cr->p, 0) | P_M));
+        return;
+    }
+    /* N, Z from the first slot, which is never 0 or negative */
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~(P_N | P_Z)));
+    cr->x = x;
+    cr->y = y;
+    cr->a = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
+/* MapMarkersPanelA as its adapter leaves the registers. */
+static void w_MapMarkersPanelA(Carried *cr)
+{
+    uint16_t y;
+
+    /* an interrupt inside the markers pushes the P they run under */
+    set_p(cr, (uint8_t)nz16((uint8_t)(cr->p & ~P_M), 0x0158));
+    cr->x = MapMarkersPanelA(cr->db, &y);
+    cr->y = y;
+    cr->a = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
 }

@@ -6,6 +6,8 @@
 #include "native.h"
 #include "hw.h"
 #include "math_calls.h"
+#include "carried.h"
+
 
 /*
  * Signed 8 x 8 multiply through the unsigned multiplier: the magnitudes are
@@ -145,10 +147,33 @@ uint8_t RotateXZ(uint8_t angle)
     return rotate8(0x000002, 0x000094, 0x000004, 0x0005F2);
 }
 
+void MulWordByte_cr(Carried *cr);
+void MulWordByteLong_cr(Carried *cr);
+void RotateXY_cr(Carried *cr);
+void RotateXZ_cr(Carried *cr);
+void RotateXZFrom08_cr(Carried *cr);
+void RotateXZWide_cr(Carried *cr);
+void RotateXZWideFrom08_cr(Carried *cr);
+static void mulw_regs(Carried *cr, uint16_t w, uint8_t y);
+static void wide_regs(Carried *cr, uint8_t p, uint16_t a, uint16_t x, uint16_t y);
+
+void RotateXZ_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZ((uint8_t)cr->a));
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
+}
+
 void abi_RotateXZ(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | RotateXZ((uint8_t)cpu.a));
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RotateXZ_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -171,10 +196,23 @@ uint8_t RotateXZFrom08(uint8_t angle)
     return rotate8(0x000008, 0x000094, 0x00000A, 0x0005F2);
 }
 
+void RotateXZFrom08_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZFrom08((uint8_t)cr->a));
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
+}
+
 void abi_RotateXZFrom08(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | RotateXZFrom08((uint8_t)cpu.a));
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RotateXZFrom08_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -195,10 +233,23 @@ uint8_t RotateXY(uint8_t angle)
     return rotate8(0x000002, 0x000008, 0x000004, 0x00000A);
 }
 
+void RotateXY_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXY((uint8_t)cr->a));
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
+}
+
 void abi_RotateXY(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | RotateXY((uint8_t)cpu.a));
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RotateXY_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -380,19 +431,32 @@ store:
 
 /* MulWordByte's exit in the registers: A the product, Y the high byte, M
    set, N, Z, C, V from its last add or subtract. */
-static void mulw_regs(uint16_t w, uint8_t y)
+static void mulw_regs(Carried *cr, uint16_t w, uint8_t y)
 {
-    cpu.a = w;
-    cpu.y = y;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | mulw_flags | P_M);
+    cr->a = w;
+    cr->y = y;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | mulw_flags | P_M));
+}
+
+void MulWordByte_cr(Carried *cr)
+{
+    uint8_t y;
+    uint16_t w = MulWordByte(cr->db, &y);
+
+    mulw_regs(cr, w, y);
 }
 
 void abi_MulWordByte(void)
 {
-    uint8_t y;
-    uint16_t w = MulWordByte(cpu.db, &y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    mulw_regs(w, y);
+    MulWordByte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -411,12 +475,25 @@ uint16_t MulWordByteLong(uint8_t bank, uint8_t *yout)
     return w;
 }
 
-void abi_MulWordByteLong(void)
+void MulWordByteLong_cr(Carried *cr)
 {
     uint8_t y;
-    uint16_t w = MulWordByteLong(cpu.db, &y);
+    uint16_t w = MulWordByteLong(cr->db, &y);
 
-    mulw_regs(w, y);
+    mulw_regs(cr, w, y);
+}
+
+void abi_MulWordByteLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MulWordByteLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One MulWordByte: $67-$68 = the word at v, $69 = the byte at f. Data
@@ -540,12 +617,12 @@ static uint16_t rotate_wide_keep(uint8_t i, uint16_t xa, uint16_t out, int x8,
 
 /* The wide rotations' registers: A as returned, X and Y the reloaded
    values, DB as it came, P as it came but N, Z from X. */
-static void wide_regs(uint8_t p, uint16_t a, uint16_t x, uint16_t y)
+static void wide_regs(Carried *cr, uint8_t p, uint16_t a, uint16_t x, uint16_t y)
 {
-    cpu.a = a;
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = (p & P_X) ? nz8(p, (uint8_t)x) : nz16(p, x);
+    cr->a = a;
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, (p & P_X) ? nz8(p, (uint8_t)x) : nz16(p, x));
 }
 
 /*
@@ -568,13 +645,26 @@ uint16_t RotateXZWide(uint8_t angle, int x8, uint16_t *x, uint16_t *y)
     return rotate_wide_keep(angle, 0x0002, 0x0004, x8, x, y, 0);
 }
 
+void RotateXZWide_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p;
+
+    cr->a = RotateXZWide((uint8_t)cr->a, (p & P_X) != 0, &x, &y);
+    wide_regs(cr, p, cr->a, x, y);
+}
+
 void abi_RotateXZWide(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = RotateXZWide((uint8_t)cpu.a, (p & P_X) != 0, &x, &y);
-    wide_regs(p, cpu.a, x, y);
+    RotateXZWide_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -590,11 +680,25 @@ uint16_t RotateXZWideFrom08(uint8_t angle, int x8, uint16_t *x, uint16_t *y)
     return rotate_wide_keep((uint8_t)(~angle + 1), 0x0008, 0x000A, x8, x, y, 1);
 }
 
+void RotateXZWideFrom08_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p;
+
+    cr->a = RotateXZWideFrom08((uint8_t)cr->a, (p & P_X) != 0, &x, &y);
+    wide_regs(cr, p, cr->a, x, y);
+}
+
 void abi_RotateXZWideFrom08(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = RotateXZWideFrom08((uint8_t)cpu.a, (p & P_X) != 0, &x, &y);
-    wide_regs(p, cpu.a, x, y);
+    RotateXZWideFrom08_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

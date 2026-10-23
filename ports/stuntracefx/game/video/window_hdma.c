@@ -9,6 +9,10 @@
 #include "hw.h"
 #include "cpu_ops.h"
 #include "video_calls.h"
+#include "carried.h"
+
+uint16_t Records7FFromF170(uint8_t bank);
+void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 
 #define WINDOW_HDMA 0x7FF85Bu
 
@@ -42,11 +46,54 @@ void WindowHdmaFFDD(void)
     cyc(42);
 }
 
-void abi_WindowHdmaFFDD(void)
+void ColdataLevelStep_cr(Carried *cr);
+void ColdataLowBandStep_cr(Carried *cr);
+void ColdataTopBandStep_cr(Carried *cr);
+void WindowBandsAnimate_cr(Carried *cr);
+void WindowEdgesFromList_cr(Carried *cr);
+void WindowEdgesFromPair_cr(Carried *cr);
+void WindowHdmaAt_cr(Carried *cr);
+void WindowHdmaBands_cr(Carried *cr);
+void WindowHdmaChannelsSetup_cr(Carried *cr);
+void WindowHdmaFFD1_cr(Carried *cr);
+void WindowHdmaFFD5_cr(Carried *cr);
+void WindowHdmaFFD9_cr(Carried *cr);
+void WindowHdmaFFDD_cr(Carried *cr);
+void WindowHdmaFromList_cr(Carried *cr);
+void WindowHdmaFromTable_cr(Carried *cr);
+void WindowHdmaLayout_cr(Carried *cr);
+void WindowHdmaNormal_cr(Carried *cr);
+void WindowHdmaPreset_cr(Carried *cr);
+void WindowLayoutStep_cr(Carried *cr);
+void WindowLayoutStepForScreen_cr(Carried *cr);
+void WindowSlideCheck_cr(Carried *cr);
+void WindowSlideDown_cr(Carried *cr);
+void WindowSlideStep_cr(Carried *cr);
+void WindowSlideUp_cr(Carried *cr);
+void WindowSplitAnimate_cr(Carried *cr);
+void WindowsInit_cr(Carried *cr);
+static void records_7f(Carried *cr, int course_screen);
+static void w_Records7FFromF170(Carried *cr);
+static void w_Records7FFromF634(Carried *cr);
+
+void WindowHdmaFFDD_cr(Carried *cr)
 {
     WindowHdmaFFDD();
-    cpu.a = 0xFFDD;
-    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+    cr->a = 0xFFDD;
+    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
+}
+
+void abi_WindowHdmaFFDD(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaFFDD_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -89,13 +136,26 @@ uint16_t WindowHdmaFromTable(uint16_t *sel)
     return mid;
 }
 
-void abi_WindowHdmaFromTable(void)
+void WindowHdmaFromTable_cr(Carried *cr)
 {
     uint16_t sel, mid = WindowHdmaFromTable(&sel);
 
-    cpu.a = (uint16_t)(mid & 0xFF00);
-    cpu.x = sel;
-    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
+    cr->a = (uint16_t)(mid & 0xFF00);
+    cr->x = sel;
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_X)) | P_Z | P_M)));
+}
+
+void abi_WindowHdmaFromTable(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaFromTable_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -128,11 +188,24 @@ void WindowHdmaFFD1(void)
     cyc(42);
 }
 
-void abi_WindowHdmaFFD1(void)
+void WindowHdmaFFD1_cr(Carried *cr)
 {
     WindowHdmaFFD1();
-    cpu.a = 0xFFD1;
-    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+    cr->a = 0xFFD1;
+    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
+}
+
+void abi_WindowHdmaFFD1(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaFFD1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Window HDMA in use, and a layout of $FF meaning none: both skip the
@@ -184,16 +257,29 @@ int WindowHdmaNormal(uint8_t *last)
     return written;
 }
 
-void abi_WindowHdmaNormal(void)
+void WindowHdmaNormal_cr(Carried *cr)
 {
     uint8_t last;
 
     if (WindowHdmaNormal(&last))
-        cpu.a = 0xF857;
+        cr->a = 0xF857;
     else
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | last);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+        cr->a = (uint16_t)((cr->a & 0xFF00) | last);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
+void abi_WindowHdmaNormal(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaNormal_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -229,16 +315,29 @@ int WindowHdmaBands(uint8_t *last)
     return written;
 }
 
-void abi_WindowHdmaBands(void)
+void WindowHdmaBands_cr(Carried *cr)
 {
     uint8_t last;
 
     if (WindowHdmaBands(&last))
-        cpu.a = 0xF857;
+        cr->a = 0xF857;
     else
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | last);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+        cr->a = (uint16_t)((cr->a & 0xFF00) | last);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
+void abi_WindowHdmaBands(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaBands_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -277,13 +376,26 @@ void WindowHdmaAt(uint8_t line, uint8_t *p)
     cyc(42);
 }
 
+void WindowHdmaAt_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    WindowHdmaAt((uint8_t)cr->a, &p);
+    cr->a = 0xFFDD;
+    set_p(cr, (uint8_t)((p & ~(P_Z | P_M)) | P_N));
+}
+
 void abi_WindowHdmaAt(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    WindowHdmaAt((uint8_t)cpu.a, &p);
-    cpu.a = 0xFFDD;
-    cpu.p = (uint8_t)((p & ~(P_Z | P_M)) | P_N);
+    WindowHdmaAt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -324,14 +436,27 @@ WindowListEnd WindowHdmaFromList(uint8_t db, uint8_t select)
     return end;
 }
 
+void WindowHdmaFromList_cr(Carried *cr)
+{
+    WindowListEnd end = WindowHdmaFromList(cr->db, (uint8_t)cr->x);
+
+    cr->a = 0xF800;
+    cr->x = end.x;
+    cr->y = end.y;
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_X)) | P_Z | P_M)));
+}
+
 void abi_WindowHdmaFromList(void)
 {
-    WindowListEnd end = WindowHdmaFromList(cpu.db, (uint8_t)cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = 0xF800;
-    cpu.x = end.x;
-    cpu.y = end.y;
-    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
+    WindowHdmaFromList_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -376,10 +501,23 @@ uint16_t WindowHdmaPreset(uint8_t bank, uint8_t index, uint16_t *x, uint16_t *y)
     return (uint16_t)(((uint16_t)(*y - 9) & 0xFF00) | 0x09);
 }
 
+void WindowHdmaPreset_cr(Carried *cr)
+{
+    cr->a = WindowHdmaPreset(cr->db, (uint8_t)cr->x, &cr->x, &cr->y);
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_X)) | P_Z | P_C | P_M)));
+}
+
 void abi_WindowHdmaPreset(void)
 {
-    cpu.a = WindowHdmaPreset(cpu.db, (uint8_t)cpu.x, &cpu.x, &cpu.y);
-    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_C | P_M));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaPreset_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* (0x80 - v) + 0x80 as SEC / SBC then CLC / ADC #$80 do it, with C and V
@@ -470,12 +608,25 @@ uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p)
     return v;
 }
 
+void WindowEdgesFromPair_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = WindowEdgesFromPair(cr->db, cr->x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, nz16(p, cr->x));
+}
+
 void abi_WindowEdgesFromPair(void)
 {
-    uint8_t p = cpu.p, v = WindowEdgesFromPair(cpu.db, cpu.x, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz16(p, cpu.x);
+    WindowEdgesFromPair_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -530,13 +681,26 @@ uint16_t WindowEdgesFromList(uint8_t bank, uint16_t *x, uint8_t *p)
     return s;
 }
 
+void WindowEdgesFromList_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = WindowEdgesFromList(cr->db, &cr->x, &p);
+    cr->y = 0;
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
+}
+
 void abi_WindowEdgesFromList(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = WindowEdgesFromList(cpu.db, &cpu.x, &p);
-    cpu.y = 0;
-    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+    WindowEdgesFromList_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -611,10 +775,23 @@ uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
     return (uint16_t)(w & 0xFF00);
 }
 
+void WindowHdmaLayout_cr(Carried *cr)
+{
+    cr->a = WindowHdmaLayout(cr->db, &cr->x);
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_X)) | P_Z | P_M)));
+}
+
 void abi_WindowHdmaLayout(void)
 {
-    cpu.a = WindowHdmaLayout(cpu.db, &cpu.x);
-    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaLayout_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -645,13 +822,26 @@ uint16_t WindowLayoutStepForScreen(uint16_t a_in, uint16_t *x, uint16_t *y)
     return keep ? (uint16_t)((a_in & 0xFF00) | a) : a;
 }
 
+void WindowLayoutStepForScreen_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y;
+
+    cr->a = WindowLayoutStepForScreen(cr->a, &x, &y);
+    cr->x = x;
+    cr->y = y;
+}
+
 void abi_WindowLayoutStepForScreen(void)
 {
-    uint16_t x = cpu.x, y;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = WindowLayoutStepForScreen(cpu.a, &x, &y);
-    cpu.x = x;
-    cpu.y = y;
+    WindowLayoutStepForScreen_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One step of the window slide: the slide position at $1A14 moves by
@@ -720,14 +910,27 @@ uint8_t WindowSlideDown(uint8_t bank, uint8_t *p, int *moved)
     return window_slide_flags(bank, 0x01, 0x96, p, moved);
 }
 
+void WindowSlideDown_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    int moved;
+    uint8_t a = WindowSlideDown(cr->db, &p, &moved);
+
+    cr->a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, p);
+}
+
 void abi_WindowSlideDown(void)
 {
-    uint8_t p = cpu.p;
-    int moved;
-    uint8_t a = WindowSlideDown(cpu.db, &p, &moved);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = p;
+    WindowSlideDown_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -742,14 +945,27 @@ uint8_t WindowSlideUp(uint8_t bank, uint8_t *p, int *moved)
     return window_slide_flags(bank, 0xFF, 0x7F, p, moved);
 }
 
+void WindowSlideUp_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    int moved;
+    uint8_t a = WindowSlideUp(cr->db, &p, &moved);
+
+    cr->a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, p);
+}
+
 void abi_WindowSlideUp(void)
 {
-    uint8_t p = cpu.p;
-    int moved;
-    uint8_t a = WindowSlideUp(cpu.db, &p, &moved);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = p;
+    WindowSlideUp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -780,14 +996,27 @@ uint8_t WindowSlideStep(uint8_t bank, uint8_t *p, int *moved)
     return WindowSlideUp(bank, p, moved);
 }
 
+void WindowSlideStep_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    int moved;
+    uint8_t a = WindowSlideStep(cr->db, &p, &moved);
+
+    cr->a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, p);
+}
+
 void abi_WindowSlideStep(void)
 {
-    uint8_t p = cpu.p;
-    int moved;
-    uint8_t a = WindowSlideStep(cpu.db, &p, &moved);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = p;
+    WindowSlideStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -875,17 +1104,30 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
     return a;
 }
 
+void WindowLayoutStep_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+    uint8_t p = cr->p, y = (uint8_t)cr->y;
+    int keep;
+    uint16_t a = WindowLayoutStep(cr->db, y, &x, &p, &keep);
+
+    cr->a = keep ? (uint16_t)((cr->a & 0xFF00) | a) : a;
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, p);
+}
+
 void abi_WindowLayoutStep(void)
 {
-    uint16_t x = cpu.x;
-    uint8_t p = cpu.p, y = (uint8_t)cpu.y;
-    int keep;
-    uint16_t a = WindowLayoutStep(cpu.db, y, &x, &p, &keep);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = keep ? (uint16_t)((cpu.a & 0xFF00) | a) : a;
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = p;
+    WindowLayoutStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_Records7FFromF170(void);
@@ -894,17 +1136,30 @@ void abi_Records7FFromF634(void);
 /* The course records builders, still in registers: they read the data bank
    (bank $09, where the lists are) and leave A, X, Y and P as they like, so
    the registers WindowsInit's caller has are saved and put back. */
-static void records_7f(int course_screen)
+static void records_7f(Carried *cr, int course_screen)
 {
-    uint8_t db = cpu.db, p = cpu.p;
+    uint8_t db = cr->db, p = cr->p;
 
-    cpu.db = 0x09;
+    cr->db = 0x09;
     if (course_screen)
-        abi_Records7FFromF634();
+        w_Records7FFromF634(cr);
     else
-        abi_Records7FFromF170();
-    cpu.db = db;
-    cpu.p = p;
+        w_Records7FFromF170(cr);
+    cr->db = db;
+    set_p(cr, p);
+}
+
+static void records_7f_g(int course_screen)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    records_7f(&c, course_screen);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* Bytes `n` from ROM $09:src to `dst` (bank $7F), long stores. */
@@ -955,9 +1210,9 @@ void WindowsInit(void)
     cyc(92);
     v = rd8(b | 0x0D62);
     if (v)
-        { cyc(68); records_7f(1); }
+        { cyc(68); records_7f_g(1); }
     else
-        { cyc(62); records_7f(0); }
+        { cyc(62); records_7f_g(0); }
     cyc(42);
     copy_rom09(0xF163, 0x7FF85B, 16);
     cyc(92);
@@ -1139,12 +1394,42 @@ void WindowsInit(void)
     cyc(100);
 }
 
+static void WindowsInit_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    WindowsInit();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+void WindowsInit_cr(Carried *cr)
+{
+    WindowsInit_c(cr);
+    cr->a = 0x007F;
+    cr->x = 0x0000;
+    cr->y = 0x0000;
+}
+
 void abi_WindowsInit(void)
 {
-    WindowsInit();
-    cpu.a = 0x007F;
-    cpu.x = 0x0000;
-    cpu.y = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowsInit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The registers a routine leaves for callers that still work in them: the
@@ -1307,14 +1592,27 @@ out:
     return r;
 }
 
+void WindowBandsAnimate_cr(Carried *cr)
+{
+    WindowRegs r = {cr->a, cr->x, cr->y};
+
+    r = WindowBandsAnimate(r, cr->p);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+}
+
 void abi_WindowBandsAnimate(void)
 {
-    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    r = WindowBandsAnimate(r, cpu.p);
+    WindowBandsAnimate_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Three bands of 16, 48 and 16 lines at entry offset `at`, all at the
@@ -1350,10 +1648,23 @@ uint16_t WindowHdmaFFD5(void)
     return 0xFFD5;
 }
 
+void WindowHdmaFFD5_cr(Carried *cr)
+{
+    cr->a = WindowHdmaFFD5();
+    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
+}
+
 void abi_WindowHdmaFFD5(void)
 {
-    cpu.a = WindowHdmaFFD5();
-    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaFFD5_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1369,10 +1680,23 @@ uint16_t WindowHdmaFFD9(void)
     return 0xFFD9;
 }
 
+void WindowHdmaFFD9_cr(Carried *cr)
+{
+    cr->a = WindowHdmaFFD9();
+    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
+}
+
 void abi_WindowHdmaFFD9(void)
 {
-    cpu.a = WindowHdmaFFD9();
-    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaFFD9_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1506,14 +1830,27 @@ out_fall:
     return r;
 }
 
+void WindowSplitAnimate_cr(Carried *cr)
+{
+    WindowRegs r = {cr->a, cr->x, cr->y};
+
+    r = WindowSplitAnimate(r, cr->p);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+}
+
 void abi_WindowSplitAnimate(void)
 {
-    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    r = WindowSplitAnimate(r, cpu.p);
+    WindowSplitAnimate_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1558,15 +1895,28 @@ void WindowHdmaChannelsSetup(uint8_t bank)
     cyc(28);
 }
 
+void WindowHdmaChannelsSetup_cr(Carried *cr)
+{
+    WindowHdmaChannelsSetup(cr->db);
+    cr->a = (uint16_t)(cr->a & 0xFF00);
+    cr->x = 0x1308;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_WindowHdmaChannelsSetup(void)
 {
-    WindowHdmaChannelsSetup(cpu.db);
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    cpu.x = 0x1308;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowHdmaChannelsSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* CMP (8-bit) of v with m: N, Z and C. */
@@ -1622,16 +1972,29 @@ WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p)
     return r;
 }
 
+void ColdataTopBandStep_cr(Carried *cr)
+{
+    WindowRegs r = {cr->a, cr->x, cr->y};
+    uint8_t p = cr->p;
+
+    r = ColdataTopBandStep(r, cr->db, &p);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, p);
+}
+
 void abi_ColdataTopBandStep(void)
 {
-    WindowRegs r = {cpu.a, cpu.x, cpu.y};
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    r = ColdataTopBandStep(r, cpu.db, &p);
+    ColdataTopBandStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
-    cpu.p = p;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1699,15 +2062,28 @@ WindowRegs ColdataLowBandStep(uint8_t bank, uint16_t dp, uint8_t *p)
     return r;
 }
 
+void ColdataLowBandStep_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    WindowRegs r = ColdataLowBandStep(cr->db, cr->d, &p);
+
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, p);
+}
+
 void abi_ColdataLowBandStep(void)
 {
-    uint8_t p = cpu.p;
-    WindowRegs r = ColdataLowBandStep(cpu.db, cpu.d, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
+    ColdataLowBandStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
-    cpu.p = p;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1763,16 +2139,29 @@ WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p)
     return r;
 }
 
+void ColdataLevelStep_cr(Carried *cr)
+{
+    WindowRegs r = {cr->a, cr->x, cr->y};
+    uint8_t p = cr->p;
+
+    r = ColdataLevelStep(r, cr->db, &p);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, p);
+}
+
 void abi_ColdataLevelStep(void)
 {
-    WindowRegs r = {cpu.a, cpu.x, cpu.y};
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    r = ColdataLevelStep(r, cpu.db, &p);
+    ColdataLevelStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
-    cpu.p = p;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1911,12 +2300,44 @@ WindowRegs WindowSlideCheck(WindowRegs r, uint8_t p0, uint16_t dp)
     return r;
 }
 
+void WindowSlideCheck_cr(Carried *cr)
+{
+    WindowRegs r = {cr->a, cr->x, cr->y};
+
+    r = WindowSlideCheck(r, cr->p, cr->d);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+}
+
 void abi_WindowSlideCheck(void)
 {
-    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    r = WindowSlideCheck(r, cpu.p, cpu.d);
+    WindowSlideCheck_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* Records7FFromF170 as its adapter leaves the registers. */
+static void w_Records7FFromF170(Carried *cr)
+{
+    cr->y = Records7FFromF170(cr->db);
+    cr->a = 0x0001;
+    cr->x = 0x0009;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_M)) | P_X));
+}
+
+/* Records7FFromF634 as its adapter leaves the registers. */
+static void w_Records7FFromF634(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    Records7FFromF634(cr->db, &cr->x, &cr->y, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
+    set_p(cr, (uint8_t)((p & ~P_X) | P_M));
 }

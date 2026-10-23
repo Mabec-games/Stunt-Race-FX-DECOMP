@@ -10,18 +10,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-uint8_t Countdown0DF8(uint8_t bank);
 #include "hud_calls.h"
-uint8_t OamBlock123Left(uint8_t bank, uint8_t *p);
-uint8_t OamBlock123Right(uint8_t bank, uint8_t *p);
-uint8_t OamBlock52Left(uint8_t bank, uint8_t *p);
-uint8_t OamBlock52Right(uint8_t bank, uint8_t *p);
-uint8_t OamBlock59Left(uint8_t bank, uint8_t *p);
-uint8_t OamBlock59Right(uint8_t bank, uint8_t *p);
-void OamHighBits18Park48(uint8_t bank);
-void OamHighBits58Park112(uint8_t bank);
-void OamPlaceRows75And112(uint8_t bank);
-uint8_t WindowSlideUpSound(uint8_t bank, int x16);
 
 void abi_SoundPort0QueuePush(void);
 void abi_SoundPort1QueuePush(void);
@@ -92,24 +81,23 @@ static void slide_up(Carried *cr, uint32_t b, uint8_t v);
 static void stage(Carried *cr, uint32_t b, uint8_t s);
 static int timer_out(Carried *cr, uint32_t b);
 static int window_closed(Carried *cr, uint32_t b);
-static void w_Countdown0DF8(Carried *cr);
 static void w_Gauge6APlace(Carried *cr);
 static void w_Gauge6BPlace(Carried *cr);
-static void w_OamBlock123Left(Carried *cr);
-static void w_OamBlock123Right(Carried *cr);
-static void w_OamBlock52Left(Carried *cr);
-static void w_OamBlock52Right(Carried *cr);
-static void w_OamBlock59Left(Carried *cr);
-static void w_OamBlock59Right(Carried *cr);
-static void w_OamHighBits18Park48(Carried *cr);
-static void w_OamHighBits58Park112(Carried *cr);
-static void w_OamPlaceRows75And112(Carried *cr);
 static void w_RaceEndToAttract(Carried *cr);
 static void w_RaceRestart(Carried *cr);
 static void w_SoftResetToBootWarm(Carried *cr);
-static void w_WindowSlideUpSound(Carried *cr);
 void CarSelectTwoPlayers_cr(Carried *cr);
 void ChampionshipScreenLoop(Carried *cr);
+void Countdown0DF8_cr(Carried *cr);
+void OamBlock123Left_cr(Carried *cr);
+void OamBlock123Right_cr(Carried *cr);
+void OamBlock52Left_cr(Carried *cr);
+void OamBlock52Right_cr(Carried *cr);
+void OamBlock59Left_cr(Carried *cr);
+void OamBlock59Right_cr(Carried *cr);
+void OamHighBits18Park48_cr(Carried *cr);
+void OamHighBits58Park112_cr(Carried *cr);
+void OamPlaceRows75And112_cr(Carried *cr);
 void RaceEndVideoReset(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePushX8(Carried *cr);
@@ -122,6 +110,7 @@ void TilemapPaletteCycle87_cr(Carried *cr);
 void TilemapRow107Palette5_cr(Carried *cr);
 void TilemapRow187Palette5_cr(Carried *cr);
 void TilemapRow87Palette5_cr(Carried *cr);
+void WindowSlideUpSound_cr(Carried *cr);
 
 /* LDA #v (8-bit). */
 static void lda8_imm(Carried *cr, uint8_t v)
@@ -334,7 +323,7 @@ void PauseStageReplayEnd(Carried *cr)
         r_lda8(cr, b | 0x0D5F);
         cmp8_imm(cr, 0x01);
         if ((uint8_t)cr->a == 0x01)
-            w_OamPlaceRows75And112(cr);
+            OamPlaceRows75And112_cr(cr);
         cyc(42);
         return;
     }
@@ -368,7 +357,7 @@ void abi_PauseStageReplayEnd(void)
 /* WindowSlideUpSound, then $19DF = v. */
 static void slide_up(Carried *cr, uint32_t b, uint8_t v)
 {
-    (cyc(62), w_WindowSlideUpSound(cr));
+    (cyc(62), WindowSlideUpSound_cr(cr));
     lda8_imm(cr, v);
     cyc(16);
     wr8(b | 0x19DF, v);
@@ -531,7 +520,7 @@ static void choice_made(Carried *cr, uint32_t b, int quit_extra)
         r_lda8(cr, b | 0x0D4C);
         if ((uint8_t)cr->a)
             { cyc(22); return; } else { cyc(78); }
-        w_Countdown0DF8(cr);
+        Countdown0DF8_cr(cr);
         cyc(54);
         lda8_imm(cr, 0x22);
         SoundPort1QueuePushX8(cr);
@@ -620,7 +609,7 @@ void PauseStageChoice(Carried *cr)
         cyc(42);
         return;
     }
-    choice_move(cr, b, 0x0D1A, 0, w_OamBlock52Left, w_OamBlock52Right);
+    choice_move(cr, b, 0x0D1A, 0, OamBlock52Left_cr, OamBlock52Right_cr);
     cyc(42);
 }
 
@@ -657,7 +646,7 @@ void PauseStageChoiceP1(Carried *cr)
         cyc(42);
         return;
     }
-    choice_move(cr, b, 0x0D1A, 1, w_OamBlock59Left, w_OamBlock59Right);
+    choice_move(cr, b, 0x0D1A, 1, OamBlock59Left_cr, OamBlock59Right_cr);
     cyc(42);
 }
 
@@ -691,7 +680,7 @@ void PauseStageChoiceP2(Carried *cr)
         cyc(42);
         return;
     }
-    choice_move(cr, b, 0x0D1C, 1, w_OamBlock123Left, w_OamBlock123Right);
+    choice_move(cr, b, 0x0D1C, 1, OamBlock123Left_cr, OamBlock123Right_cr);
     cyc(42);
 }
 
@@ -730,7 +719,7 @@ static void continue_wait(Carried *cr, uint8_t owner)
     lda8_imm(cr, 0x00);
     cyc(16);
     wr8(b | 0x19DF, 0x00);
-    (cyc(62), w_WindowSlideUpSound(cr));
+    (cyc(62), WindowSlideUpSound_cr(cr));
     cyc(16);
     stage(cr, b, 0x0A);
 }
@@ -841,7 +830,7 @@ void PauseStageQuitMenuP2(Carried *cr)
     lda8_imm(cr, 0x0E);
     cyc(16);
     wr8(b | 0x0D23, 0x0E);
-    w_OamHighBits58Park112(cr);
+    OamHighBits58Park112_cr(cr);
     cyc(22);
     quit_menu_open(cr, b);
 }
@@ -882,7 +871,7 @@ void PauseStageQuitMenu(Carried *cr)
     lda8_imm(cr, 0x0C);
     cyc(16);
     wr8(b | 0x0D23, 0x0C);
-    w_OamHighBits18Park48(cr);
+    OamHighBits18Park48_cr(cr);
     quit_menu_open(cr, b);
 }
 
@@ -1086,7 +1075,7 @@ static void quit_menu(Carried *cr, uint16_t pad, uint16_t which, uint8_t d, void
  */
 void PauseQuitMenuP2(Carried *cr)
 {
-    quit_menu(cr, 0x0D1C, 0x0D5C, 0x0C, w_OamHighBits18Park48, SpritePiecesTwoCarsTop_cr);
+    quit_menu(cr, 0x0D1C, 0x0D5C, 0x0C, OamHighBits18Park48_cr, SpritePiecesTwoCarsTop_cr);
 }
 
 void abi_PauseQuitMenuP2(void)
@@ -1117,7 +1106,7 @@ void abi_PauseQuitMenuP2(void)
  */
 void PauseQuitMenu(Carried *cr)
 {
-    quit_menu(cr, 0x0D1A, 0x0D5D, 0x0E, w_OamHighBits58Park112, SpritePiecesTwoCars_cr);
+    quit_menu(cr, 0x0D1A, 0x0D5D, 0x0E, OamHighBits58Park112_cr, SpritePiecesTwoCars_cr);
 }
 
 void abi_PauseQuitMenu(void)
@@ -1257,19 +1246,6 @@ static void w_Gauge6APlace(Carried *cr)
     cr->y &= 0x00FF;
 }
 
-/* OamPlaceRows75And112 as its adapter leaves the registers. */
-static void w_OamPlaceRows75And112(Carried *cr)
-{
-    OamPlaceRows75And112(cr->db);
-    cr->a &= 0xFF00;
-}
-
-/* WindowSlideUpSound as its adapter leaves the registers. */
-static void w_WindowSlideUpSound(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
-}
-
 /* RaceRestart, still in registers: its call with the registers loaded and taken
    back. */
 static void w_RaceRestart(Carried *cr)
@@ -1306,91 +1282,6 @@ static void w_SoftResetToBootWarm(Carried *cr)
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
-}
-
-/* Countdown0DF8 as its adapter leaves the registers. */
-static void w_Countdown0DF8(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | Countdown0DF8(cr->db));
-    cyc(16);
-}
-
-/* OamBlock52Left as its adapter leaves the registers. */
-static void w_OamBlock52Left(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock52Left(cr->db, &p));
-    cr->x = 0x0010;
-    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
-}
-
-/* OamBlock52Right as its adapter leaves the registers. */
-static void w_OamBlock52Right(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock52Right(cr->db, &p));
-    cr->x = 0x0010;
-    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
-}
-
-/* OamBlock59Left as its adapter leaves the registers. */
-static void w_OamBlock59Left(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock59Left(cr->db, &p));
-    cr->x = 0x002C;
-    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
-}
-
-/* OamBlock59Right as its adapter leaves the registers. */
-static void w_OamBlock59Right(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock59Right(cr->db, &p));
-    cr->x = 0x002C;
-    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
-}
-
-/* OamBlock123Left as its adapter leaves the registers. */
-static void w_OamBlock123Left(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock123Left(cr->db, &p));
-    cr->x = 0x012C;
-    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
-}
-
-/* OamBlock123Right as its adapter leaves the registers. */
-static void w_OamBlock123Right(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock123Right(cr->db, &p));
-    cr->x = 0x012C;
-    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
-}
-
-/* OamHighBits58Park112 as its adapter leaves the registers. */
-static void w_OamHighBits58Park112(Carried *cr)
-{
-    OamHighBits58Park112(cr->db);
-    cr->a = 0x5555;
-    cr->x = 0x0010;
-    cr->y &= 0x00FF;
-}
-
-/* OamHighBits18Park48 as its adapter leaves the registers. */
-static void w_OamHighBits18Park48(Carried *cr)
-{
-    OamHighBits18Park48(cr->db);
-    cr->a = 0x5555;
-    cr->x = 0x0000;
-    cr->y &= 0x00FF;
 }
 
 /* RaceEndToAttract, still in registers: its call with the registers loaded and taken

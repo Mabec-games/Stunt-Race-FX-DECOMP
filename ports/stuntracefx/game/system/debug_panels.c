@@ -10,6 +10,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "system_calls.h"
+#include "carried.h"
+
 
 void DebugPrint(uint8_t bank);
 
@@ -113,18 +115,37 @@ static uint16_t pn_a, pn_x;
 static int pn_x_set, pn_cv;
 static uint8_t pn_c, pn_v;
 
+void DebugBucketsPanel_cr(Carried *cr);
+void DebugCarsPanel_cr(Carried *cr);
+void DebugCounterPanel_cr(Carried *cr);
+void DebugFxTestPanel_cr(Carried *cr);
+void DebugFxTestWordPanel_cr(Carried *cr);
+void DebugFxWordsPanel_cr(Carried *cr);
+void DebugLastCarMotionPanel_cr(Carried *cr);
+void DebugLastCarPanel_cr(Carried *cr);
+void DebugMatchSpeedPanel_cr(Carried *cr);
+void DebugModelChainPanel_cr(Carried *cr);
+void DebugModelNamesPanel_cr(Carried *cr);
+void DebugPanelSep_cr(Carried *cr);
+void DebugTimersPanel_cr(Carried *cr);
+void DebugTrafficHexPanel_cr(Carried *cr);
+void DebugViewRecordPanel_cr(Carried *cr);
+void DebugViewSpeedPanel_cr(Carried *cr);
+void DebugWorkBytesPanel_cr(Carried *cr);
+static void panel_exit(Carried *cr, uint8_t clear, uint8_t set);
+
 /* The panel's registers over the current ones: the M and X bits it
    clears and sets. */
-static void panel_exit(uint8_t clear, uint8_t set)
+static void panel_exit(Carried *cr, uint8_t clear, uint8_t set)
 {
-    cpu.a = pn_a;
+    cr->a = pn_a;
     if (pn_x_set)
-        cpu.x = pn_x;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | clear)) | pr_nz | set);
+        cr->x = pn_x;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | clear)) | pr_nz | set));
     if (pn_cv & 1)
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | pn_c);
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | pn_c));
     if (pn_cv & 2)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | pn_v);
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | pn_v));
 }
 
 /* CLC; ADC (16-bit), binary: C and V to pn_c, pn_v. */
@@ -199,10 +220,23 @@ uint16_t DebugTimersPanel(uint8_t bank, uint16_t a)
     return x;
 }
 
+void DebugTimersPanel_cr(Carried *cr)
+{
+    DebugTimersPanel(cr->db, cr->a);
+    panel_exit(cr, P_X, P_M);
+}
+
 void abi_DebugTimersPanel(void)
 {
-    DebugTimersPanel(cpu.db, cpu.a);
-    panel_exit(P_X, P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugTimersPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -230,10 +264,23 @@ uint16_t DebugMatchSpeedPanel(uint8_t bank)
     return pn_a;
 }
 
+void DebugMatchSpeedPanel_cr(Carried *cr)
+{
+    DebugMatchSpeedPanel(cr->db);
+    panel_exit(cr, P_M | P_X, 0);
+}
+
 void abi_DebugMatchSpeedPanel(void)
 {
-    DebugMatchSpeedPanel(cpu.db);
-    panel_exit(P_M | P_X, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugMatchSpeedPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -260,10 +307,23 @@ uint16_t DebugLastCarPanel(uint8_t bank)
     return pn_a;
 }
 
+void DebugLastCarPanel_cr(Carried *cr)
+{
+    DebugLastCarPanel(cr->db);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugLastCarPanel(void)
 {
-    DebugLastCarPanel(cpu.db);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugLastCarPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -328,10 +388,23 @@ uint16_t DebugCarsPanel(uint8_t bank)
     return pn_a;
 }
 
+void DebugCarsPanel_cr(Carried *cr)
+{
+    DebugCarsPanel(cr->db);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugCarsPanel(void)
 {
-    DebugCarsPanel(cpu.db);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugCarsPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -352,10 +425,23 @@ uint16_t DebugFxTestPanel(uint8_t bank)
     return pn_a;
 }
 
+void DebugFxTestPanel_cr(Carried *cr)
+{
+    DebugFxTestPanel(cr->db);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugFxTestPanel(void)
 {
-    DebugFxTestPanel(cpu.db);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugFxTestPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -410,10 +496,23 @@ void DebugModelNamesPanel(uint8_t bank)
     pr_nz = P_Z;
 }
 
+void DebugModelNamesPanel_cr(Carried *cr)
+{
+    DebugModelNamesPanel(cr->db);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugModelNamesPanel(void)
 {
-    DebugModelNamesPanel(cpu.db);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugModelNamesPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -458,10 +557,23 @@ uint16_t DebugModelChainPanel(uint8_t bank)
     return v;
 }
 
+void DebugModelChainPanel_cr(Carried *cr)
+{
+    DebugModelChainPanel(cr->db);
+    panel_exit(cr, P_M, 0);
+}
+
 void abi_DebugModelChainPanel(void)
 {
-    DebugModelChainPanel(cpu.db);
-    panel_exit(P_M, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugModelChainPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -505,10 +617,23 @@ uint8_t DebugLastCarMotionPanel(uint8_t bank)
     return b;
 }
 
+void DebugLastCarMotionPanel_cr(Carried *cr)
+{
+    DebugLastCarMotionPanel(cr->db);
+    panel_exit(cr, 0, P_M);
+}
+
 void abi_DebugLastCarMotionPanel(void)
 {
-    DebugLastCarMotionPanel(cpu.db);
-    panel_exit(0, P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugLastCarMotionPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* X = the viewed object's statistics record: the byte at +$22 of the
@@ -559,10 +684,23 @@ uint16_t DebugTrafficHexPanel(uint8_t bank, uint16_t a, uint8_t p)
     return pn_a;
 }
 
+void DebugTrafficHexPanel_cr(Carried *cr)
+{
+    DebugTrafficHexPanel(cr->db, cr->a, cr->p);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugTrafficHexPanel(void)
 {
-    DebugTrafficHexPanel(cpu.db, cpu.a, cpu.p);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugTrafficHexPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -600,10 +738,23 @@ uint16_t DebugWorkBytesPanel(uint8_t bank, uint16_t a, uint8_t p)
     return pn_a;
 }
 
+void DebugWorkBytesPanel_cr(Carried *cr)
+{
+    DebugWorkBytesPanel(cr->db, cr->a, cr->p);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugWorkBytesPanel(void)
 {
-    DebugWorkBytesPanel(cpu.db, cpu.a, cpu.p);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugWorkBytesPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -632,10 +783,23 @@ uint16_t DebugViewRecordPanel(uint8_t bank, uint16_t a, uint8_t p)
     return pn_a;
 }
 
+void DebugViewRecordPanel_cr(Carried *cr)
+{
+    DebugViewRecordPanel(cr->db, cr->a, cr->p);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugViewRecordPanel(void)
 {
-    DebugViewRecordPanel(cpu.db, cpu.a, cpu.p);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugViewRecordPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -663,10 +827,23 @@ uint16_t DebugViewSpeedPanel(uint8_t bank, uint16_t a, uint8_t p)
     return pn_a;
 }
 
+void DebugViewSpeedPanel_cr(Carried *cr)
+{
+    DebugViewSpeedPanel(cr->db, cr->a, cr->p);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugViewSpeedPanel(void)
 {
-    DebugViewSpeedPanel(cpu.db, cpu.a, cpu.p);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugViewSpeedPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Prints the object at the head of bucket x, then up to three more along
@@ -738,10 +915,23 @@ uint16_t DebugBucketsPanel(uint8_t bank, uint8_t p)
     return pn_a;
 }
 
+void DebugBucketsPanel_cr(Carried *cr)
+{
+    DebugBucketsPanel(cr->db, cr->p);
+    panel_exit(cr, P_M | P_X, 0);
+}
+
 void abi_DebugBucketsPanel(void)
 {
-    DebugBucketsPanel(cpu.db, cpu.p);
-    panel_exit(P_M | P_X, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugBucketsPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -769,10 +959,23 @@ uint16_t DebugFxWordsPanel(uint8_t bank, uint8_t p)
     return pn_a;
 }
 
+void DebugFxWordsPanel_cr(Carried *cr)
+{
+    DebugFxWordsPanel(cr->db, cr->p);
+    panel_exit(cr, 0, 0);
+}
+
 void abi_DebugFxWordsPanel(void)
 {
-    DebugFxWordsPanel(cpu.db, cpu.p);
-    panel_exit(0, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugFxWordsPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -818,10 +1021,23 @@ uint16_t DebugCounterPanel(uint8_t bank, uint16_t a, uint8_t p)
     return pn_a;
 }
 
+void DebugCounterPanel_cr(Carried *cr)
+{
+    DebugCounterPanel(cr->db, cr->a, cr->p);
+    panel_exit(cr, P_M | P_X, 0);
+}
+
 void abi_DebugCounterPanel(void)
 {
-    DebugCounterPanel(cpu.db, cpu.a, cpu.p);
-    panel_exit(P_M | P_X, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugCounterPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -835,10 +1051,23 @@ void DebugPanelSep(void)
     cyc(66);
 }
 
-void abi_DebugPanelSep(void)
+void DebugPanelSep_cr(Carried *cr)
 {
     DebugPanelSep();
-    cpu.p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+}
+
+void abi_DebugPanelSep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPanelSep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -860,8 +1089,22 @@ uint16_t DebugFxTestWordPanel(uint8_t bank)
     return pn_a;
 }
 
+void DebugFxTestWordPanel_cr(Carried *cr)
+{
+    DebugFxTestWordPanel(cr->db);
+    panel_exit(cr, P_M | P_X, 0);
+}
+
 void abi_DebugFxTestWordPanel(void)
 {
-    DebugFxTestWordPanel(cpu.db);
-    panel_exit(P_M | P_X, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugFxTestWordPanel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

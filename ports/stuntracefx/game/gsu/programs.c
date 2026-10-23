@@ -50,10 +50,90 @@ static uint8_t cf42(uint16_t in68, uint16_t dest, uint16_t in6a)
     return GsuRun(0x01, 0xCF42);
 }
 
+void BigSpritesCountDraw_cr(Carried *cr);
+void BigSpritesNine_cr(Carried *cr);
+void BigSpritesRow5_cr(Carried *cr);
+void BigSpritesRow6_cr(Carried *cr);
+void BigSpritesRow6B_cr(Carried *cr);
+void GlyphAtY60_cr(Carried *cr);
+void GlyphGrid1A_cr(Carried *cr);
+void GlyphGrid1D_cr(Carried *cr);
+void GlyphListDraw_cr(Carried *cr);
+void GlyphListMessageAndTime_cr(Carried *cr);
+void GlyphRowY60From0_cr(Carried *cr);
+void GlyphRowY60From1_cr(Carried *cr);
+void GlyphRowY60From2_cr(Carried *cr);
+void GlyphRowY60From3_cr(Carried *cr);
+void GlyphRowY60From4_cr(Carried *cr);
+void GlyphRowY60From5_cr(Carried *cr);
+void GlyphRowsAt32_cr(Carried *cr);
+void GlyphRowsAt56_cr(Carried *cr);
+void GlyphSlideThree_cr(Carried *cr);
+void GlyphSpriteDraw_cr(Carried *cr);
+void GlyphSpriteDrawLeft8_cr(Carried *cr);
+void GlyphSpritesDrawAll_cr(Carried *cr);
+void GlyphSpritesGrowAndTimes_cr(Carried *cr);
+void GlyphSpritesInit_cr(Carried *cr);
+void GlyphSpritesSlideIn_cr(Carried *cr);
+void GlyphSpritesSlideOut_cr(Carried *cr);
+void GlyphTimesSequence_cr(Carried *cr);
+void GlyphWordAt1C28_cr(Carried *cr);
+void Gsu81E3_cr(Carried *cr);
+void Gsu81E3Long_cr(Carried *cr);
+void Gsu82CE_cr(Carried *cr);
+void Gsu8325_cr(Carried *cr);
 void GsuCF42To3000_cr(Carried *cr);
 void GsuCF42To4000_cr(Carried *cr);
 void GsuCF42ToC000_cr(Carried *cr);
+void GsuCF42ToVram_cr(Carried *cr);
+void GsuClear6000IfSet_cr(Carried *cr);
+void GsuClearScreenIfSet_cr(Carried *cr);
 void GsuDigitPair0E74_cr(Carried *cr);
+void GsuEE88Ramp_cr(Carried *cr);
+void GsuEEF5OrEFCD_cr(Carried *cr);
+void GsuF0A5OrF0B4_cr(Carried *cr);
+void GsuF15BFive_cr(Carried *cr);
+void GsuF15BFourA_cr(Carried *cr);
+void GsuF15BFourB_cr(Carried *cr);
+void GsuF15BThree_cr(Carried *cr);
+void GsuF15BTwoLines_cr(Carried *cr);
+void GsuF329Entry_cr(Carried *cr);
+void GsuF329Sequence_cr(Carried *cr);
+void GsuF441Player1_cr(Carried *cr);
+void GsuF441Player2_cr(Carried *cr);
+void GsuFA1BFromTables_cr(Carried *cr);
+void GsuFA35FromTables_cr(Carried *cr);
+void GsuFA5AFromTables_cr(Carried *cr);
+void GsuFA5ASix_cr(Carried *cr);
+void GsuFA5ASixLeft_cr(Carried *cr);
+void GsuFA5AThree_cr(Carried *cr);
+void GsuFA5AThreeShifted_cr(Carried *cr);
+void GsuPieceOffsetFromView_cr(Carried *cr);
+void GsuPieceScaleFromView_cr(Carried *cr);
+void GsuPiecesFromBytes_cr(Carried *cr);
+void GsuPiecesFromRecord_cr(Carried *cr);
+void GsuPiecesListF6DF_cr(Carried *cr);
+void GsuPiecesListFAF2_cr(Carried *cr);
+void GsuPiecesStep10CB_cr(Carried *cr);
+void GsuReciprocal_cr(Carried *cr);
+void HudBlankDraw_cr(Carried *cr);
+void HudHoldDraw_cr(Carried *cr);
+void HudLapDigitsDraw_cr(Carried *cr);
+void HudLeadWordDraw_cr(Carried *cr);
+void HudSixGlyphs_cr(Carried *cr);
+void HudTimesDraw_cr(Carried *cr);
+void HudTimesDrawEven_cr(Carried *cr);
+void HudTimesPackedDraw_cr(Carried *cr);
+void HudTimesPackedEven_cr(Carried *cr);
+void ObjectGsu80BC_cr(Carried *cr);
+void ObjectGsu80BCThen81E3_cr(Carried *cr);
+void ObjectGsu81E3_cr(Carried *cr);
+void TimeDigitsStore_cr(Carried *cr);
+void ViewDefaults_cr(Carried *cr);
+void ViewMatrixUpdateAndSave_cr(Carried *cr);
+void ViewReset_cr(Carried *cr);
+void ViewSetup_cr(Carried *cr);
+void ViewUpdateAndGsuAEF8_cr(Carried *cr);
 static void abi_cf42(Carried *cr, uint16_t dest);
 static void glyph_times_exit(Carried *cr);
 
@@ -205,12 +285,25 @@ void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out)
     cyc(44);
 }
 
+void GsuCF42ToVram_cr(Carried *cr)
+{
+    GsuCF42ToVram(cr->db, cr->x, cr->y);
+    cr->a = 0x0001;
+    cr->x = cr->y;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M));
+}
+
 void abi_GsuCF42ToVram(void)
 {
-    GsuCF42ToVram(cpu.db, cpu.x, cpu.y);
-    cpu.a = 0x0001;
-    cpu.x = cpu.y;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_X)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuCF42ToVram_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -252,12 +345,25 @@ uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
     return cyc_then(44, rd16(GSU_IN_6A));
 }
 
+void ObjectGsu80BC_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectGsu80BC(cr->db, cr->x, &p);
+    set_p(cr, (uint8_t)(nz16(p, cr->a) & ~(P_M | P_X)));
+}
+
 void abi_ObjectGsu80BC(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ObjectGsu80BC(cpu.db, cpu.x, &p);
-    cpu.p = (uint8_t)(nz16(p, cpu.a) & ~(P_M | P_X));
+    ObjectGsu80BC_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -293,9 +399,22 @@ uint16_t Gsu82CE(void)
     return r;
 }
 
+void Gsu82CE_cr(Carried *cr)
+{
+    cr->a = Gsu82CE();
+}
+
 void abi_Gsu82CE(void)
 {
-    cpu.a = Gsu82CE();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Gsu82CE_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -329,12 +448,25 @@ uint16_t Gsu8325(uint8_t bank)
     return v;
 }
 
+void Gsu8325_cr(Carried *cr)
+{
+    cr->a = Gsu8325(cr->db);
+    cr->x = 0x0025;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M | P_X));
+}
+
 void abi_Gsu8325(void)
 {
-    cpu.a = Gsu8325(cpu.db);
-    cpu.x = 0x0025;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M | P_X);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Gsu8325_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -356,13 +488,26 @@ uint8_t GsuEE88Ramp(void)
     return GsuRun(0x07, 0xEE88);
 }
 
+void GsuEE88Ramp_cr(Carried *cr)
+{
+    cr->a = GsuEE88Ramp();
+    cr->x = 0x0088;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~P_M) | P_X));
+    cyc(160);                           /* after GsuRun: its return */
+}
+
 void abi_GsuEE88Ramp(void)
 {
-    cpu.a = GsuEE88Ramp();
-    cpu.x = 0x0088;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_M) | P_X);
-    cyc(160);                           /* after GsuRun: its return */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuEE88Ramp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -383,15 +528,28 @@ uint8_t GsuF329Entry(uint8_t bank, uint16_t entry)
     return cyc_then(86, GsuRun(0x07, 0xF329));
 }
 
+void GsuF329Entry_cr(Carried *cr)
+{
+    uint16_t index = (uint16_t)((cr->a & 0x000F) << 1);
+    uint16_t hi = (uint16_t)(rd16((uint32_t)cr->db << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
+    uint8_t mode = GsuF329Entry(cr->db, cr->a);
+
+    cr->a = (uint16_t)(hi | mode);
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~P_C));
+}
+
 void abi_GsuF329Entry(void)
 {
-    uint16_t index = (uint16_t)((cpu.a & 0x000F) << 1);
-    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
-    uint8_t mode = GsuF329Entry(cpu.db, cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(hi | mode);
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_C);
+    GsuF329Entry_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Program $07:F441 for a player: its kind decides the bytes at $70:0200
@@ -435,12 +593,25 @@ uint8_t GsuF441Player1(uint8_t bank)
     return cyc_then(114, f441(rd8((uint32_t)bank << 16 | 0x0DF4)));
 }
 
+void GsuF441Player1_cr(Carried *cr)
+{
+    cr->a = GsuF441Player1(cr->db);
+    if (cr->p & P_X)
+        cr->y &= 0x00FF;
+    cr->x = cr->p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
+}
+
 void abi_GsuF441Player1(void)
 {
-    cpu.a = GsuF441Player1(cpu.db);
-    if (cpu.p & P_X)
-        cpu.y &= 0x00FF;
-    cpu.x = cpu.p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF441Player1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -457,12 +628,25 @@ uint8_t GsuF441Player2(uint8_t bank)
     return f441(rd8((uint32_t)bank << 16 | 0x0DF5));
 }
 
+void GsuF441Player2_cr(Carried *cr)
+{
+    cr->a = GsuF441Player2(cr->db);
+    if (cr->p & P_X)
+        { cyc(114); cr->y &= 0x00FF; }
+    cr->x = cr->p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
+}
+
 void abi_GsuF441Player2(void)
 {
-    cpu.a = GsuF441Player2(cpu.db);
-    if (cpu.p & P_X)
-        { cyc(114); cpu.y &= 0x00FF; }
-    cpu.x = cpu.p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF441Player2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -507,11 +691,24 @@ uint16_t ViewReset(uint8_t bank)
     return (uint16_t)((v & 0xFF00) | 0x7F);
 }
 
+void ViewReset_cr(Carried *cr)
+{
+    cr->a = ViewReset(cr->db);
+    cr->x = 0x0025;
+    cr->y &= 0x00FF;
+}
+
 void abi_ViewReset(void)
 {
-    cpu.a = ViewReset(cpu.db);
-    cpu.x = 0x0025;
-    cpu.y &= 0x00FF;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewReset_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t GsuParamsFromDp(uint8_t bank);
@@ -563,11 +760,24 @@ uint16_t ViewSetup(uint8_t bank)
     return view_setup_tail(bank);
 }
 
+void ViewSetup_cr(Carried *cr)
+{
+    cr->a = ViewSetup(cr->db);
+    cr->x = 0x0080;
+    cr->y = 0x0000;
+}
+
 void abi_ViewSetup(void)
 {
-    cpu.a = ViewSetup(cpu.db);
-    cpu.x = 0x0080;
-    cpu.y = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ViewSetup from inside (03:AE73), its P already pushed: the long jumps at
@@ -620,11 +830,24 @@ uint16_t ViewDefaults(uint8_t bank)
     return view_setup_tail(bank);
 }
 
+void ViewDefaults_cr(Carried *cr)
+{
+    cr->a = ViewDefaults(cr->db);
+    cr->x = 0x0080;
+    cr->y = 0x0000;
+}
+
 void abi_ViewDefaults(void)
 {
-    cpu.a = ViewDefaults(cpu.db);
-    cpu.x = 0x0080;
-    cpu.y = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewDefaults_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void GsuBytes200_0F090A(void);
@@ -658,16 +881,29 @@ uint8_t GsuF0A5OrF0B4(uint8_t bank, uint16_t input, uint8_t *set)
     return GsuRun(0x07, 0xF0B4);
 }
 
-void abi_GsuF0A5OrF0B4(void)
+void GsuF0A5OrF0B4_cr(Carried *cr)
 {
     cyc(32);
     uint8_t set;
 
-    cpu.a = GsuF0A5OrF0B4(cpu.db, cpu.a, &set);
-    cpu.x = set ? 0x00A5 : 0x00B4;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_M) | P_X);
+    cr->a = GsuF0A5OrF0B4(cr->db, cr->a, &set);
+    cr->x = set ? 0x00A5 : 0x00B4;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~P_M) | P_X));
     cyc(86);
+}
+
+void abi_GsuF0A5OrF0B4(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF0A5OrF0B4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -696,15 +932,28 @@ uint8_t GsuEEF5OrEFCD(uint8_t bank, uint16_t input, uint8_t *set)
     return GsuRun(0x07, 0xEFCD);
 }
 
-void abi_GsuEEF5OrEFCD(void)
+void GsuEEF5OrEFCD_cr(Carried *cr)
 {
     cyc(32);
     uint8_t set;
 
-    cpu.a = GsuEEF5OrEFCD(cpu.db, cpu.a, &set);
-    cpu.x = set ? 0xEEF5 : 0xEFCD;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    cr->a = GsuEEF5OrEFCD(cr->db, cr->a, &set);
+    cr->x = set ? 0xEEF5 : 0xEFCD;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
     cyc(86);
+}
+
+void abi_GsuEEF5OrEFCD(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuEEF5OrEFCD_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t GsuParam216A(uint8_t bank, uint16_t index);
@@ -818,11 +1067,24 @@ uint8_t GsuF15BThree(void)
     return cyc_then(86, f15b());
 }
 
+void GsuF15BThree_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8800 | GsuF15BThree());
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GsuF15BThree(void)
 {
-    cpu.a = (uint16_t)(0x8800 | GsuF15BThree());
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF15BThree_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -869,23 +1131,36 @@ int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
     return 1;
 }
 
-void abi_GsuFA1BFromTables(void)
+void GsuFA1BFromTables_cr(Carried *cr)
 {
     cyc(62);
     uint16_t x;
-    uint8_t p = cpu.p, mode = 0;
+    uint8_t p = cr->p, mode = 0;
 
-    if (GsuFA1BFromTables(cpu.db, &mode, &p, &x)) {
+    if (GsuFA1BFromTables(cr->db, &mode, &p, &x)) {
         cyc(154);
-        cpu.a = (uint16_t)(0x1E00 | mode);
-        cpu.x = 0xFA1B;
-        cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
+        cr->a = (uint16_t)(0x1E00 | mode);
+        cr->x = 0xFA1B;
+        set_p(cr, (uint8_t)(nz8(p, cr->db) & ~(P_M | P_X)));
     } else {
-        cpu.a = 0x0000;
-        cpu.x = x;
-        cpu.p = (uint8_t)((p & ~P_N) | P_Z);
+        cr->a = 0x0000;
+        cr->x = x;
+        set_p(cr, (uint8_t)((p & ~P_N) | P_Z));
     }
     cyc(4);
+}
+
+void abi_GsuFA1BFromTables(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuFA1BFromTables_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -909,9 +1184,22 @@ uint16_t Gsu81E3(void)
     return cyc_then(106, rd16(0x700040));
 }
 
+void Gsu81E3_cr(Carried *cr)
+{
+    cr->a = Gsu81E3();
+}
+
 void abi_Gsu81E3(void)
 {
-    cpu.a = Gsu81E3();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Gsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -945,12 +1233,25 @@ uint16_t ViewMatrixUpdateAndSave(uint8_t bank)
     return v;
 }
 
+void ViewMatrixUpdateAndSave_cr(Carried *cr)
+{
+    cr->a = ViewMatrixUpdateAndSave(cr->db);
+    cr->x = 0x0025;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M | P_X));
+}
+
 void abi_ViewMatrixUpdateAndSave(void)
 {
-    cpu.a = ViewMatrixUpdateAndSave(cpu.db);
-    cpu.x = 0x0025;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M | P_X);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewMatrixUpdateAndSave_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -969,10 +1270,23 @@ uint16_t Gsu81E3Long(void)
     return v;
 }
 
+void Gsu81E3Long_cr(Carried *cr)
+{
+    cr->a = Gsu81E3Long();
+    set_p(cr, (uint8_t)(cr->p & ~P_M));
+}
+
 void abi_Gsu81E3Long(void)
 {
-    cpu.a = Gsu81E3Long();
-    cpu.p = (uint8_t)(cpu.p & ~P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Gsu81E3Long_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -997,17 +1311,6 @@ uint8_t ViewUpdateAndGsuAEF8(uint8_t bank)
     return mode;
 }
 
-void abi_ViewUpdateAndGsuAEF8(void)
-{
-    uint8_t mode = ViewUpdateAndGsuAEF8(cpu.db);
-
-    cpu.a = (uint16_t)(aef8_high << 8 | mode);
-    cpu.x = 0xAEF8;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) | P_M) & ~P_X);
-}
-
-/* ViewUpdateAndGsuAEF8 on carried registers, as abi_ViewUpdateAndGsuAEF8 leaves them. */
 void ViewUpdateAndGsuAEF8_cr(Carried *cr)
 {
     uint8_t mode = ViewUpdateAndGsuAEF8(cr->db);
@@ -1017,6 +1320,20 @@ void ViewUpdateAndGsuAEF8_cr(Carried *cr)
     cr->y &= 0x00FF;
     set_p(cr, (uint8_t)((nz8(cr->p, cr->db) | P_M) & ~P_X));
 }
+
+void abi_ViewUpdateAndGsuAEF8(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewUpdateAndGsuAEF8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 07:8AA6 GsuF329Sequence
@@ -1082,13 +1399,26 @@ static uint16_t f329_high(uint8_t bank)
     return (uint16_t)(rd16((uint32_t)bank << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
 }
 
+void GsuF329Sequence_cr(Carried *cr)
+{
+    uint8_t mode = GsuF329Sequence(cr->db, cr->y);
+
+    cr->a = (uint16_t)(f329_high(cr->db) | mode);
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~P_C));
+}
+
 void abi_GsuF329Sequence(void)
 {
-    uint8_t mode = GsuF329Sequence(cpu.db, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(f329_high(cpu.db) | mode);
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_C);
+    GsuF329Sequence_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1125,11 +1455,24 @@ uint8_t GsuF15BFive(void)
     return mode;
 }
 
+void GsuF15BFive_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8800 | GsuF15BFive());
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GsuF15BFive(void)
 {
-    cpu.a = (uint16_t)(0x8800 | GsuF15BFive());
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF15BFive_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1189,13 +1532,26 @@ uint8_t GsuFA5AThree(uint8_t bank, uint8_t *p)
     return cyc_then(158, GsuRun(0x07, 0xFA5A));
 }
 
+void GsuFA5AThree_cr(Carried *cr)
+{
+    uint8_t p = cr->p, mode = GsuFA5AThree(cr->db, &p);
+
+    cr->a = (uint16_t)(0x1A00 | mode);
+    cr->x = 0xFA5A;
+    set_p(cr, nz8(p, cr->db));
+}
+
 void abi_GsuFA5AThree(void)
 {
-    uint8_t p = cpu.p, mode = GsuFA5AThree(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x1A00 | mode);
-    cpu.x = 0xFA5A;
-    cpu.p = nz8(p, cpu.db);
+    GsuFA5AThree_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A 16-bit ADC with carry clear: the sum, with C and V set as the 65816 sets them. */
@@ -1282,13 +1638,26 @@ uint8_t GsuFA5AFromTables(uint8_t bank, uint8_t *p)
     return GsuRun(0x07, 0xFA5A);
 }
 
+void GsuFA5AFromTables_cr(Carried *cr)
+{
+    uint8_t p = cr->p, mode = GsuFA5AFromTables(cr->db, &p);
+
+    cr->a = mode;
+    cr->x = 0xFA5A;
+    set_p(cr, nz8(p, cr->db));
+}
+
 void abi_GsuFA5AFromTables(void)
 {
-    uint8_t p = cpu.p, mode = GsuFA5AFromTables(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = mode;
-    cpu.x = 0xFA5A;
-    cpu.p = nz8(p, cpu.db);
+    GsuFA5AFromTables_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1349,13 +1718,26 @@ uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
     return mode;
 }
 
+void GsuFA5ASix_cr(Carried *cr)
+{
+    uint8_t p = cr->p, mode = GsuFA5ASix(cr->db, &p);
+
+    cr->a = (uint16_t)(0x1B00 | mode);
+    cr->x = 0xFA5A;
+    set_p(cr, nz8(p, cr->db));
+}
+
 void abi_GsuFA5ASix(void)
 {
-    uint8_t p = cpu.p, mode = GsuFA5ASix(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x1B00 | mode);
-    cpu.x = 0xFA5A;
-    cpu.p = nz8(p, cpu.db);
+    GsuFA5ASix_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1405,11 +1787,24 @@ uint8_t GsuF15BTwoLines(uint16_t input)
     return mode;
 }
 
+void GsuF15BTwoLines_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8C00 | GsuF15BTwoLines(cr->a));
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GsuF15BTwoLines(void)
 {
-    cpu.a = (uint16_t)(0x8C00 | GsuF15BTwoLines(cpu.a));
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF15BTwoLines_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* $70:0210 = input, $70:020E = $10, the position (x, $28), the bytes
@@ -1459,11 +1854,24 @@ uint8_t GlyphRowsAt32(uint16_t input)
     return mode;
 }
 
+void GlyphRowsAt32_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8400 | GlyphRowsAt32(cr->a));
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowsAt32(void)
 {
-    cpu.a = (uint16_t)(0x8400 | GlyphRowsAt32(cpu.a));
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowsAt32_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1484,11 +1892,24 @@ uint8_t GlyphRowsAt56(uint16_t input)
     return glyph_rows_at(input, 0x0038, piece, 6);
 }
 
+void GlyphRowsAt56_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8800 | GlyphRowsAt56(cr->a));
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowsAt56(void)
 {
-    cpu.a = (uint16_t)(0x8800 | GlyphRowsAt56(cpu.a));
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowsAt56_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void GsuBytes200_BFBAB9(void);
@@ -1552,11 +1973,24 @@ uint16_t GsuPiecesFromRecord(uint8_t bank, uint16_t x)
     return pieces_list(bank, list, 0xFAF2);
 }
 
+void GsuPiecesFromRecord_cr(Carried *cr)
+{
+    cr->x = GsuPiecesFromRecord(cr->db, cr->x);
+    cr->a = 0xFFFF;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z | P_C)) | (record_v ? P_V : 0) | P_Z | P_C));
+}
+
 void abi_GsuPiecesFromRecord(void)
 {
-    cpu.x = GsuPiecesFromRecord(cpu.db, cpu.x);
-    cpu.a = 0xFFFF;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z | P_C)) | (record_v ? P_V : 0) | P_Z | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPiecesFromRecord_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1577,11 +2011,24 @@ uint16_t GsuPiecesListFAF2(uint8_t bank, uint16_t list)
     return pieces_list(bank, list, 0xFAF2);
 }
 
+void GsuPiecesListFAF2_cr(Carried *cr)
+{
+    cr->x = GsuPiecesListFAF2(cr->db, cr->x);
+    cr->a = 0xFFFF;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C)) | P_Z | P_C));
+}
+
 void abi_GsuPiecesListFAF2(void)
 {
-    cpu.x = GsuPiecesListFAF2(cpu.db, cpu.x);
-    cpu.a = 0xFFFF;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPiecesListFAF2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1612,11 +2059,24 @@ uint16_t GsuPiecesListF6DF(uint8_t bank, uint16_t list)
     return pieces_list(bank, list, 0xF6DF);
 }
 
+void GsuPiecesListF6DF_cr(Carried *cr)
+{
+    cr->x = GsuPiecesListF6DF(cr->db, cr->x);
+    cr->a = 0xFFFF;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_M | P_X)) | P_Z | P_C));
+}
+
 void abi_GsuPiecesListF6DF(void)
 {
-    cpu.x = GsuPiecesListF6DF(cpu.db, cpu.x);
-    cpu.a = 0xFFFF;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M | P_X)) | P_Z | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPiecesListF6DF_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1675,10 +2135,23 @@ uint16_t GsuPieceOffsetFromView(uint8_t bank)
     return r;
 }
 
+void GsuPieceOffsetFromView_cr(Carried *cr)
+{
+    cr->a = GsuPieceOffsetFromView(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z | P_C)) | offset_flags));
+}
+
 void abi_GsuPieceOffsetFromView(void)
 {
-    cpu.a = GsuPieceOffsetFromView(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z | P_C)) | offset_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPieceOffsetFromView_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1718,10 +2191,23 @@ uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
     return a;
 }
 
+void GsuReciprocal_cr(Carried *cr)
+{
+    cr->a = GsuReciprocal(cr->db, &cr->p);
+    cyc(42);                            /* RTS */
+}
+
 void abi_GsuReciprocal(void)
 {
-    cpu.a = GsuReciprocal(cpu.db, &cpu.p);
-    cyc(42);                            /* RTS */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuReciprocal_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1795,11 +2281,24 @@ uint16_t GsuPieceScaleFromView(uint8_t bank)
     return r;
 }
 
+void GsuPieceScaleFromView_cr(Carried *cr)
+{
+    cr->a = GsuPieceScaleFromView(cr->db);
+    cr->x = scale_e;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_C));
+}
+
 void abi_GsuPieceScaleFromView(void)
 {
-    cpu.a = GsuPieceScaleFromView(cpu.db);
-    cpu.x = scale_e;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPieceScaleFromView_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1842,11 +2341,24 @@ uint16_t GsuPiecesFromBytes(uint8_t bank, uint16_t x)
     return pieces_list(bank, x, 0xFAF2);
 }
 
+void GsuPiecesFromBytes_cr(Carried *cr)
+{
+    cr->x = GsuPiecesFromBytes(cr->db, cr->x);
+    cr->a = 0xFFFF;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C)) | P_Z | P_C));
+}
+
 void abi_GsuPiecesFromBytes(void)
 {
-    cpu.x = GsuPiecesFromBytes(cpu.db, cpu.x);
-    cpu.a = 0xFFFF;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuPiecesFromBytes_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1900,12 +2412,25 @@ uint8_t GsuPiecesStep10CB(uint8_t bank, uint16_t *program, uint8_t *p)
     return mode;
 }
 
+void GsuPiecesStep10CB_cr(Carried *cr)
+{
+    uint8_t p = cr->p, mode = GsuPiecesStep10CB(cr->db, &cr->x, &p);
+
+    cr->a = (uint16_t)(0x8C00 | mode);
+    set_p(cr, nz8(p, cr->db));
+}
+
 void abi_GsuPiecesStep10CB(void)
 {
-    uint8_t p = cpu.p, mode = GsuPiecesStep10CB(cpu.db, &cpu.x, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x8C00 | mode);
-    cpu.p = nz8(p, cpu.db);
+    GsuPiecesStep10CB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 static uint8_t object_cv;               /* the adapters': C and V of the last subtract */
@@ -1940,17 +2465,23 @@ uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
     return v;
 }
 
-void abi_ObjectGsu80BCThen81E3(void)
-{
-    cpu.a = ObjectGsu80BCThen81E3(cpu.db, cpu.x);
-    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_X | P_C | P_V)) | object_cv), cpu.x);
-}
-
-/* ObjectGsu80BCThen81E3 on carried registers, as abi_ObjectGsu80BCThen81E3 leaves them. */
 void ObjectGsu80BCThen81E3_cr(Carried *cr)
 {
     cr->a = ObjectGsu80BCThen81E3(cr->db, cr->x);
     set_p(cr, nz16((uint8_t)((cr->p & ~(P_M | P_X | P_C | P_V)) | object_cv), cr->x));
+}
+
+void abi_ObjectGsu80BCThen81E3(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectGsu80BCThen81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1983,17 +2514,23 @@ uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
     return v;
 }
 
-void abi_ObjectGsu81E3(void)
-{
-    cpu.a = ObjectGsu81E3(cpu.db, cpu.x);
-    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_C | P_V)) | object_cv), cpu.x);
-}
-
-/* ObjectGsu81E3 on carried registers, as abi_ObjectGsu81E3 leaves them. */
 void ObjectGsu81E3_cr(Carried *cr)
 {
     cr->a = ObjectGsu81E3(cr->db, cr->x);
     set_p(cr, nz16((uint8_t)((cr->p & ~(P_M | P_C | P_V)) | object_cv), cr->x));
+}
+
+void abi_ObjectGsu81E3(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Program $07:FA5A with all four of $70:020E/0210/0212/0214 = $100. */
@@ -2057,13 +2594,26 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     return cyc_then(158, GsuRun(0x07, 0xFA5A));
 }
 
+void GsuFA5AThreeShifted_cr(Carried *cr)
+{
+    uint8_t p = cr->p, mode = GsuFA5AThreeShifted(cr->db, &p);
+
+    cr->a = (uint16_t)(0x1C00 | mode);
+    cr->x = 0xFA5A;
+    set_p(cr, nz8(p, cr->db));
+}
+
 void abi_GsuFA5AThreeShifted(void)
 {
-    uint8_t p = cpu.p, mode = GsuFA5AThreeShifted(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x1C00 | mode);
-    cpu.x = 0xFA5A;
-    cpu.p = nz8(p, cpu.db);
+    GsuFA5AThreeShifted_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2105,13 +2655,26 @@ uint8_t GsuFA5ASixLeft(uint8_t bank, uint8_t *p)
     return mode;
 }
 
+void GsuFA5ASixLeft_cr(Carried *cr)
+{
+    uint8_t p = cr->p, mode = GsuFA5ASixLeft(cr->db, &p);
+
+    cr->a = (uint16_t)(0x1B00 | mode);
+    cr->x = 0xFA5A;
+    set_p(cr, nz8(p, cr->db));
+}
+
 void abi_GsuFA5ASixLeft(void)
 {
-    uint8_t p = cpu.p, mode = GsuFA5ASixLeft(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(0x1B00 | mode);
-    cpu.x = 0xFA5A;
-    cpu.p = nz8(p, cpu.db);
+    GsuFA5ASixLeft_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2159,23 +2722,36 @@ int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
     return 1;
 }
 
-void abi_GsuFA35FromTables(void)
+void GsuFA35FromTables_cr(Carried *cr)
 {
     cyc(62);
     uint16_t x;
-    uint8_t p = cpu.p, mode = 0;
+    uint8_t p = cr->p, mode = 0;
 
-    if (GsuFA35FromTables(cpu.db, &mode, &p, &x)) {
+    if (GsuFA35FromTables(cr->db, &mode, &p, &x)) {
         cyc(154);
-        cpu.a = (uint16_t)(0x1C00 | mode);
-        cpu.x = 0xFA35;
-        cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
+        cr->a = (uint16_t)(0x1C00 | mode);
+        cr->x = 0xFA35;
+        set_p(cr, (uint8_t)(nz8(p, cr->db) & ~(P_M | P_X)));
     } else {
-        cpu.a = 0x0000;
-        cpu.x = x;
-        cpu.p = (uint8_t)((p & ~P_N) | P_Z);
+        cr->a = 0x0000;
+        cr->x = x;
+        set_p(cr, (uint8_t)((p & ~P_N) | P_Z));
     }
     cyc(4);
+}
+
+void abi_GsuFA35FromTables(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuFA35FromTables_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -2215,11 +2791,24 @@ uint8_t HudSixGlyphs(void)
     return mode;
 }
 
+void HudSixGlyphs_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8800 | HudSixGlyphs());
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_HudSixGlyphs(void)
 {
-    cpu.a = (uint16_t)(0x8800 | HudSixGlyphs());
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudSixGlyphs_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* $70:0216 = src, then Super FX program $07:FA88 (FxSprite24x40) through
@@ -2317,13 +2906,26 @@ count:
     return v;
 }
 
+void BigSpritesCountDraw_cr(Carried *cr)
+{
+    uint8_t v = BigSpritesCountDraw(cr->db);
+
+    cr->a = (uint16_t)(count_high << 8 | v);
+    cr->x = 0xFA88;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags));
+}
+
 void abi_BigSpritesCountDraw(void)
 {
-    uint8_t v = BigSpritesCountDraw(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)(count_high << 8 | v);
-    cpu.x = 0xFA88;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    BigSpritesCountDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 static int rows_counted;                /* the adapters': the rows went to BigSpritesCountDraw */
@@ -2398,21 +3000,6 @@ uint8_t BigSpritesRow6(uint8_t bank)
     return mode;
 }
 
-void abi_BigSpritesRow6(void)
-{
-    uint8_t v = BigSpritesRow6(cpu.db);
-
-    cpu.x = 0xFA88;
-    if (rows_counted) {
-        cpu.a = (uint16_t)(count_high << 8 | v);
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
-    } else {
-        cpu.a = (uint16_t)(0xAA00 | v);
-        cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
-    }
-}
-
-/* BigSpritesRow6 on carried registers, as abi_BigSpritesRow6 leaves them. */
 void BigSpritesRow6_cr(Carried *cr)
 {
     uint8_t v = BigSpritesRow6(cr->db);
@@ -2426,6 +3013,20 @@ void BigSpritesRow6_cr(Carried *cr)
         set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv));
     }
 }
+
+void abi_BigSpritesRow6(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BigSpritesRow6_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 07:9E3B BigSpritesRow5
@@ -2452,21 +3053,6 @@ uint8_t BigSpritesRow5(uint8_t bank)
     return mode;
 }
 
-void abi_BigSpritesRow5(void)
-{
-    uint8_t v = BigSpritesRow5(cpu.db);
-
-    cpu.x = 0xFA88;
-    if (rows_counted) {
-        cpu.a = (uint16_t)(count_high << 8 | v);
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
-    } else {
-        cpu.a = (uint16_t)(0xA500 | v);
-        cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
-    }
-}
-
-/* BigSpritesRow5 on carried registers, as abi_BigSpritesRow5 leaves them. */
 void BigSpritesRow5_cr(Carried *cr)
 {
     uint8_t v = BigSpritesRow5(cr->db);
@@ -2480,6 +3066,20 @@ void BigSpritesRow5_cr(Carried *cr)
         set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
     }
 }
+
+void abi_BigSpritesRow5(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BigSpritesRow5_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 
 /*
@@ -2521,17 +3121,30 @@ int HudHoldDraw(uint8_t bank)
     return 1;
 }
 
-void abi_HudHoldDraw(void)
+void HudHoldDraw_cr(Carried *cr)
 {
-    if (HudHoldDraw(cpu.db)) {
-        cpu.x = 0xF329;
-        cpu.y = 0x0F69;
-        if (cpu.p & P_X) {
-            cpu.x &= 0x00FF;
-            cpu.y &= 0x00FF;
+    if (HudHoldDraw(cr->db)) {
+        cr->x = 0xF329;
+        cr->y = 0x0F69;
+        if (cr->p & P_X) {
+            cr->x &= 0x00FF;
+            cr->y &= 0x00FF;
         }
     }
-    cpu.a = hold_a;
+    cr->a = hold_a;
+}
+
+void abi_HudHoldDraw(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudHoldDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* SEP #$20, REP #$10, LDX #$F329, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
@@ -2572,11 +3185,24 @@ uint8_t GlyphAtY60(uint16_t glyph)
     return mode;
 }
 
+void GlyphAtY60_cr(Carried *cr)
+{
+    cr->a = GlyphAtY60(cr->a);
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphAtY60(void)
 {
-    cpu.a = GlyphAtY60(cpu.a);
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphAtY60_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One step of the row at y 96: LDA #x, STA.L $70:020A, LDA #glyph, JSR
@@ -2617,11 +3243,24 @@ uint8_t GlyphRowY60From0(void)
     return glyph_row(0);
 }
 
+void GlyphRowY60From0_cr(Carried *cr)
+{
+    cr->a = GlyphRowY60From0();
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowY60From0(void)
 {
-    cpu.a = GlyphRowY60From0();
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowY60From0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2635,11 +3274,24 @@ uint8_t GlyphRowY60From1(void)
     return glyph_row(1);
 }
 
+void GlyphRowY60From1_cr(Carried *cr)
+{
+    cr->a = GlyphRowY60From1();
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowY60From1(void)
 {
-    cpu.a = GlyphRowY60From1();
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowY60From1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2653,11 +3305,24 @@ uint8_t GlyphRowY60From2(void)
     return glyph_row(2);
 }
 
+void GlyphRowY60From2_cr(Carried *cr)
+{
+    cr->a = GlyphRowY60From2();
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowY60From2(void)
 {
-    cpu.a = GlyphRowY60From2();
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowY60From2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2671,11 +3336,24 @@ uint8_t GlyphRowY60From3(void)
     return glyph_row(3);
 }
 
+void GlyphRowY60From3_cr(Carried *cr)
+{
+    cr->a = GlyphRowY60From3();
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowY60From3(void)
 {
-    cpu.a = GlyphRowY60From3();
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowY60From3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2689,11 +3367,24 @@ uint8_t GlyphRowY60From4(void)
     return glyph_row(4);
 }
 
+void GlyphRowY60From4_cr(Carried *cr)
+{
+    cr->a = GlyphRowY60From4();
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowY60From4(void)
 {
-    cpu.a = GlyphRowY60From4();
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowY60From4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2707,11 +3398,24 @@ uint8_t GlyphRowY60From5(void)
     return glyph_row(5);
 }
 
+void GlyphRowY60From5_cr(Carried *cr)
+{
+    cr->a = GlyphRowY60From5();
+    cr->x = 0xF329;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GlyphRowY60From5(void)
 {
-    cpu.a = GlyphRowY60From5();
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphRowY60From5_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2781,11 +3485,24 @@ uint16_t GlyphListDraw(uint8_t bank)
     return x;
 }
 
+void GlyphListDraw_cr(Carried *cr)
+{
+    cr->x = GlyphListDraw(cr->db);
+    cr->a = list_a;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_M)) | list_flags));
+}
+
 void abi_GlyphListDraw(void)
 {
-    cpu.x = GlyphListDraw(cpu.db);
-    cpu.a = list_a;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M)) | list_flags);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphListDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2825,13 +3542,26 @@ uint8_t GlyphSpriteDraw(uint8_t bank, uint16_t x)
     return sprite_at(bank, x, rd16((uint32_t)bank << 16 | (uint16_t)(0x0FB0 + x)));
 }
 
+void GlyphSpriteDraw_cr(Carried *cr)
+{
+    uint8_t mode = GlyphSpriteDraw(cr->db, cr->x);
+
+    cr->a = (uint16_t)((sprite_glyph & 0xFF00) | mode);
+    cr->x = (uint16_t)(cr->x + 2);
+    set_p(cr, nz16((uint8_t)(cr->p & ~(P_M | P_X)), cr->x));
+}
+
 void abi_GlyphSpriteDraw(void)
 {
-    uint8_t mode = GlyphSpriteDraw(cpu.db, cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((sprite_glyph & 0xFF00) | mode);
-    cpu.x = (uint16_t)(cpu.x + 2);
-    cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X)), cpu.x);
+    GlyphSpriteDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2873,11 +3603,24 @@ void GlyphSpritesInit(uint8_t bank)
     cyc(30);
 }
 
+void GlyphSpritesInit_cr(Carried *cr)
+{
+    GlyphSpritesInit(cr->db);
+    cr->a = 0x001E;
+    cr->x = 0x0020;
+}
+
 void abi_GlyphSpritesInit(void)
 {
-    GlyphSpritesInit(cpu.db);
-    cpu.a = 0x001E;
-    cpu.x = 0x0020;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphSpritesInit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One glyph of the time row: the glyph word, on (+$110E = 0, 16-bit), x,
@@ -2997,12 +3740,25 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     return time_glyph(b, y, digit_glyph(0x0000F5, 0), 0x7C, 1);
 }
 
+void GlyphListMessageAndTime_cr(Carried *cr)
+{
+    cr->y = GlyphListMessageAndTime(cr->db, cr->x);
+    cr->x = message_end;
+    cr->a = 0x0068;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
+}
+
 void abi_GlyphListMessageAndTime(void)
 {
-    cpu.y = GlyphListMessageAndTime(cpu.db, cpu.x);
-    cpu.x = message_end;
-    cpu.a = 0x0068;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphListMessageAndTime_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_GsuBytes200_BFB7B6_D8C4(void);
@@ -3100,20 +3856,26 @@ uint8_t GlyphWordAt1C28(void)
     return mode;
 }
 
-void abi_GlyphWordAt1C28(void)
-{
-    cpu.a = (uint16_t)(0x9000 | GlyphWordAt1C28());
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
-}
-
-/* GlyphWordAt1C28 on carried registers, as abi_GlyphWordAt1C28 leaves them. */
 void GlyphWordAt1C28_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x9000 | GlyphWordAt1C28());
     cr->x = 0xF15B;
     set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
 }
+
+void abi_GlyphWordAt1C28(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphWordAt1C28_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /* Three rows of three 8 x 8 glyphs (program $07:F280), each row 8 lower
    and back 24; the glyphs are row byte * $100 + $1A, $1C, $1E. `mid` (when
@@ -3166,11 +3928,24 @@ uint8_t GlyphGrid1A(void)
     return glyph_grid3(0x1A, GsuBytes200_BFBAB9_D8E1, GsuBytes200_BFB3BE_D8FE);
 }
 
+void GlyphGrid1A_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x1C00 | GlyphGrid1A());
+    cr->x = 0xF280;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
+}
+
 void abi_GlyphGrid1A(void)
 {
-    cpu.a = (uint16_t)(0x1C00 | GlyphGrid1A());
-    cpu.x = 0xF280;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphGrid1A_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3193,11 +3968,24 @@ uint8_t GlyphGrid1D(void)
     return glyph_grid3(0x1D, 0, 0);
 }
 
+void GlyphGrid1D_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x1F00 | GlyphGrid1D());
+    cr->x = 0xF280;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
+}
+
 void abi_GlyphGrid1D(void)
 {
-    cpu.a = (uint16_t)(0x1F00 | GlyphGrid1D());
-    cpu.x = 0xF280;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphGrid1D_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort1QueuePush(uint8_t command);
@@ -3436,6 +4224,23 @@ void GlyphTimesSequence(uint8_t bank)
     cyc(42);
 }
 
+static void GlyphTimesSequence_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    GlyphTimesSequence(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
 /* The registers GlyphTimesSequence leaves, from what it recorded. */
 static void glyph_times_exit(Carried *cr)
 {
@@ -3464,25 +4269,25 @@ static void glyph_times_exit(Carried *cr)
     }
 }
 
-static void glyph_times_exit_g(void)
+void GlyphTimesSequence_cr(Carried *cr)
 {
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    glyph_times_exit(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    times_y_valid = 0;
+    times_v = (uint8_t)(cr->p & P_V);
+    GlyphTimesSequence_c(cr, cr->db);
+    glyph_times_exit(cr);
 }
 
 void abi_GlyphTimesSequence(void)
 {
-    times_y_valid = 0;
-    times_v = (uint8_t)(cpu.p & P_V);
-    GlyphTimesSequence(cpu.db);
-    glyph_times_exit_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphTimesSequence_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* SEP #$20, REP #$10, LDX #prog, LDA #$07, JSL GsuRun, REP #$20, REP #$10. */
@@ -3597,21 +4402,51 @@ void GlyphSpritesGrowAndTimes(void)
     cyc(122);
 }
 
-void abi_GlyphSpritesGrowAndTimes(void)
+static void GlyphSpritesGrowAndTimes_c(Carried *cr)
 {
-    uint8_t p0 = cpu.p;
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    GlyphSpritesGrowAndTimes();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+void GlyphSpritesGrowAndTimes_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
 
     times_y_valid = 0;
-    times_v = (uint8_t)(cpu.p & P_V);
-    GlyphSpritesGrowAndTimes();
+    times_v = (uint8_t)(cr->p & P_V);
+    GlyphSpritesGrowAndTimes_c(cr);
     if (times_y_valid)
-        cpu.y = times_y;
-    glyph_times_exit_g();
-    cpu.p = p0;
+        cr->y = times_y;
+    glyph_times_exit(cr);
+    set_p(cr, p0);
     if (p0 & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_GlyphSpritesGrowAndTimes(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphSpritesGrowAndTimes_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_GsuBytes200_BFBAB9(void);
@@ -3679,15 +4514,6 @@ uint8_t GlyphSlideThree(uint8_t bank)
     return mode;
 }
 
-void abi_GlyphSlideThree(void)
-{
-    uint8_t mode = GlyphSlideThree(cpu.db);
-
-    cpu.a = (uint16_t)((slide_glyph & 0xFF00) | mode);
-    cpu.x = 0x0006;
-}
-
-/* GlyphSlideThree on carried registers, as abi_GlyphSlideThree leaves them. */
 void GlyphSlideThree_cr(Carried *cr)
 {
     uint8_t mode = GlyphSlideThree(cr->db);
@@ -3695,6 +4521,20 @@ void GlyphSlideThree_cr(Carried *cr)
     cr->a = (uint16_t)((slide_glyph & 0xFF00) | mode);
     cr->x = 0x0006;
 }
+
+void abi_GlyphSlideThree(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphSlideThree_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 void abi_GsuBytes200_BF12B6(void);
 
@@ -3720,13 +4560,26 @@ uint8_t GlyphSpriteDrawLeft8(uint8_t bank, uint16_t x)
     return sprite_at(bank, x, r);
 }
 
+void GlyphSpriteDrawLeft8_cr(Carried *cr)
+{
+    uint8_t mode = GlyphSpriteDrawLeft8(cr->db, cr->x);
+
+    cr->a = (uint16_t)((sprite_glyph & 0xFF00) | mode);
+    cr->x = (uint16_t)(cr->x + 2);
+    set_p(cr, nz16((uint8_t)((cr->p & ~(P_M | P_X | P_C | P_V)) | left8_cv), cr->x));
+}
+
 void abi_GlyphSpriteDrawLeft8(void)
 {
-    uint8_t mode = GlyphSpriteDrawLeft8(cpu.db, cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((sprite_glyph & 0xFF00) | mode);
-    cpu.x = (uint16_t)(cpu.x + 2);
-    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_X | P_C | P_V)) | left8_cv), cpu.x);
+    GlyphSpriteDrawLeft8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3809,20 +4662,26 @@ uint8_t GlyphSpritesDrawAll(uint8_t bank)
     }
 }
 
-void abi_GlyphSpritesDrawAll(void)
-{
-    cpu.a = (uint16_t)(0x1F00 | GlyphSpritesDrawAll(cpu.db));
-    cpu.x = 0xF280;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
-}
-
-/* GlyphSpritesDrawAll on carried registers, as abi_GlyphSpritesDrawAll leaves them. */
 void GlyphSpritesDrawAll_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x1F00 | GlyphSpritesDrawAll(cr->db));
     cr->x = 0xF280;
     set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
 }
+
+void abi_GlyphSpritesDrawAll(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphSpritesDrawAll_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 void TimeUnpackBcd(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund, uint8_t *p);
 
@@ -3996,21 +4855,6 @@ void HudTimesDraw(uint8_t bank)
     times_rows(b, lead < 0 ? 22 : 72);
 }
 
-void abi_HudTimesDraw(void)
-{
-    HudTimesDraw(cpu.db);
-    cpu.a = hud_a;
-    if (hud_xy & 1)
-        cpu.x = hud_x;
-    if (hud_xy & 2)
-        cpu.y = hud_y;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
-
-/* HudTimesDraw on carried registers, as abi_HudTimesDraw leaves them. */
 void HudTimesDraw_cr(Carried *cr)
 {
     HudTimesDraw(cr->db);
@@ -4024,6 +4868,20 @@ void HudTimesDraw_cr(Carried *cr)
         cr->y &= 0x00FF;
     }
 }
+
+void abi_HudTimesDraw(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudTimesDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 07:8A47 HudTimesDrawEven
@@ -4047,16 +4905,47 @@ uint8_t HudTimesDrawEven(uint8_t bank)
     return p0;
 }
 
+static uint8_t HudTimesDrawEven_c(Carried *cr, uint8_t bank)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = HudTimesDrawEven(bank);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void HudTimesDrawEven_cr(Carried *cr)
+{
+    set_p(cr, HudTimesDrawEven_c(cr, cr->db));
+    cr->a = hud_a;
+    cr->x = hud_x;
+    cr->y = hud_y;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_HudTimesDrawEven(void)
 {
-    cpu.p = HudTimesDrawEven(cpu.db);
-    cpu.a = hud_a;
-    cpu.x = hud_x;
-    cpu.y = hud_y;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudTimesDrawEven_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4086,15 +4975,28 @@ void TimeDigitsStore(uint8_t bank, uint8_t min, uint8_t sec, uint8_t hund)
     cyc(42);
 }
 
+void TimeDigitsStore_cr(Carried *cr)
+{
+    uint8_t y = (uint8_t)cr->y;
+
+    TimeDigitsStore(cr->db, (uint8_t)cr->a, (uint8_t)cr->x, y);
+    cr->x &= 0x00FF;
+    cr->y = y;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (y & 0x0F));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(y & 0x0F)) & ~P_C) | P_M | P_X | ((y >> 3) & 1 ? P_C : 0)));
+}
+
 void abi_TimeDigitsStore(void)
 {
-    uint8_t y = (uint8_t)cpu.y;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    TimeDigitsStore(cpu.db, (uint8_t)cpu.a, (uint8_t)cpu.x, y);
-    cpu.x &= 0x00FF;
-    cpu.y = y;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (y & 0x0F));
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(y & 0x0F)) & ~P_C) | P_M | P_X | ((y >> 3) & 1 ? P_C : 0));
+    TimeDigitsStore_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA time, JSR TimeUnpackBcd, JSR TimeDigitsStore, REP #$30, then the
@@ -4173,16 +5075,29 @@ void HudTimesPackedDraw(uint8_t bank)
     packed_rows(b, lead < 0 ? 22 : 72);
 }
 
-void abi_HudTimesPackedDraw(void)
+void HudTimesPackedDraw_cr(Carried *cr)
 {
     packed_v_set = 0;
-    HudTimesPackedDraw(cpu.db);
-    cpu.a = hud_a;
-    cpu.x = hud_x;
-    cpu.y = hud_y;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
+    HudTimesPackedDraw(cr->db);
+    cr->a = hud_a;
+    cr->x = hud_x;
+    cr->y = hud_y;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C)));
     if (packed_v_set)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | packed_v);
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | packed_v));
+}
+
+void abi_HudTimesPackedDraw(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudTimesPackedDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4200,16 +5115,29 @@ void HudTimesPackedEven(uint8_t bank)
     packed_rows((uint32_t)bank << 16, 72);
 }
 
-void abi_HudTimesPackedEven(void)
+void HudTimesPackedEven_cr(Carried *cr)
 {
     packed_v_set = 0;
-    HudTimesPackedEven(cpu.db);
-    cpu.a = hud_a;
-    cpu.x = hud_x;
-    cpu.y = hud_y;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
+    HudTimesPackedEven(cr->db);
+    cr->a = hud_a;
+    cr->x = hud_x;
+    cr->y = hud_y;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C)));
     if (packed_v_set)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | packed_v);
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | packed_v));
+}
+
+void abi_HudTimesPackedEven(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudTimesPackedEven_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* REP #$20, LDA #glyph, STA.L $70:0216, then Super FX program $07:F329. */
@@ -4259,20 +5187,26 @@ uint8_t HudLeadWordDraw(void)
     return mode;
 }
 
-void abi_HudLeadWordDraw(void)
-{
-    cpu.a = (uint16_t)(0x9400 | HudLeadWordDraw());
-    cpu.x = 0xF329;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | lead_cv);
-}
-
-/* HudLeadWordDraw on carried registers, as abi_HudLeadWordDraw leaves them. */
 void HudLeadWordDraw_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x9400 | HudLeadWordDraw());
     cr->x = 0xF329;
     set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | lead_cv));
 }
+
+void abi_HudLeadWordDraw(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudLeadWordDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /* LDA digit, AND #$00FF, JSR GsuParam216A, then Super FX program
    $07:F6DF. */
@@ -4325,16 +5259,6 @@ uint8_t HudLapDigitsDraw(uint8_t bank)
     }
 }
 
-void abi_HudLapDigitsDraw(void)
-{
-    uint8_t mode = HudLapDigitsDraw(cpu.db);
-
-    cpu.a = (uint16_t)(lap_hi << 8 | mode);
-    cpu.x = 0xF6DF;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
-}
-
-/* HudLapDigitsDraw on carried registers, as abi_HudLapDigitsDraw leaves them. */
 void HudLapDigitsDraw_cr(Carried *cr)
 {
     uint8_t mode = HudLapDigitsDraw(cr->db);
@@ -4343,6 +5267,20 @@ void HudLapDigitsDraw_cr(Carried *cr)
     cr->x = 0xF6DF;
     set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C)));
 }
+
+void abi_HudLapDigitsDraw(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudLapDigitsDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /* REP #$30, LDA #x, STA.L $70:020A, then Super FX program $07:F5C9. */
 static uint8_t blank_mark_at(uint16_t x, uint32_t t)
@@ -4420,20 +5358,26 @@ void HudBlankDraw(uint8_t bank)
     cyc(42);                            /* PLP */
 }
 
-void abi_HudBlankDraw(void)
-{
-    HudBlankDraw(cpu.db);
-    cpu.a = blank_a;
-    cpu.x = (uint16_t)(cpu.p & P_X ? 0x00C9 : 0xF5C9);
-}
-
-/* HudBlankDraw on carried registers, as abi_HudBlankDraw leaves them. */
 void HudBlankDraw_cr(Carried *cr)
 {
     HudBlankDraw(cr->db);
     cr->a = blank_a;
     cr->x = (uint16_t)(cr->p & P_X ? 0x00C9 : 0xF5C9);
 }
+
+void abi_HudBlankDraw(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudBlankDraw_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 
 /* GlyphSpritesSlideIn's tail (07:A4F5): the two glyph words drawn at the
@@ -4541,19 +5485,6 @@ int GlyphSpritesSlideOut(uint8_t bank)
     return 0;
 }
 
-void abi_GlyphSpritesSlideOut(void)
-{
-    if (GlyphSpritesSlideOut(cpu.db)) {
-        cpu.a = 0x0006;
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_M | P_X | P_V)) | P_C | slide_v);
-    } else {
-        cpu.a = (uint16_t)(0x9000 | slide_mode);
-        cpu.x = 0xFAB0;
-        cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
-    }
-}
-
-/* GlyphSpritesSlideOut on carried registers, as abi_GlyphSpritesSlideOut leaves them. */
 void GlyphSpritesSlideOut_cr(Carried *cr)
 {
     if (GlyphSpritesSlideOut(cr->db)) {
@@ -4565,6 +5496,20 @@ void GlyphSpritesSlideOut_cr(Carried *cr)
         set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
     }
 }
+
+void abi_GlyphSpritesSlideOut(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphSpritesSlideOut_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 07:A492 GlyphSpritesSlideIn
@@ -4641,20 +5586,26 @@ uint8_t GlyphSpritesSlideIn(uint8_t bank)
     return glyph_slide_draw(b);
 }
 
-void abi_GlyphSpritesSlideIn(void)
-{
-    cpu.a = (uint16_t)(0x9000 | GlyphSpritesSlideIn(cpu.db));
-    cpu.x = 0xFAB0;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
-}
-
-/* GlyphSpritesSlideIn on carried registers, as abi_GlyphSpritesSlideIn leaves them. */
 void GlyphSpritesSlideIn_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x9000 | GlyphSpritesSlideIn(cr->db));
     cr->x = 0xFAB0;
     set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
 }
+
+void abi_GlyphSpritesSlideIn(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GlyphSpritesSlideIn_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 
 
@@ -4707,11 +5658,24 @@ uint8_t GsuF15BFourB(void)
  * Entry: any widths, D = $0000. Exit: A = $84 and the screen mode value; X
  * = $F15B; M 16-bit, X 16-bit; N, Z from the data bank.
  */
+void GsuF15BFourA_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x8400 | GsuF15BFourA());
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GsuF15BFourA(void)
 {
-    cpu.a = (uint16_t)(0x8400 | GsuF15BFourA());
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF15BFourA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4722,11 +5686,24 @@ void abi_GsuF15BFourA(void)
  * Entry: any widths, D = $0000. Exit: as GsuF15BFourA, A = $90 and the
  * screen mode value.
  */
+void GsuF15BFourB_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x9000 | GsuF15BFourB());
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
+}
+
 void abi_GsuF15BFourB(void)
 {
-    cpu.a = (uint16_t)(0x9000 | GsuF15BFourB());
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuF15BFourB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4769,21 +5746,6 @@ uint8_t BigSpritesNine(uint8_t bank)
     return mode;
 }
 
-void abi_BigSpritesNine(void)
-{
-    uint8_t v = BigSpritesNine(cpu.db);
-
-    cpu.x = 0xFA88;
-    if (rows_counted) {
-        cpu.a = (uint16_t)(count_high << 8 | v);
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
-    } else {
-        cpu.a = (uint16_t)(0xA500 | v);
-        cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
-    }
-}
-
-/* BigSpritesNine on carried registers, as abi_BigSpritesNine leaves them. */
 void BigSpritesNine_cr(Carried *cr)
 {
     uint8_t v = BigSpritesNine(cr->db);
@@ -4797,6 +5759,20 @@ void BigSpritesNine_cr(Carried *cr)
         set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv));
     }
 }
+
+void abi_BigSpritesNine(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BigSpritesNine_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 07:9C9F BigSpritesRow6B
@@ -4826,21 +5802,6 @@ uint8_t BigSpritesRow6B(uint8_t bank)
     return mode;
 }
 
-void abi_BigSpritesRow6B(void)
-{
-    uint8_t v = BigSpritesRow6B(cpu.db);
-
-    cpu.x = 0xFA88;
-    if (rows_counted) {
-        cpu.a = (uint16_t)(count_high << 8 | v);
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
-    } else {
-        cpu.a = (uint16_t)(0xA500 | v);
-        cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
-    }
-}
-
-/* BigSpritesRow6B on carried registers, as abi_BigSpritesRow6B leaves them. */
 void BigSpritesRow6B_cr(Carried *cr)
 {
     uint8_t v = BigSpritesRow6B(cr->db);
@@ -4854,6 +5815,20 @@ void BigSpritesRow6B_cr(Carried *cr)
         set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
     }
 }
+
+void abi_BigSpritesRow6B(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BigSpritesRow6B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 /*
  * @routine 02:DA14 GsuClearScreenIfSet
@@ -4871,12 +5846,25 @@ uint8_t GsuClearScreenIfSet(void)
     return GsuRun(0x01, 0xAECA);
 }
 
+void GsuClearScreenIfSet_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuClearScreenIfSet());
+    cr->x = 0xAECA;
+    cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
+    r_plp(cr, cr->p);
+}
+
 void abi_GsuClearScreenIfSet(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuClearScreenIfSet());
-    cpu.x = 0xAECA;
-    cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
-    op_plp(cpu.p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuClearScreenIfSet_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -4895,11 +5883,24 @@ uint8_t GsuClear6000IfSet(void)
     return GsuRun(0x01, 0xAEE1);
 }
 
+void GsuClear6000IfSet_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | GsuClear6000IfSet());
+    cr->x = 0xAEE1;
+    cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
+    r_plp(cr, cr->p);
+}
+
 void abi_GsuClear6000IfSet(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuClear6000IfSet());
-    cpu.x = 0xAEE1;
-    cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
-    op_plp(cpu.p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuClear6000IfSet_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

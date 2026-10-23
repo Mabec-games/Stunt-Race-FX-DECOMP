@@ -12,6 +12,8 @@
  */
 #include "machine.h"
 #include "menu_calls.h"
+#include "carried.h"
+
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
 void VramDmaQueueAdd(void);
@@ -53,13 +55,27 @@ static uint16_t finish(uint8_t bank, uint16_t next)
     return x;
 }
 
+void MenuLoadBlank0800_cr(Carried *cr);
+void MenuLoadBlank1000_cr(Carried *cr);
+void MenuLoadBlank1800_cr(Carried *cr);
+void MenuLoadClearGsu_cr(Carried *cr);
+void MenuLoadGsu4000_cr(Carried *cr);
+void MenuLoadGsu5000_cr(Carried *cr);
+void MenuLoadGsu6000_cr(Carried *cr);
+void MenuLoadPictureCC78_cr(Carried *cr);
+void MenuLoadPictureCE78_cr(Carried *cr);
+void MenuLoadPictureDD8C_cr(Carried *cr);
+void MenuLoadPictureGrid_cr(Carried *cr);
+void MenuLoadPicturesTo7F_cr(Carried *cr);
+static void step_exit(Carried *cr, uint16_t x, uint16_t next);
+
 /* The common register exit: A = the next handler, X = the object; M
    16-bit, X 16-bit; N, Z from A. */
-static void step_exit(uint16_t x, uint16_t next)
+static void step_exit(Carried *cr, uint16_t x, uint16_t next)
 {
-    cpu.x = x;
-    cpu.a = next;
-    cpu.p = (uint8_t)(nz16(cpu.p, next) & ~(P_M | P_X));
+    cr->x = x;
+    cr->a = next;
+    set_p(cr, (uint8_t)(nz16(cr->p, next) & ~(P_M | P_X)));
 }
 
 /*
@@ -80,9 +96,22 @@ uint16_t MenuLoadPictureCC78(uint8_t bank)
     return finish(bank, 0xD234);
 }
 
+void MenuLoadPictureCC78_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadPictureCC78(cr->db), 0xD234);
+}
+
 void abi_MenuLoadPictureCC78(void)
 {
-    step_exit(MenuLoadPictureCC78(cpu.db), 0xD234);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadPictureCC78_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -103,9 +132,22 @@ uint16_t MenuLoadPictureCE78(uint8_t bank)
     return finish(bank, 0xD26F);
 }
 
+void MenuLoadPictureCE78_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadPictureCE78(cr->db), 0xD26F);
+}
+
 void abi_MenuLoadPictureCE78(void)
 {
-    step_exit(MenuLoadPictureCE78(cpu.db), 0xD26F);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadPictureCE78_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -129,9 +171,22 @@ uint16_t MenuLoadPictureGrid(uint8_t bank)
     return finish(bank, 0xD2C9);
 }
 
+void MenuLoadPictureGrid_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadPictureGrid(cr->db), 0xD2C9);
+}
+
 void abi_MenuLoadPictureGrid(void)
 {
-    step_exit(MenuLoadPictureGrid(cpu.db), 0xD2C9);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadPictureGrid_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -152,9 +207,22 @@ uint16_t MenuLoadPictureDD8C(uint8_t bank)
     return finish(bank, 0xD304);
 }
 
+void MenuLoadPictureDD8C_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadPictureDD8C(cr->db), 0xD304);
+}
+
 void abi_MenuLoadPictureDD8C(void)
 {
-    step_exit(MenuLoadPictureDD8C(cpu.db), 0xD304);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadPictureDD8C_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -172,9 +240,22 @@ uint16_t MenuLoadGsu4000(uint8_t bank)
     return finish(bank, 0xD333);
 }
 
+void MenuLoadGsu4000_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadGsu4000(cr->db), 0xD333);
+}
+
 void abi_MenuLoadGsu4000(void)
 {
-    step_exit(MenuLoadGsu4000(cpu.db), 0xD333);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadGsu4000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -191,9 +272,22 @@ uint16_t MenuLoadGsu5000(uint8_t bank)
     return finish(bank, 0xD362);
 }
 
+void MenuLoadGsu5000_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadGsu5000(cr->db), 0xD362);
+}
+
 void abi_MenuLoadGsu5000(void)
 {
-    step_exit(MenuLoadGsu5000(cpu.db), 0xD362);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadGsu5000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -210,9 +304,22 @@ uint16_t MenuLoadGsu6000(uint8_t bank)
     return finish(bank, 0xD391);
 }
 
+void MenuLoadGsu6000_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadGsu6000(cr->db), 0xD391);
+}
+
 void abi_MenuLoadGsu6000(void)
 {
-    step_exit(MenuLoadGsu6000(cpu.db), 0xD391);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadGsu6000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Copy `bytes` from the Super FX picture at $70:3000 to bank $7F. */
@@ -246,9 +353,22 @@ uint16_t MenuLoadPicturesTo7F(uint8_t bank)
     return finish(bank, 0xD3D8);
 }
 
+void MenuLoadPicturesTo7F_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadPicturesTo7F(cr->db), 0xD3D8);
+}
+
 void abi_MenuLoadPicturesTo7F(void)
 {
-    step_exit(MenuLoadPicturesTo7F(cpu.db), 0xD3D8);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadPicturesTo7F_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -280,9 +400,22 @@ uint16_t MenuLoadClearGsu(uint8_t bank)
     return finish(bank, 0xD418);
 }
 
+void MenuLoadClearGsu_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadClearGsu(cr->db), 0xD418);
+}
+
 void abi_MenuLoadClearGsu(void)
 {
-    step_exit(MenuLoadClearGsu(cpu.db), 0xD418);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadClearGsu_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -299,9 +432,22 @@ uint16_t MenuLoadBlank0800(uint8_t bank)
     return finish(bank, 0xD447);
 }
 
+void MenuLoadBlank0800_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadBlank0800(cr->db), 0xD447);
+}
+
 void abi_MenuLoadBlank0800(void)
 {
-    step_exit(MenuLoadBlank0800(cpu.db), 0xD447);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadBlank0800_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -318,9 +464,22 @@ uint16_t MenuLoadBlank1000(uint8_t bank)
     return finish(bank, 0xD476);
 }
 
+void MenuLoadBlank1000_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadBlank1000(cr->db), 0xD476);
+}
+
 void abi_MenuLoadBlank1000(void)
 {
-    step_exit(MenuLoadBlank1000(cpu.db), 0xD476);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadBlank1000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -337,7 +496,21 @@ uint16_t MenuLoadBlank1800(uint8_t bank)
     return finish(bank, 0xD4A5);
 }
 
+void MenuLoadBlank1800_cr(Carried *cr)
+{
+    step_exit(cr, MenuLoadBlank1800(cr->db), 0xD4A5);
+}
+
 void abi_MenuLoadBlank1800(void)
 {
-    step_exit(MenuLoadBlank1800(cpu.db), 0xD4A5);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuLoadBlank1800_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

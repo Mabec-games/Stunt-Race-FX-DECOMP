@@ -12,19 +12,6 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-uint16_t GsuRecordLower82(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
-uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
-uint16_t GsuRecordSet2AHigh(uint8_t bank, uint16_t obj, uint8_t value, uint8_t *p);
-uint16_t GsuRecordVelocity(uint8_t bank, uint16_t obj, int *has, uint8_t *p);
-uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p);
-void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p);
-uint16_t ObjectRebucket(uint16_t obj);
-uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p);
-uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p);
-uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
-uint16_t ObjectSyncToRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
-uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y);
-int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16_t x);
 
 void abi_ObjectSpawn(void);
 void abi_ObjectCopyPositionTo(void);
@@ -598,37 +585,37 @@ static void wave_home(Carried *cr);
 static void window_gate_frame(Carried *cr, int on);
 static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1, uint8_t a2, uint8_t o2,
                              int store2);
-static void w_GsuRecordLower82(Carried *cr);
-static void w_GsuRecordRaise6A(Carried *cr);
-static void w_GsuRecordSet2AHigh(Carried *cr);
-static void w_GsuRecordVelocity(Carried *cr);
-static void w_HudCountMove19EECopy(Carried *cr);
-static void w_HudCountUp19EC(Carried *cr);
-static void w_ObjectRebucket(Carried *cr);
-static void w_ObjectRelease(Carried *cr);
-static void w_ObjectStep48To8(Carried *cr);
-static void w_ObjectSyncFromRecord(Carried *cr);
-static void w_ObjectSyncToRecord(Carried *cr);
-static void w_RecordContactSummary(Carried *cr);
-static void w_RecordNextContact(Carried *cr);
-static void w_RotateXY(Carried *cr);
-static void w_RotateXZ(Carried *cr);
-static void w_RotateXZFrom08(Carried *cr);
 void GsuRecordFlag10_cr(Carried *cr);
 void GsuRecordFlags8AClear(Carried *cr);
 void GsuRecordFlags8ASet(Carried *cr);
+void GsuRecordLower82_cr(Carried *cr);
 void GsuRecordMode2_cr(Carried *cr);
 void GsuRecordNew424Alt_cr(Carried *cr);
 void GsuRecordNew424Piece_cr(Carried *cr);
 void GsuRecordNew424_cr(Carried *cr);
 void GsuRecordNew42D_cr(Carried *cr);
 void GsuRecordPosition_cr(Carried *cr);
+void GsuRecordRaise6A_cr(Carried *cr);
+void GsuRecordSet2AHigh_cr(Carried *cr);
+void GsuRecordVelocity_cr(Carried *cr);
+void HudCountMove19EECopy_cr(Carried *cr);
 void HudCountMove19EE_cr(Carried *cr);
+void HudCountUp19EC_cr(Carried *cr);
 void ObjectCopy14To_cr(Carried *cr);
 void ObjectCopyPositionFrom_cr(Carried *cr);
 void ObjectCopyPositionTo_cr(Carried *cr);
+void ObjectRebucket_cr(Carried *cr);
+void ObjectRelease_cr(Carried *cr);
 void ObjectSpawnPuff(Carried *cr);
 void ObjectSpawn_cr(Carried *cr);
+void ObjectStep48To8_cr(Carried *cr);
+void ObjectSyncFromRecord_cr(Carried *cr);
+void ObjectSyncToRecord_cr(Carried *cr);
+void RecordContactSummary_cr(Carried *cr);
+void RecordNextContact_cr(Carried *cr);
+void RotateXY_cr(Carried *cr);
+void RotateXZFrom08_cr(Carried *cr);
+void RotateXZ_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
 
@@ -846,7 +833,7 @@ void ObjectLampTower(Carried *cr)
         (cyc(84), ObjectCopyPositionTo_cr(cr));
         add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0xFA88));
         swap_xy(cr);
-        w_ObjectRebucket(cr);
+        ObjectRebucket_cr(cr);
         (cyc(10), swap_xy_less(cr, 94));
     } else { cyc(26); }                 /* BCS not taken, JML */
     handler_none(cr, cr->x);
@@ -925,11 +912,11 @@ void abi_ObjectScale40(void)
    sync's bit 0 and the record's contact summary's bit 0 together. */
 static void gate_frame(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if ((uint8_t)cr->a) {
         cyc(12);
-        (cyc(62), w_RecordContactSummary(cr));
+        (cyc(62), RecordContactSummary_cr(cr));
         lda8(cr, (uint8_t)(cr->a & 0x01));
         if ((uint8_t)cr->a) {
             cyc(12);
@@ -1256,7 +1243,7 @@ void ObjectScoreCounterStep(Carried *cr)
         cyc(42);
     }
     cyc(84);
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -1276,9 +1263,9 @@ void abi_ObjectScoreCounterStep(void)
 /* 09:8DF8: synced from its record; released when +$0A has run down. */
 static void piece_frame(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
-        { cyc(84); w_ObjectRelease(cr); cyc(44); } else { cyc(92); }
+        { cyc(84); ObjectRelease_cr(cr); cyc(44); } else { cyc(92); }
 }
 
 /*
@@ -1297,10 +1284,10 @@ void ObjectFlyingPiece(Carried *cr)
     cyc(62);
     GsuRecordNew424Piece_cr(cr);
     if (cr->p & P_N) {
-        (cyc(84), w_ObjectRelease(cr));
+        (cyc(84), ObjectRelease_cr(cr));
         { cyc(44); return; }
     } else { cyc(16); }
-    (cyc(62), w_GsuRecordVelocity(cr));
+    (cyc(62), GsuRecordVelocity_cr(cr));
     piece_frame(cr);
 }
 
@@ -1351,7 +1338,7 @@ void abi_ObjectFlyingPieceStep(void)
  */
 void ObjectFlyingPieceRelease(Carried *cr)
 {
-    (cyc(62), w_ObjectRelease(cr));
+    (cyc(62), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -1448,19 +1435,19 @@ void abi_ObjectFireworkBurst(void)
 static void shell_frame(Carried *cr)
 {
     if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
-        { cyc(84); w_ObjectRelease(cr); cyc(22); } else { cyc(70); }
+        { cyc(84); ObjectRelease_cr(cr); cyc(22); } else { cyc(70); }
     add16(cr, F_c(0x2014, cr->x), 0x000C);
     add16(cr, F_c(0x2015, cr->x), cyc_then(44, 0x000C));
     add16(cr, F_c(0x2016, cr->x), cyc_then(44, 0x000C));
-    (cyc(84), w_ObjectSyncFromRecord(cr));
+    (cyc(84), ObjectSyncFromRecord_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(62); return; } else { cyc(12); }
-    (cyc(62), w_RecordContactSummary(cr));
+    (cyc(62), RecordContactSummary_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         return; else { cyc(74); }
-    w_ObjectRelease(cr);
+    ObjectRelease_cr(cr);
     cyc(58);
     lda8(cr, 0x56);
     SoundPort0QueuePush_cr(cr);
@@ -1474,9 +1461,9 @@ static void shell_record(Carried *cr)
 {
     cyc(62);
     GsuRecordNew424Piece_cr(cr);
-    (cyc(62), w_GsuRecordVelocity(cr));
+    (cyc(62), GsuRecordVelocity_cr(cr));
     lda8(cr, 0x08);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     cyc(102);
     record_at(cr, 0x0190, 0x0190, 0x0190);
     shell_frame(cr);
@@ -1633,11 +1620,11 @@ void abi_ObjectFireworkShellPair(void)
    (+$25 bit 0), sound $11 and two firework shells. */
 static void finish_gate_frame(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(62); return; } else { cyc(12); }
-    (cyc(62), w_RecordContactSummary(cr));
+    (cyc(62), RecordContactSummary_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(62); return; } else { cyc(50); }
@@ -1806,12 +1793,12 @@ static void handlers2(Carried *cr, uint16_t r, uint16_t f)
    (ObjectSyncFromRecord, RecordContactSummary, each AND #1). */
 static int hit(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         return 0; else { cyc(38); }
     cyc(36);
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     cyc(0);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     return (uint8_t)cr->a != 0;
@@ -1863,7 +1850,7 @@ static void bumper_record(Carried *cr)
     (cyc(62), GsuRecordFlag10_cr(cr));
     cyc(58);
     lda8(cr, 0x01);
-    w_GsuRecordSet2AHigh(cr);
+    GsuRecordSet2AHigh_cr(cr);
     (cyc(102), bumper_frame(cr));
 }
 
@@ -1985,7 +1972,7 @@ static void switch_record(Carried *cr)
     (cyc(62), GsuRecordFlag10_cr(cr));
     cyc(58);
     lda8(cr, 0x01);
-    w_GsuRecordSet2AHigh(cr);
+    GsuRecordSet2AHigh_cr(cr);
     (cyc(102), switch_frame(cr));
 }
 
@@ -2105,10 +2092,10 @@ static void platform_record(Carried *cr)
     (cyc(62), GsuRecordNew424Alt_cr(cr));
     (cyc(62), GsuRecordMode2_cr(cr));
     lda8(cr, 0x50);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     cyc(102);
     record_at(cr, 0x0500, 0x1180, 0x0500);
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     cyc(44);
 }
 
@@ -2175,7 +2162,7 @@ void abi_ObjectPlatformRecord(void)
  */
 void ObjectPlatformStep(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     cyc(44);
 }
 
@@ -2549,7 +2536,7 @@ static void ball_rise(Carried *cr)
 {
     ball_drop(cr, 0xFFB0, 0xFF10, 0xC0);
     if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
-        { cyc(84); w_ObjectRelease(cr); cyc(42); } else { cyc(90); }   /* RTS */
+        { cyc(84); ObjectRelease_cr(cr); cyc(42); } else { cyc(90); }   /* RTS */
 }
 
 /*
@@ -2666,7 +2653,7 @@ void ObjectSkyBallStep(Carried *cr)
         cyc(4);
         ball_rise(cr);
     }
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -2696,13 +2683,13 @@ static void drop_frame(Carried *cr)
 
     add8(cr, F_c(0x2015, cr->x), 0x10);
     add8(cr, F_c(0x2014, cr->x), 0x10);
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(62); return; }
     cyc(74);
     for (;;) {
-        w_RecordNextContact(cr);
+        RecordNextContact_cr(cr);
         if (!(cr->p & P_C))
             return; else { cyc(16); }
         lda8(cr, (uint8_t)(cr->a & 0x01));
@@ -2711,7 +2698,7 @@ static void drop_frame(Carried *cr)
         cyc(80);                        /* BEQ taken, JSL */
     }
     lda8(cr, 0x40);
-    w_GsuRecordRaise6A(cr);
+    GsuRecordRaise6A_cr(cr);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(80);
     lda8(cr, 0x25);
@@ -2741,7 +2728,7 @@ static void drop_frame(Carried *cr)
     cyc(36);
     cr->x = sx;                                 /* PLX */
     set_p(cr, nz16(cr->p, sx));
-    (cyc(62), w_ObjectRelease(cr));
+    (cyc(62), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -2752,7 +2739,7 @@ static void drop_record(Carried *cr)
     (cyc(62), GsuRecordNew42D_cr(cr));
     GsuRecordFlag10_cr(cr);
     lda8(cr, 0x14);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     cyc(102);
     record_at(cr, 0x00A0, 0x00A0, 0x00A0);
     drop_frame(cr);
@@ -3141,7 +3128,7 @@ static void ball_fly(Carried *cr, uint16_t dx)
     add16_via(cr, F_c(0x2010, cr->x), F_c(0x202B, cr->x));
     add16(cr, F_c(0x200C, cr->x), cyc_then(44, dx));
     if (dec8(cr, cyc_then(44, F_c(0x200A, cr->x))) == 0)
-        { cyc(84); w_ObjectRelease(cr); cyc(42); } else { cyc(90); }   /* RTS */
+        { cyc(84); ObjectRelease_cr(cr); cyc(42); } else { cyc(90); }   /* RTS */
 }
 
 /*
@@ -3214,7 +3201,7 @@ static void cannon_ball_frame(Carried *cr, uint16_t dx)
         ball_fly(cr, dx);
         cyc(62);
     }
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -3277,14 +3264,14 @@ void abi_ObjectSyncToRecord(void);
    (ObjectSyncToRecord) instead. */
 static int hit_to_n(Carried *cr, int *late)
 {
-    (cyc(62), w_ObjectSyncToRecord(cr));
+    (cyc(62), ObjectSyncToRecord_cr(cr));
     cyc(4);
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     *late = 0;
     if (!(uint8_t)cr->a)
         return 0; else { cyc(28); }
-    (cyc(62), w_RecordContactSummary(cr));
+    (cyc(62), RecordContactSummary_cr(cr));
     cyc(28);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     *late = 1;
@@ -3657,7 +3644,7 @@ static void wave_home(Carried *cr)
     (cyc(22), ease16(cr, F_c(0x200E, cr->x), F_c(0x200E, cr->y), ApproachQuarterMin4));
     add16_via(cr, F_c(0x200E, cr->x), F_c(0x2029, cr->x));
     if (dec8(cr, cyc_then(44, F_c(0x200A, cr->x))) == 0)
-        { cyc(84); w_ObjectRelease(cr); cyc(42); } else { cyc(90); }   /* RTS */
+        { cyc(84); ObjectRelease_cr(cr); cyc(42); } else { cyc(90); }   /* RTS */
 }
 
 /*
@@ -3700,7 +3687,7 @@ void ObjectWaveBallStep(Carried *cr)
     cr->y = rd16(cyc_then(44, F_c(0x2027, cr->x)));
     set_p(cr, nz16(cr->p, cr->y));
     wave_home(cr);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -3724,7 +3711,7 @@ static void sparkle_frame(Carried *cr)
     uint8_t v;
 
     if (dec8(cr, cyc_then(22, F_c(0x200A, cr->x))) == 0)
-        { cyc(84); w_ObjectRelease(cr); cyc(22); } else { cyc(70); }
+        { cyc(84); ObjectRelease_cr(cr); cyc(22); } else { cyc(70); }
     v = ld8(cr, F_c(0x2018, cr->x));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     v = alu_adc8(v, 0x01, &cr->p);
@@ -3744,7 +3731,7 @@ static void sparkle_frame(Carried *cr)
     v |= 0x80;
     lda8(cr, v);
     wr8(F_c(0x2018, cr->x), cyc_then(132, v));
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -4037,7 +4024,7 @@ static void lantern_frame(Carried *cr)
     cyc(58);
     lda8(cr, 0x10);
     SoundPort0QueuePush_cr(cr);
-    (cyc(62), w_ObjectRelease(cr));
+    (cyc(62), ObjectRelease_cr(cr));
     ObjectLanternBurst(cr);
     cyc(86);                            /* RTS, RTL */
 }
@@ -4049,7 +4036,7 @@ static void lantern_record(Carried *cr)
     (cyc(62), GsuRecordNew424Alt_cr(cr));
     (cyc(62), GsuRecordFlag10_cr(cr));
     lda8(cr, 0x02);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     (cyc(102), lantern_frame(cr));
 }
 
@@ -4221,7 +4208,7 @@ static void gate42d(Carried *cr, uint16_t s)
 /* ObjectSyncFromRecord, AND #1: whether the record has contacts. */
 static int synced(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     cyc(10);
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
@@ -4236,7 +4223,7 @@ static int next_contact_t(Carried *cr, unsigned tail)
 {
     cyc(84);
     for (;;) {
-        w_RecordNextContact(cr);
+        RecordNextContact_cr(cr);
         if (!(cr->p & P_C))
             return 0; else { cyc(tail); }
         lda8(cr, (uint8_t)(cr->a & 0x01));
@@ -4978,7 +4965,7 @@ static void lap_flash_frame(Carried *cr)
                 { cyc(88); return; } else { cyc(18); }
             or8(cr, F_c(0x2025, cr->x), 0x02);
             GateFadeUp(cr);
-            (cyc(126), w_ObjectRelease(cr));
+            (cyc(126), ObjectRelease_cr(cr));
             { cyc(44); return; }
         }
     }
@@ -5091,7 +5078,7 @@ static void sweep0_frame(Carried *cr)
     cyc(2);
     or8l(cr, 0x000DA5, 0x10, 0);
     sound0(cr, 0x36);
-    (cyc(62), w_ObjectRelease(cr));
+    (cyc(62), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -5187,8 +5174,8 @@ void abi_ObjectSweepGateStep(void)
    sound $0E; +$25 bit 1 cleared. */
 static void slide_chime_frame(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
-    (cyc(62), w_RecordContactSummary(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
+    (cyc(62), RecordContactSummary_cr(cr));
     cyc(12);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if ((uint8_t)cr->a) {
@@ -5627,7 +5614,7 @@ static void bonus_marker_frame(Carried *cr)
         or8(cr, db(cr) | 0x0DA5, 0x10);
         sound0(cr, 0x36);
     } else { cyc(12); }
-    (cyc(62), w_ObjectRelease(cr));
+    (cyc(62), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -5951,7 +5938,7 @@ static int released_by_hud(Carried *cr)
     if (!cr->a)
         { cyc(44); return 0; } else { cyc(100); }
     set_p(cr, (uint8_t)(cr->p | (P_M)));
-    w_ObjectRelease(cr);
+    ObjectRelease_cr(cr);
     return 1;
 }
 
@@ -6194,7 +6181,7 @@ void abi_ObjectTimeGateStep(void)
 void ObjectPopMarkerStep(Carried *cr)
 {
     add8(cr, F_c(0x2014, cr->x), 0xF8);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -6281,7 +6268,7 @@ static void lap_ball_record(Carried *cr, uint16_t kind)
     GsuRecordFlag10_cr(cr);
     cyc(58);
     lda8(cr, 0x14);
-    w_GsuRecordSet2AHigh(cr);
+    GsuRecordSet2AHigh_cr(cr);
     if ((cyc(124), lap_matches_0a(cr)))
         { cyc(16); st16i(cr, F_c(0x2004, cr->x), 0xA040); cyc(46); }          /* SEP, JMP */
     else
@@ -6300,7 +6287,7 @@ static void ball_up_frame(Carried *cr)
         { cyc(66); return; } else { cyc(10); }
     for (;;) {
         cyc(80);
-        w_RecordNextContact(cr);
+        RecordNextContact_cr(cr);
         if (!(cr->p & P_C))
             { cyc(72); return; } else { cyc(72); }
         lda8(cr, (uint8_t)(cr->a & 0x0B));
@@ -6315,7 +6302,7 @@ static void ball_up_frame(Carried *cr)
         { cyc(44); return; } else { cyc(10); }
     lap_take_0a(cr);
     lda8(cr, 0x40);
-    w_GsuRecordRaise6A(cr);
+    GsuRecordRaise6A_cr(cr);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(22);
     sound0(cr, 0x25);
@@ -6433,7 +6420,7 @@ void ObjectSparkFollow(Carried *cr)
     add16_via(cr, F_c(0x200E, cr->x), F_c(0x2027, cr->x));
     add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x10));
     add8(cr, F_c(0x2014, cr->x), 0x10);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -6465,7 +6452,7 @@ static void ball_down_frame(Carried *cr)
         { cyc(12); return; } else { cyc(10); }
     lap_take_0a(cr);
     lda8(cr, 0x40);
-    w_GsuRecordLower82(cr);
+    GsuRecordLower82_cr(cr);
     cyc(72);
     sound0(cr, 0x1B);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -6573,7 +6560,7 @@ static void count_gate_frame(Carried *cr)
     if (bit25(cr, 0x01))
         { cyc(88); return; } else { cyc(18); }
     or8(cr, F_c(0x2025, cr->x), 0x01);
-    (cyc(46), w_HudCountMove19EECopy(cr));
+    (cyc(46), HudCountMove19EECopy_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     st8i(cr, (cyc(22), db(cr)) | 0x19ED, 0x08);
     cyc(44);
@@ -6671,7 +6658,7 @@ static void count_marker_record(Carried *cr)
     (cyc(62), GsuRecordMode2_cr(cr));
     cyc(58);
     lda8(cr, 0x14);
-    w_GsuRecordSet2AHigh(cr);
+    GsuRecordSet2AHigh_cr(cr);
     cyc(102);
     record_at(cr, 0x0500, 0x0500, 0x0500);
 }
@@ -6681,9 +6668,9 @@ static void count_marker_frame(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     if (ld8(cr, (cyc(38), db(cr)) | 0x19E8))
-        { cyc(62); w_ObjectStep48To8(cr); } else { cyc(22); }
+        { cyc(62); ObjectStep48To8_cr(cr); } else { cyc(22); }
     cyc(62);
-    w_ObjectSyncFromRecord(cr);
+    ObjectSyncFromRecord_cr(cr);
     cyc(44);
 }
 
@@ -6793,13 +6780,13 @@ static void count_trigger_record(Carried *cr)
    moved (HudCountMove19EE) the first time, then $19E8 = 1. */
 static void count_trigger_frame(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     cyc(18);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(44); return; } else { cyc(56); }
     for (;;) {
-        w_RecordNextContact(cr);
+        RecordNextContact_cr(cr);
         if (!(cr->p & P_C))
             return; else { cyc(50); }
         lda8(cr, (uint8_t)(cr->a & 0x01));
@@ -7025,7 +7012,7 @@ static void bob_frame(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     add16_via(cr, F_c(0x200E, cr->x), F_c(0x2027, cr->x));
     add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x04));
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -7091,9 +7078,9 @@ void abi_ObjectBobStep(void)
    grows (+$14, +$15, +$16 by $18). */
 static void burst_piece_frame(Carried *cr)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     if (!dec8(cr, cyc_then(22, F_c(0x200A, cr->x))))
-        { cyc(84); w_ObjectRelease(cr); } else { cyc(48); }
+        { cyc(84); ObjectRelease_cr(cr); } else { cyc(48); }
     add8(cr, F_c(0x2014, cr->x), 0x18);
     add8(cr, F_c(0x2015, cr->x), 0x18);
     add8(cr, F_c(0x2016, cr->x), 0x18);
@@ -7119,12 +7106,12 @@ void ObjectBreakablePiece(Carried *cr)
     (cyc(62), GsuRecordNew424Piece_cr(cr));
     if (cr->p & P_N) {
         cyc(84);
-        w_ObjectRelease(cr);
+        ObjectRelease_cr(cr);
         { cyc(44); return; }
     } else { cyc(16); }
-    (cyc(62), w_GsuRecordVelocity(cr));
+    (cyc(62), GsuRecordVelocity_cr(cr));
     lda8(cr, 0x00);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     (cyc(102), burst_piece_frame(cr));
 }
 
@@ -7173,13 +7160,13 @@ void abi_ObjectBreakablePieceStep(void)
 static void breakable_frame(Carried *cr)
 {
     if (!dec8(cr, cyc_then(22, F_c(0x200A, cr->x))))
-        { cyc(84); w_ObjectRelease(cr); cyc(22); } else { cyc(70); }
+        { cyc(84); ObjectRelease_cr(cr); cyc(22); } else { cyc(70); }
     add16(cr, F_c(0x2014, cr->x), 0x000C);
     add16(cr, F_c(0x2015, cr->x), cyc_then(44, 0x000C));
     add16(cr, F_c(0x2016, cr->x), cyc_then(44, 0x000C));
     if (!(cyc(22), hit(cr)))
         { cyc(62); return; } else { cyc(36); }
-    (cyc(38), w_ObjectRelease(cr));
+    (cyc(38), ObjectRelease_cr(cr));
     sound0(cr, 0x5A);
     (cyc(62), ObjectBreakableBurst(cr));
     cyc(44);
@@ -7192,12 +7179,12 @@ static void breakable_record(Carried *cr)
     (cyc(62), GsuRecordNew424Piece_cr(cr));
     if (cr->p & P_N) {
         cyc(84);
-        w_ObjectRelease(cr);
+        ObjectRelease_cr(cr);
         { cyc(44); return; }
     } else { cyc(16); }
     (cyc(62), GsuRecordFlag10_cr(cr));
     lda8(cr, 0x46);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     cyc(102);
     record_at(cr, 0x00C0, 0x00C0, 0x00C0);
     breakable_frame(cr);
@@ -7602,7 +7589,7 @@ static void swing_frame(Carried *cr)
         st8i(cr, F_c(0x200A, cr->x), cyc_then(6, 0x50));
         cyc(62);                        /* JSL */
     }
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -7769,7 +7756,7 @@ void abi_LapCrowdSpawn2(void)
 static void life_down(Carried *cr, unsigned next)
 {
     if (!dec8(cr, F_c(0x200A, cr->x)))
-        { cyc(84); w_ObjectRelease(cr); cyc(next); } else { cyc(48 + next); }
+        { cyc(84); ObjectRelease_cr(cr); cyc(next); } else { cyc(48 + next); }
 }
 
 /*
@@ -7865,7 +7852,7 @@ void abi_LapCrowdMove2(void)
 void LapCrowdStep0(Carried *cr)
 {
     LapCrowdMove0(cr);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -7891,7 +7878,7 @@ void abi_LapCrowdStep0(void)
 void LapCrowdStep1(Carried *cr)
 {
     LapCrowdMove1(cr);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -7917,7 +7904,7 @@ void abi_LapCrowdStep1(void)
 void LapCrowdStep2(Carried *cr)
 {
     LapCrowdMove2(cr);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -7942,12 +7929,12 @@ static void crowd_gate_frame(Carried *cr)
     cyc(62);
     uint8_t lap;
 
-    w_ObjectSyncToRecord(cr);
+    ObjectSyncToRecord_cr(cr);
     cyc(12);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(50); return; }
-    (cyc(62), w_RecordContactSummary(cr));
+    (cyc(62), RecordContactSummary_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         return; else { cyc(12); }
@@ -8129,7 +8116,7 @@ void abi_ObjectFloaterSpawnerStep(void)
  */
 void ObjectFloaterStep(Carried *cr)
 {
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     add8(cr, F_c(0x2015, cr->x), cyc_then(0, 0x08));
     if (bit25(cr, 0x01))
         { cyc(66); add16(cr, F_c(0x200E, cr->x), 0xFFEC); cyc(44); /* SEP */ }
@@ -8252,15 +8239,15 @@ static void orbit(Carried *cr, int arm, uint8_t r1, uint8_t r2, uint8_t r3, int 
         sign_arm(cr, db(cr) | 0x05F3, !(r3 & 0x80));
     cyc(22);
     ld8(cr, F_c(0x2016, cr->y));
-    (cyc(62), w_RotateXY(cr));
+    (cyc(62), RotateXY_cr(cr));
     orbit_again(cr);
     if (xz) {
         cyc(22);
         ld8(cr, F_c(0x2014, cr->y));
-        (cyc(62), w_RotateXZFrom08(cr));
+        (cyc(62), RotateXZFrom08_cr(cr));
         orbit_again(cr);
         ld8(cr, cyc_then(22, F_c(0x2015, cr->y)));
-        (cyc(62), w_RotateXZ(cr));
+        (cyc(62), RotateXZ_cr(cr));
     }
     cyc(22);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -8309,7 +8296,7 @@ static void ring_frame(Carried *cr, int arm)
 {
     orbit(cr, arm, 0x64, 0x00, 0x00, 1);
     orbit_scale_done(cr);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -8468,7 +8455,7 @@ void abi_ObjectRingStepZSign(void)
 void ObjectRingCentreStep(Carried *cr)
 {
     add8(cr, F_c(0x2015, cr->x), 0x01);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -8512,7 +8499,7 @@ static void spinner_frame(Carried *cr, int arm)
     v |= 0x80;
     lda8(cr, v);
     wr8(F_c(0x205A, cr->x), cyc_then(112, v));
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -8674,7 +8661,7 @@ void ObjectSpinnerCentreStep(Carried *cr)
 {
     add8(cr, F_c(0x2015, cr->x), 0xF8);
     add8(cr, F_c(0x2014, cr->x), 0x0C);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -8890,7 +8877,7 @@ static void sign_frame(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz)
     add16(cr, F_c(0x200E, cr->x), cyc_then(44, dy));
     add16(cr, F_c(0x2010, cr->x), cyc_then(44, dz));
     (cyc(44), life_down(cr, 62));
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -9123,7 +9110,7 @@ cyc(24);
 step:
     add8(cr, F_c(0x2016, cr->x), 0xAA);
     cyc(62);
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -9282,7 +9269,7 @@ void abi_ObjectFanStepZSign(void)
 void ObjectFanCentreStep(Carried *cr)
 {
     add8(cr, F_c(0x2016, cr->x), 0xF8);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -9451,7 +9438,7 @@ void abi_ObjectWheelStepZSign(void)
 void ObjectWheelCentreStep(Carried *cr)
 {
     add8(cr, F_c(0x2016, cr->x), 0x08);
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -9609,7 +9596,7 @@ static int rail_slide(Carried *cr, uint16_t step)
         { cyc(10); r_sub16(cr, step); }
     wr16(F_c(0x2010, cr->x), cyc_then(172, cr->a));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
-    (cyc(84), w_ObjectSyncToRecord(cr));
+    (cyc(84), ObjectSyncToRecord_cr(cr));
     return 0;
 }
 
@@ -9720,7 +9707,7 @@ void RailRiseStep(Carried *cr)
 {
     colour_cycle6(cr);
     if (rail_slide(cr, 0x0140))
-        { cyc(62); w_ObjectRelease(cr); cyc(44); } else { cyc(44); }
+        { cyc(62); ObjectRelease_cr(cr); cyc(44); } else { cyc(44); }
 }
 
 void abi_RailRiseStep(void)
@@ -9752,7 +9739,7 @@ static void rail_drop_frame(Carried *cr)
     lda8(cr, v);
     wr8(F_c(0x205A, cr->x), cyc_then(112, v));
     add16(cr, F_c(0x2010, cr->x), cyc_then(22, 0x0040));
-    (cyc(84), w_ObjectSyncToRecord(cr));
+    (cyc(84), ObjectSyncToRecord_cr(cr));
     cyc(44);
 }
 
@@ -9877,7 +9864,7 @@ static void finale_frame(Carried *cr)
     RailsSpawn(cr);
     cyc(0);
     sound0(cr, 0x33);
-    (cyc(62), w_ObjectRelease(cr));
+    (cyc(62), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -10425,7 +10412,7 @@ static void duo_frame(Carried *cr)
         cyc(44);
         return;
     } else { cyc(84); }
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     cyc(12);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a) {
@@ -10439,7 +10426,7 @@ static void duo_frame(Carried *cr)
         sound0(cr, 0x5A);
     } else { cyc(44); } }
     cyc(62);
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     lda8(cr, (uint8_t)(cr->a & 0x02));
     if (!(uint8_t)cr->a) {
         cyc(12);
@@ -10464,7 +10451,7 @@ static void record424alt(Carried *cr, uint8_t h)
     (cyc(62), GsuRecordFlag10_cr(cr));
     cyc(58);
     lda8(cr, h);
-    w_GsuRecordSet2AHigh(cr);
+    GsuRecordSet2AHigh_cr(cr);
 }
 
 /*
@@ -10679,7 +10666,7 @@ void ObjectLampPost(Carried *cr)
     (cyc(84), ObjectCopyPositionTo_cr(cr));
     add16(cr, F_c(0x200E, cr->y), cyc_then(22, 0xFD94));
     swap_xy(cr);
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     swap_xy_less(cr, 84);
     cyc(44);
 }
@@ -10892,7 +10879,7 @@ static void bump_post_record(Carried *cr)
     (cyc(62), GsuRecordNew424_cr(cr));
     (cyc(62), GsuRecordFlag10_cr(cr));
     lda8(cr, 0x01);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
 }
 
 /*
@@ -11042,12 +11029,12 @@ static void slide_lap_frame(Carried *cr)
     cyc(62);
     uint8_t lap;
 
-    w_ObjectSyncToRecord(cr);
+    ObjectSyncToRecord_cr(cr);
     cyc(12);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         { cyc(50); return; } else { cyc(62); }
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a)
         return; else { cyc(50); }
@@ -11198,7 +11185,7 @@ static void meter_frame(Carried *cr)
         show48(cr);
         cyc(up ? 84 : 62);              /* BRA (counting up), JSL */
     } else { cyc(84); }
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -11425,7 +11412,7 @@ static void trail_frame(Carried *cr, uint16_t dz, uint16_t dx, uint16_t mx)
         st8i(cr, F_c(0x200A, cr->x), 0x1A);
         TrailFlip(cr);
         st8i(cr, F_c(0x2016, cr->x), 0x00);
-        (cyc(62), w_ObjectRebucket(cr));
+        (cyc(62), ObjectRebucket_cr(cr));
         { cyc(44); return; }
     } else { cyc(44); }
     if (ld8(cr, F_c(0x200A, cr->x))) {
@@ -11436,7 +11423,7 @@ static void trail_frame(Carried *cr, uint16_t dz, uint16_t dx, uint16_t mx)
             { cyc(44); add16(cr, F_c(0x200C, cr->x), mx); }
     } else { cyc(26); }
     cyc(84);
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -11626,7 +11613,7 @@ static void window_gate_frame(Carried *cr, int on)
 {
     if (!synced(cr))
         { cyc(72); return; } else { cyc(84); }
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if ((uint8_t)cr->a) {
         cyc(28);
@@ -11637,7 +11624,7 @@ static void window_gate_frame(Carried *cr, int on)
             and8(cr, db(cr) | 0x0DA5, 0xBF);
         cyc(62);
     } else { cyc(80); }
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     lda8(cr, (uint8_t)(cr->a & 0x02));
     if (!(uint8_t)cr->a)
         { cyc(62); return; }
@@ -11875,7 +11862,7 @@ static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1,
 {
     if (!synced(cr))
         { cyc(72); return; } else { cyc(22); }
-    (cyc(62), w_RecordContactSummary(cr));
+    (cyc(62), RecordContactSummary_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if ((uint8_t)cr->a) {
         cyc(42);
@@ -11884,7 +11871,7 @@ static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1,
         andor8(cr, db(cr) | 0x0DA5, a1, o1);
         cyc(62);
     } else { cyc(80); }
-    w_RecordContactSummary(cr);
+    RecordContactSummary_cr(cr);
     lda8(cr, (uint8_t)(cr->a & 0x02));
     if (!(uint8_t)cr->a)
         { cyc(62); return; }
@@ -12775,13 +12762,13 @@ static void shard_from_z(Carried *cr)
 
     axis_from(cr, dp(cr, 0x00), dp(cr, 0x94), db(cr) | 0x05F2, db(cr) | 0x05F3);
     ld8(cr, cyc_then(22, F_c(0x2016, cr->x)));
-    (cyc(62), w_RotateXY(cr));
+    (cyc(62), RotateXY_cr(cr));
     orbit_again(cr);
     ld8(cr, cyc_then(22, F_c(0x2014, cr->x)));
-    (cyc(62), w_RotateXZFrom08(cr));
+    (cyc(62), RotateXZFrom08_cr(cr));
     orbit_again(cr);
     ld8(cr, cyc_then(22, F_c(0x2015, cr->x)));
-    (cyc(62), w_RotateXZ(cr));
+    (cyc(62), RotateXZ_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     {
         cyc(22);
@@ -13322,7 +13309,7 @@ void abi_MarkerBounceX(void)
 static void shatter_marker_frame(Carried *cr)
 {
     (cyc(46), MarkerBounceY(cr));
-    (cyc(62), w_ObjectSyncToRecord(cr));
+    (cyc(62), ObjectSyncToRecord_cr(cr));
     cyc(10);
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
@@ -13337,7 +13324,7 @@ static void shatter_marker_frame(Carried *cr)
         cr->x = sx;
         set_p(cr, nz16(cr->p, sx));
     }
-    (cyc(98), w_ObjectRelease(cr));
+    (cyc(98), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -13349,7 +13336,7 @@ static void shatter_marker_record(Carried *cr)
     GsuRecordFlag10_cr(cr);
     cyc(58);
     lda8(cr, 0x01);
-    w_GsuRecordSet2AHigh(cr);
+    GsuRecordSet2AHigh_cr(cr);
 }
 
 /*
@@ -13556,7 +13543,7 @@ static void lap_light_frame(Carried *cr)
     } else { cyc(22); }
     if (bit25(cr, 0x01)) {
         cyc(106);
-        w_ObjectSyncFromRecord(cr);
+        ObjectSyncFromRecord_cr(cr);
         (cyc(46), ObjectCountUpTo2(cr));
         { cyc(44); return; }
     } else { cyc(18); }
@@ -13646,7 +13633,7 @@ void ObjectPuffFollow(Carried *cr)
     set_p(cr, nz16(cr->p, cr->y));
     (cyc(62), ObjectCopyPositionFrom_cr(cr));
     cyc(22);
-    (cyc(40), w_ObjectRebucket(cr));
+    (cyc(40), ObjectRebucket_cr(cr));
     st8i_hi(cr, F_c(0x2018, cr->x), cyc_then(16, 0x01));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(52, F_c(0x2029, cr->x)));
@@ -13664,7 +13651,7 @@ void ObjectPuffFollow(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(44);
     if (!dec8(cr, F_c(0x200A, cr->x)))
-        { cyc(84); w_ObjectRelease(cr); cyc(44); }
+        { cyc(84); ObjectRelease_cr(cr); cyc(44); }
     else
         cyc(92);
 }
@@ -14087,10 +14074,10 @@ void ObjectShardStep(Carried *cr)
     axis_from(cr, db(cr) | 0x1F59, dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B));
     axis_from(cr, dp(cr, 0x00), dp(cr, 0x94), db(cr) | 0x05F2, db(cr) | 0x05F3);
     ld8(cr, cyc_then(22, F_c(0x2014, cr->x)));
-    (cyc(62), w_RotateXZFrom08(cr));
+    (cyc(62), RotateXZFrom08_cr(cr));
     orbit_again(cr);
     ld8(cr, cyc_then(22, F_c(0x2015, cr->x)));
-    (cyc(62), w_RotateXZ(cr));
+    (cyc(62), RotateXZ_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(22);
     for (i = 0; i < 2; i++) {
@@ -14115,7 +14102,7 @@ void ObjectShardStep(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x12));
     (cyc(22), life_down(cr, 62));
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -14152,7 +14139,7 @@ void ObjectRisingSpark(Carried *cr)
     add16(cr, F_c(0x2027, cr->x), cyc_then(44, 0xFFD8));
     add16_via(cr, F_c(0x200E, cr->x), F_c(0x2027, cr->x));
     add8(cr, F_c(0x2015, cr->x), cyc_then(22, 0x12));
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -14180,7 +14167,7 @@ static void bonus_marker2_frame(Carried *cr, void (*shatter)(Carried *), uint16_
     uint8_t v;
 
     (cyc(46), MarkerBounceY(cr));
-    (cyc(62), w_ObjectSyncToRecord(cr));
+    (cyc(62), ObjectSyncToRecord_cr(cr));
     cyc(10);
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
@@ -14188,7 +14175,7 @@ static void bonus_marker2_frame(Carried *cr, void (*shatter)(Carried *), uint16_
         { cyc(72); return; }
     if (!next_contact(cr))
         return; else { cyc(24); }
-    w_HudCountUp19EC(cr);
+    HudCountUp19EC_cr(cr);
     sx = cr->x;
     (cyc(76), shatter(cr));
     cr->x = sx;
@@ -14227,7 +14214,7 @@ static void bonus_marker2_frame(Carried *cr, void (*shatter)(Carried *), uint16_
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     wr8(db(cr) | 0x19EF, cyc_then(40, v));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_D)));
-    (cyc(76), w_ObjectRelease(cr));
+    (cyc(76), ObjectRelease_cr(cr));
     cyc(44);
 }
 
@@ -14436,7 +14423,7 @@ void ObjectRiderStep(Carried *cr)
     lda8(cr, v);
     if (v) {
         cyc(44);
-        (cyc(62), w_ObjectRelease(cr));
+        (cyc(62), ObjectRelease_cr(cr));
         { cyc(44); return; }
     } else { cyc(40); }
     v = ld8(cr, F_c(0x2015, cr->x));
@@ -14444,7 +14431,7 @@ void ObjectRiderStep(Carried *cr)
     v = alu_adc8(v, 0x04, &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     wr8(F_c(0x2015, cr->x), cyc_then(60, v));
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
 }
 
@@ -14534,7 +14521,7 @@ static void hit_lamp_record(Carried *cr)
     (cyc(62), GsuRecordNew424Alt_cr(cr));
     (cyc(62), GsuRecordMode2_cr(cr));
     lda8(cr, 0x14);
-    (cyc(58), w_GsuRecordSet2AHigh(cr));
+    (cyc(58), GsuRecordSet2AHigh_cr(cr));
     cyc(102);
     record_at(cr, 0x0500, 0x0500, 0x0500);
 }
@@ -14545,9 +14532,9 @@ static void hit_lamp_frame(Carried *cr, uint16_t flag)
 {
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     if (ld8(cr, (cyc(38), db(cr)) | flag))
-        { cyc(62); w_ObjectStep48To8(cr); } else { cyc(22); }
+        { cyc(62); ObjectStep48To8_cr(cr); } else { cyc(22); }
     cyc(62);
-    w_ObjectSyncFromRecord(cr);
+    ObjectSyncFromRecord_cr(cr);
     cyc(44);
 }
 
@@ -14565,7 +14552,7 @@ static void hit_switch_record(Carried *cr)
    bit 0 is set and the count moved (HudCountMove19EE). */
 static void hit_switch_frame(Carried *cr, uint16_t flag)
 {
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     cyc(10);
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cr->a & 0x01));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
@@ -14902,145 +14889,3 @@ void abi_ObjectSwitchC(void)
     cpu.db = r.db;
 }
 
-/* ObjectRebucket as its adapter leaves the registers. */
-static void w_ObjectRebucket(Carried *cr)
-{
-    cr->a = ObjectRebucket(cr->x);
-}
-
-/* ObjectSyncFromRecord as its adapter leaves the registers. */
-static void w_ObjectSyncFromRecord(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncFromRecord(cr->db, cr->x, &cr->y, &p);
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* RecordContactSummary as its adapter leaves the registers. */
-static void w_RecordContactSummary(Carried *cr)
-{
-    cr->a = RecordContactSummary(cr->db, cr->x, &cr->y);
-    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
-    cyc(66);
-}
-
-/* ObjectRelease as its adapter leaves the registers. */
-static void w_ObjectRelease(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectRelease(cr->db, cr->x, cr->a, &p);
-    set_p(cr, p);
-}
-
-/* GsuRecordVelocity as its adapter leaves the registers. */
-static void w_GsuRecordVelocity(Carried *cr)
-{
-    int has;
-    uint8_t p = cr->p;
-    uint16_t a = GsuRecordVelocity(cr->db, cr->x, &has, &p);
-
-    cr->a = a;
-    if (has) {
-        cr->y = cr->x;
-        set_p(cr, (uint8_t)((p & ~P_N) | P_Z | P_M));
-    } else {
-        set_p(cr, (uint8_t)((p & ~P_Z) | P_N | P_M));
-    }
-    cyc(96);
-}
-
-/* GsuRecordSet2AHigh as its adapter leaves the registers. */
-static void w_GsuRecordSet2AHigh(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordSet2AHigh(cr->db, cr->x, (uint8_t)cr->a, &p);
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* GsuRecordRaise6A as its adapter leaves the registers. */
-static void w_GsuRecordRaise6A(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordRaise6A(cr->db, cr->y, (uint8_t)cr->a, &p);
-    set_p(cr, (uint8_t)((nz16(p, cr->x) | P_M) & ~P_X));
-}
-
-/* RecordNextContact as its adapter leaves the registers. */
-static void w_RecordNextContact(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    RecordNextContact(cr->db, &cr->a, &cr->y, &p, cr->x);
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* ObjectSyncToRecord as its adapter leaves the registers. */
-static void w_ObjectSyncToRecord(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncToRecord(cr->db, cr->x, &cr->y, &p);
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* GsuRecordLower82 as its adapter leaves the registers. */
-static void w_GsuRecordLower82(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordLower82(cr->db, cr->y, (uint8_t)cr->a, &p);
-    set_p(cr, (uint8_t)((nz16(p, cr->x) | P_M) & ~P_X));
-}
-
-/* HudCountMove19EECopy as its adapter leaves the registers. */
-static void w_HudCountMove19EECopy(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = HudCountMove19EECopy(cr->db, &p);
-    set_p(cr, p);
-}
-
-/* ObjectStep48To8 as its adapter leaves the registers. */
-static void w_ObjectStep48To8(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | ObjectStep48To8(cr->db, cr->x, &p));
-    set_p(cr, p);
-}
-
-/* RotateXY as its adapter leaves the registers. */
-static void w_RotateXY(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXY((uint8_t)cr->a));
-    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
-}
-
-/* RotateXZ as its adapter leaves the registers. */
-static void w_RotateXZ(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZ((uint8_t)cr->a));
-    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
-}
-
-/* RotateXZFrom08 as its adapter leaves the registers. */
-static void w_RotateXZFrom08(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZFrom08((uint8_t)cr->a));
-    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
-}
-
-/* HudCountUp19EC as its adapter leaves the registers. */
-static void w_HudCountUp19EC(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    HudCountUp19EC(cr->db, cr->x, &p);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x3C);
-    set_p(cr, (uint8_t)(nz8(p & ~P_D, cr->db) | P_M));
-}

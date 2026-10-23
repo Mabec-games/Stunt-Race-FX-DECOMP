@@ -6,6 +6,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "hud_calls.h"
+#include "carried.h"
+
 
 /* The 65816 instructions these routines run, on a value and the flags in
    *p (a routine's P, kept for its exit and for the decimal adds). */
@@ -158,12 +160,44 @@ uint16_t BinaryToBcd(uint16_t v, uint8_t *p)
     return v;
 }
 
+void BcdToBinary_cr(Carried *cr);
+void BinaryToBcd_cr(Carried *cr);
+void RecordNameStore0_cr(Carried *cr);
+void RecordNameStore3_cr(Carried *cr);
+void RecordNameStore6_cr(Carried *cr);
+void RecordShiftFrom0_cr(Carried *cr);
+void RecordShiftFrom1_cr(Carried *cr);
+void RecordSlotCopy0_cr(Carried *cr);
+void RecordSlotCopy3_cr(Carried *cr);
+void RecordTimeInsert_cr(Carried *cr);
+void TimeAddToNext_cr(Carried *cr);
+void TimeAddToTotal_cr(Carried *cr);
+void TimeBelowRecord_cr(Carried *cr);
+void TimePackBcd_cr(Carried *cr);
+void TimeRunningTotals_cr(Carried *cr);
+void TimeTotalsSum_cr(Carried *cr);
+void TimeUnpackBcd_cr(Carried *cr);
+void TimeUnpackBcdLong_cr(Carried *cr);
+
+void BinaryToBcd_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = BinaryToBcd(cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_BinaryToBcd(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = BinaryToBcd(cpu.a, &p);
-    cpu.p = p;
+    BinaryToBcd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -213,16 +247,29 @@ void TimeUnpackBcd(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund
     cyc(42);
 }
 
-void abi_TimeUnpackBcd(void)
+void TimeUnpackBcd_cr(Carried *cr)
 {
     uint16_t min, sec, hund;
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    TimeUnpackBcd(cpu.a, &min, &sec, &hund, &p);
-    cpu.a = min;
-    cpu.x = sec;
-    cpu.y = hund;
-    cpu.p = p;
+    TimeUnpackBcd(cr->a, &min, &sec, &hund, &p);
+    cr->a = min;
+    cr->x = sec;
+    cr->y = hund;
+    set_p(cr, p);
+}
+
+void abi_TimeUnpackBcd(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimeUnpackBcd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -239,16 +286,29 @@ void TimeUnpackBcdLong(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *
     cyc(44);                            /* RTL */
 }
 
-void abi_TimeUnpackBcdLong(void)
+void TimeUnpackBcdLong_cr(Carried *cr)
 {
     uint16_t min, sec, hund;
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    TimeUnpackBcdLong(cpu.a, &min, &sec, &hund, &p);
-    cpu.a = min;
-    cpu.x = sec;
-    cpu.y = hund;
-    cpu.p = p;
+    TimeUnpackBcdLong(cr->a, &min, &sec, &hund, &p);
+    cr->a = min;
+    cr->x = sec;
+    cr->y = hund;
+    set_p(cr, p);
+}
+
+void abi_TimeUnpackBcdLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TimeUnpackBcdLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Adds the BCD time at $0F76 + X (hundredths, seconds, minutes) to the
@@ -338,12 +398,25 @@ uint8_t TimeAddToTotal(uint8_t bank, uint16_t x, uint8_t *p)
     return time_add((uint32_t)bank << 16, x, to, 1, p);
 }
 
+void TimeAddToTotal_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = TimeAddToTotal(cr->db, cr->x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, p);
+}
+
 void abi_TimeAddToTotal(void)
 {
-    uint8_t p = cpu.p, v = TimeAddToTotal(cpu.db, cpu.x, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = p;
+    TimeAddToTotal_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -362,12 +435,25 @@ uint8_t TimeAddToNext(uint8_t bank, uint16_t x, uint8_t *p)
     return time_add(b, x, to, 0, p);
 }
 
+void TimeAddToNext_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = TimeAddToNext(cr->db, cr->x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, p);
+}
+
 void abi_TimeAddToNext(void)
 {
-    uint8_t p = cpu.p, v = TimeAddToNext(cpu.db, cpu.x, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = p;
+    TimeAddToNext_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -423,16 +509,29 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
     return v;
 }
 
+void TimeTotalsSum_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v;
+
+    set_p(cr, p0 | P_M | P_X | P_D);       /* what an interrupt pushes */
+    v = TimeTotalsSum(cr->db, p0);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = 0x21;
+    cr->y &= 0x00FF;
+    set_p(cr, p0);
+}
+
 void abi_TimeTotalsSum(void)
 {
-    uint8_t p0 = cpu.p, v;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.p = p0 | P_M | P_X | P_D;       /* what an interrupt pushes */
-    v = TimeTotalsSum(cpu.db, p0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = 0x21;
-    cpu.y &= 0x00FF;
-    cpu.p = p0;
+    TimeTotalsSum_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -462,16 +561,29 @@ uint8_t TimeRunningTotals(uint8_t bank, uint8_t p0)
     return v;
 }
 
+void TimeRunningTotals_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v;
+
+    set_p(cr, p0 | P_M | P_X | P_D);       /* what an interrupt pushes */
+    v = TimeRunningTotals(cr->db, p0);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = 0x1E;
+    cr->y &= 0x00FF;
+    set_p(cr, p0);
+}
+
 void abi_TimeRunningTotals(void)
 {
-    uint8_t p0 = cpu.p, v;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.p = p0 | P_M | P_X | P_D;       /* what an interrupt pushes */
-    v = TimeRunningTotals(cpu.db, p0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = 0x1E;
-    cpu.y &= 0x00FF;
-    cpu.p = p0;
+    TimeRunningTotals_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The X a record routine leaves (its offset, advanced by its copy loop),
@@ -535,14 +647,27 @@ uint8_t RecordSlotCopy0(uint8_t bank, uint8_t *p)
     return record_slot_copy(a, p);
 }
 
+void RecordSlotCopy0_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordSlotCopy0(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    cr->y = 0;
+    set_p(cr, p);
+}
+
 void abi_RecordSlotCopy0(void)
 {
-    uint8_t p = cpu.p, v = RecordSlotCopy0(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.y = 0;
-    cpu.p = p;
+    RecordSlotCopy0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -560,14 +685,27 @@ uint8_t RecordSlotCopy3(uint8_t bank, uint8_t *p)
     return record_slot_copy(op_adc8(a, 0x03, p), p);
 }
 
+void RecordSlotCopy3_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordSlotCopy3(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    cr->y = 0;
+    set_p(cr, p);
+}
+
 void abi_RecordSlotCopy3(void)
 {
-    uint8_t p = cpu.p, v = RecordSlotCopy3(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.y = 0;
-    cpu.p = p;
+    RecordSlotCopy3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA $0D4A, ASL, CLC, ADC $0D4A, ASL x3 (8-bit): the course times 24. */
@@ -633,14 +771,27 @@ uint8_t RecordShiftFrom0(uint8_t bank, uint8_t *p)
     return times_slot_copy(a, p);
 }
 
+void RecordShiftFrom0_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordShiftFrom0(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    cr->y = 0;
+    set_p(cr, p);
+}
+
 void abi_RecordShiftFrom0(void)
 {
-    uint8_t p = cpu.p, v = RecordShiftFrom0(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.y = 0;
-    cpu.p = p;
+    RecordShiftFrom0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -662,14 +813,27 @@ uint8_t RecordShiftFrom1(uint8_t bank, uint8_t *p)
     return times_slot_copy(op_adc8(a, 0x08, p), p);
 }
 
+void RecordShiftFrom1_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordShiftFrom1(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    cr->y = 0;
+    set_p(cr, p);
+}
+
 void abi_RecordShiftFrom1(void)
 {
-    uint8_t p = cpu.p, v = RecordShiftFrom1(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.y = 0;
-    cpu.p = p;
+    RecordShiftFrom1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* STA $F5, then the record entry at $70:FC6D + course * 9 + $F5 gets the
@@ -733,13 +897,26 @@ uint8_t RecordNameStore0(uint8_t bank, uint8_t *p)
     return record_name_store(bank, 0x00, p);
 }
 
+void RecordNameStore0_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordNameStore0(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    set_p(cr, p);
+}
+
 void abi_RecordNameStore0(void)
 {
-    uint8_t p = cpu.p, v = RecordNameStore0(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.p = p;
+    RecordNameStore0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -755,13 +932,26 @@ uint8_t RecordNameStore3(uint8_t bank, uint8_t *p)
     return record_name_store(bank, 0x03, p);
 }
 
+void RecordNameStore3_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordNameStore3(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    set_p(cr, p);
+}
+
 void abi_RecordNameStore3(void)
 {
-    uint8_t p = cpu.p, v = RecordNameStore3(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.p = p;
+    RecordNameStore3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -776,13 +966,26 @@ uint8_t RecordNameStore6(uint8_t bank, uint8_t *p)
     return record_name_store(bank, 0x06, p);
 }
 
+void RecordNameStore6_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = RecordNameStore6(cr->db, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = exit_x;
+    set_p(cr, p);
+}
+
 void abi_RecordNameStore6(void)
 {
-    uint8_t p = cpu.p, v = RecordNameStore6(cpu.db, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = exit_x;
-    cpu.p = p;
+    RecordNameStore6_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The last byte TimeBelowRecord compared (A's low byte on exit), for the
@@ -823,13 +1026,26 @@ int TimeBelowRecord(uint8_t bank, uint16_t x, uint8_t *p)
     return !(*p & P_C);
 }
 
+void TimeBelowRecord_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    TimeBelowRecord(cr->db, cr->x, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | below_a);
+    set_p(cr, p);
+}
+
 void abi_TimeBelowRecord(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    TimeBelowRecord(cpu.db, cpu.x, &p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | below_a);
-    cpu.p = p;
+    TimeBelowRecord_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -875,12 +1091,25 @@ uint16_t BcdToBinary(uint16_t v, uint8_t *p)
     return v;
 }
 
+void BcdToBinary_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = BcdToBinary(cr->a, &p);
+    set_p(cr, nz16(p, cr->x));
+}
+
 void abi_BcdToBinary(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = BcdToBinary(cpu.a, &p);
-    cpu.p = nz16(p, cpu.x);
+    BcdToBinary_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -932,12 +1161,25 @@ uint16_t TimePackBcd(uint16_t hund, uint16_t sec, uint16_t min, uint8_t *p)
     return a;
 }
 
+void TimePackBcd_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = TimePackBcd(cr->a, cr->x, cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_TimePackBcd(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = TimePackBcd(cpu.a, cpu.x, cpu.y, &p);
-    cpu.p = p;
+    TimePackBcd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* CLC, LDA.L, ADC $F1, STA $F1 over n bytes from addr + x (8-bit X).
@@ -1095,14 +1337,28 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     return (uint16_t)((aa & 0xFF00) | sum);
 }
 
+void RecordTimeInsert_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+    uint16_t x = cr->x, y = cr->y;
+
+    set_p(cr, p0 | P_M | P_X);             /* what an interrupt pushes */
+    cr->a = RecordTimeInsert(cr->db, cr->a, &x, &y, p0);
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, p0);
+}
+
 void abi_RecordTimeInsert(void)
 {
-    uint8_t p0 = cpu.p;
-    uint16_t x = cpu.x, y = cpu.y;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.p = p0 | P_M | P_X;             /* what an interrupt pushes */
-    cpu.a = RecordTimeInsert(cpu.db, cpu.a, &x, &y, p0);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = p0;
+    RecordTimeInsert_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

@@ -3,6 +3,8 @@
  * settings a course starts with, run once when the course is set up.
  */
 #include "machine.h"
+#include "carried.h"
+
 
 void abi_ObjectSpawnFromScript(void);
 void abi_ObjectAlloc(void);
@@ -12,32 +14,41 @@ void abi_CrashGreen(void);
 
 #define OBJ_FIELD(o, f) (0x7E2000u + (uint16_t)((f) + (o)))
 
+void CourseScriptRun(Carried *cr);
+static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint16_t link);
+static uint16_t spawn(Carried *cr, uint16_t y);
+void CrashGreen_cr(Carried *cr);
+void ObjectAlloc_cr(Carried *cr);
+void ObjectInit_cr(Carried *cr);
+void ObjectPoolInit_cr(Carried *cr);
+void ObjectSpawnFromScript(Carried *cr);
+
 /* ObjectSpawnFromScript for the entry at `y`; returns the object. */
-static uint16_t spawn(uint16_t y)
+static uint16_t spawn(Carried *cr, uint16_t y)
 {
-    cpu.y = y;
-    (cyc(22), abi_ObjectSpawnFromScript());
-    cpu.y = y;
-    return cpu.x;
+    cr->y = y;
+    (cyc(22), ObjectSpawnFromScript(cr));
+    cr->y = y;
+    return cr->x;
 }
 
 /* Opcodes $16 and $18: a bare object (ObjectAlloc, ObjectInit) kept in
    `slot`, with +$36 = 3, +$4F = `link` and the script pointer +$1A-$1C
    from the entry. With no free object: the stop screen (CrashGreen). */
-static void bare_object(uint32_t b, uint16_t y, uint16_t slot, uint16_t link)
+static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint16_t link)
 {
     uint16_t o;
 
-    cpu.p |= P_M;
-    (cyc(90), abi_ObjectAlloc());
-    if (!(cpu.p & P_C)) {
-        abi_CrashGreen();
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    (cyc(90), ObjectAlloc_cr(cr));
+    if (!(cr->p & P_C)) {
+        CrashGreen_cr(cr);
         return;
     } else { cyc(98); }
-    cpu.y = cpu.x;
-    abi_ObjectInit();
-    cpu.y = y;
-    o = cpu.x;
+    cr->y = cr->x;
+    ObjectInit_cr(cr);
+    cr->y = y;
+    o = cr->x;
     cyc(60);
     wr16(b | slot, o);
     cyc(48);
@@ -86,39 +97,39 @@ static uint32_t rom_word_at(uint32_t a)
     return (bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) && (a & 0xFFFF) >= 0x8000 ? 16 : 0;
 }
 
-void abi_CourseScriptRun(void)
+void CourseScriptRun(Carried *cr)
 {
-    uint8_t db = cpu.db;
+    uint8_t db = cr->db;
     uint32_t b;
-    uint16_t x = cpu.x, y, op, o, a, n, i;
+    uint16_t x = cr->x, y, op, o, a, n, i;
     uint8_t v;
     int first = 1;
 
-    cpu.db = (uint8_t)cpu.a;
-    b = (uint32_t)cpu.db << 16;
+    cr->db = (uint8_t)cr->a;
+    b = (uint32_t)cr->db << 16;
     for (;;) {
-        cpu.p &= (uint8_t)~(P_M | P_X);
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cyc(first ? 124 : 108 + rom_word_at(b + 0x8000 + x));
         first = 0;
         op = (uint16_t)(rd16(b | (uint16_t)(0x8000 + x)) & 0x00FF);
         y = x;
-        cpu.y = y;
-        cpu.x = op;
+        cr->y = y;
+        cr->x = op;
         cyc(122);
         switch (rd16(0x088000 + op)) {
         case 0x8049:                                   /* $02 */
-            spawn(y);
+            spawn(cr, y);
             x = (uint16_t)(y + 0x16);
             break;
         case 0x8055:                                   /* $0C */
-            o = spawn(y);
+            o = spawn(cr, y);
             cyc(54);
             wr8(OBJ_FIELD(o, 0x09), cyc_then(48, (uint8_t)(rd8(OBJ_FIELD(o, 0x09)) | 0x01)));
             cyc(22);                                   /* REP */
             x = (uint16_t)(y + 0x16);
             break;
         case 0x806F:                                   /* $10, not reached */
-            o = spawn(y);
+            o = spawn(cr, y);
             cyc(52);
             wr16(OBJ_FIELD(o, 0x27), cyc_then(32, rd16(b | (uint16_t)(0x8016 + y))));
             cyc(24);
@@ -130,7 +141,7 @@ void abi_CourseScriptRun(void)
             x = (uint16_t)(y + 0x18);
             break;
         case 0x808F:                                   /* $0A */
-            o = spawn(y);
+            o = spawn(cr, y);
             cyc(92);
             v = rd8(b | (uint16_t)(0x8016 + y));
             wr8(OBJ_FIELD(o, 0x48), v);
@@ -171,10 +182,10 @@ void abi_CourseScriptRun(void)
             wr8(b | 0x1F71, 0x00);
             cyc(24);
             wr8(b | 0x1F72, 0x00);
-            cpu.x = 0x0800;
-            cpu.y = 0x0000;
-            cpu.a = a;
-            (cyc(84), abi_ObjectPoolInit());
+            cr->x = 0x0800;
+            cr->y = 0x0000;
+            cr->a = a;
+            (cyc(84), ObjectPoolInit_cr(cr));
             x = (uint16_t)(y + 1);
             break;
         case 0x8112:                                   /* $08 */
@@ -189,7 +200,7 @@ void abi_CourseScriptRun(void)
                 x = (uint16_t)(y + 0x1A);
                 break;
             } else { cyc(70); }
-            o = spawn(y);
+            o = spawn(cr, y);
             cyc(98);
             if (rd8(b | (uint16_t)(0x8018 + y)) & 0x01)
                 { cyc(18); wr16(b | 0x0346, o); }
@@ -244,11 +255,11 @@ void abi_CourseScriptRun(void)
             x = (uint16_t)(y + 3);
             break;
         case 0x81F8:                                   /* $16 */
-            bare_object(b, y, 0x1ADA, 0x1A64);
+            bare_object(cr, b, y, 0x1ADA, 0x1A64);
             x = (uint16_t)(y + 4);
             break;
         case 0x8233:                                   /* $18 */
-            bare_object(b, y, 0x1ADC, 0x1A9F);
+            bare_object(cr, b, y, 0x1ADC, 0x1A9F);
             x = (uint16_t)(y + 4);
             break;
         case 0x802C:                                   /* $04: the end */
@@ -257,13 +268,13 @@ void abi_CourseScriptRun(void)
             cyc(96);
             wr16(0x701092, a);
             cyc(150);
-            wr16(0x701094, (uint16_t)cpu.db);
-            cpu.a = (uint16_t)cpu.db;
-            cpu.x = op;
-            cpu.y = y;
-            cpu.db = db;
-            cpu.p = (uint8_t)((nz8(cpu.p, db) & ~(P_C | P_V)) | P_M | ((unsigned)y + 0x8000 > 0xFFFF ? P_C : (cyc(94), 0))
-                              | ((y & ~a & 0x8000) ? P_V : 0));
+            wr16(0x701094, (uint16_t)cr->db);
+            cr->a = (uint16_t)cr->db;
+            cr->x = op;
+            cr->y = y;
+            cr->db = db;
+            set_p(cr, (uint8_t)((nz8(cr->p, db) & ~(P_C | P_V)) | P_M | ((unsigned)y + 0x8000 > 0xFFFF ? P_C : (cyc(94), 0))
+                              | ((y & ~a & 0x8000) ? P_V : 0)));
             return;
         default:                                       /* $00: back to offset 0 */
             x = op;
@@ -272,3 +283,17 @@ void abi_CourseScriptRun(void)
         cyc(34);
     }
 }
+
+void abi_CourseScriptRun(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseScriptRun(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

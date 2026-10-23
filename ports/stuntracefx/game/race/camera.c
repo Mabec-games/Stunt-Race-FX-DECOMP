@@ -7,6 +7,7 @@
 #include "math_calls.h"
 #include "carried.h"
 
+
 uint16_t Gsu8325(uint8_t bank);
 uint16_t Gsu82CE(void);
 
@@ -353,19 +354,8 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     return a;
 }
 
-void abi_CameraFollowStep(void)
-{
-    cam_early = 0;
-    cpu.a = CameraFollowStep(cpu.db, cpu.x, cpu.y);
-    if (cam_early) {
-        cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~(P_M | P_X));
-        return;
-    }
-    cpu.y = cam_y;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags);
-}
+void CameraFollowStep_cr(Carried *cr);
 
-/* CameraFollowStep on carried registers, as abi_CameraFollowStep leaves them. */
 void CameraFollowStep_cr(Carried *cr)
 {
     cam_early = 0;
@@ -377,3 +367,17 @@ void CameraFollowStep_cr(Carried *cr)
     cr->y = cam_y;
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags));
 }
+
+void abi_CameraFollowStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CameraFollowStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

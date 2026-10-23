@@ -13,16 +13,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-void ColourMathA7Start(void);
 uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y);
-void OamHideEntries0To2(uint8_t bank, uint16_t y);
-void OamHideEntries3And9(uint8_t bank, uint16_t y);
-uint8_t OamPaletteFromTableE26A(uint8_t bank, uint16_t *y);
-uint8_t OamPaletteFromTableE26AByMode(uint8_t bank, uint16_t *y);
-uint8_t OamPaletteFromTableE30F(uint8_t bank, uint16_t *y);
-uint8_t OamPalettesE28D(uint8_t bank, uint16_t *y);
-uint8_t OamSprite0AddY(uint8_t bank, uint8_t lines, uint8_t *p);
-#include "save_calls.h"
 
 void abi_MetaspriteDraw(void);
 void abi_SoundPort0QueuePush(void);
@@ -125,22 +116,12 @@ static void speed_alt_leave(Carried *cr);
 static void speed_alt_top_show(Carried *cr, int pushed);
 static void speed_bottom_show(Carried *cr, int pushed);
 static void speed_top_show(Carried *cr, int pushed);
-static void w_ColourMathA7Start(Carried *cr);
 static void w_OamClassName(Carried *cr);
-static void w_OamHideEntries0To2(Carried *cr);
-static void w_OamHideEntries3And9(Carried *cr);
-static void w_OamPaletteFromTableE26A(Carried *cr);
-static void w_OamPaletteFromTableE26AByMode(Carried *cr);
-static void w_OamPaletteFromTableE30F(Carried *cr);
-static void w_OamPalettesE28D(Carried *cr);
-static void w_OamSprite0AddY(Carried *cr);
-static void w_RecordNameLetters(Carried *cr);
-static void w_RecordNameLettersSmall(Carried *cr);
-static void w_RecordTagCarSet(Carried *cr);
 static void w_SpriteTextAt8152(Carried *cr);
 static void w_SpriteTextAt8152B(Carried *cr);
 static void w_SpriteTextAt8952(Carried *cr);
 static void w_SpriteTextAt895E(Carried *cr);
+void ColourMathA7Start_cr(Carried *cr);
 void CourseScreenState8(Carried *cr);
 void MetaspriteDraw_cr(Carried *cr);
 void OamAttr36x4_cr(Carried *cr);
@@ -150,11 +131,21 @@ void OamAttr38x4_cr(Carried *cr);
 void OamAttr38x6_cr(Carried *cr);
 void OamAttr38x7_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
+void OamHideEntries0To2_cr(Carried *cr);
+void OamHideEntries3And9_cr(Carried *cr);
 void OamPaletteForD75_cr(Carried *cr);
+void OamPaletteFromTableE26AByMode_cr(Carried *cr);
+void OamPaletteFromTableE26A_cr(Carried *cr);
+void OamPaletteFromTableE30F_cr(Carried *cr);
+void OamPalettesE28D_cr(Carried *cr);
+void OamSprite0AddY_cr(Carried *cr);
 void RecordNameLettersLarge_cr(Carried *cr);
+void RecordNameLettersSmall_cr(Carried *cr);
+void RecordNameLetters_cr(Carried *cr);
 void RecordRowsFirstTimes_cr(Carried *cr);
 void RecordRowsGroupFirsts(Carried *cr);
 void RecordScoreDigits_cr(Carried *cr);
+void RecordTagCarSet_cr(Carried *cr);
 void RecordTimeDigitsLarge_cr(Carried *cr);
 void RecordTimeDigitsSmall_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
@@ -324,7 +315,7 @@ void RecordsMenuGo(Carried *cr)
     sound8(cr, 0x46);
     lda8(cr, 0x0A);
     wr8(db(cr) | 0x0D40, cyc_then(40, 0x0A));
-    (cyc(62), w_ColourMathA7Start(cr));
+    (cyc(62), ColourMathA7Start_cr(cr));
     (cyc(106), OamBufferHideLargeLong_cr(cr));
     cyc(42);
 }
@@ -362,7 +353,7 @@ static void choice_show_at(Carried *cr, int entry, uint8_t choice, CarriedFn f1,
     }
     r_sep(cr, P_M);
     lda8(cr, lines);
-    (cyc(84), w_OamSprite0AddY(cr));
+    (cyc(84), OamSprite0AddY_cr(cr));
     cyc(42);
 }
 
@@ -1443,7 +1434,7 @@ void SpeedRecordsScreen(Carried *cr)
     md_next(cr, 0x04EDDD, 0x0D79, 0x0D7B, 0x0000);
     (cyc(46), w_OamClassName(cr));
     (cyc(46), SpeedRecordsPage(cr));
-    (cyc(62), w_OamPaletteFromTableE26A(cr));
+    (cyc(62), OamPaletteFromTableE26A_cr(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
     r_lda8(cr, b | 0x0D48);
@@ -1470,7 +1461,7 @@ void SpeedRecordsScreen(Carried *cr)
         SpeedRecordsLeaveCar(cr);
         return;
     } else { cyc(84); }
-    w_ColourMathA7Start(cr);
+    ColourMathA7Start_cr(cr);
     cyc(86);
 }
 
@@ -1510,7 +1501,7 @@ void SpeedRecordsLeaveCar(Carried *cr)
     cyc(18);
     wr16(0x0018DB, 0x8669);
     r_sep(cr, P_M);
-    (cyc(84), w_ColourMathA7Start(cr));
+    (cyc(84), ColourMathA7Start_cr(cr));
     cyc(86);
 }
 
@@ -1608,21 +1599,21 @@ static void special_row(Carried *cr, uint16_t slot, uint16_t k, int stunt, Carri
         cyc(32);   /* the digits routines state their RTS */
         r_lda16(cr, 0x000F43 + k);
         if (stunt)
-            { cyc(46); w_RecordNameLettersSmall(cr); }
+            { cyc(46); RecordNameLettersSmall_cr(cr); }
         else
-            w_RecordNameLetters(cr);
+            RecordNameLetters_cr(cr);
         cyc(32);
         r_lda16(cr, 0x000F13 + k);
         cr->y = y;
         set_p(cr, nz16(cr->p, y));
-        (cyc(128), w_RecordTagCarSet(cr));
+        (cyc(128), RecordTagCarSet_cr(cr));
         place(cr);
         cyc(22);                        /* BRA over the hiding calls */
         return;
     }
-    w_OamHideEntries0To2(cr);
+    OamHideEntries0To2_cr(cr);
     if (stunt)
-        { cyc(46); w_OamHideEntries3And9(cr); }
+        { cyc(46); OamHideEntries3And9_cr(cr); }
     cyc(0);
 }
 
@@ -1691,7 +1682,7 @@ void StuntRecordsScreen(Carried *cr)
     special_row(cr, 0x0D77, 4, 1, SpritePiecesAt46Y93_cr);
     special_row(cr, 0x0D75, 2, 1, SpritePiecesAt46Y82_cr);
     special_row(cr, 0x0D73, 0, 1, SpritePiecesAt46Y71_cr);
-    (cyc(62), w_OamPaletteFromTableE30F(cr));
+    (cyc(62), OamPaletteFromTableE30F_cr(cr));
     (cyc(24), RecordsMenuThree(cr));
 }
 
@@ -1754,7 +1745,7 @@ void BattleRecordsScreen(Carried *cr)
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtRight_cr(cr));
     (cyc(46), w_SpriteTextAt8152B(cr));
-    (cyc(62), w_OamPalettesE28D(cr));
+    (cyc(62), OamPalettesE28D_cr(cr));
     (cyc(24), RecordsMenuTwo(cr));
 }
 
@@ -1811,7 +1802,7 @@ void AllRecordsScreen(Carried *cr)
     md_next(cr, 0x04EE0D, 0x0D75, 0x0D77, 0x0011);
     md_next(cr, 0x04EE11, 0x0D77, 0x0D79, 0x000E);
     (cyc(46), w_SpriteTextAt8952(cr));
-    (cyc(62), w_OamPaletteFromTableE26AByMode(cr));
+    (cyc(62), OamPaletteFromTableE26AByMode_cr(cr));
     r_rep(cr, P_M | P_X);
     cyc(0);
     special_row(cr, 0x0D77, 4, 0, SpritePiecesAt62Y95_cr);
@@ -1831,25 +1822,6 @@ void abi_AllRecordsScreen(void)
     cpu.d = r.d;
     cpu.p = r.p;
     cpu.db = r.db;
-}
-
-/* ColourMathA7Start as its adapter leaves the registers. */
-static void w_ColourMathA7Start(Carried *cr)
-{
-    ColourMathA7Start();
-    cr->a = 0;
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_M)) | P_Z | P_X)));
-}
-
-/* OamSprite0AddY as its adapter leaves the registers. */
-static void w_OamSprite0AddY(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | OamSprite0AddY(cr->db, (uint8_t)cr->a, &p));
-    set_p(cr, p);
 }
 
 /* SpriteTextAt895E, still in registers: its call with the registers loaded and taken
@@ -1881,59 +1853,6 @@ static void w_OamClassName(Carried *cr)
     cr->y = (cr->p & P_X) ? (uint8_t)y : y;
 }
 
-/* OamPaletteFromTableE26A as its adapter leaves the registers. */
-static void w_OamPaletteFromTableE26A(Carried *cr)
-{
-    cr->a = OamPaletteFromTableE26A(cr->db, &cr->y);
-    cr->x = 0;
-}
-
-/* OamHideEntries0To2 as its adapter leaves the registers. */
-static void w_OamHideEntries0To2(Carried *cr)
-{
-    OamHideEntries0To2(cr->db, cr->y);
-    cr->a = 0xF000;
-    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
-}
-
-/* OamHideEntries3And9 as its adapter leaves the registers. */
-static void w_OamHideEntries3And9(Carried *cr)
-{
-    OamHideEntries3And9(cr->db, cr->y);
-    cr->a = 0xF000;
-    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
-}
-
-/* RecordNameLetters as its adapter leaves the registers. */
-static void w_RecordNameLetters(Carried *cr)
-{
-    cr->a = RecordNameLetters(cr->db, cr->a, cr->y);
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M))));
-}
-
-/* RecordNameLettersSmall as its adapter leaves the registers. */
-static void w_RecordNameLettersSmall(Carried *cr)
-{
-    cr->a = RecordNameLettersSmall(cr->db, cr->a, cr->y);
-    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M))));
-}
-
-/* RecordTagCarSet as its adapter leaves the registers. */
-static void w_RecordTagCarSet(Carried *cr)
-{
-    uint8_t t = (uint8_t)cr->a, v = RecordTagCarSet(t);
-
-    set_p(cr, (uint8_t)((nz8(cr->p, v) & ~(P_C | P_M)) | (t >= 0x0C ? P_C : 0)));
-    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-}
-
-/* OamPaletteFromTableE30F as its adapter leaves the registers. */
-static void w_OamPaletteFromTableE30F(Carried *cr)
-{
-    cr->a = OamPaletteFromTableE30F(cr->db, &cr->y);
-    cr->x = 0;
-}
-
 /* SpriteTextAt8152, still in registers: its call with the registers loaded and taken
    back. */
 static void w_SpriteTextAt8152(Carried *cr)
@@ -1953,13 +1872,6 @@ static void w_SpriteTextAt8152(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* OamPalettesE28D as its adapter leaves the registers. */
-static void w_OamPalettesE28D(Carried *cr)
-{
-    cr->a = OamPalettesE28D(cr->db, &cr->y);
-    cr->x = 0;
-}
-
 /* SpriteTextAt8152B, still in registers: its call with the registers loaded and taken
    back. */
 static void w_SpriteTextAt8152B(Carried *cr)
@@ -1977,13 +1889,6 @@ static void w_SpriteTextAt8152B(Carried *cr)
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
-}
-
-/* OamPaletteFromTableE26AByMode as its adapter leaves the registers. */
-static void w_OamPaletteFromTableE26AByMode(Carried *cr)
-{
-    cr->a = OamPaletteFromTableE26AByMode(cr->db, &cr->y);
-    cr->x = 0;
 }
 
 /* SpriteTextAt8952, still in registers: its call with the registers loaded and taken

@@ -8,7 +8,6 @@
 #include "hw.h"
 #include "carried.h"
 
-void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count);
 void abi_AttractCourseSetup(void);
 void abi_KeepRegisters(void);
 
@@ -41,8 +40,8 @@ static void boot_dma(Carried *cr, uint32_t b, uint16_t to, uint8_t wbank, uint8_
 static void boot_lda8(Carried *cr, uint8_t v);
 static void boot_ldx(Carried *cr, uint16_t v);
 static void boot_ldy(Carried *cr, uint16_t v);
-static void w_WramFillZero(Carried *cr);
 void WramFillZeroLong(Carried *cr);
+void WramFillZero_cr(Carried *cr);
 
 /*
  * @routine 03:89B4 HardwareRegsInit
@@ -418,7 +417,7 @@ static void boot_run(int from)
     boot_bank03_g();
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear_g(w_WramFillZero, 90, 48, 62);
+    boot_clear_g(WramFillZero_cr, 90, 48, 62);
     abi_ApuUploadBank19();
     abi_SaveUnlocksCheck();
     op_rep(P_M | P_X);
@@ -697,11 +696,3 @@ void abi_BootSoftRestartRest(void)
     boot_run(BOOT_SOFT_REST);
 }
 
-/* WramFillZero as its adapter leaves the registers. */
-static void w_WramFillZero(Carried *cr)
-{
-    WramFillZero((uint8_t)cr->a, cr->x, cr->y);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->x = 0x8008;
-    set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z)));
-}

@@ -5,6 +5,8 @@
 #include "native.h"
 #include "hw.h"
 #include "math_calls.h"
+#include "carried.h"
+
 
 /* Direct page $3E and $40: scratch the routines below leave behind. */
 #define SCALE_SCRATCH 0x00003Eu
@@ -59,12 +61,38 @@ uint16_t ScaleThreeQuarters(uint16_t v)
     return cyc_then(44, three_quarters(v, &p));
 }
 
+void Mode7ScaleProduct_cr(Carried *cr);
+void ScaleDp02Dp94_cr(Carried *cr);
+void ScaleDp02Dp94Long_cr(Carried *cr);
+void ScaleFifteenSixteenths_cr(Carried *cr);
+void ScaleFiveEighths_cr(Carried *cr);
+void ScaleFiveThirtySeconds_cr(Carried *cr);
+void ScaleNineSixteenths_cr(Carried *cr);
+void ScaleObjectXZ_cr(Carried *cr);
+void ScaleQuarter_cr(Carried *cr);
+void ScaleSevenEighths_cr(Carried *cr);
+void ScaleThreeQuarters_cr(Carried *cr);
+static void blend_regs(Carried *cr, uint16_t a);
+
+void ScaleThreeQuarters_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = three_quarters(cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ScaleThreeQuarters(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = three_quarters(cpu.a, &p);
-    cpu.p = p;
+    ScaleThreeQuarters_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -84,13 +112,26 @@ uint16_t ScaleQuarter(uint16_t v, uint8_t *p)
     return r;
 }
 
+void ScaleQuarter_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleQuarter(cr->a, &p);
+    set_p(cr, p);
+    cyc(4);
+}
+
 void abi_ScaleQuarter(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleQuarter(cpu.a, &p);
-    cpu.p = p;
-    cyc(4);
+    ScaleQuarter_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -113,13 +154,26 @@ uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p)
     return adc16p(sixteenth, rd16(SCALE_SCRATCH), p);
 }
 
+void ScaleNineSixteenths_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleNineSixteenths(cr->a, &p);
+    set_p(cr, p);
+    cyc(44);
+}
+
 void abi_ScaleNineSixteenths(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleNineSixteenths(cpu.a, &p);
-    cpu.p = p;
-    cyc(44);
+    ScaleNineSixteenths_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -142,13 +196,26 @@ uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p)
     return adc16p(eighth, rd16(SCALE_SCRATCH), p);
 }
 
+void ScaleFiveEighths_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleFiveEighths(cr->a, &p);
+    set_p(cr, p);
+    cyc(44);
+}
+
 void abi_ScaleFiveEighths(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleFiveEighths(cpu.a, &p);
-    cpu.p = p;
-    cyc(44);
+    ScaleFiveEighths_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -177,13 +244,26 @@ uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p)
     return adc16p(r, rd16(SCALE_SCRATCH2), p);
 }
 
+void ScaleSevenEighths_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleSevenEighths(cr->a, &p);
+    set_p(cr, p);
+    cyc(44);
+}
+
 void abi_ScaleSevenEighths(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleSevenEighths(cpu.a, &p);
-    cpu.p = p;
-    cyc(44);
+    ScaleSevenEighths_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -221,13 +301,26 @@ uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
     return adc16p(r, rd16(SCALE_SCRATCH2), p);
 }
 
+void ScaleFifteenSixteenths_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleFifteenSixteenths(cr->db, cr->a, &p);
+    set_p(cr, p);
+    cyc(44);
+}
+
 void abi_ScaleFifteenSixteenths(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleFifteenSixteenths(cpu.db, cpu.a, &p);
-    cpu.p = p;
-    cyc(44);
+    ScaleFifteenSixteenths_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -265,10 +358,23 @@ uint16_t Mode7ScaleProduct(uint16_t value, int positive)
     return cyc_then(42, io_rd16(MPYL, (uint16_t)ppu_mul(m)));
 }
 
+void Mode7ScaleProduct_cr(Carried *cr)
+{
+    cr->a = Mode7ScaleProduct(cr->a, cr->p & P_C);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
+}
+
 void abi_Mode7ScaleProduct(void)
 {
-    cpu.a = Mode7ScaleProduct(cpu.a, cpu.p & P_C);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Mode7ScaleProduct_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -304,12 +410,25 @@ uint16_t ScaleDp02Dp94(uint8_t *p)
     return s;
 }
 
+void ScaleDp02Dp94_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleDp02Dp94(&p);
+    set_p(cr, p);
+}
+
 void abi_ScaleDp02Dp94(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleDp02Dp94(&p);
-    cpu.p = p;
+    ScaleDp02Dp94_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -329,12 +448,25 @@ uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p)
     return ScaleDp02Dp94(p);
 }
 
+void ScaleObjectXZ_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleObjectXZ(cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_ScaleObjectXZ(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleObjectXZ(cpu.x, &p);
-    cpu.p = p;
+    ScaleObjectXZ_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ScaleDp02Dp94(void);
@@ -351,9 +483,22 @@ uint16_t ScaleDp02Dp94Long(uint8_t *p)
     return cyc_then(44, ScaleDp02Dp94(p));
 }
 
+void ScaleDp02Dp94Long_cr(Carried *cr)
+{
+    ScaleDp02Dp94_cr(cr);
+}
+
 void abi_ScaleDp02Dp94Long(void)
 {
-    abi_ScaleDp02Dp94();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ScaleDp02Dp94Long_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -378,13 +523,26 @@ uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
     return adc16p(t, rd16(eighth_at), p);
 }
 
+void ScaleFiveThirtySeconds_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ScaleFiveThirtySeconds(cr->db, cr->a, &p);
+    set_p(cr, p);
+    cyc(44);
+}
+
 void abi_ScaleFiveThirtySeconds(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ScaleFiveThirtySeconds(cpu.db, cpu.a, &p);
-    cpu.p = p;
-    cyc(44);
+    ScaleFiveThirtySeconds_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The flags the blend routines leave, and which of N, Z, C, V they set
@@ -422,10 +580,23 @@ static uint16_t blend_words(void)
 }
 
 /* The blend routines' registers: M and X 16-bit, A, the flags they set. */
-static void blend_regs(uint16_t a)
+static void blend_regs(Carried *cr, uint16_t a)
 {
-    cpu.a = a;
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | blend_mask)) | blend_flags);
+    cr->a = a;
+    set_p(cr, (uint8_t)((cr->p & ~(P_M | P_X | blend_mask)) | blend_flags));
+}
+
+static void blend_regs_g(uint16_t a)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    blend_regs(&c, a);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -462,7 +633,13 @@ uint16_t BlendStepUp(void)
 
 void abi_BlendStepUp(void)
 {
-    blend_regs(BlendStepUp());
+    blend_regs_g(BlendStepUp());
+}
+
+/* BlendStepUp on carried registers, as abi_BlendStepUp leaves them. */
+void BlendStepUp_cr(Carried *cr)
+{
+    blend_regs(cr, BlendStepUp());
 }
 
 /*
@@ -494,5 +671,12 @@ uint16_t BlendStepDown(void)
 
 void abi_BlendStepDown(void)
 {
-    blend_regs(BlendStepDown());
+    blend_regs_g(BlendStepDown());
 }
+
+/* BlendStepDown on carried registers, as abi_BlendStepDown leaves them. */
+void BlendStepDown_cr(Carried *cr)
+{
+    blend_regs(cr, BlendStepDown());
+}
+

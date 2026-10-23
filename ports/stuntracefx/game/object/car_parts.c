@@ -14,18 +14,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-uint16_t GsuRecordLand(uint8_t bank, uint16_t obj, uint8_t *p);
-uint16_t GsuRecordStep6A(uint8_t bank, uint16_t obj, int *ran, uint8_t *p);
-uint16_t GsuRecordVelocity(uint8_t bank, uint16_t obj, int *has, uint8_t *p);
-uint8_t GsuRun(uint8_t bank, uint16_t start);
-uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p);
-uint16_t ObjectRebucket(uint16_t obj);
-uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p);
-uint16_t ObjectSet5DByKind(uint8_t bank, uint16_t obj, uint8_t kind, uint8_t *p);
-uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p);
-uint16_t ObjectVelocityFromRecordOf(uint8_t bank, uint16_t obj, uint16_t from, uint8_t *p);
 uint8_t RandomStepLong(void);
-uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y);
 
 void abi_RotateXY(void);
 void abi_RotateXZFrom08(void);
@@ -116,26 +105,16 @@ static int spawn(Carried *cr, uint16_t kind);
 static void st16i(Carried *cr, uint32_t addr, uint16_t v);
 static void st8i(Carried *cr, uint32_t addr, uint8_t v);
 static void turned_again(Carried *cr);
-static void w_GsuRecordLand(Carried *cr);
-static void w_GsuRecordStep6A(Carried *cr);
-static void w_GsuRecordVelocity(Carried *cr);
-static void w_GsuRun(Carried *cr);
-static void w_ObjectCallHandler(Carried *cr);
-static void w_ObjectPoseFromRecord(Carried *cr);
-static void w_ObjectRebucket(Carried *cr);
-static void w_ObjectRelease(Carried *cr);
-static void w_ObjectSet5DByKind(Carried *cr);
-static void w_ObjectSyncFromRecord(Carried *cr);
-static void w_ObjectVelocityFromRecordOf(Carried *cr);
 static void w_RandomStepLong(Carried *cr);
-static void w_RecordContactSummary(Carried *cr);
-static void w_RotateXY(Carried *cr);
-static void w_RotateXZ(Carried *cr);
-static void w_RotateXZFrom08(Carried *cr);
+void GsuRecordLand_cr(Carried *cr);
 void GsuRecordNew426_cr(Carried *cr);
+void GsuRecordStep6A_cr(Carried *cr);
+void GsuRecordVelocity_cr(Carried *cr);
+void GsuRun_cr(Carried *cr);
 void ObjectApplyVelocity_cr(Carried *cr);
 void ObjectAttachLinked_cr(Carried *cr);
 void ObjectBreakOffContact(Carried *cr);
+void ObjectCallHandler_cr(Carried *cr);
 void ObjectCarFrame(Carried *cr);
 void ObjectCarRecordNew(Carried *cr);
 void ObjectCarSpawn(Carried *cr);
@@ -143,10 +122,20 @@ void ObjectCopy14From_cr(Carried *cr);
 void ObjectCopyPositionFrom_cr(Carried *cr);
 void ObjectListAppend_cr(Carried *cr);
 void ObjectMoveForward(Carried *cr);
+void ObjectPoseFromRecord_cr(Carried *cr);
+void ObjectRebucket_cr(Carried *cr);
 void ObjectReleaseLong(Carried *cr);
+void ObjectRelease_cr(Carried *cr);
+void ObjectSet5DByKind_cr(Carried *cr);
 void ObjectSpawnChanceD460(Carried *cr);
 void ObjectSpawn_cr(Carried *cr);
+void ObjectSyncFromRecord_cr(Carried *cr);
+void ObjectVelocityFromRecordOf_cr(Carried *cr);
 void PlayerCarEvents(Carried *cr);
+void RecordContactSummary_cr(Carried *cr);
+void RotateXY_cr(Carried *cr);
+void RotateXZFrom08_cr(Carried *cr);
+void RotateXZ_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 
 static uint32_t db(Carried *cr)
@@ -393,13 +382,13 @@ void PartOffset(Carried *cr)
     neg = axis_from(cr, db(cr) | 0x1F59, dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B), neg ? 30 : 8);
     neg = axis_from(cr, db(cr) | 0x1F5A, dp(cr, 0x94), db(cr) | 0x05F2, db(cr) | 0x05F3, neg ? 30 : 8);
     ld8(cr, cyc_then(neg ? 36 : 14, F(0x2016, cr->y)));   /* BRA, LDA abs,Y */
-    (cyc(62), w_RotateXY(cr));
+    (cyc(62), RotateXY_cr(cr));
     turned_again(cr);
     ld8(cr, cyc_then(14, F(0x2014, cr->y)));
-    (cyc(62), w_RotateXZFrom08(cr));
+    (cyc(62), RotateXZFrom08_cr(cr));
     turned_again(cr);
     ld8(cr, cyc_then(14, F(0x2015, cr->y)));
-    (cyc(62), w_RotateXZ(cr));
+    (cyc(62), RotateXZ_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(38, dp(cr, 0x04)));
     r_asl16(cr);
@@ -468,7 +457,7 @@ static void detach_frame(Carried *cr)
         v = alu_sbc8(v, 0x09, &cr->p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (!v) {
-            w_ObjectRebucket(cr);
+            ObjectRebucket_cr(cr);
             return;
         }
         v ^= 0xFF;
@@ -487,7 +476,7 @@ static void detach_frame(Carried *cr)
         lda8(cr, v);
     } while (v);
     cyc(56);
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     cyc(44);
 }
 
@@ -504,7 +493,7 @@ void PartDetach(Carried *cr)
     parent(cr);
     or8(cr, F(0x2025, cr->y), 0x80);
     ld8(cr, cyc_then(14, F(0x2049, cr->y)));
-    w_ObjectSet5DByKind(cr);
+    ObjectSet5DByKind_cr(cr);
     wr8(F(0x204B, cr->x), cyc_then(30, 0x00));
     cyc(4);
     handler(cr, cr->x, 0xAC27);
@@ -560,7 +549,7 @@ static void return_frame(Carried *cr)
 
     st8i(cr, F(0x2036, cr->x), cyc_then(6, 0x03));
     parent(cr);
-    (cyc(62), w_ObjectVelocityFromRecordOf(cr));
+    (cyc(62), ObjectVelocityFromRecordOf_cr(cr));
     (cyc(46), PartOffset(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(52, F(0x200C, cr->y)));
@@ -614,7 +603,7 @@ static void return_frame(Carried *cr)
         sound0(cr, hit ? (cyc(32), 0x4D) : (cyc(6), 0x4E));
         cyc(hit ? 62 : 84);             /* JSL, after the $4E arm's BRA */
     } else { cyc(88); }
-    w_ObjectRebucket(cr);
+    ObjectRebucket_cr(cr);
     st8i(cr, F(0x2036, cr->x), cyc_then(6, 0x03));
     if (ld8(cr, cyc_then(14, F(0x204B, cr->x)))) {
         dec8(cr, F(0x204B, cr->x));
@@ -710,7 +699,7 @@ static void fly_frame(Carried *cr)
     uint8_t v;
 
     st8i(cr, F(0x2036, cr->x), cyc_then(6, 0x03));
-    (cyc(62), w_ObjectSyncFromRecord(cr));
+    (cyc(62), ObjectSyncFromRecord_cr(cr));
     lda8(cr, (uint8_t)(cr->a & 0x01));
     if (!(uint8_t)cr->a) {
         cyc(16);
@@ -718,7 +707,7 @@ static void fly_frame(Carried *cr)
         cyc(4);
         if (bits25(cr, cr->y, 0x10)) {
             cyc(58);
-            w_RecordContactSummary(cr);
+            RecordContactSummary_cr(cr);
             cyc(0);
             lda8(cr, (uint8_t)(cr->a & 0x80));
             if ((uint8_t)cr->a) {
@@ -809,12 +798,12 @@ void PartKnockOff(Carried *cr)
 {
     parent(cr);
     ld8(cr, cyc_then(14, F(0x2049, cr->y)));
-    w_ObjectSet5DByKind(cr);
+    ObjectSet5DByKind_cr(cr);
     (cyc(0), part_on_car(cr));
     add16m(cr, F(0x200C, cr->x), dp(cr, 0x04), 30);
     add16m(cr, F(0x200E, cr->x), dp(cr, 0x0A), 30);
     add16m(cr, F(0x2010, cr->x), db(cr) | 0x05F2, 38);
-    (cyc(62), w_ObjectVelocityFromRecordOf(cr));
+    (cyc(62), ObjectVelocityFromRecordOf_cr(cr));
     (cyc(62), GsuRecordNew426_cr(cr));
     if (cr->p & P_N) {
         cyc(20);
@@ -825,7 +814,7 @@ void PartKnockOff(Carried *cr)
             cyc(4);
             and8(cr, F(0x2025, cr->y), 0xEF);
         } else { cyc(22); }
-        (cyc(62), w_ObjectRelease(cr));
+        (cyc(62), ObjectRelease_cr(cr));
         cyc(44);
         return;
     } else { cyc(36); }
@@ -861,7 +850,7 @@ void PartKnockOff(Carried *cr)
     r_add16(cr, rd16(cyc_then(44, F(0x2032, cr->x))));
     wr16(F(0x2032, cr->x), cyc_then(30, cr->a));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
-    (cyc(84), w_GsuRecordVelocity(cr));
+    (cyc(84), GsuRecordVelocity_cr(cr));
     cyc(4);
     handler(cr, cr->x, 0xAD70);
     fly_frame(cr);
@@ -898,7 +887,7 @@ void PartHit(Carried *cr)
     lda8(cr, 0x04);
     cr->x = 0x888E;
     set_p(cr, nz16(cr->p, cr->x));
-    w_GsuRun(cr);
+    GsuRun_cr(cr);
     cr->y = sy;
     set_p(cr, nz16(cr->p, sy));
     cr->x = sx;
@@ -927,12 +916,12 @@ void abi_PartHit(void)
    ObjectMoveForward, ObjectRebucket, +$36 = 3. */
 static void player_drive(Carried *cr)
 {
-    w_GsuRecordLand(cr);
+    GsuRecordLand_cr(cr);
     (cyc(62), PlayerCarEvents(cr));
-    (cyc(62), w_ObjectPoseFromRecord(cr));
-    (cyc(46), w_GsuRecordStep6A(cr));
+    (cyc(62), ObjectPoseFromRecord_cr(cr));
+    (cyc(46), GsuRecordStep6A_cr(cr));
     (cyc(46), ObjectMoveForward(cr));
-    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), ObjectRebucket_cr(cr));
     st8i(cr, F(0x2036, cr->x), cyc_then(6, 0x03));
 }
 
@@ -1014,7 +1003,7 @@ static void player_attach(Carried *cr, uint16_t h, uint16_t bare)
     set_p(cr, nz16(cr->p, cr->y));
     (cyc(62), ObjectAttachLinked_cr(cr));
     ld8(cr, cyc_then(14, F(0x2049, cr->x)));
-    w_ObjectSet5DByKind(cr);
+    ObjectSet5DByKind_cr(cr);
     st16i(cr, (cyc(4), db(cr)) | 0x1A5E, 0x0000);
     st16i(cr, F(0x2029, cr->x), cyc_then(32, 0x0000));
 }
@@ -1343,7 +1332,7 @@ static int shed(Carried *cr, uint16_t kind, uint8_t o48, uint8_t o49, uint8_t o4
         return 0;
     }
     handler(cr, cr->y, 0xAC97);
-    (cyc(46), w_ObjectCallHandler(cr));
+    (cyc(46), ObjectCallHandler_cr(cr));
     cyc(118);
     if (!bits25(cr, cr->x, 0x04))
         { cyc(22); return 1; }          /* BNE not taken, JML: 22 more than the way on */
@@ -1718,160 +1707,6 @@ void abi_ObjectRivalCarStep(void)
     cpu.d = r.d;
     cpu.p = r.p;
     cpu.db = r.db;
-}
-
-/* RotateXY as its adapter leaves the registers. */
-static void w_RotateXY(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXY((uint8_t)cr->a));
-    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
-}
-
-/* RotateXZ as its adapter leaves the registers. */
-static void w_RotateXZ(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZ((uint8_t)cr->a));
-    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : nz16(cr->p, cr->y));
-}
-
-/* RotateXZFrom08 as its adapter leaves the registers. */
-static void w_RotateXZFrom08(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | RotateXZFrom08((uint8_t)cr->a));
-    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
-}
-
-/* ObjectRebucket as its adapter leaves the registers. */
-static void w_ObjectRebucket(Carried *cr)
-{
-    cr->a = ObjectRebucket(cr->x);
-}
-
-/* ObjectSet5DByKind as its adapter leaves the registers. */
-static void w_ObjectSet5DByKind(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSet5DByKind(cr->db, cr->x, (uint8_t)cr->a, &p);
-    set_p(cr, (uint8_t)(p | P_M));
-    cyc(64);
-}
-
-/* ObjectVelocityFromRecordOf as its adapter leaves the registers. */
-static void w_ObjectVelocityFromRecordOf(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectVelocityFromRecordOf(cr->db, cr->x, cr->y, &p);
-    set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
-}
-
-/* ObjectSyncFromRecord as its adapter leaves the registers. */
-static void w_ObjectSyncFromRecord(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncFromRecord(cr->db, cr->x, &cr->y, &p);
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* RecordContactSummary as its adapter leaves the registers. */
-static void w_RecordContactSummary(Carried *cr)
-{
-    cr->a = RecordContactSummary(cr->db, cr->x, &cr->y);
-    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
-    cyc(66);
-}
-
-/* GsuRecordVelocity as its adapter leaves the registers. */
-static void w_GsuRecordVelocity(Carried *cr)
-{
-    int has;
-    uint8_t p = cr->p;
-    uint16_t a = GsuRecordVelocity(cr->db, cr->x, &has, &p);
-
-    cr->a = a;
-    if (has) {
-        cr->y = cr->x;
-        set_p(cr, (uint8_t)((p & ~P_N) | P_Z | P_M));
-    } else {
-        set_p(cr, (uint8_t)((p & ~P_Z) | P_N | P_M));
-    }
-    cyc(96);
-}
-
-/* ObjectRelease as its adapter leaves the registers. */
-static void w_ObjectRelease(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectRelease(cr->db, cr->x, cr->a, &p);
-    set_p(cr, p);
-}
-
-/* GsuRun as its adapter leaves the registers. */
-static void w_GsuRun(Carried *cr)
-{
-    uint8_t mode = GsuRun((uint8_t)cr->a, cr->x);
-
-    cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
-    set_p(cr, nz8(cr->p, cr->db));
-    cyc(72);                            /* PLB, RTL */
-}
-
-/* GsuRecordLand as its adapter leaves the registers. */
-static void w_GsuRecordLand(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordLand(cr->db, cr->x, &p);
-    set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
-    cyc(100);
-}
-
-/* GsuRecordStep6A as its adapter leaves the registers. */
-static void w_GsuRecordStep6A(Carried *cr)
-{
-    int ran;
-    uint8_t p = cr->p;
-    uint16_t a = GsuRecordStep6A(cr->db, cr->x, &ran, &p);
-
-    if (!ran) {
-        cr->a &= 0xFF00;
-        set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
-        return;
-    } else { cyc(100); }
-    cr->a = a;
-    set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
-}
-
-/* ObjectPoseFromRecord as its adapter leaves the registers. */
-static void w_ObjectPoseFromRecord(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectPoseFromRecord(cr->db, cr->x, &p);
-    cr->y = cr->x;
-    set_p(cr, (uint8_t)(p | P_M));
-}
-
-/* ObjectCallHandler, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ObjectCallHandler(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ObjectCallHandler();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* RandomStepLong as its adapter leaves the registers. */

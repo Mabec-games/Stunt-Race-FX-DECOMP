@@ -8,7 +8,6 @@
 #include "hw.h"
 #include "carried.h"
 
-#include "video_calls.h"
 
 /*
  * @routine 7E:DFE4 WindowsColourAddBg12
@@ -37,11 +36,49 @@ void WindowsColourAddBg12(void)
     cyc(42);
 }
 
-void abi_WindowsColourAddBg12(void)
+void BobStep(Carried *cr);
+void BobWindow0(Carried *cr);
+void BobWindow1(Carried *cr);
+void BobWindowsRun(Carried *cr);
+void OscillatorStep(Carried *cr);
+void OscillatorWindow(Carried *cr);
+void WindowSlideOrOscillate(Carried *cr);
+void WindowSweep(Carried *cr);
+void WindowSweepIfOn(Carried *cr);
+void WindowSweepStep(Carried *cr);
+void WindowsAllInverted_cr(Carried *cr);
+void WindowsColourAddBg12_cr(Carried *cr);
+void WindowsColourSub81_cr(Carried *cr);
+void WindowsColourSubtract3(Carried *cr);
+void WindowsColourWindowOnly_cr(Carried *cr);
+void WindowsSetupSelect_cr(Carried *cr);
+static void bob_setup(Carried *cr, uint32_t b);
+static int bob_window(Carried *cr, uint8_t x, uint16_t at);
+void ObjectLinkEventTrigger2(Carried *cr);
+void ObjectLinkEventTrigger_cr(Carried *cr);
+void WindowHdmaFFD1_cr(Carried *cr);
+void WindowHdmaFFD5_cr(Carried *cr);
+void WindowHdmaFFD9_cr(Carried *cr);
+void WindowSlideStep_cr(Carried *cr);
+
+void WindowsColourAddBg12_cr(Carried *cr)
 {
     WindowsColourAddBg12();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x17);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x17);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+void abi_WindowsColourAddBg12(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowsColourAddBg12_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -70,11 +107,24 @@ void WindowsColourWindowOnly(void)
     cyc(42);
 }
 
-void abi_WindowsColourWindowOnly(void)
+void WindowsColourWindowOnly_cr(Carried *cr)
 {
     WindowsColourWindowOnly();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+void abi_WindowsColourWindowOnly(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowsColourWindowOnly_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -106,11 +156,24 @@ void WindowsAllInverted(void)
     cyc(42);
 }
 
-void abi_WindowsAllInverted(void)
+void WindowsAllInverted_cr(Carried *cr)
 {
     WindowsAllInverted();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x1F);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+void abi_WindowsAllInverted(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowsAllInverted_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void ColourMathSub83Windowed(void);
@@ -155,11 +218,24 @@ void WindowsColourSub81(void)
     cyc(42);                            /* RTS */
 }
 
-void abi_WindowsColourSub81(void)
+void WindowsColourSub81_cr(Carried *cr)
 {
     WindowsColourSub81();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+void abi_WindowsColourSub81(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowsColourSub81_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -193,28 +269,6 @@ uint8_t WindowsSetupSelect(void)
 
     return windows_setup_select(&sel);
 }
-
-void BobStep(Carried *cr);
-void BobWindow0(Carried *cr);
-void BobWindow1(Carried *cr);
-void BobWindowsRun(Carried *cr);
-void OscillatorStep(Carried *cr);
-void OscillatorWindow(Carried *cr);
-void WindowSlideOrOscillate(Carried *cr);
-void WindowSweep(Carried *cr);
-void WindowSweepIfOn(Carried *cr);
-void WindowSweepStep(Carried *cr);
-void WindowsColourSubtract3(Carried *cr);
-void WindowsSetupSelect_cr(Carried *cr);
-static void bob_setup(Carried *cr, uint32_t b);
-static int bob_window(Carried *cr, uint8_t x, uint16_t at);
-static void w_WindowHdmaFFD1(Carried *cr);
-static void w_WindowHdmaFFD5(Carried *cr);
-static void w_WindowHdmaFFD9(Carried *cr);
-static void w_WindowSlideStep(Carried *cr);
-static void w_WindowsColourWindowOnly(Carried *cr);
-void ObjectLinkEventTrigger2(Carried *cr);
-void ObjectLinkEventTrigger_cr(Carried *cr);
 
 void WindowsSetupSelect_cr(Carried *cr)
 {
@@ -376,9 +430,9 @@ void BobWindow0(Carried *cr)
     v = rd8((uint32_t)cr->db << 16 | 0x0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
-        { cyc(68); w_WindowHdmaFFD5(cr); cyc(42); }
+        { cyc(68); WindowHdmaFFD5_cr(cr); cyc(42); }
     else
-        { cyc(62); w_WindowHdmaFFD1(cr); cyc(66); } /* JMP, RTS */
+        { cyc(62); WindowHdmaFFD1_cr(cr); cyc(66); } /* JMP, RTS */
 }
 
 void abi_BobWindow0(void)
@@ -405,7 +459,7 @@ void abi_BobWindow0(void)
 void BobWindow1(Carried *cr)
 {
     if (bob_window(cr, 1, 0x19AF))
-        { cyc(46); w_WindowHdmaFFD9(cr); cyc(42); }
+        { cyc(46); WindowHdmaFFD9_cr(cr); cyc(42); }
     else
         cyc(80);
 }
@@ -553,9 +607,9 @@ void WindowSweep(Carried *cr)
     v = rd8((uint32_t)cr->db << 16 | 0x0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
-        { cyc(68); w_WindowHdmaFFD5(cr); }
+        { cyc(68); WindowHdmaFFD5_cr(cr); }
     else
-        (cyc(62), w_WindowHdmaFFD1(cr));
+        (cyc(62), WindowHdmaFFD1_cr(cr));
     cyc(v ? 42 : 66);                   /* RTS; JMP, RTS after FFD1 */
 }
 
@@ -762,9 +816,9 @@ void OscillatorWindow(Carried *cr)
     v = rd8(b | 0x0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
-        { cyc(68); w_WindowHdmaFFD5(cr); }
+        { cyc(68); WindowHdmaFFD5_cr(cr); }
     else
-        { cyc(62); w_WindowHdmaFFD1(cr); }
+        { cyc(62); WindowHdmaFFD1_cr(cr); }
     cyc(v ? 42 : 66);                   /* RTS; JMP, RTS after FFD1 */
 }
 
@@ -890,7 +944,7 @@ void WindowsColourSubtract3(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
     set_p(cr, nz8(cr->p, 0x03));
     ppu_wr(0x002131, 0x03);
-    (cyc(46), w_WindowsColourWindowOnly(cr));
+    (cyc(46), WindowsColourWindowOnly_cr(cr));
     cyc(42);                            /* RTS */
 }
 
@@ -943,7 +997,7 @@ void WindowSlideOrOscillate(Carried *cr)
                 set_p(cr, nz8(cr->p, 0x02));
                 cyc(72);
                 wr8(0x7E19A9, 0x02);
-                w_WindowSlideStep(cr);
+                WindowSlideStep_cr(cr);
                 cyc(108);
                 r_lda8(cr, 0x7E0DA5);
                 v = (uint8_t)(cr->a & 0x06);
@@ -988,43 +1042,3 @@ void abi_WindowSlideOrOscillate(void)
     cpu.db = r.db;
 }
 
-/* WindowHdmaFFD1 as its adapter leaves the registers. */
-static void w_WindowHdmaFFD1(Carried *cr)
-{
-    WindowHdmaFFD1();
-    cr->a = 0xFFD1;
-    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
-}
-
-/* WindowHdmaFFD5 as its adapter leaves the registers. */
-static void w_WindowHdmaFFD5(Carried *cr)
-{
-    cr->a = WindowHdmaFFD5();
-    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
-}
-
-/* WindowHdmaFFD9 as its adapter leaves the registers. */
-static void w_WindowHdmaFFD9(Carried *cr)
-{
-    cr->a = WindowHdmaFFD9();
-    set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
-}
-
-/* WindowsColourWindowOnly as its adapter leaves the registers. */
-static void w_WindowsColourWindowOnly(Carried *cr)
-{
-    WindowsColourWindowOnly();
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
-    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
-}
-
-/* WindowSlideStep as its adapter leaves the registers. */
-static void w_WindowSlideStep(Carried *cr)
-{
-    uint8_t p = cr->p;
-    int moved;
-    uint8_t a = WindowSlideStep(cr->db, &p, &moved);
-
-    cr->a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cr->a & 0xFF00) | a);
-    set_p(cr, p);
-}

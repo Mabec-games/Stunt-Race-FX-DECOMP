@@ -7,6 +7,7 @@
 #include "video_calls.h"
 #include "carried.h"
 
+
 /* BG2 scroll pairs in work RAM, indexed by the screen band: horizontal at
    $0D92, vertical at $0D8E (low, high). */
 #define BG2_SCROLL_X 0x000D92u
@@ -56,17 +57,9 @@ uint8_t Bg2ScrollFromTableX8(uint8_t band)
     return bg2_scroll(band, 0);
 }
 
-void abi_Bg2ScrollFromTable(void)
-{
-    int wide = !(cpu.p & P_X);
-    uint8_t v = wide ? Bg2ScrollFromTable(cpu.x) : bg2_scroll((uint8_t)cpu.x, 0);
+void Bg2ScrollFromTable_cr(Carried *cr);
+void ScrollHdmaSet_cr(Carried *cr);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    cyc(42);
-}
-
-/* Bg2ScrollFromTable on carried registers, as abi_Bg2ScrollFromTable leaves them. */
 void Bg2ScrollFromTable_cr(Carried *cr)
 {
     int wide = !(cr->p & P_X);
@@ -75,6 +68,19 @@ void Bg2ScrollFromTable_cr(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     cyc(42);
+}
+
+void abi_Bg2ScrollFromTable(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Bg2ScrollFromTable_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -100,9 +106,23 @@ void ScrollHdmaSet(void)
     wr16(0x0010B4, 0x0130);
 }
 
-void abi_ScrollHdmaSet(void)
+void ScrollHdmaSet_cr(Carried *cr)
 {
     ScrollHdmaSet();
-    cpu.a = 0x0130;
+    cr->a = 0x0130;
     cyc(72);                            /* its return */
 }
+
+void abi_ScrollHdmaSet(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ScrollHdmaSet_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

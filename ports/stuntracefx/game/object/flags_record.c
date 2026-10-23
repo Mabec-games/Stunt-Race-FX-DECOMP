@@ -10,6 +10,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "object_calls.h"
+#include "carried.h"
+
 
 uint8_t GsuRecordNew422(uint8_t bank, uint16_t obj);
 uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has);
@@ -136,38 +138,66 @@ int ObjectRecordFlag4Step(uint8_t b, uint16_t obj)
     return has;
 }
 
+void ObjectFlagsRecord_cr(Carried *cr);
+void ObjectFlagsRecordFrame_cr(Carried *cr);
+void ObjectFlagsRecordSetup_cr(Carried *cr);
+void ObjectFlagsRecordSetup20_cr(Carried *cr);
+void ObjectFrameCycleBackSetup_cr(Carried *cr);
+void ObjectFrameCycleBackStep_cr(Carried *cr);
+void ObjectFrameCycleSetup_cr(Carried *cr);
+void ObjectFrameCycleStep_cr(Carried *cr);
+void ObjectFrameSwingSetup_cr(Carried *cr);
+void ObjectFrameSwingStep_cr(Carried *cr);
+void ObjectRecordFlag4Step_cr(Carried *cr);
+void ObjectStopMarked_cr(Carried *cr);
+static void flags_record_exit(Carried *cr);
+static void flags_record_run(Carried *cr, void (*f)(uint8_t, uint16_t));
+
 /* The registers these routines leave. */
-static void flags_record_exit(void)
+static void flags_record_exit(Carried *cr)
 {
     switch (fr_kind) {
     case FR_NO_ROOM:
-        cpu.a = 0x00FF;
-        cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
+        cr->a = 0x00FF;
+        set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
         break;
     case FR_RECORD:
-        cpu.a = fr_a;
-        cpu.y = cpu.x;
-        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
+        cr->a = fr_a;
+        cr->y = cr->x;
+        set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
         break;
     default:
-        cpu.a = (uint16_t)((fr_a & 0xFF00) | 0xFF);
+        cr->a = (uint16_t)((fr_a & 0xFF00) | 0xFF);
         if (fr_y_obj)
-            cpu.y = cpu.x;
-        cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
+            cr->y = cr->x;
+        set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
         break;
     }
     if (fr_cv & 1)
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | fr_c);
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | fr_c));
     if (fr_cv & 2)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | fr_v);
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | fr_v));
+}
+
+void ObjectRecordFlag4Step_cr(Carried *cr)
+{
+    fr_cv = fr_y_obj = 0;
+    fr_a = cr->a;
+    ObjectRecordFlag4Step(cr->db, cr->x);
+    flags_record_exit(cr);
 }
 
 void abi_ObjectRecordFlag4Step(void)
 {
-    fr_cv = fr_y_obj = 0;
-    fr_a = cpu.a;
-    ObjectRecordFlag4Step(cpu.db, cpu.x);
-    flags_record_exit();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectRecordFlag4Step_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 08:CB7E: the shown frame (+$5A, low seven bits, a 16-bit read) to the
@@ -265,11 +295,24 @@ void ObjectStopMarked(uint8_t b, uint16_t x)
     cyc(44); /* RTL */
 }
 
+void ObjectStopMarked_cr(Carried *cr)
+{
+    ObjectStopMarked(cr->db, cr->x);
+    cr->a = 0x0000;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
+}
+
 void abi_ObjectStopMarked(void)
 {
-    ObjectStopMarked(cpu.db, cpu.x);
-    cpu.a = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStopMarked_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -318,11 +361,24 @@ void ObjectFlagsRecord(uint8_t b, uint16_t obj)
     (cyc(36), ObjectRecordFlag4Step(b, obj));
 }
 
-void abi_ObjectFlagsRecord(void)
+void ObjectFlagsRecord_cr(Carried *cr)
 {
     fr_cv = fr_y_obj = 0;
-    ObjectFlagsRecord(cpu.db, cpu.x);
-    flags_record_exit();
+    ObjectFlagsRecord(cr->db, cr->x);
+    flags_record_exit(cr);
+}
+
+void abi_ObjectFlagsRecord(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFlagsRecord_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 08:CD46, the end of ObjectFlagsRecordSetup that other set-ups branch
@@ -359,16 +415,29 @@ void ObjectFlagsRecordSetup(uint8_t b, uint16_t x)
 }
 
 /* The adapters of the set-ups and steps. */
-static void flags_record_run(void (*f)(uint8_t, uint16_t))
+static void flags_record_run(Carried *cr, void (*f)(uint8_t, uint16_t))
 {
     fr_cv = fr_y_obj = 0;
-    f(cpu.db, cpu.x);
-    flags_record_exit();
+    f(cr->db, cr->x);
+    flags_record_exit(cr);
+}
+
+void ObjectFlagsRecordSetup_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFlagsRecordSetup);
 }
 
 void abi_ObjectFlagsRecordSetup(void)
 {
-    flags_record_run(ObjectFlagsRecordSetup);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFlagsRecordSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -386,9 +455,22 @@ void ObjectFlagsRecordFrame(uint8_t b, uint16_t x)
     (cyc(30), ObjectFlagsRecordSetup(b, x));
 }
 
+void ObjectFlagsRecordFrame_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFlagsRecordFrame);
+}
+
 void abi_ObjectFlagsRecordFrame(void)
 {
-    flags_record_run(ObjectFlagsRecordFrame);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFlagsRecordFrame_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -409,9 +491,22 @@ void ObjectFrameCycleSetup(uint8_t b, uint16_t x)
     (cyc(30), flags_record_tail(b, x));
 }
 
+void ObjectFrameCycleSetup_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFrameCycleSetup);
+}
+
 void abi_ObjectFrameCycleSetup(void)
 {
-    flags_record_run(ObjectFrameCycleSetup);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFrameCycleSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -430,9 +525,22 @@ void ObjectFrameCycleStep(uint8_t b, uint16_t x)
     frame_cycle(b, x, 0x01);
 }
 
+void ObjectFrameCycleStep_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFrameCycleStep);
+}
+
 void abi_ObjectFrameCycleStep(void)
 {
-    flags_record_run(ObjectFrameCycleStep);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFrameCycleStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -462,9 +570,22 @@ void ObjectFrameCycleBackSetup(uint8_t b, uint16_t x)
     (cyc(30), flags_record_tail(b, x));
 }
 
+void ObjectFrameCycleBackSetup_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFrameCycleBackSetup);
+}
+
 void abi_ObjectFrameCycleBackSetup(void)
 {
-    flags_record_run(ObjectFrameCycleBackSetup);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFrameCycleBackSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -479,9 +600,22 @@ void ObjectFrameCycleBackStep(uint8_t b, uint16_t x)
     frame_cycle(b, x, 0xFF);
 }
 
+void ObjectFrameCycleBackStep_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFrameCycleBackStep);
+}
+
 void abi_ObjectFrameCycleBackStep(void)
 {
-    flags_record_run(ObjectFrameCycleBackStep);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFrameCycleBackStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -507,9 +641,22 @@ void ObjectFrameSwingSetup(uint8_t b, uint16_t x)
     (cyc(30), flags_record_tail(b, x));
 }
 
+void ObjectFrameSwingSetup_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFrameSwingSetup);
+}
+
 void abi_ObjectFrameSwingSetup(void)
 {
-    flags_record_run(ObjectFrameSwingSetup);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFrameSwingSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -596,9 +743,22 @@ void ObjectFrameSwingStep(uint8_t b, uint16_t x)
     (cyc(22), frames_to_record(b, x));
 }
 
+void ObjectFrameSwingStep_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFrameSwingStep);
+}
+
 void abi_ObjectFrameSwingStep(void)
 {
-    flags_record_run(ObjectFrameSwingStep);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFrameSwingStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -619,7 +779,21 @@ void ObjectFlagsRecordSetup20(uint8_t b, uint16_t x)
     ObjectFlagsRecordSetup(b, x);
 }
 
+void ObjectFlagsRecordSetup20_cr(Carried *cr)
+{
+    flags_record_run(cr, ObjectFlagsRecordSetup20);
+}
+
 void abi_ObjectFlagsRecordSetup20(void)
 {
-    flags_record_run(ObjectFlagsRecordSetup20);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFlagsRecordSetup20_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

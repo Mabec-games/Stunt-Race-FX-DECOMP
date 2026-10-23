@@ -8,16 +8,27 @@
 #include "machine.h"
 #include "native.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
 
 void abi_Bg2ScrollFromTable(void);
+
+void TilemapDmaE3D7_cr(Carried *cr);
+void TilemapDmaE817_cr(Carried *cr);
+void Bg2Band0TilemapE3D7(Carried *cr);
+void Bg2Band2TilemapE817(Carried *cr);
+void TilemapDmaE3D7(Carried *cr);
+void TilemapDmaE817(Carried *cr);
+static void upload(Carried *cr, uint16_t gradient_src, uint16_t src, int bra);
+void Bg2ScrollFromTable_cr(Carried *cr);
 
 /* The gradient source word at gradient_src (through the data bank) to
    $7F:348D, then channel 0 from $7F:src to VMDATA at VRAM $5C00, $440
    bytes; P saved and restored. */
-static void upload(uint16_t gradient_src, uint16_t src, int bra)
+static void upload(Carried *cr, uint16_t gradient_src, uint16_t src, int bra)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint8_t p = cr->p;
     uint16_t v;
 
     cyc(68);
@@ -38,10 +49,10 @@ static void upload(uint16_t gradient_src, uint16_t src, int bra)
     dma_wr16(b | 0x4305, 0x0440);
     cyc(40);
     mdmaen_wr(b | 0x420B, 0x01);
-    cpu.a = (uint16_t)((v & 0xFF00) | 0x01);
-    cpu.x = 0x0440;
+    cr->a = (uint16_t)((v & 0xFF00) | 0x01);
+    cr->x = 0x0440;
     cyc(28);
-    op_plp(p);
+    r_plp(cr, p);
 }
 
 /*
@@ -56,14 +67,27 @@ static void upload(uint16_t gradient_src, uint16_t src, int bra)
  * Exit: P unchanged; A = 1 with the gradient source's high byte; X = $440
  * (its low byte with X 8-bit).
  */
-void TilemapDmaE817(void)
+void TilemapDmaE817(Carried *cr)
 {
-    upload(0x0D9C, 0xE817, 1);
+    upload(cr, 0x0D9C, 0xE817, 1);
+}
+
+void TilemapDmaE817_cr(Carried *cr)
+{
+    upload(cr, 0x0D9C, 0xE817, 1);
 }
 
 void abi_TilemapDmaE817(void)
 {
-    upload(0x0D9C, 0xE817, 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapDmaE817_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -73,15 +97,28 @@ void abi_TilemapDmaE817(void)
  * HOW: As TilemapDmaE817 (a LDA #$EC57 is loaded over at once).
  * Entry: as TilemapDmaE817. Exit: as TilemapDmaE817.
  */
-void TilemapDmaE3D7(void)
+void TilemapDmaE3D7(Carried *cr)
 {
-    upload(0x0D9A, 0xE3D7, 0);
+    upload(cr, 0x0D9A, 0xE3D7, 0);
+}
+
+void TilemapDmaE3D7_cr(Carried *cr)
+{
+    cyc(24);
+    upload(cr, 0x0D9A, 0xE3D7, 0);
 }
 
 void abi_TilemapDmaE3D7(void)
 {
-    cyc(24);
-    upload(0x0D9A, 0xE3D7, 0);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    TilemapDmaE3D7_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -92,20 +129,33 @@ void abi_TilemapDmaE3D7(void)
  * Entry: DB as TilemapDmaE817. Exit: M, X 8-bit; A = 1 with the gradient
  * source's high byte; X = $40; N, Z from the scroll's last byte.
  */
-void Bg2Band2TilemapE817(void)
+void Bg2Band2TilemapE817(Carried *cr)
 {
-    cpu.p |= P_M | P_X;
-    cpu.x = 0x02;
-    cpu.y &= 0x00FF;
-    (cyc(84), abi_Bg2ScrollFromTable());
+    set_p(cr, (uint8_t)(cr->p | (P_M | P_X)));
+    cr->x = 0x02;
+    cr->y &= 0x00FF;
+    (cyc(84), Bg2ScrollFromTable_cr(cr));
     cyc(46);
-    upload(0x0D9C, 0xE817, 1);
+    upload(cr, 0x0D9C, 0xE817, 1);
     cyc(42);                            /* RTS */
+}
+
+void Bg2Band2TilemapE817_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    Bg2Band2TilemapE817(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_Bg2Band2TilemapE817(void)
 {
-    Bg2Band2TilemapE817();
+    Bg2Band2TilemapE817_g();
 }
 
 /*
@@ -115,18 +165,32 @@ void abi_Bg2Band2TilemapE817(void)
  * HOW: 8-bit registers; X = 0.
  * Entry: as Bg2Band2TilemapE817. Exit: as Bg2Band2TilemapE817.
  */
-void Bg2Band0TilemapE3D7(void)
+void Bg2Band0TilemapE3D7(Carried *cr)
 {
-    cpu.p |= P_M | P_X;
-    cpu.x = 0x00;
-    cpu.y &= 0x00FF;
-    (cyc(84), abi_Bg2ScrollFromTable());
+    set_p(cr, (uint8_t)(cr->p | (P_M | P_X)));
+    cr->x = 0x00;
+    cr->y &= 0x00FF;
+    (cyc(84), Bg2ScrollFromTable_cr(cr));
     cyc(70);
-    upload(0x0D9A, 0xE3D7, 0);
+    upload(cr, 0x0D9A, 0xE3D7, 0);
     cyc(42);                            /* RTS */
+}
+
+void Bg2Band0TilemapE3D7_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    Bg2Band0TilemapE3D7(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_Bg2Band0TilemapE3D7(void)
 {
-    Bg2Band0TilemapE3D7();
+    Bg2Band0TilemapE3D7_g();
 }
+

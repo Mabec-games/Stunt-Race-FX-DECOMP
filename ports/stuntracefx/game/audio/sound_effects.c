@@ -11,6 +11,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
+
 void SoundPort1QueuePush(uint8_t command);
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 void SoundPort0QueuePushW(uint8_t command, unsigned wide);
@@ -61,9 +62,49 @@ void PlayerHoldSound32(void)
     player_hold_sound(0x32, 0x36);
 }
 
+void EngineSoundsPlayer1_cr(Carried *cr);
+void EngineSoundsPlayer2_cr(Carried *cr);
+void HandlerSoundIndex_cr(Carried *cr);
+void NearCarSoundUpdate_cr(Carried *cr);
+void PlayerHoldSound32_cr(Carried *cr);
+void PlayerHoldSound33_cr(Carried *cr);
+void PlayerHoldSound34_cr(Carried *cr);
+void PlayerHoldSound35_cr(Carried *cr);
+void PlayerSound0B_cr(Carried *cr);
+void PlayerSound0C_cr(Carried *cr);
+void PlayerSound0D_cr(Carried *cr);
+void PlayerSound12_cr(Carried *cr);
+void PlayerSound23_cr(Carried *cr);
+void PlayerSound24_cr(Carried *cr);
+void PlayerSound35_cr(Carried *cr);
+void PlayerStopHeldSound_cr(Carried *cr);
+void Sound0E1AStop_cr(Carried *cr);
+void SoundAtRateForLevel_cr(Carried *cr);
+void SoundFromTableD89_cr(Carried *cr);
+void SoundHoldByFlags_cr(Carried *cr);
+void SoundIfFlag40_cr(Carried *cr);
+void SoundIndicesFromHandlers_cr(Carried *cr);
+void SoundNearCarOnce_cr(Carried *cr);
+void SoundPairFromTable_cr(Carried *cr);
+void WindowSlideUpSound_cr(Carried *cr);
+static void engine_sounds_exit(Carried *cr, uint16_t a);
+
+void PlayerHoldSound32_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_hold_sound(0x32, 0x36));
+}
+
 void abi_PlayerHoldSound32(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_hold_sound(0x32, 0x36));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerHoldSound32_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -78,9 +119,22 @@ void PlayerHoldSound33(void)
     player_hold_sound(0x33, 0x37);
 }
 
+void PlayerHoldSound33_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_hold_sound(0x33, 0x37));
+}
+
 void abi_PlayerHoldSound33(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_hold_sound(0x33, 0x37));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerHoldSound33_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -113,10 +167,23 @@ void PlayerStopHeldSound(void)
     player_stop_held_sound();
 }
 
+void PlayerStopHeldSound_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_stop_held_sound());
+    cyc(72);
+}
+
 void abi_PlayerStopHeldSound(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_stop_held_sound());
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerStopHeldSound_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -131,9 +198,22 @@ void PlayerHoldSound34(void)
     player_hold_sound(0x34, 0x38);
 }
 
+void PlayerHoldSound34_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_hold_sound(0x34, 0x38));
+}
+
 void abi_PlayerHoldSound34(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_hold_sound(0x34, 0x38));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerHoldSound34_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -148,9 +228,22 @@ void PlayerHoldSound35(void)
     player_hold_sound(0x35, 0x39);
 }
 
+void PlayerHoldSound35_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_hold_sound(0x35, 0x39));
+}
+
 void abi_PlayerHoldSound35(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_hold_sound(0x35, 0x39));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerHoldSound35_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -179,10 +272,23 @@ uint8_t Sound0E1AStop(void)
     return sound_0e1a_stop();
 }
 
+void Sound0E1AStop_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | sound_0e1a_stop());
+    cyc(22);
+}
+
 void abi_Sound0E1AStop(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | sound_0e1a_stop());
-    cyc(22);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Sound0E1AStop_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Send p1 (player 1) or p2 (player 2) on port 1; returns the one sent. */
@@ -206,10 +312,23 @@ void PlayerSound23(void)
     player_sound(0x23, 0x25);
 }
 
+void PlayerSound23_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_sound(0x23, 0x25));
+    cyc(72);
+}
+
 void abi_PlayerSound23(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x23, 0x25));
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerSound23_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -223,10 +342,23 @@ void PlayerSound24(void)
     player_sound(0x24, 0x26);
 }
 
+void PlayerSound24_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_sound(0x24, 0x26));
+    cyc(72);
+}
+
 void abi_PlayerSound24(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x24, 0x26));
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerSound24_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -240,10 +372,23 @@ void PlayerSound0D(void)
     player_sound(0x0D, 0x18);
 }
 
+void PlayerSound0D_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_sound(0x0D, 0x18));
+    cyc(72);
+}
+
 void abi_PlayerSound0D(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0D, 0x18));
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerSound0D_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -257,10 +402,23 @@ void PlayerSound0B(void)
     player_sound(0x0B, 0x1B);
 }
 
+void PlayerSound0B_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_sound(0x0B, 0x1B));
+    cyc(72);
+}
+
 void abi_PlayerSound0B(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0B, 0x1B));
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerSound0B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -274,10 +432,23 @@ void PlayerSound12(void)
     player_sound(0x12, 0x19);
 }
 
+void PlayerSound12_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_sound(0x12, 0x19));
+    cyc(72);
+}
+
 void abi_PlayerSound12(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x12, 0x19));
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerSound12_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -291,10 +462,23 @@ void PlayerSound0C(void)
     player_sound(0x0C, 0x1C);
 }
 
+void PlayerSound0C_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | player_sound(0x0C, 0x1C));
+    cyc(72);
+}
+
 void abi_PlayerSound0C(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0C, 0x1C));
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerSound0C_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePushRaw(uint8_t command);
@@ -328,12 +512,25 @@ uint8_t SoundFromTableD89(void)
     return sound_d89(&i);
 }
 
-void abi_SoundFromTableD89(void)
+void SoundFromTableD89_cr(Carried *cr)
 {
     uint8_t i, command = sound_d89(&i);
 
-    cpu.x = i;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | command);
+    cr->x = i;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | command);
+}
+
+void abi_SoundFromTableD89(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundFromTableD89_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -369,12 +566,25 @@ uint8_t SoundPairFromTable(void)
     return sound_pair_from_table(&x);
 }
 
-void abi_SoundPairFromTable(void)
+void SoundPairFromTable_cr(Carried *cr)
 {
     uint8_t x, c = sound_pair_from_table(&x);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
-    cpu.x = x;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | c);
+    cr->x = x;
+}
+
+void abi_SoundPairFromTable(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundPairFromTable_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -409,14 +619,27 @@ uint16_t SoundAtRateForLevel(uint8_t bank, uint16_t level, int *queued, uint8_t 
     return 0x0023;
 }
 
-void abi_SoundAtRateForLevel(void)
+void SoundAtRateForLevel_cr(Carried *cr)
 {
     int queued;
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    cpu.a = SoundAtRateForLevel(cpu.db, cpu.a, &queued, &p);
-    cpu.p = queued ? nz8(p, cpu.db) : (cyc(50), p);
+    cr->a = SoundAtRateForLevel(cr->db, cr->a, &queued, &p);
+    set_p(cr, queued ? nz8(p, cr->db) : (cyc(50), p));
     cyc(16);
+}
+
+void abi_SoundAtRateForLevel(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundAtRateForLevel_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -442,16 +665,29 @@ int SoundIfFlag40(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *x)
     return 1;
 }
 
-void abi_SoundIfFlag40(void)
+void SoundIfFlag40_cr(Carried *cr)
 {
     uint8_t x;
 
-    if (SoundIfFlag40(cpu.db, cpu.a, (uint8_t)cpu.y, &x)) {
-        cpu.x = x;
-        cpu.y &= 0x00FF;
+    if (SoundIfFlag40(cr->db, cr->a, (uint8_t)cr->y, &x)) {
+        cr->x = x;
+        cr->y &= 0x00FF;
     }
-    cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_X);
+    set_p(cr, (uint8_t)((nz16(cr->p, cr->a) & ~P_M) | P_X));
     cyc(38);
+}
+
+void abi_SoundIfFlag40(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundIfFlag40_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -495,16 +731,29 @@ int SoundHoldByFlags(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *a)
     return 1;
 }
 
-void abi_SoundHoldByFlags(void)
+void SoundHoldByFlags_cr(Carried *cr)
 {
     uint8_t a;
 
-    if (SoundHoldByFlags(cpu.db, cpu.a, (uint8_t)cpu.y, &a))
-        cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) | P_C | P_M);
+    if (SoundHoldByFlags(cr->db, cr->a, (uint8_t)cr->y, &a))
+        set_p(cr, (uint8_t)(nz8(cr->p, cr->db) | P_C | P_M));
     else
-        { cyc(38); cpu.p = (uint8_t)(nz8(cpu.p, a) | P_M); }
+        { cyc(38); set_p(cr, (uint8_t)(nz8(cr->p, a) | P_M)); }
     cyc(26);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+}
+
+void abi_SoundHoldByFlags(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundHoldByFlags_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -529,12 +778,25 @@ int PlayerSound35(uint8_t bank, uint16_t y)
     return v >= 1;
 }
 
+void PlayerSound35_cr(Carried *cr)
+{
+    int c = PlayerSound35(cr->db, cr->y);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x35);
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~P_C) | P_M | (c ? P_C : 0)));
+}
+
 void abi_PlayerSound35(void)
 {
-    int c = PlayerSound35(cpu.db, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (c ? P_C : 0));
+    PlayerSound35_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 static int es_full;                     /* the engine sounds ran: A whole */
@@ -578,13 +840,13 @@ static uint16_t engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint
     return v;
 }
 
-static void engine_sounds_exit(uint16_t a)
+static void engine_sounds_exit(Carried *cr, uint16_t a)
 {
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
     if (es_xset)
-        cpu.x = es_x;
-    cpu.a = es_full ? a : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
+        cr->x = es_x;
+    cr->a = es_full ? a : (uint16_t)((cr->a & 0xFF00) | (uint8_t)a);
 }
 
 /*
@@ -602,9 +864,22 @@ uint16_t EngineSoundsPlayer2(uint8_t bank, uint8_t player)
     return engine_sounds(bank, player, 0x0DD7, 0x0D1C, 0x030D);
 }
 
+void EngineSoundsPlayer2_cr(Carried *cr)
+{
+    engine_sounds_exit(cr, EngineSoundsPlayer2(cr->db, (uint8_t)cr->y));
+}
+
 void abi_EngineSoundsPlayer2(void)
 {
-    engine_sounds_exit(EngineSoundsPlayer2(cpu.db, (uint8_t)cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    EngineSoundsPlayer2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -619,9 +894,22 @@ uint16_t EngineSoundsPlayer1(uint8_t bank, uint8_t player)
     return engine_sounds(bank, player, 0x0DD6, 0x0D1A, 0x0309);
 }
 
+void EngineSoundsPlayer1_cr(Carried *cr)
+{
+    engine_sounds_exit(cr, EngineSoundsPlayer1(cr->db, (uint8_t)cr->y));
+}
+
 void abi_EngineSoundsPlayer1(void)
 {
-    engine_sounds_exit(EngineSoundsPlayer1(cpu.db, (uint8_t)cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    EngineSoundsPlayer1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -649,9 +937,22 @@ uint16_t HandlerSoundIndex(uint16_t handler, uint8_t *p)
     return 4;
 }
 
+void HandlerSoundIndex_cr(Carried *cr)
+{
+    cr->a = HandlerSoundIndex(cr->a, &cr->p);
+}
+
 void abi_HandlerSoundIndex(void)
 {
-    cpu.a = HandlerSoundIndex(cpu.a, &cpu.p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HandlerSoundIndex_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -688,13 +989,26 @@ uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x)
     return i;
 }
 
-void abi_SoundIndicesFromHandlers(void)
+void SoundIndicesFromHandlers_cr(Carried *cr)
 {
     uint8_t x;
 
-    cpu.a = SoundIndicesFromHandlers(cpu.db, &x);
-    cpu.x = x;
-    cpu.y &= 0x00FF;
+    cr->a = SoundIndicesFromHandlers(cr->db, &x);
+    cr->x = x;
+    cr->y &= 0x00FF;
+}
+
+void abi_SoundIndicesFromHandlers(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SoundIndicesFromHandlers_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 static int sn_full;                     /* SoundNearCarOnce's A is whole */
@@ -762,13 +1076,26 @@ uint16_t SoundNearCarOnce(uint8_t bank)
     return (uint16_t)((a & 0xFF00) | v);
 }
 
+void SoundNearCarOnce_cr(Carried *cr)
+{
+    uint16_t a = SoundNearCarOnce(cr->db);
+
+    cr->a = sn_full ? a : (uint16_t)((cr->a & 0xFF00) | (uint8_t)a);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
 void abi_SoundNearCarOnce(void)
 {
-    uint16_t a = SoundNearCarOnce(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = sn_full ? a : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+    SoundNearCarOnce_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 static int nc_low;                      /* NearCarSoundUpdate's A: low byte only */
@@ -841,18 +1168,6 @@ uint16_t NearCarSoundUpdate(uint8_t bank, uint16_t d, int m16)
     return a;
 }
 
-void abi_NearCarSoundUpdate(void)
-{
-    uint16_t a = NearCarSoundUpdate(cpu.db, cpu.d, !(cpu.p & P_M));
-
-    cpu.a = nc_low ? (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a) : a;
-    if (nc_once) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
-
-/* NearCarSoundUpdate on carried registers, as abi_NearCarSoundUpdate leaves them. */
 void NearCarSoundUpdate_cr(Carried *cr)
 {
     uint16_t a = NearCarSoundUpdate(cr->db, cr->d, !(cr->p & P_M));
@@ -862,6 +1177,19 @@ void NearCarSoundUpdate_cr(Carried *cr)
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
     }
+}
+
+void abi_NearCarSoundUpdate(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    NearCarSoundUpdate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -895,7 +1223,21 @@ uint8_t WindowSlideUpSound(uint8_t bank, int x16)
     return v;
 }
 
+void WindowSlideUpSound_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
+}
+
 void abi_WindowSlideUpSound(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowSlideUpSound(cpu.db, !(cpu.p & P_X)));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowSlideUpSound_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

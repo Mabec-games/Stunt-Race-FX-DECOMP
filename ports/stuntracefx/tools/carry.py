@@ -215,9 +215,14 @@ def passes_routines(n, seen=()):
     if not seen:
         _passes[n] = got
     return got
+# an adapter: abi_X that only loads the registers, calls X and takes them
+# back (or one that is glue); one with register work of its own around a
+# typed X (arguments from the registers, results and flags back) is the
+# routine itself, converted as X_cr with a plain adapter
 adapter, regfn, glue = set(), set(), set()
 for n, b in body.items():
-    if isroutine[n] and re.search(r'(?<![\w])%s\s*\(' % n[4:], b):
+    if isroutine[n] and re.search(r'(?<![\w])%s\s*\(' % n[4:], b) and \
+            (re.search(r'^\s*Carried r = \{cpu\.a', b) or GLUE.search(b) or not REG.search(b)):
         adapter.add(n)
 for n, b in body.items():
     if n in adapter:
@@ -854,6 +859,11 @@ if stops:
     sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))
 res = re.sub(r'\bdispatch_call_\(', 'call_routine(', res)
 res = re.sub(r'\bdispatch_jump_\(', 'jump_routine(', res)
+# a carried copy (X_cr written beside a routine still in registers) that the
+# conversion has replaced with the routine's own carried form goes
+for m in list(re.finditer(r'\n/\* (\w+) on carried registers, as abi_\1 leaves them\. \*/\nvoid \1_cr\(Carried \*cr\)\n\{\n.*?^\}\n', res, re.M | re.S)):
+    if len(re.findall(r'^void %s_cr\(Carried \*cr\)\n\{' % m.group(1), res, re.M)) > 1:
+        res = res.replace(m.group(0), '\n', 1)
 open(os.path.join(G, FILE), 'w').write(res)
 if p_left:
     print('P written other than through set_p: %d places' % sum(p_left))

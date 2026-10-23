@@ -23,11 +23,32 @@ void ColourMathA3(void)
     cyc(42);
 }
 
-void abi_ColourMathA3(void)
+void ColourMathA3_cr(Carried *cr);
+void ColourMathA3Long_cr(Carried *cr);
+void ColourMathA7Start_cr(Carried *cr);
+void ColourMathOff_cr(Carried *cr);
+void ColourMathOffLong_cr(Carried *cr);
+void ColourMathSub83Windowed_cr(Carried *cr);
+void FixedColourFromStep_cr(Carried *cr);
+
+void ColourMathA3_cr(Carried *cr)
 {
     ColourMathA3();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xA3);
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xA3);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
+}
+
+void abi_ColourMathA3(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColourMathA3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -48,13 +69,26 @@ void ColourMathA7Start(void)
     wr16(0x7F3408, 0x0000);
 }
 
-void abi_ColourMathA7Start(void)
+void ColourMathA7Start_cr(Carried *cr)
 {
     ColourMathA7Start();
-    cpu.a = 0;
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_M)) | P_Z | P_X));
+    cr->a = 0;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_M)) | P_Z | P_X)));
+}
+
+void abi_ColourMathA7Start(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColourMathA7Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -80,17 +114,6 @@ uint8_t FixedColourFromStep(void)
     return v;
 }
 
-void abi_FixedColourFromStep(void)
-{
-    uint8_t v = FixedColourFromStep();
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = fixed_step;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M | P_X);
-}
-
-/* FixedColourFromStep on carried registers, as abi_FixedColourFromStep leaves them. */
 void FixedColourFromStep_cr(Carried *cr)
 {
     uint8_t v = FixedColourFromStep();
@@ -99,6 +122,19 @@ void FixedColourFromStep_cr(Carried *cr)
     cr->x = fixed_step;
     cr->y &= 0x00FF;
     set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M | P_X));
+}
+
+void abi_FixedColourFromStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FixedColourFromStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void WindowsColourWindowOnly(void);
@@ -118,11 +154,24 @@ void ColourMathSub83Windowed(void)
     cyc(42);
 }
 
-void abi_ColourMathSub83Windowed(void)
+void ColourMathSub83Windowed_cr(Carried *cr)
 {
     ColourMathSub83Windowed();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+void abi_ColourMathSub83Windowed(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColourMathSub83Windowed_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ColourMathA3(void);
@@ -138,14 +187,9 @@ void ColourMathA3Long(void)
     ColourMathA3();
 }
 
-void ColourMathA3Long_cr(Carried *cr);
-void ColourMathOffLong_cr(Carried *cr);
-static void w_ColourMathA3(Carried *cr);
-static void w_ColourMathOff(Carried *cr);
-
 void ColourMathA3Long_cr(Carried *cr)
 {
-    (cyc(108), w_ColourMathA3(cr));
+    (cyc(108), ColourMathA3_cr(cr));
     cyc(44);
 }
 
@@ -175,11 +219,24 @@ void ColourMathOff(uint8_t bank)
     cyc(42);
 }
 
+void ColourMathOff_cr(Carried *cr)
+{
+    ColourMathOff(cr->db);
+    cr->a &= 0xFF00;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
+}
+
 void abi_ColourMathOff(void)
 {
-    ColourMathOff(cpu.db);
-    cpu.a &= 0xFF00;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColourMathOff_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ColourMathOff(void);
@@ -198,7 +255,7 @@ void ColourMathOffLong(uint8_t bank)
 void ColourMathOffLong_cr(Carried *cr)
 {
     cyc(46);
-    w_ColourMathOff(cr);
+    ColourMathOff_cr(cr);
     cyc(44);
 }
 
@@ -215,18 +272,3 @@ void abi_ColourMathOffLong(void)
     cpu.db = r.db;
 }
 
-/* ColourMathA3 as its adapter leaves the registers. */
-static void w_ColourMathA3(Carried *cr)
-{
-    ColourMathA3();
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xA3);
-    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
-}
-
-/* ColourMathOff as its adapter leaves the registers. */
-static void w_ColourMathOff(Carried *cr)
-{
-    ColourMathOff(cr->db);
-    cr->a &= 0xFF00;
-    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
-}

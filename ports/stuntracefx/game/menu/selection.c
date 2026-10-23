@@ -28,12 +28,38 @@ uint16_t MenuRowPosition(uint16_t rec, uint8_t *p)
     return a;
 }
 
+void CarSelectTwoPlayers_cr(Carried *cr);
+void MenuChoiceRepeat_cr(Carried *cr);
+void MenuChoiceUpDown_cr(Carried *cr);
+void MenuCursorFourWay_cr(Carried *cr);
+void MenuRowPosition_cr(Carried *cr);
+void MenuSelectStart_cr(Carried *cr);
+void MenuSet1A66_cr(Carried *cr);
+void MenuSetExit_cr(Carried *cr);
+void MenuStateInit_cr(Carried *cr);
+void MenuWaitFor0357_cr(Carried *cr);
+void SelectionCommit_cr(Carried *cr);
+void SelectionSave_cr(Carried *cr);
+
+void MenuRowPosition_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuRowPosition(cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuRowPosition(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuRowPosition(cpu.x, &p);
-    cpu.p = p;
+    MenuRowPosition_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -67,12 +93,25 @@ uint16_t MenuChoiceRepeat(uint16_t *x, uint8_t *p)
     return a;
 }
 
+void MenuChoiceRepeat_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceRepeat(&cr->x, &p);
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
+}
+
 void abi_MenuChoiceRepeat(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceRepeat(&cpu.x, &p);
-    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+    MenuChoiceRepeat_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -97,16 +136,29 @@ int MenuWaitFor0357(uint8_t bank, uint16_t rec)
     return 1;
 }
 
-void abi_MenuWaitFor0357(void)
+void MenuWaitFor0357_cr(Carried *cr)
 {
-    if (MenuWaitFor0357(cpu.db, cpu.x)) {
-        cpu.a = 0xBCF1;
-        cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+    if (MenuWaitFor0357(cr->db, cr->x)) {
+        cr->a = 0xBCF1;
+        set_p(cr, (uint8_t)((cr->p & ~(P_Z | P_M)) | P_N));
     } else {
-        cpu.a &= 0xFF00;
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M)) | P_Z);
+        cr->a &= 0xFF00;
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_M)) | P_Z));
     }
     cyc(64);
+}
+
+void abi_MenuWaitFor0357(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuWaitFor0357_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -122,11 +174,24 @@ void MenuSetExit(uint8_t bank)
     cyc(42);
 }
 
+void MenuSetExit_cr(Carried *cr)
+{
+    MenuSetExit(cr->db);
+    cr->a = 0x0001;
+    set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z | P_M)));
+}
+
 void abi_MenuSetExit(void)
 {
-    MenuSetExit(cpu.db);
-    cpu.a = 0x0001;
-    cpu.p = (uint8_t)(cpu.p & ~(P_N | P_Z | P_M));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuSetExit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -143,15 +208,28 @@ void MenuSet1A66(uint8_t bank, uint16_t i)
     cyc(106);
 }
 
+void MenuSet1A66_cr(Carried *cr)
+{
+    MenuSet1A66(cr->db, cr->a);
+    cr->x = (uint16_t)(cr->a << 1);
+    cr->y = 0x1A64;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_MenuSet1A66(void)
 {
-    MenuSet1A66(cpu.db, cpu.a);
-    cpu.x = (uint16_t)(cpu.a << 1);
-    cpu.y = 0x1A64;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuSet1A66_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -191,10 +269,23 @@ void MenuStateInit(void)
     cyc(70);
 }
 
-void abi_MenuStateInit(void)
+void MenuStateInit_cr(Carried *cr)
 {
     MenuStateInit();
-    cpu.a = 0x001F;
+    cr->a = 0x001F;
+}
+
+void abi_MenuStateInit(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuStateInit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t HandlerTableA(uint16_t i);
@@ -247,12 +338,25 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     return v;
 }
 
-void abi_SelectionCommit(void)
+void SelectionCommit_cr(Carried *cr)
 {
     uint16_t x;
 
-    cpu.a = SelectionCommit(cpu.db, &x);
-    cpu.x = (cpu.p & P_X) ? (cyc(72), (uint8_t)x) : (cyc(72), x);
+    cr->a = SelectionCommit(cr->db, &x);
+    cr->x = (cr->p & P_X) ? (cyc(72), (uint8_t)x) : (cyc(72), x);
+}
+
+void abi_SelectionCommit(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SelectionCommit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t HandlerTableB(uint16_t i);
@@ -332,16 +436,29 @@ uint16_t SelectionSave(uint8_t bank, uint16_t *x)
     return v;
 }
 
-void abi_SelectionSave(void)
+void SelectionSave_cr(Carried *cr)
 {
     uint16_t x;
 
-    cpu.a = SelectionSave(cpu.db, &x);
-    cpu.x = x;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+    cr->a = SelectionSave(cr->db, &x);
+    cr->x = x;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_SelectionSave(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SelectionSave_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -402,8 +519,6 @@ uint16_t MenuChoiceUpDownY(uint8_t bank, uint16_t *y)
     return menu_choice_up_down(bank, y);
 }
 
-void MenuChoiceUpDown_cr(Carried *cr);
-
 void MenuChoiceUpDown_cr(Carried *cr)
 {
     uint16_t y;
@@ -448,12 +563,25 @@ void MenuSelectStart(uint16_t rec)
     cyc(42);
 }
 
-void abi_MenuSelectStart(void)
+void MenuSelectStart_cr(Carried *cr)
 {
     cyc(68);
-    MenuSelectStart(cpu.x);
-    cpu.a = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
+    MenuSelectStart(cr->x);
+    cr->a = 0x0000;
+    set_p(cr, (uint8_t)((cr->p & ~(P_M | P_X | P_N)) | P_Z));
+}
+
+void abi_MenuSelectStart(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuSelectStart_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePushW(uint8_t command, unsigned wide);
@@ -579,20 +707,6 @@ uint8_t MenuCursorFourWay(uint8_t bank)
     return v;
 }
 
-void abi_MenuCursorFourWay(void)
-{
-    uint8_t v = MenuCursorFourWay(cpu.db);
-
-    cpu.p |= P_M | P_X;
-    cpu.x = mc_x >= 0 ? (uint16_t)mc_x : (uint16_t)(cpu.x & 0x00FF);
-    cpu.y &= 0x00FF;
-    if (mc_c >= 0)
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | mc_c);
-    cpu.a = (uint16_t)((mc_pad & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-}
-
-/* MenuCursorFourWay on carried registers, as abi_MenuCursorFourWay leaves them. */
 void MenuCursorFourWay_cr(Carried *cr)
 {
     uint8_t v = MenuCursorFourWay(cr->db);
@@ -604,6 +718,19 @@ void MenuCursorFourWay_cr(Carried *cr)
         set_p(cr, (uint8_t)((cr->p & ~P_C) | mc_c));
     cr->a = (uint16_t)((mc_pad & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
+}
+
+void abi_MenuCursorFourWay(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuCursorFourWay_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 static int cs_c;                        /* C as the car steps leave it, or -1 */
@@ -719,20 +846,6 @@ uint16_t CarSelectTwoPlayers(uint8_t bank, int x16, uint16_t *x)
     return a;
 }
 
-void abi_CarSelectTwoPlayers(void)
-{
-    uint16_t x;
-
-    cpu.a = CarSelectTwoPlayers(cpu.db, !(cpu.p & P_X), &x);
-    cpu.x = (uint8_t)x;
-    cpu.y &= 0x00FF;
-    cpu.p |= P_M | P_X;
-    if (cs_c >= 0)
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | cs_c);
-    cpu.p = nz8(cpu.p, cs_last);
-}
-
-/* CarSelectTwoPlayers on carried registers, as abi_CarSelectTwoPlayers leaves them. */
 void CarSelectTwoPlayers_cr(Carried *cr)
 {
     uint16_t x;
@@ -744,5 +857,18 @@ void CarSelectTwoPlayers_cr(Carried *cr)
     if (cs_c >= 0)
         set_p(cr, (uint8_t)((cr->p & ~P_C) | cs_c));
     set_p(cr, nz8(cr->p, cs_last));
+}
+
+void abi_CarSelectTwoPlayers(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CarSelectTwoPlayers_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

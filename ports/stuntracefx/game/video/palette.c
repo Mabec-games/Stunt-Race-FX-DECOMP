@@ -11,6 +11,7 @@
 #include "video_palette_calls.h"
 #include "carried.h"
 
+
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size);
 
 #define PALETTE_ANIMATE 0x000E5Fu  /* nonzero: the animated colours are in use */
@@ -50,15 +51,53 @@ uint8_t RasterColours(void)
     return cgram_put(0xE1, 0x7EFF27, 6);
 }
 
-void abi_RasterColours(void)
+void ColourBlend_cr(Carried *cr);
+void ColourBlendBy_cr(Carried *cr);
+void ColourBlendToTarget_cr(Carried *cr);
+void CoursePaletteCycle_cr(Carried *cr);
+void FadeValueStep_cr(Carried *cr);
+void HudColourRowsRest_cr(Carried *cr);
+void HudColourStep_cr(Carried *cr);
+void HudColourStepFrom14_cr(Carried *cr);
+void PaletteCopy16To7F39D7_cr(Carried *cr);
+void PaletteCourseLoad_cr(Carried *cr);
+void PaletteCycle_cr(Carried *cr);
+void PaletteCycleFourth_cr(Carried *cr);
+void PaletteDarkenFour_cr(Carried *cr);
+void PaletteFadeStep_cr(Carried *cr);
+void PaletteKeptColoursStep_cr(Carried *cr);
+void PaletteLoad16_cr(Carried *cr);
+void PalettesStep_cr(Carried *cr);
+void PlayerColoursFlash_cr(Carried *cr);
+void RasterColours_cr(Carried *cr);
+void RasterColoursCycling_cr(Carried *cr);
+void RasterColoursE4_cr(Carried *cr);
+void RasterColoursUnless0D22_cr(Carried *cr);
+void RasterPaletteUpload_cr(Carried *cr);
+void StatusColourPick_cr(Carried *cr);
+
+void RasterColours_cr(Carried *cr)
 {
     uint8_t v = RasterColours();
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M | P_X);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M | P_X));
     cyc(18);
+}
+
+void abi_RasterColours(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RasterColours_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -86,19 +125,32 @@ uint8_t RasterPaletteUpload(int *animating)
     return (cyc(42), RasterColours());
 }
 
-void abi_RasterPaletteUpload(void)
+void RasterPaletteUpload_cr(Carried *cr)
 {
     int animating;
     uint8_t v = RasterPaletteUpload(&animating);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
     if (animating) {
-        cpu.x = 0xB0;
-        cpu.y = 0x20;
-        cpu.p |= P_X;
+        cr->x = 0xB0;
+        cr->y = 0x20;
+        set_p(cr, (uint8_t)(cr->p | (P_X)));
     }
     cyc(18);
+}
+
+void abi_RasterPaletteUpload(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RasterPaletteUpload_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -120,12 +172,25 @@ uint8_t RasterColoursCycling(uint16_t x)
     return cyc_then(18, cgram_put(0x12, (0x7EFD89 + x) & 0xFFFFFF, 4));
 }
 
+void RasterColoursCycling_cr(Carried *cr)
+{
+    uint8_t v = RasterColoursCycling(cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
+}
+
 void abi_RasterColoursCycling(void)
 {
-    uint8_t v = RasterColoursCycling(cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
+    RasterColoursCycling_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -140,12 +205,25 @@ uint8_t RasterColoursE4(uint16_t x)
     return cyc_then(18, cgram_put(0xE4, (0x7EFF2D + x) & 0xFFFFFF, 12));
 }
 
+void RasterColoursE4_cr(Carried *cr)
+{
+    uint8_t v = RasterColoursE4(cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, nz8(cr->p, v));
+}
+
 void abi_RasterColoursE4(void)
 {
-    uint8_t v = RasterColoursE4(cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    RasterColoursE4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* What PaletteCycle's exit leaves in C and V, for the adapter only: C from
@@ -205,18 +283,31 @@ uint16_t PaletteCycle(uint16_t *x)
     return cycle_step(0x7EFD5F, 0x7EB70B, 0x7EFD89, x);
 }
 
-void abi_PaletteCycle(void)
+void PaletteCycle_cr(Carried *cr)
 {
     uint16_t x;
 
-    cpu.a = PaletteCycle(&x);
-    cpu.x = x;
-    cpu.y = 0;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
+    cr->a = PaletteCycle(&x);
+    cr->x = x;
+    cr->y = 0;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C)));
     if (cycle_c)
-        cpu.p |= P_C;
+        set_p(cr, (uint8_t)(cr->p | (P_C)));
     if (cycle_v >= 0)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | (cycle_v ? P_V : 0));
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | (cycle_v ? P_V : 0)));
+}
+
+void abi_PaletteCycle(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteCycle_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -254,14 +345,27 @@ uint16_t PaletteLoad16(uint8_t bank, uint16_t src)
     return c;
 }
 
+void PaletteLoad16_cr(Carried *cr)
+{
+    uint16_t src = cr->a;
+
+    cr->a = PaletteLoad16(cr->db, src);
+    cr->x = 0x0020;
+    cr->y = (uint16_t)(src + 0x20);
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
 void abi_PaletteLoad16(void)
 {
-    uint16_t src = cpu.a;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = PaletteLoad16(cpu.db, src);
-    cpu.x = 0x0020;
-    cpu.y = (uint16_t)(src + 0x20);
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    PaletteLoad16_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -285,15 +389,28 @@ uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
     return RasterColoursCycling(0);
 }
 
-void abi_RasterColoursUnless0D22(void)
+void RasterColoursUnless0D22_cr(Carried *cr)
 {
     int ran;
-    uint8_t v = RasterColoursUnless0D22(cpu.db, &ran);
+    uint8_t v = RasterColoursUnless0D22(cr->db, &ran);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (ran)
-        cpu.x = 0;
+        cr->x = 0;
     cyc(70);
+}
+
+void abi_RasterColoursUnless0D22(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RasterColoursUnless0D22_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -319,11 +436,24 @@ uint16_t PaletteDarkenFour(uint16_t v)
     return v;
 }
 
+void PaletteDarkenFour_cr(Carried *cr)
+{
+    cr->a = PaletteDarkenFour(cr->a);
+    set_p(cr, nz16(cr->p, cr->a));
+    cyc(44);
+}
+
 void abi_PaletteDarkenFour(void)
 {
-    cpu.a = PaletteDarkenFour(cpu.a);
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteDarkenFour_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -355,14 +485,27 @@ uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
     return w;
 }
 
+void PaletteCopy16To7F39D7_cr(Carried *cr)
+{
+    uint16_t src = cr->a;
+
+    cr->a = PaletteCopy16To7F39D7(cr->db, src);
+    cr->y = (uint16_t)(src + 0x20);
+    cr->x = 0x0020;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
 void abi_PaletteCopy16To7F39D7(void)
 {
-    uint16_t src = cpu.a;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = PaletteCopy16To7F39D7(cpu.db, src);
-    cpu.y = (uint16_t)(src + 0x20);
-    cpu.x = 0x0020;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    PaletteCopy16To7F39D7_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -497,10 +640,23 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
     return (uint16_t)(w & 0xFF00);
 }
 
+void PaletteCourseLoad_cr(Carried *cr)
+{
+    cr->a = PaletteCourseLoad(cr->db, &cr->x, &cr->y, &cr->p);
+    cyc(64);
+}
+
 void abi_PaletteCourseLoad(void)
 {
-    cpu.a = PaletteCourseLoad(cpu.db, &cpu.x, &cpu.y, &cpu.p);
-    cyc(64);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteCourseLoad_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t PpuMultiply(uint8_t v);
@@ -605,12 +761,25 @@ uint16_t ColourBlend(uint8_t bank)
     return a;
 }
 
+void ColourBlend_cr(Carried *cr)
+{
+    uint16_t a = ColourBlend(cr->db);
+
+    cr->a = a;
+    set_p(cr, (uint8_t)(nz16((uint8_t)((cr->p & ~(P_V | P_C)) | blend_cv), a) & ~P_M));
+}
+
 void abi_ColourBlend(void)
 {
-    uint16_t a = ColourBlend(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = a;
-    cpu.p = (uint8_t)(nz16((uint8_t)((cpu.p & ~(P_V | P_C)) | blend_cv), a) & ~P_M);
+    ColourBlend_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Steps a 13-entry cycle position by n, wrapping. */
@@ -742,24 +911,6 @@ uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y
     return a;
 }
 
-void abi_PaletteKeptColoursStep(void)
-{
-    int stepped;
-    uint16_t x;
-    uint16_t a = PaletteKeptColoursStep(cpu.db, cpu.a, cpu.x, cpu.y, &x, &stepped);
-    uint8_t p = (uint8_t)(cpu.p & ~(P_C | P_V));
-
-    if (kept_v)
-        p |= P_V;
-    if (stepped)
-        cpu.p = (uint8_t)(nz16(p, a) & ~(P_C | P_M));
-    else
-        cpu.p = (uint8_t)(nz8((uint8_t)(p | P_C), (uint8_t)a) | P_M);
-    cpu.a = a;
-    cpu.x = x;
-}
-
-/* PaletteKeptColoursStep on carried registers, as abi_PaletteKeptColoursStep leaves them. */
 void PaletteKeptColoursStep_cr(Carried *cr)
 {
     int stepped;
@@ -775,6 +926,19 @@ void PaletteKeptColoursStep_cr(Carried *cr)
         set_p(cr, (uint8_t)(nz8((uint8_t)(p | P_C), (uint8_t)a) | P_M));
     cr->a = a;
     cr->x = x;
+}
+
+void abi_PaletteKeptColoursStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteKeptColoursStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v);
@@ -795,12 +959,25 @@ uint16_t ColourBlendBy(uint8_t bank)
     return ColourBlend(bank);
 }
 
+void ColourBlendBy_cr(Carried *cr)
+{
+    uint16_t a = ColourBlendBy(cr->db);
+
+    cr->a = a;
+    set_p(cr, (uint8_t)(nz16((uint8_t)((cr->p & ~(P_V | P_C)) | blend_cv), a) & ~P_M));
+}
+
 void abi_ColourBlendBy(void)
 {
-    uint16_t a = ColourBlendBy(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = a;
-    cpu.p = (uint8_t)(nz16((uint8_t)((cpu.p & ~(P_V | P_C)) | blend_cv), a) & ~P_M);
+    ColourBlendBy_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -839,12 +1016,25 @@ uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x)
     return v;
 }
 
+void ColourBlendToTarget_cr(Carried *cr)
+{
+    uint16_t a = ColourBlendToTarget(cr->db, cr->a, cr->x);
+
+    cr->a = a;
+    set_p(cr, (uint8_t)(nz16((uint8_t)((cr->p & ~(P_V | P_C)) | blend_cv), a) & ~P_M));
+}
+
 void abi_ColourBlendToTarget(void)
 {
-    uint16_t a = ColourBlendToTarget(cpu.db, cpu.a, cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = a;
-    cpu.p = (uint8_t)(nz16((uint8_t)((cpu.p & ~(P_V | P_C)) | blend_cv), a) & ~P_M);
+    ColourBlendToTarget_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* What PlayerColoursFlash's exit leaves in V, for the adapter only: -1 the
@@ -919,19 +1109,32 @@ uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *x
     return a;
 }
 
-void abi_PlayerColoursFlash(void)
+void PlayerColoursFlash_cr(Carried *cr)
 {
-    uint16_t y = cpu.y, x;
-    uint16_t a = PlayerColoursFlash(cpu.db, (uint8_t)cpu.a, y, &x);
-    uint8_t p = cpu.p;
+    uint16_t y = cr->y, x;
+    uint16_t a = PlayerColoursFlash(cr->db, (uint8_t)cr->a, y, &x);
+    uint8_t p = cr->p;
 
     if (flash_v >= 0)
         p = (uint8_t)((p & ~P_V) | (flash_v ? P_V : 0));
     p = (uint8_t)((p & ~P_C) | ((y & 0x8000) ? P_C : 0));
-    cpu.a = a;
-    cpu.x = x;
-    cpu.y = (uint16_t)(y << 1);
-    cpu.p = (uint8_t)(nz16(p, a) & ~(P_M | P_X));
+    cr->a = a;
+    cr->x = x;
+    cr->y = (uint16_t)(y << 1);
+    set_p(cr, (uint8_t)(nz16(p, a) & ~(P_M | P_X)));
+}
+
+void abi_PlayerColoursFlash(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerColoursFlash_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1035,18 +1238,31 @@ store:
     return a;
 }
 
-void abi_StatusColourPick(void)
+void StatusColourPick_cr(Carried *cr)
 {
     int stored;
-    uint16_t a = StatusColourPick(cpu.db, cpu.y, &stored);
-    uint8_t p = (uint8_t)(cpu.p & ~P_M);
+    uint16_t a = StatusColourPick(cr->db, cr->y, &stored);
+    uint8_t p = (uint8_t)(cr->p & ~P_M);
 
     if (!status_c_kept)
         p &= (uint8_t)~P_C;
-    cpu.a = a;
+    cr->a = a;
     if (stored)
-        cpu.x = 0x0000;
-    cpu.p = nz16(p, stored ? 0 : a);
+        cr->x = 0x0000;
+    set_p(cr, nz16(p, stored ? 0 : a));
+}
+
+void abi_StatusColourPick(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    StatusColourPick_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1089,25 +1305,38 @@ uint16_t PalettesStep(uint8_t bank, int *ran, uint16_t *xo)
     return a;
 }
 
-void abi_PalettesStep(void)
+void PalettesStep_cr(Carried *cr)
 {
-    uint8_t p0 = cpu.p;
-    uint16_t a0 = cpu.a, x;
+    uint8_t p0 = cr->p;
+    uint16_t a0 = cr->a, x;
     int ran;
-    uint16_t a = PalettesStep(cpu.db, &ran, &x);
+    uint16_t a = PalettesStep(cr->db, &ran, &x);
 
     if (ran) {
-        cpu.a = a;
-        cpu.x = x;
-        cpu.y = 0x0000;
+        cr->a = a;
+        cr->x = x;
+        cr->y = 0x0000;
     } else {
-        cpu.a = (uint16_t)(a0 & 0xFF00);
+        cr->a = (uint16_t)(a0 & 0xFF00);
     }
-    cpu.p = p0;
+    set_p(cr, p0);
     if (p0 & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_PalettesStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PalettesStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* CLC / ADC and SEC / SBC (16-bit, binary): the result, with the overflow
@@ -1189,13 +1418,26 @@ uint16_t FadeValueStep(uint16_t a)
     return a;
 }
 
+void FadeValueStep_cr(Carried *cr)
+{
+    cr->a = FadeValueStep(cr->a);
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_FadeValueStep(void)
 {
-    cpu.a = FadeValueStep(cpu.a);
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FadeValueStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* What PaletteFadeStep's exit leaves in C and V, for the adapter only: C
@@ -1311,29 +1553,6 @@ int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
     return 1;
 }
 
-void abi_PaletteFadeStep(void)
-{
-    uint16_t x, y;
-    uint8_t p;
-
-    if (!PaletteFadeStep(cpu.db, &x, &y)) {
-        cpu.a &= 0xFF00;
-        cpu.p = (uint8_t)((cpu.p | P_M | P_Z) & ~P_N);
-        return;
-    }
-    p = (uint8_t)(cpu.p & ~(P_N | P_M | P_X | P_C | P_V));
-    p |= P_Z;
-    if (fade_c)
-        p |= P_C;
-    if (fade_v > 0 || (fade_v < 0 && (cpu.p & P_V)))
-        p |= P_V;
-    cpu.a = 0x0000;
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = p;
-}
-
-/* PaletteFadeStep on carried registers, as abi_PaletteFadeStep leaves them. */
 void PaletteFadeStep_cr(Carried *cr)
 {
     uint16_t x, y;
@@ -1354,6 +1573,19 @@ void PaletteFadeStep_cr(Carried *cr)
     cr->x = x;
     cr->y = y;
     set_p(cr, p);
+}
+
+void abi_PaletteFadeStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteFadeStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the
@@ -1466,16 +1698,29 @@ uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo)
     return a;
 }
 
+void CoursePaletteCycle_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+
+    cr->a = CoursePaletteCycle(cr->a, (cr->p & P_X) != 0, &x);
+    cr->x = x;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_CoursePaletteCycle(void)
 {
-    uint16_t x = cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = CoursePaletteCycle(cpu.a, (cpu.p & P_X) != 0, &x);
-    cpu.x = x;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    CoursePaletteCycle_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* HudColourStep's work registers in bank $7F. */
@@ -2146,17 +2391,30 @@ HudColourEnd HudColourStep(uint16_t x, uint16_t y)
     return hud_colour_step(HC_START, 0x7F, 0, x, y);
 }
 
+void HudColourStep_cr(Carried *cr)
+{
+    HudColourEnd e = HudColourStep(cr->x, cr->y);
+
+    cr->a = e.a;
+    cr->x = e.x;
+    cr->y = e.y;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_HudColourStep(void)
 {
-    HudColourEnd e = HudColourStep(cpu.x, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = e.a;
-    cpu.x = e.x;
-    cpu.y = e.y;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    HudColourStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2178,19 +2436,32 @@ HudColourEnd HudColourRowsRest(uint8_t bank, uint16_t a, uint16_t x, uint16_t y)
     return hud_colour_step(HC_ROWS_REST, bank, a, x, y);
 }
 
+void HudColourRowsRest_cr(Carried *cr)
+{
+    HudColourEnd e = HudColourRowsRest(cr->db, cr->a, cr->x, cr->y);
+
+    cr->a = e.a;
+    cr->x = e.x;
+    cr->y = e.y;
+    cr->db = e.db;
+    set_p(cr, e.p);
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_HudColourRowsRest(void)
 {
-    HudColourEnd e = HudColourRowsRest(cpu.db, cpu.a, cpu.x, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = e.a;
-    cpu.x = e.x;
-    cpu.y = e.y;
-    cpu.db = e.db;
-    cpu.p = e.p;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    HudColourRowsRest_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2209,19 +2480,32 @@ HudColourEnd HudColourStepFrom14(uint8_t bank, uint16_t y)
     return hud_colour_step(HC_FROM14, bank, 0, 0, y);
 }
 
+void HudColourStepFrom14_cr(Carried *cr)
+{
+    HudColourEnd e = HudColourStepFrom14(cr->db, cr->y);
+
+    cr->a = e.a;
+    cr->x = e.x;
+    cr->y = e.y;
+    cr->db = e.db;
+    set_p(cr, e.p);
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_HudColourStepFrom14(void)
 {
-    HudColourEnd e = HudColourStepFrom14(cpu.db, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = e.a;
-    cpu.x = e.x;
-    cpu.y = e.y;
-    cpu.db = e.db;
-    cpu.p = e.p;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    HudColourStepFrom14_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2272,16 +2556,48 @@ uint8_t PaletteCycleFourth(uint8_t bank, uint16_t y, uint16_t *xo, uint8_t *db, 
     return v;
 }
 
-void abi_PaletteCycleFourth(void)
+static uint8_t PaletteCycleFourth_c(Carried *cr, uint8_t bank, uint16_t y, uint16_t *xo, uint8_t *db, int *wrapped)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = PaletteCycleFourth(bank, y, xo, db, wrapped);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void PaletteCycleFourth_cr(Carried *cr)
 {
     uint16_t x;
     uint8_t db;
     int wrapped;
-    uint8_t v = PaletteCycleFourth(cpu.db, cpu.y, &x, &db, &wrapped);
+    uint8_t v = PaletteCycleFourth_c(cr, cr->db, cr->y, &x, &db, &wrapped);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = x;
-    cpu.db = db;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (wrapped ? P_C : 0));
-    cpu.p = nz8(cpu.p, db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = x;
+    cr->db = db;
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (wrapped ? P_C : 0)));
+    set_p(cr, nz8(cr->p, db));
 }
+
+void abi_PaletteCycleFourth(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PaletteCycleFourth_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

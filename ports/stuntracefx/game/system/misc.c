@@ -11,7 +11,6 @@ uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p);
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 uint16_t ObjectLinkedSet1A(uint16_t obj, uint16_t value);
 uint16_t ObjectPlaceAll(uint8_t bank);
-#include "hud_calls.h"
 void abi_AttractCourseSetup(void);
 void abi_DemoRun(void);
 void abi_DemoRunThirdRest(void);
@@ -29,6 +28,7 @@ void DataBankTest(void)
 }
 
 void ChampionshipFinish(Carried *cr);
+void Countdown0DF8_cr(Carried *cr);
 void DataBankTest_cr(Carried *cr);
 void DelayLoop13(Carried *cr);
 void DemoRun(Carried *cr);
@@ -37,6 +37,12 @@ void DemoRunFourth(Carried *cr);
 void DemoRunSecond(Carried *cr);
 void DemoRunThird(Carried *cr);
 void DemoRunThirdRest(Carried *cr);
+void ReadTable9022_cr(Carried *cr);
+void Set0D37FromTable_cr(Carried *cr);
+void Set7EBC2BTrio_cr(Carried *cr);
+void Set7EFFA6Sequence_cr(Carried *cr);
+void WordCopyStep_cr(Carried *cr);
+void WramFillZero_cr(Carried *cr);
 void WramFillZeroLong(Carried *cr);
 static void demo_blank(Carried *cr, uint32_t b);
 static void demo_camera(Carried *cr, uint8_t db);
@@ -48,26 +54,24 @@ static void demo_next_before(Carried *cr, uint16_t n);
 static uint32_t dp_addr(Carried *cr, uint8_t a);
 static void w_BootSoftRestart(Carried *cr);
 static void w_CourseDataPointer(Carried *cr);
-static void w_CourseScriptRun(Carried *cr);
 static void w_GsuRun(Carried *cr);
 static void w_KeepRegisters(Carried *cr);
 static void w_ObjectLinkedSet1A(Carried *cr);
 static void w_ObjectPlaceAll(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
 static void w_PlayerStatsAndPaletteAnimate(Carried *cr);
-static void w_RecordTimeInsert(Carried *cr);
-static void w_Set7EFFA6Sequence(Carried *cr);
 static void w_SoftResetToBootWarm(Carried *cr);
-static void w_WindowsInit(Carried *cr);
-static void w_WramFillZero(Carried *cr);
 void AttractCourseSetup(Carried *cr);
 void CameraFollowStep_cr(Carried *cr);
 void ChampionScreenRun(Carried *cr);
+void CourseScriptRun(Carried *cr);
 void ObjectFaceTied_cr(Carried *cr);
 void OverlayFramesUntilFaded(Carried *cr);
 void RaceFrameRun(Carried *cr);
 void RaceVideoInit_cr(Carried *cr);
+void RecordTimeInsert_cr(Carried *cr);
 void RecordsUnpackCourseRunning(Carried *cr);
+void WindowsInit_cr(Carried *cr);
 
 void DataBankTest_cr(Carried *cr)
 {
@@ -171,11 +175,24 @@ uint8_t ReadTable9022(uint8_t bank)
     return v;
 }
 
+void ReadTable9022_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | ReadTable9022(cr->db));
+    cr->x = 0x80;
+    cr->y = 0x00;
+}
+
 void abi_ReadTable9022(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | ReadTable9022(cpu.db));
-    cpu.x = 0x80;
-    cpu.y = 0x00;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ReadTable9022_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -199,12 +216,25 @@ uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
     return v;
 }
 
-void abi_Set0D37FromTable(void)
+void Set0D37FromTable_cr(Carried *cr)
 {
     uint16_t x;
 
-    cpu.a = Set0D37FromTable(cpu.db, &x);
-    cpu.x = (cpu.p & P_X) ? (cyc(70), (uint8_t)x) : x;
+    cr->a = Set0D37FromTable(cr->db, &x);
+    cr->x = (cr->p & P_X) ? (cyc(70), (uint8_t)x) : x;
+}
+
+void abi_Set0D37FromTable(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Set0D37FromTable_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -224,9 +254,22 @@ void Set7EBC2BTrio(uint8_t v)
     cyc(72);
 }
 
+void Set7EBC2BTrio_cr(Carried *cr)
+{
+    Set7EBC2BTrio((uint8_t)cr->a);
+}
+
 void abi_Set7EBC2BTrio(void)
 {
-    Set7EBC2BTrio((uint8_t)cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Set7EBC2BTrio_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -256,10 +299,23 @@ uint8_t Countdown0DF8(uint8_t bank)
     return v;
 }
 
+void Countdown0DF8_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | Countdown0DF8(cr->db));
+    cyc(16);
+}
+
 void abi_Countdown0DF8(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | Countdown0DF8(cpu.db));
-    cyc(16);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Countdown0DF8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_OverlayFramesUntilFaded(void);
@@ -292,7 +348,7 @@ void ChampionshipFinish(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     wr8(b | 0x0D48, 0x00);
-    (cyc(46), w_RecordTimeInsert(cr));
+    (cyc(46), RecordTimeInsert_cr(cr));
     (cyc(62), RecordsUnpackCourseRunning(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     (cyc(0), ChampionScreenRun(cr));
@@ -337,10 +393,23 @@ void Set7EFFA6Sequence(void)
     cyc(72);
 }
 
-void abi_Set7EFFA6Sequence(void)
+void Set7EFFA6Sequence_cr(Carried *cr)
 {
     Set7EFFA6Sequence();
-    cpu.a = 0x0004;
+    cr->a = 0x0004;
+}
+
+void abi_Set7EFFA6Sequence(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Set7EFFA6Sequence_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -380,13 +449,26 @@ uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_
     return a;
 }
 
+void WordCopyStep_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = WordCopyStep(cr->db, cr->a, &cr->x, &cr->y, &p);
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
+    cyc(60);
+}
+
 void abi_WordCopyStep(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = WordCopyStep(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
-    cpu.p = (uint8_t)(p & ~(P_M | P_X));
-    cyc(60);
+    WordCopyStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -416,12 +498,25 @@ void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count)
     cyc(42);
 }
 
+void WramFillZero_cr(Carried *cr)
+{
+    WramFillZero((uint8_t)cr->a, cr->x, cr->y);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = 0x8008;
+    set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z)));
+}
+
 void abi_WramFillZero(void)
 {
-    WramFillZero((uint8_t)cpu.a, cpu.x, cpu.y);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = 0x8008;
-    cpu.p = (uint8_t)(cpu.p & ~(P_N | P_Z));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WramFillZero_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -466,7 +561,7 @@ void abi_DemoRunFirst(void)
  */
 void WramFillZeroLong(Carried *cr)
 {
-    (cyc(46), w_WramFillZero(cr));
+    (cyc(46), WramFillZero_cr(cr));
     cyc(44); /* RTL */
 }
 
@@ -783,7 +878,7 @@ void DemoRun(Carried *cr)
     hw_wr(b | 0x3037, 0x20);
     demo_lda8(cr, 0x0B);
     hw_wr(b | 0x3038, 0x0B);
-    (cyc(62), w_Set7EFFA6Sequence(cr));
+    (cyc(62), Set7EFFA6Sequence_cr(cr));
     b = (uint32_t)cr->db << 16;
     demo_blank(cr, b);
     (cyc(76), RaceVideoInit_cr(cr));
@@ -795,7 +890,7 @@ void DemoRun(Carried *cr)
     r_sep(cr, P_M | P_X);
     cyc(138);
     w_KeepRegisters(cr);
-    w_WindowsInit(cr);
+    WindowsInit_cr(cr);
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     b = (uint32_t)cr->db << 16;
@@ -814,7 +909,7 @@ void DemoRun(Carried *cr)
     cyc(22);
     wr8(b | 0x0D2B, 0x03);
     (cyc(62), w_CourseDataPointer(cr));
-    (cyc(62), w_CourseScriptRun(cr));
+    (cyc(62), CourseScriptRun(cr));
     (cyc(62), w_ObjectPlaceAll(cr));
     r_sep(cr, P_M);
     r_rep(cr, P_X);
@@ -1091,19 +1186,6 @@ static void w_BootSoftRestart(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* RecordTimeInsert as its adapter leaves the registers. */
-static void w_RecordTimeInsert(Carried *cr)
-{
-    uint8_t p0 = cr->p;
-    uint16_t x = cr->x, y = cr->y;
-
-    set_p(cr, p0 | P_M | P_X);             /* what an interrupt pushes */
-    cr->a = RecordTimeInsert(cr->db, cr->a, &x, &y, p0);
-    cr->x = x;
-    cr->y = y;
-    set_p(cr, p0);
-}
-
 /* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
    back. */
 static void w_SoftResetToBootWarm(Carried *cr)
@@ -1123,15 +1205,6 @@ static void w_SoftResetToBootWarm(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* WramFillZero as its adapter leaves the registers. */
-static void w_WramFillZero(Carried *cr)
-{
-    WramFillZero((uint8_t)cr->a, cr->x, cr->y);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->x = 0x8008;
-    set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z)));
-}
-
 /* CourseDataPointer as its adapter leaves the registers. */
 static void w_CourseDataPointer(Carried *cr)
 {
@@ -1142,25 +1215,6 @@ static void w_CourseDataPointer(Carried *cr)
     cr->y = x;
     cr->a = (uint16_t)((x & 0xFF00) | bank);
     set_p(cr, (uint8_t)((nz16(p, x) & ~P_X) | P_M));
-}
-
-/* CourseScriptRun, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CourseScriptRun(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CourseScriptRun();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* GsuRun as its adapter leaves the registers. */
@@ -1223,32 +1277,6 @@ static void w_PlayerStatsAndPaletteAnimate(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_PlayerStatsAndPaletteAnimate();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* Set7EFFA6Sequence as its adapter leaves the registers. */
-static void w_Set7EFFA6Sequence(Carried *cr)
-{
-    Set7EFFA6Sequence();
-    cr->a = 0x0004;
-}
-
-/* WindowsInit, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_WindowsInit(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_WindowsInit();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;

@@ -9,16 +9,10 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-#include "video_palette_calls.h"
 #include "gsu_programs_calls.h"
 uint8_t GsuF15BTwoLines(uint16_t input);
 uint16_t GsuRecordBits60(void);
-void OamHide75Up(uint8_t bank);
-void OamHighBits18Park48(uint8_t bank);
-void OamHighBits58Park112(uint8_t bank);
 uint8_t SaveChecksum(void);
-#include "audio_calls.h"
-uint8_t WindowSlideUpSound(uint8_t bank, int x16);
 void abi_GlyphRowsAt32(void);
 void abi_GlyphRowsAt56(void);
 void abi_GlyphSpritesSlideIn(void);
@@ -114,14 +108,6 @@ void SpeedSampleAdd(uint8_t bank, uint16_t speed, uint16_t player, uint8_t *p, u
     cyc(42);
 }
 
-void abi_SpeedSampleAdd(void)
-{
-    uint8_t p = cpu.p;
-
-    SpeedSampleAdd(cpu.db, cpu.a, cpu.y, &p, &cpu.a);
-    cpu.p = (uint8_t)(p & ~P_M);
-}
-
 void PhaseDispatchE232(Carried *cr);
 void PhaseDispatchE24F(Carried *cr);
 void PlayerOnePhaseEnd(Carried *cr);
@@ -140,6 +126,7 @@ void RaceSoundsPlayer1(Carried *cr);
 void RaceSoundsPlayer2(Carried *cr);
 void RaceXPressPlayer1(Carried *cr);
 void RaceXPressPlayer2(Carried *cr);
+void SpeedSampleAdd_cr(Carried *cr);
 void StuntCourseMark(Carried *cr);
 void StuntPanelCount(Carried *cr);
 void StuntPanelDone(Carried *cr);
@@ -177,41 +164,35 @@ static void stats_player0(Carried *cr);
 static void stunt_count_byte(Carried *cr, uint32_t b);
 static void stunt_count_down(Carried *cr, uint32_t b, uint32_t lead);
 static int time_cmp8(Carried *cr, uint8_t m);
-static void w_CoursePaletteCycle(Carried *cr);
-static void w_EngineSoundsPlayer1(Carried *cr);
-static void w_EngineSoundsPlayer2(Carried *cr);
 static void w_GlyphRowsAt32(Carried *cr);
 static void w_GlyphRowsAt56(Carried *cr);
-static void w_GsuBytes200_BFBAB9(Carried *cr);
 static void w_GsuF15BTwoLines(Carried *cr);
 static void w_GsuRecordBits60(Carried *cr);
-static void w_OamHide75Up(Carried *cr);
-static void w_OamHighBits18Park48(Carried *cr);
-static void w_OamHighBits58Park112(Carried *cr);
-static void w_PaletteDarkenFour(Carried *cr);
 static void w_PhaseNothingEBDC(Carried *cr);
 static void w_PlayerStatsFromRecord(Carried *cr);
 static void w_RaceRestart(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
-static void w_SoftResetCheck(Carried *cr);
 static void w_SoftResetToBootWarm(Carried *cr);
-static void w_SoundPort0QueuePushRaw(Carried *cr);
-static void w_SoundReset(Carried *cr);
-static void w_SpeedSampleAdd(Carried *cr);
-static void w_StuntRecordTime(Carried *cr);
-static void w_WindowSlideUpSound(Carried *cr);
 void CarFinishSound(Carried *cr);
 void ChampionshipScreenLoop(Carried *cr);
+void CoursePaletteCycle_cr(Carried *cr);
+void EngineSoundsPlayer1_cr(Carried *cr);
+void EngineSoundsPlayer2_cr(Carried *cr);
 void GlyphSpritesDrawAll_cr(Carried *cr);
 void GlyphSpritesSlideIn_cr(Carried *cr);
 void GlyphSpritesSlideOut_cr(Carried *cr);
+void GsuBytes200_BFBAB9_cr(Carried *cr);
 void GsuDigitPair0E74At_cr(Carried *cr);
 void HudBlankDraw_cr(Carried *cr);
 void HudLapDigitsDraw_cr(Carried *cr);
 void HudLeadWordDraw_cr(Carried *cr);
 void HudTimesDraw_cr(Carried *cr);
+void OamHide75Up_cr(Carried *cr);
 void OamHideForHudMode_cr(Carried *cr);
+void OamHighBits18Park48_cr(Carried *cr);
+void OamHighBits58Park112_cr(Carried *cr);
 void OverlayFramesUntilFaded(Carried *cr);
+void PaletteDarkenFour_cr(Carried *cr);
 void PauseOnStart(Carried *cr);
 void PlayerTwoFrameWork(Carried *cr);
 void RaceEndLeave(Carried *cr);
@@ -223,14 +204,40 @@ void RaceStartGlyphsSteps(Carried *cr);
 void RaceStartSteps(Carried *cr);
 void RecordsLoadSpecialCourseLong_cr(Carried *cr);
 void ResultsPanelSteps(Carried *cr);
+void SoftResetCheck_cr(Carried *cr);
+void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
+void SoundReset_cr(Carried *cr);
+void StuntRecordTime_cr(Carried *cr);
 void TimeBonusTally_cr(Carried *cr);
 void TimeBonusTransfer_cr(Carried *cr);
 void TimeLeftDigits_cr(Carried *cr);
 void TimeUpBattle(Carried *cr);
 void TimeUpRecordUpdate_cr(Carried *cr);
 void TimeUpStunt(Carried *cr);
+void WindowSlideUpSound_cr(Carried *cr);
+
+void SpeedSampleAdd_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    SpeedSampleAdd(cr->db, cr->a, cr->y, &p, &cr->a);
+    set_p(cr, (uint8_t)(p & ~P_M));
+}
+
+void abi_SpeedSampleAdd(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpeedSampleAdd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
 
 /*
  * @routine 07:DD60 PlayerStatsFromRecord
@@ -280,7 +287,7 @@ void PlayerStatsFromRecord(Carried *cr)
         cyc(54);
         cr->a = rd16(0x70004A + x);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
-        (cyc(46), w_SpeedSampleAdd(cr));
+        (cyc(46), SpeedSampleAdd_cr(cr));
         cyc(32);
         w = rd16(0x70006A + x);
         set_p(cr, (uint8_t)((cr->p & ~P_C) | (w & 0x0004 ? P_C : 0)));
@@ -665,7 +672,7 @@ void RaceSoundsPlayer1(Carried *cr)
     cr->db = 0x07;
     set_p(cr, nz8(cr->p, 0x07));
     r_sep(cr, P_M | P_X);
-    (cyc(140), w_SoftResetCheck(cr));
+    (cyc(140), SoftResetCheck_cr(cr));
     cyc(56);
     race_stats(cr, 0x0000, 0x702476);
     cyc(56);
@@ -675,7 +682,7 @@ void RaceSoundsPlayer1(Carried *cr)
     set_p(cr, nz8(cr->p, 0x00));
     cyc(40);
     wr8(b | 0x1A5D, 0x00);
-    (cyc(62), w_EngineSoundsPlayer1(cr));
+    (cyc(62), EngineSoundsPlayer1_cr(cr));
     (cyc(46), PhaseDispatchE24F(cr));
     race_x_test(cr, b, 0x0D1A);
     race_frame_end_c(cr, b, 0x0D1A, 0, p0, db0);
@@ -714,7 +721,7 @@ void RaceSoundsPlayer2(Carried *cr)
     set_p(cr, nz8(cr->p, 0x01));
     cyc(134);
     wr8(b | 0x1A5D, 0x01);
-    (cyc(62), w_EngineSoundsPlayer2(cr));
+    (cyc(62), EngineSoundsPlayer2_cr(cr));
     r_sep(cr, P_X);
     cyc(46);
     PlayerTwoFrameWork(cr);
@@ -750,7 +757,7 @@ void RaceXPressPlayer1(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    race_x_block(cr, b, 0x0C, race_flag_p1, w_OamHighBits18Park48);
+    race_x_block(cr, b, 0x0C, race_flag_p1, OamHighBits18Park48_cr);
     race_frame_end_c(cr, b, 0x0D1A, 1, 0, 0);
 }
 
@@ -780,7 +787,7 @@ void RaceXPressPlayer2(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    race_x_block(cr, b, 0x0E, race_flag_p2, w_OamHighBits58Park112);
+    race_x_block(cr, b, 0x0E, race_flag_p2, OamHighBits58Park112_cr);
     race_frame_end_c(cr, b, 0x0D1C, 1, 0, 0);
 }
 
@@ -905,7 +912,7 @@ void PlayerOnePhaseRace(Carried *cr)
     } else { cyc(28); }
     r_sep(cr, P_M);
     p1_lda8(cr, 0x02);
-    w_SoundPort0QueuePushRaw(cr);
+    SoundPort0QueuePushRaw_cr(cr);
     cyc(30);
     p1_lda8(cr, 0x15);
     SoundPort0QueuePush_cr(cr);
@@ -1063,7 +1070,7 @@ void PlayerOnePhaseTally(Carried *cr)
     r_lda16_imm(cr, 0x0020);
     cyc(18);
     wr16(0x700210, 0x0020);
-    (cyc(62), w_GsuBytes200_BFBAB9(cr));
+    (cyc(62), GsuBytes200_BFBAB9_cr(cr));
     cyc(96);
     r_lda16(cr, b | 0x0FB0);
     (cyc(46), GsuDigitPair0E74At_cr(cr));
@@ -1114,7 +1121,7 @@ void PlayerOnePhaseEnd(Carried *cr)
             p1_lda8(cr, 0x01);
             cyc(16);
             wr8(b | 0x19DF, 0x01);
-            (cyc(62), w_WindowSlideUpSound(cr));
+            (cyc(62), WindowSlideUpSound_cr(cr));
         } else { cyc(22); }
     cyc(12);
         } else {
@@ -1385,7 +1392,7 @@ void StuntPanelWait(Carried *cr)
     }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     set_p(cr, nz8(cr->p, 0x02));
-    w_SoundPort0QueuePushRaw(cr);
+    SoundPort0QueuePushRaw_cr(cr);
     (cyc(38), CarFinishSound(cr));
     r_sep(cr, P_M | P_X);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
@@ -1401,7 +1408,7 @@ void StuntPanelWait(Carried *cr)
     wr8(b | 0x0E3F, 0x20);
     (cyc(46), OamHideForHudMode_cr(cr));
     cyc(46);
-    w_StuntRecordTime(cr);
+    StuntRecordTime_cr(cr);
     cyc(224);
     RecordsLoadSpecialCourseLong_cr(cr);
     (cyc(122), StuntCourseMark(cr));
@@ -1574,7 +1581,7 @@ void StuntPanelDone(Carried *cr)
     wr8(b | 0x0D22, 0x01);
     cyc(24);
     wr8(b | 0x0D23, 0x00);
-    (cyc(62), w_WindowSlideUpSound(cr));
+    (cyc(62), WindowSlideUpSound_cr(cr));
     cyc(42);                            /* RTS */
 }
 
@@ -1643,7 +1650,7 @@ void StuntPhaseRace(Carried *cr)
         cyc(40);
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x801F);
-        (cyc(48), w_PaletteDarkenFour(cr));
+        (cyc(48), PaletteDarkenFour_cr(cr));
         r_sep(cr, P_M);
         cyc(46);
         wr8(b | 0x0D5B, 0x00);
@@ -1661,8 +1668,8 @@ void StuntPhaseRace(Carried *cr)
         wr8(b | 0x0E56, 0x0C);
         cyc(24);
         wr8(b | 0x0E4B, 0x0C);
-        (cyc(46), w_OamHide75Up(cr));
-        (cyc(62), w_SoundReset(cr));
+        (cyc(46), OamHide75Up_cr(cr));
+        (cyc(62), SoundReset_cr(cr));
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x37);
         set_p(cr, nz8(cr->p, 0x37));
         (cyc(78), SoundPort0QueuePush_cr(cr));
@@ -1871,7 +1878,7 @@ static void hud_mode_two(Carried *cr, int inner, uint8_t p0, uint8_t db0)
     set_p(cr, nz8(cr->p, 0));
     (cyc(90), PlayerStatsThenPhaseDD35(cr));
     (cyc(46), HudTimesDraw_cr(cr));
-    (cyc(62), w_CoursePaletteCycle(cr));
+    (cyc(62), CoursePaletteCycle_cr(cr));
     cyc(20);
     hud_end_c(cr, 1, inner, p0, db0);
 }
@@ -2038,10 +2045,10 @@ void RaceSoundsAndHud(Carried *cr)
     cr->db = 0x07;
     set_p(cr, nz8(cr->p, 0x07));
     r_sep(cr, P_M | P_X);
-    (cyc(140), w_SoftResetCheck(cr));
+    (cyc(140), SoftResetCheck_cr(cr));
     cr->y = 0x0000;
     set_p(cr, nz8(cr->p, 0));
-    (cyc(78), w_EngineSoundsPlayer1(cr));
+    (cyc(78), EngineSoundsPlayer1_cr(cr));
     cyc(24);
     r_lda8(cr, 0x070D2B);
     cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(cr->a << 1));
@@ -2449,7 +2456,7 @@ void RaceEndCountdownFade(Carried *cr)
             wr8(b | 0x0D59, 0x00);
             cr->a = (uint16_t)((cr->a & 0xFF00) | 0x30);
             set_p(cr, nz8(cr->p, 0x30));
-            (cyc(24), w_SoundPort0QueuePushRaw(cr));
+            (cyc(24), SoundPort0QueuePushRaw_cr(cr));
             (cyc(38), ChampionshipScreenLoop(cr));    /* JSR, less the push's pulls it states */
             RaceEndCountdownFadeOn(cr);
             return;
@@ -2572,15 +2579,6 @@ static void w_GsuRecordBits60(Carried *cr)
     cr->a = GsuRecordBits60();
 }
 
-/* SpeedSampleAdd as its adapter leaves the registers. */
-static void w_SpeedSampleAdd(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    SpeedSampleAdd(cr->db, cr->a, cr->y, &p, &cr->a);
-    set_p(cr, (uint8_t)(p & ~P_M));
-}
-
 /* PlayerStatsFromRecord as its adapter leaves the registers. */
 static void w_PlayerStatsFromRecord(Carried *cr)
 {
@@ -2598,108 +2596,6 @@ static void w_SoftResetToBootWarm(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_SoftResetToBootWarm();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* EngineSoundsPlayer1, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_EngineSoundsPlayer1(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_EngineSoundsPlayer1();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SoftResetCheck, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SoftResetCheck(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SoftResetCheck();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* EngineSoundsPlayer2, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_EngineSoundsPlayer2(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_EngineSoundsPlayer2();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* OamHighBits18Park48 as its adapter leaves the registers. */
-static void w_OamHighBits18Park48(Carried *cr)
-{
-    OamHighBits18Park48(cr->db);
-    cr->a = 0x5555;
-    cr->x = 0x0000;
-    cr->y &= 0x00FF;
-}
-
-/* OamHighBits58Park112 as its adapter leaves the registers. */
-static void w_OamHighBits58Park112(Carried *cr)
-{
-    OamHighBits58Park112(cr->db);
-    cr->a = 0x5555;
-    cr->x = 0x0010;
-    cr->y &= 0x00FF;
-}
-
-/* SoundPort0QueuePushRaw as its adapter leaves the registers. */
-static void w_SoundPort0QueuePushRaw(Carried *cr)
-{
-    SoundPort0QueuePushRaw((uint8_t)cr->a);
-    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
-    cyc(8);
-}
-
-/* GsuBytes200_BFBAB9, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuBytes200_BFBAB9(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuBytes200_BFBAB9();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
@@ -2727,35 +2623,10 @@ static void w_RaceRestart(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* WindowSlideUpSound as its adapter leaves the registers. */
-static void w_WindowSlideUpSound(Carried *cr)
-{
-    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
-}
-
 /* SaveChecksum as its adapter leaves the registers. */
 static void w_SaveChecksum(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | SaveChecksum());
-}
-
-/* StuntRecordTime, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_StuntRecordTime(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_StuntRecordTime();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* GsuF15BTwoLines as its adapter leaves the registers. */
@@ -2782,32 +2653,6 @@ static void w_GlyphRowsAt56(Carried *cr)
     set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
 }
 
-/* OamHide75Up as its adapter leaves the registers. */
-static void w_OamHide75Up(Carried *cr)
-{
-    OamHide75Up(cr->db);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
-    cr->x = cr->p & P_X ? (cyc(0), 0x0000) : 0x0200;  /* the final pull restores X's width */
-    cr->y = 0x0000;
-}
-
-/* PaletteDarkenFour as its adapter leaves the registers. */
-static void w_PaletteDarkenFour(Carried *cr)
-{
-    cr->a = PaletteDarkenFour(cr->a);
-    set_p(cr, nz16(cr->p, cr->a));
-    cyc(44);
-}
-
-/* SoundReset as its adapter leaves the registers. */
-static void w_SoundReset(Carried *cr)
-{
-    SoundReset();
-    cr->a &= 0xFF00;
-    cr->x &= 0x00FF;
-    cr->y &= 0x00FF;
-}
-
 /* PhaseNothingEBDC, still in registers: its call with the registers loaded and taken
    back. */
 static void w_PhaseNothingEBDC(Carried *cr)
@@ -2825,17 +2670,4 @@ static void w_PhaseNothingEBDC(Carried *cr)
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
-}
-
-/* CoursePaletteCycle as its adapter leaves the registers. */
-static void w_CoursePaletteCycle(Carried *cr)
-{
-    uint16_t x = cr->x;
-
-    cr->a = CoursePaletteCycle(cr->a, (cr->p & P_X) != 0, &x);
-    cr->x = x;
-    if (cr->p & P_X) {
-        cr->x &= 0x00FF;
-        cr->y &= 0x00FF;
-    }
 }

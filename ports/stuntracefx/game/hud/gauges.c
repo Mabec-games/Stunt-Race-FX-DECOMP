@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "hud_calls.h"
+#include "carried.h"
 
 uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
 uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
@@ -100,6 +101,20 @@ void abi_HudGaugesPanelA(void)
     cpu.p = gauge_p(cpu.p);
 }
 
+/* HudGaugesPanelA on carried registers, as abi_HudGaugesPanelA leaves them. */
+void HudGaugesPanelA_cr(Carried *cr)
+{
+    uint16_t a, x, y;
+
+    /* an interrupt inside the gauges pushes the P the bars run under */
+    set_p(cr, gauge_p(cr->p));
+    HudGaugesPanelA(cr->db, &a, &x, &y);
+    cr->a = a;
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, gauge_p(cr->p));
+}
+
 /*
  * @routine 7E:EE7B HudGaugesPanelB
  * WHAT IT DOES: When $0D55 or $0D62 is set, draws panel B's gauges: $0DF9
@@ -161,6 +176,25 @@ void abi_HudGaugesPanelB(void)
     cpu.x = x;
     cpu.y = y;
     cpu.p = gauge_p(cpu.p);
+}
+
+/* HudGaugesPanelB on carried registers, as abi_HudGaugesPanelB leaves them. */
+void HudGaugesPanelB_cr(Carried *cr)
+{
+    uint16_t a, x, y;
+    uint8_t p0 = cr->p;
+
+    set_p(cr, gauge_p(p0));
+    if (!HudGaugesPanelB(cr->db, &a, &x, &y)) {
+        set_p(cr, p0);
+        cr->a &= 0xFF00;
+        set_p(cr, (uint8_t)((nz8(cr->p, 0) | P_M) & ~P_X));
+        return;
+    }
+    cr->a = a;
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, gauge_p(cr->p));
 }
 
 /* Gauge y at `at` = y, then the X-position high bits of the twelve sprites

@@ -7,15 +7,25 @@
 #include "machine.h"
 #include "native.h"
 #include "cpu_ops.h"
+#include "carried.h"
+
 
 void abi_RaceFrameRun(void);
 void abi_WaitScanline(void);
 void abi_VramDmaQueueFlush(void);
 void abi_ByteWritesIfPending(void);
 
+void FrameQueuesFlush(Carried *cr);
+void RaceFrameStepPause(Carried *cr);
+static void wait_start(Carried *cr, uint32_t b, int held, int first);
+void ByteWritesIfPending_cr(Carried *cr);
+void RaceFrameRun(Carried *cr);
+void VramDmaQueueFlush_cr(Carried *cr);
+void WaitScanline_cr(Carried *cr);
+
 /* Wait for scanline $64 (WaitScanline) and read JOY1H, until START (bit
    4) is as `held` says. */
-static void wait_start(uint32_t b, int held, int first)
+static void wait_start(Carried *cr, uint32_t b, int held, int first)
 {
     uint8_t j;
 
@@ -24,11 +34,11 @@ static void wait_start(uint32_t b, int held, int first)
         wr8(b | 0x06E3, 0x64);
         first = 0;
         cyc(62); /* JSL */
-        abi_WaitScanline();
-        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        WaitScanline_cr(cr);
+        set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
         cyc(68);
         j = hw_rd(b | 0x4219);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | j);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | j);
     } while (cyc_loop(6, ((j & 0x10) != 0) != held));
 }
 
@@ -44,29 +54,29 @@ static void wait_start(uint32_t b, int held, int first)
  * Entry: any widths. Exit: P unchanged; A low byte = 1 when it paused,
  * else the byte it tested; X, Y as RaceFrameRun leaves them.
  */
-void RaceFrameStepPause(void)
+void RaceFrameStepPause(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, v;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint8_t p = cr->p, v;
 
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cyc(90);
     v = rd8(b | 0x1168);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (!v) {
         cyc(40);
         v = rd8(b | 0x08FB);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (v == 0xFF) {
             cyc(72);
             wr8(b | 0x1168, 0x02);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-            (cyc(62), abi_RaceFrameRun());
-            (cyc(62), abi_RaceFrameRun());
-            cpu.p |= P_M;
-            wait_start(b, 0, 1);
-            wait_start(b, 1, 0);
-            wait_start(b, 0, 0);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+            (cyc(62), RaceFrameRun(cr));
+            (cyc(62), RaceFrameRun(cr));
+            set_p(cr, (uint8_t)(cr->p | (P_M)));
+            wait_start(cr, b, 0, 1);
+            wait_start(cr, b, 1, 0);
+            wait_start(cr, b, 0, 0);
             cyc(56);
             wr8(b | 0x030A, 0x00);
             cyc(24);
@@ -77,16 +87,29 @@ void RaceFrameStepPause(void)
             wr8(b | 0x030B, 0x00);
             cyc(40);
             wr8(b | 0x1168, 0x01);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
         } else { cyc(38); }
     } else { cyc(22); }
     cyc(28);
-    op_plp(p);
+    r_plp(cr, p);
+}
+
+void RaceFrameStepPause_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    RaceFrameStepPause(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_RaceFrameStepPause(void)
 {
-    RaceFrameStepPause();
+    RaceFrameStepPause_g();
 }
 
 /*
@@ -97,18 +120,32 @@ void abi_RaceFrameStepPause(void)
  * Entry: any widths. Exit: P unchanged; A, X, Y as ByteWritesIfPending
  * leaves them.
  */
-void FrameQueuesFlush(void)
+void FrameQueuesFlush(Carried *cr)
 {
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    (cyc(90), abi_VramDmaQueueFlush());
-    (cyc(46), abi_ByteWritesIfPending());
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
+    (cyc(90), VramDmaQueueFlush_cr(cr));
+    (cyc(46), ByteWritesIfPending_cr(cr));
     cyc(30);
-    op_plp(p);
+    r_plp(cr, p);
+}
+
+void FrameQueuesFlush_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    FrameQueuesFlush(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_FrameQueuesFlush(void)
 {
-    FrameQueuesFlush();
+    FrameQueuesFlush_g();
 }
+

@@ -13,6 +13,8 @@
 #include "hw.h"
 #include "cpu_ops.h"
 #include "system_calls.h"
+#include "carried.h"
+
 
 #define CRASH_COLOUR 0x1A2Eu
 #define CRASH_CODE 0x000717u
@@ -144,9 +146,25 @@ void CrashWhite(uint8_t bank)
     crash_body(bank, 0x00AA);
 }
 
+void CrashGreen_cr(Carried *cr);
+void CrashWhite_cr(Carried *cr);
+
+void CrashWhite_cr(Carried *cr)
+{
+    CrashWhite(cr->db);
+}
+
 void abi_CrashWhite(void)
 {
-    CrashWhite(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CrashWhite_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -164,7 +182,21 @@ void CrashGreen(uint8_t bank)
     crash_body(bank, 0x00E2);
 }
 
+void CrashGreen_cr(Carried *cr)
+{
+    CrashGreen(cr->db);
+}
+
 void abi_CrashGreen(void)
 {
-    CrashGreen(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CrashGreen_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

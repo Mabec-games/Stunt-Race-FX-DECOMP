@@ -11,6 +11,7 @@
 #include "object_calls.h"
 #include "carried.h"
 
+
 /* An absolute indexed address: the data bank, plus the offset and index
    (the sum may carry into the next bank). */
 static uint32_t absidx(uint8_t bank, uint16_t a, uint16_t i)
@@ -109,20 +110,29 @@ uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
     return a;
 }
 
-void abi_ObjectFaceTied(void)
-{
-    cpu.a = ObjectFaceTied(cpu.db, cpu.x);
-    if (face_y_set)
-        cpu.y = cpu.x;
-}
+void ObjectFaceTied_cr(Carried *cr);
+void ViewFromRecord_cr(Carried *cr);
 
-/* ObjectFaceTied on carried registers, as abi_ObjectFaceTied leaves them. */
 void ObjectFaceTied_cr(Carried *cr)
 {
     cr->a = ObjectFaceTied(cr->db, cr->x);
     if (face_y_set)
         cr->y = cr->x;
 }
+
+void abi_ObjectFaceTied(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectFaceTied_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
 
 uint16_t ScaleDp02Dp94Long(uint8_t *p);
 
@@ -209,10 +219,24 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     return v;
 }
 
+void ViewFromRecord_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ViewFromRecord(cr->db, cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_ViewFromRecord(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ViewFromRecord(cpu.db, cpu.x, &p);
-    cpu.p = p;
+    ViewFromRecord_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

@@ -8,6 +8,9 @@
 #include "hw.h"
 #include "cpu_ops.h"
 #include "menu_calls.h"
+#include "carried.h"
+
+void abi_MenuActorsRun(void);
 
 /*
  * @routine 0B:E2D7 MenuFramesTarget7
@@ -25,9 +28,35 @@ uint8_t MenuFramesTarget7(uint8_t bank)
     return 0x07;
 }
 
+void MenuDimOnL_cr(Carried *cr);
+void MenuFramesTarget7_cr(Carried *cr);
+void MenuHeldRestart_cr(Carried *cr);
+void MenuRandomStep_cr(Carried *cr);
+void MenuRegionCheck_cr(Carried *cr);
+void MenuRegionPal_cr(Carried *cr);
+void MenuRunFrames_cr(Carried *cr);
+void MenuScreen0Run_cr(Carried *cr);
+void MenuWaitFrame_cr(Carried *cr);
+static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y);
+static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y);
+static void w_MenuActorsRun(Carried *cr);
+
+void MenuFramesTarget7_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | MenuFramesTarget7(cr->db));
+}
+
 void abi_MenuFramesTarget7(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | MenuFramesTarget7(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuFramesTarget7_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -64,9 +93,22 @@ uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
     return a;
 }
 
+void MenuRandomStep_cr(Carried *cr)
+{
+    cr->a = MenuRandomStep(cr->db, cr->p);
+}
+
 void abi_MenuRandomStep(void)
 {
-    cpu.a = MenuRandomStep(cpu.db, cpu.p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuRandomStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -92,10 +134,23 @@ uint16_t MenuDimOnL(uint8_t bank)
     return 0x0004;
 }
 
+void MenuDimOnL_cr(Carried *cr)
+{
+    cr->a = MenuDimOnL(cr->db);
+    set_p(cr, nz16(cr->p, cr->a));
+}
+
 void abi_MenuDimOnL(void)
 {
-    cpu.a = MenuDimOnL(cpu.db);
-    cpu.p = nz16(cpu.p, cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuDimOnL_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -117,10 +172,23 @@ void MenuWaitFrame(uint8_t bank)
     cyc(86);
 }
 
+void MenuWaitFrame_cr(Carried *cr)
+{
+    MenuWaitFrame(cr->db);
+    cr->a = 0x0000;
+}
+
 void abi_MenuWaitFrame(void)
 {
-    MenuWaitFrame(cpu.db);
-    cpu.a = 0x0000;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuWaitFrame_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void MenuActorsRun(void);
@@ -130,16 +198,29 @@ void MenuScreenOpen0(void);
 /* The objects run (MenuActorsRun, still in registers) with A, P = p and the
    data bank going in, X passing through when there are none; the X and Y
    they leave come back in *x and *y. */
-static void run_actors(uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y)
+static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y)
 {
-    cpu.db = bank;
-    cpu.p = p;
-    cpu.a = a;
-    cpu.x = *x;
-    cpu.y = *y;
-    (cyc(62), MenuActorsRun());
-    *x = cpu.x;
-    *y = cpu.y;
+    cr->db = bank;
+    set_p(cr, p);
+    cr->a = a;
+    cr->x = *x;
+    cr->y = *y;
+    (cyc(62), w_MenuActorsRun(cr));
+    *x = cr->x;
+    *y = cr->y;
+}
+
+static void run_actors_g(uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    run_actors(&c, bank, a, p, x, y);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -163,7 +244,7 @@ uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
     do {
         cyc(68);
         MenuWaitFrame(bank);
-        run_actors(bank, 0x0000, (uint8_t)(p | P_M), x, y);
+        run_actors_g(bank, 0x0000, (uint8_t)(p | P_M), x, y);
         cyc(62);
         a = MenuOamBuild(x, y);
         cyc(46);
@@ -175,15 +256,46 @@ uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
     return (uint16_t)((a & 0xFF00) | m);
 }
 
+static uint16_t MenuRunFrames_c(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = MenuRunFrames(bank, p, x, y);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void MenuRunFrames_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p;
+
+    cr->a = MenuRunFrames_c(cr, cr->db, p, &x, &y);
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, p);
+}
+
 void abi_MenuRunFrames(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuRunFrames(cpu.db, p, &x, &y);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = p;
+    MenuRunFrames_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -211,20 +323,33 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
 /* One menu frame as the screen loops run it: wait for the vertical blank,
    run the objects (with P = p), build the sprite table and ask for frame
    updates 0-3. */
-static void menu_frame(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
+static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint8_t f;
 
     cyc(46);
     MenuWaitFrame(bank);
-    run_actors(bank, 0x0000, p, x, y);
+    run_actors(cr, bank, 0x0000, p, x, y);
     cyc(62);
     MenuOamBuild(x, y);
     cyc(46);
     f = (uint8_t)(rd8(b | 0x11D7) | 0x0F);
     cyc(40);
     wr8(b | 0x11D7, f);
+}
+
+static void menu_frame_g(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    menu_frame(&c, bank, p, x, y);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /*
@@ -261,7 +386,7 @@ void MenuRegionPal(uint16_t a, uint16_t x)
     cyc(80);
     wr8((uint16_t)(x + 0x10), 0x00);
     y = cpu.y;
-    run_actors(0x00, a, cpu.p, &x, &y);
+    run_actors_g(0x00, a, cpu.p, &x, &y);
     cyc(62);
     cpu.a = MenuOamBuild(&x, &y);
     cpu.x = x;
@@ -271,9 +396,39 @@ void MenuRegionPal(uint16_t a, uint16_t x)
     cpu_loop_forever(0x0BAE8A);
 }
 
+static void MenuRegionPal_c(Carried *cr, uint16_t a, uint16_t x)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    MenuRegionPal(a, x);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+void MenuRegionPal_cr(Carried *cr)
+{
+    MenuRegionPal_c(cr, cr->a, cr->x);
+}
+
 void abi_MenuRegionPal(void)
 {
-    MenuRegionPal(cpu.a, cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuRegionPal_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -304,9 +459,40 @@ uint8_t MenuRegionCheck(uint16_t a, uint16_t x)
     return s;
 }
 
+static uint8_t MenuRegionCheck_c(Carried *cr, uint16_t a, uint16_t x)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint8_t ret_ = MenuRegionCheck(a, x);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void MenuRegionCheck_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | MenuRegionCheck_c(cr, cr->a, cr->x));
+}
+
 void abi_MenuRegionCheck(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | MenuRegionCheck(cpu.a, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuRegionCheck_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Any of bits 0-3 of either player's held buttons ($0309, $030D), or
@@ -357,22 +543,53 @@ uint16_t MenuHeldRestart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *x = rec;
     now = (uint8_t)(found & ~(P_M | P_X));
     do {
-        menu_frame(bank, now, x, y);
+        menu_frame_g(bank, now, x, y);
     } while (held_or_18fb(b));
     cyc(82);
     *p = nz16(now, 0xFFFF);
     return 0xFFFF;
 }
 
+static uint16_t MenuHeldRestart_c(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = MenuHeldRestart(bank, x, y, p);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void MenuHeldRestart_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p;
+
+    cr->a = MenuHeldRestart_c(cr, cr->db, &x, &y, &p);
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, p);
+}
+
 void abi_MenuHeldRestart(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuHeldRestart(cpu.db, &x, &y, &p);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = p;
+    MenuHeldRestart_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -407,7 +624,7 @@ uint16_t MenuScreen0Run(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint
         cyc(76);
         do {
             cyc(22);
-            menu_frame(bank, *p, x, y);
+            menu_frame_g(bank, *p, x, y);
             *p &= (uint8_t)~(P_M | P_X);
             b = (uint32_t)bank << 16;
             cyc(46);
@@ -431,13 +648,63 @@ uint16_t MenuScreen0Run(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint
     return 0x0080;
 }
 
+static uint16_t MenuScreen0Run_c(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    uint16_t ret_ = MenuScreen0Run(bank, a, x, y, p);
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+    return ret_;
+}
+
+void MenuScreen0Run_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+    uint8_t p = cr->p;
+
+    cr->a = MenuScreen0Run_c(cr, cr->db, cr->a, &x, &y, &p);
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, p);
+}
+
 void abi_MenuScreen0Run(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuScreen0Run(cpu.db, cpu.a, &x, &y, &p);
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = p;
+    MenuScreen0Run_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* MenuActorsRun, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_MenuActorsRun(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_MenuActorsRun();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }

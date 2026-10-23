@@ -7,6 +7,7 @@
 #include "wram.h"
 #include "carried.h"
 
+
 #define RACE_TIME_FRACTION 0x000E63u  /* BCD */
 #define RACE_TIME_SECONDS 0x000E64u   /* BCD, 00-59 */
 #define RACE_TIME_MINUTES 0x000E66u
@@ -101,15 +102,40 @@ uint8_t HudDrawTime(uint16_t *x, int *x_set)
     return end.a;
 }
 
-void abi_HudDrawTime(void)
+void HudCountMove19EE_cr(Carried *cr);
+void HudCountMove19EECopy_cr(Carried *cr);
+void HudCountUp19EC_cr(Carried *cr);
+void HudDigitSprites62_cr(Carried *cr);
+void HudDrawDigits19EC_cr(Carried *cr);
+void HudDrawNumber3_cr(Carried *cr);
+void HudDrawTime_cr(Carried *cr);
+void HudDrawValueA_cr(Carried *cr);
+void HudDrawValueB_cr(Carried *cr);
+void HudDrawValueC_cr(Carried *cr);
+static void abi_draw_value(Carried *cr, uint16_t value, uint16_t offset);
+
+void HudDrawTime_cr(Carried *cr)
 {
     uint16_t x;
     int x_set;
     uint8_t a = HudDrawTime(&x, &x_set);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     if (x_set)
-        cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+        cr->x = (cr->p & P_X) ? (uint8_t)x : x;
+}
+
+void abi_HudDrawTime(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudDrawTime_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -149,15 +175,28 @@ uint8_t HudDrawDigits19EC(int *drew)
     return a;
 }
 
-void abi_HudDrawDigits19EC(void)
+void HudDrawDigits19EC_cr(Carried *cr)
 {
     int drew;
     uint8_t a = HudDrawDigits19EC(&drew);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = (uint8_t)(nz8(cpu.p, a) | P_M);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, (uint8_t)(nz8(cr->p, a) | P_M));
     if (drew)
-        cpu.p &= (uint8_t)~P_C;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
+}
+
+void abi_HudDrawDigits19EC(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudDrawDigits19EC_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -209,13 +248,26 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     return (uint8_t)((n << 1) + 1);
 }
 
+void HudDrawNumber3_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    uint8_t a = HudDrawNumber3((uint8_t)cr->a, cr->x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    set_p(cr, (uint8_t)(nz8(p, a) & ~P_C));
+}
+
 void abi_HudDrawNumber3(void)
 {
-    uint8_t p = cpu.p;
-    uint8_t a = HudDrawNumber3((uint8_t)cpu.a, cpu.x, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = (uint8_t)(nz8(p, a) & ~P_C);
+    HudDrawNumber3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Draw the byte at `value` (data bank) with HudDrawNumber3 at `offset`;
@@ -230,14 +282,14 @@ static uint8_t draw_value(uint8_t bank, uint16_t value, uint16_t offset, uint8_t
     return cyc_then(64, HudDrawNumber3(v, offset, p));
 }
 
-static void abi_draw_value(uint16_t value, uint16_t offset)
+static void abi_draw_value(Carried *cr, uint16_t value, uint16_t offset)
 {
-    uint8_t p = cpu.p, a = draw_value(cpu.db, value, offset, &p);
+    uint8_t p = cr->p, a = draw_value(cr->db, value, offset, &p);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = offset & 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)((nz8(p, a) & ~P_C) | P_M | P_X);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->x = offset & 0x00FF;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)((nz8(p, a) & ~P_C) | P_M | P_X));
 }
 
 /*
@@ -253,9 +305,22 @@ uint8_t HudDrawValueA(uint8_t bank, uint8_t *p)
     return draw_value(bank, 0x0DDA, 0x0114, p);
 }
 
+void HudDrawValueA_cr(Carried *cr)
+{
+    abi_draw_value(cr, 0x0DDA, 0x0114);
+}
+
 void abi_HudDrawValueA(void)
 {
-    abi_draw_value(0x0DDA, 0x0114);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudDrawValueA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -270,9 +335,22 @@ uint8_t HudDrawValueB(uint8_t bank, uint8_t *p)
     return draw_value(bank, 0x0DDA, 0x0028, p);
 }
 
+void HudDrawValueB_cr(Carried *cr)
+{
+    abi_draw_value(cr, 0x0DDA, 0x0028);
+}
+
 void abi_HudDrawValueB(void)
 {
-    abi_draw_value(0x0DDA, 0x0028);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudDrawValueB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -287,9 +365,22 @@ uint8_t HudDrawValueC(uint8_t bank, uint8_t *p)
     return draw_value(bank, 0x0DDB, 0x0128, p);
 }
 
+void HudDrawValueC_cr(Carried *cr)
+{
+    abi_draw_value(cr, 0x0DDB, 0x0128);
+}
+
 void abi_HudDrawValueC(void)
 {
-    abi_draw_value(0x0DDB, 0x0128);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudDrawValueC_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -331,13 +422,26 @@ void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p)
     cyc(42);
 }
 
+void HudCountUp19EC_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    HudCountUp19EC(cr->db, cr->x, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x3C);
+    set_p(cr, (uint8_t)(nz8(p & ~P_D, cr->db) | P_M));
+}
+
 void abi_HudCountUp19EC(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    HudCountUp19EC(cpu.db, cpu.x, &p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3C);
-    cpu.p = (uint8_t)(nz8(p & ~P_D, cpu.db) | P_M);
+    HudCountUp19EC_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -372,12 +476,25 @@ uint8_t HudDigitSprites62(uint8_t bank, uint8_t *d)
     return v;
 }
 
+void HudDigitSprites62_cr(Carried *cr)
+{
+    uint8_t d, v = HudDigitSprites62(cr->db, &d);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, (uint8_t)((nz8(cr->p, v) & ~P_C) | ((d & 0x80) ? P_C : 0)));
+}
+
 void abi_HudDigitSprites62(void)
 {
-    uint8_t d, v = HudDigitSprites62(cpu.db, &d);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | ((d & 0x80) ? P_C : 0));
+    HudDigitSprites62_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
@@ -421,16 +538,6 @@ uint16_t HudCountMove19EE(uint8_t bank, uint16_t rec, uint16_t x, uint8_t *p)
     return (cyc(72), HudCountMove19EECopy(bank, p));
 }
 
-void abi_HudCountMove19EE(void)
-{
-    uint8_t p = cpu.p;
-    uint16_t a = HudCountMove19EE(cpu.db, cpu.y, cpu.x, &p);
-
-    cpu.a = hc_skipped ? (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a) : a;
-    cpu.p = p;
-}
-
-/* HudCountMove19EE on carried registers, as abi_HudCountMove19EE leaves them. */
 void HudCountMove19EE_cr(Carried *cr)
 {
     uint8_t p = cr->p;
@@ -438,6 +545,19 @@ void HudCountMove19EE_cr(Carried *cr)
 
     cr->a = hc_skipped ? (uint16_t)((cr->a & 0xFF00) | (uint8_t)a) : a;
     set_p(cr, p);
+}
+
+void abi_HudCountMove19EE(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HudCountMove19EE_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -468,10 +588,24 @@ uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p)
     return (uint16_t)((n & 0xFF00) | 0x01);
 }
 
+void HudCountMove19EECopy_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = HudCountMove19EECopy(cr->db, &p);
+    set_p(cr, p);
+}
+
 void abi_HudCountMove19EECopy(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = HudCountMove19EECopy(cpu.db, &p);
-    cpu.p = p;
+    HudCountMove19EECopy_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
+

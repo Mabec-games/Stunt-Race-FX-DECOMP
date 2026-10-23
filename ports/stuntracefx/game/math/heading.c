@@ -18,6 +18,8 @@
 #include "native.h"
 #include "hw.h"
 #include "math_calls.h"
+#include "carried.h"
+
 
 #define H_X 0x000002u
 #define H_Y 0x000008u
@@ -193,10 +195,29 @@ static uint8_t heading_p(uint8_t p)
     return p;
 }
 
-static void heading_regs(uint8_t v)
+void HeadingFlat_cr(Carried *cr);
+void HeadingFlatMirrored_cr(Carried *cr);
+void HeadingFlatQuarterTurn_cr(Carried *cr);
+void HeadingFlatSpeedA_cr(Carried *cr);
+void HeadingPitched_cr(Carried *cr);
+void HeadingPitchedFrom1F7C_cr(Carried *cr);
+void HeadingPitchedVia1F7C_cr(Carried *cr);
+void ObjectMoveByVector_cr(Carried *cr);
+void ObjectMoveByVectorTimes2_cr(Carried *cr);
+void ObjectMoveByVectorTimes4_cr(Carried *cr);
+void ObjectVelocityFromHeading_cr(Carried *cr);
+void ObjectVelocityFromHeadingTimes2_cr(Carried *cr);
+void ObjectVelocityFromHeadingTimes4_cr(Carried *cr);
+void ObjectVelocityFromHeadingTimes8_cr(Carried *cr);
+void ObjectVelocityLevelFromDp_cr(Carried *cr);
+static void heading_regs(Carried *cr, uint8_t v);
+static void move_regs(Carried *cr, uint16_t v);
+static void vel_regs(Carried *cr, uint16_t v);
+
+static void heading_regs(Carried *cr, uint8_t v)
 {
-    cpu.p = nz8(heading_p(cpu.p), cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    set_p(cr, nz8(heading_p(cr->p), cr->db));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
 }
 
 /*
@@ -229,9 +250,22 @@ uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
     return v;
 }
 
+void HeadingFlat_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingFlat(cr->db, cr->x, cr->y));
+}
+
 void abi_HeadingFlat(void)
 {
-    heading_regs(HeadingFlat(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingFlat_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -263,9 +297,22 @@ uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
     return v;
 }
 
+void HeadingFlatMirrored_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingFlatMirrored(cr->db, cr->x, cr->y));
+}
+
 void abi_HeadingFlatMirrored(void)
 {
-    heading_regs(HeadingFlatMirrored(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingFlatMirrored_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -303,9 +350,22 @@ uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
     return v;
 }
 
+void HeadingPitched_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingPitched(cr->db, cr->x, cr->y));
+}
+
 void abi_HeadingPitched(void)
 {
-    heading_regs(HeadingPitched(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingPitched_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* HeadingPitchedFrom1F7C from its second entry on: the angles from $1F7C
@@ -353,9 +413,22 @@ uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
     return pitched_1f7c(x, y);
 }
 
+void HeadingPitchedVia1F7C_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingPitchedVia1F7C(cr->db, cr->x, cr->y));
+}
+
 void abi_HeadingPitchedVia1F7C(void)
 {
-    heading_regs(HeadingPitchedVia1F7C(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingPitchedVia1F7C_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -372,9 +445,22 @@ uint8_t HeadingPitchedFrom1F7C(uint16_t x, uint16_t y)
     return pitched_1f7c(x, y);
 }
 
+void HeadingPitchedFrom1F7C_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingPitchedFrom1F7C(cr->x, cr->y));
+}
+
 void abi_HeadingPitchedFrom1F7C(void)
 {
-    heading_regs(HeadingPitchedFrom1F7C(cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingPitchedFrom1F7C_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -406,9 +492,22 @@ uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t
     return v;
 }
 
+void HeadingFlatQuarterTurn_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingFlatQuarterTurn(cr->db, (uint8_t)cr->a, cr->x, cr->y));
+}
+
 void abi_HeadingFlatQuarterTurn(void)
 {
-    heading_regs(HeadingFlatQuarterTurn(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingFlatQuarterTurn_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -439,9 +538,22 @@ uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
     return v;
 }
 
+void HeadingFlatSpeedA_cr(Carried *cr)
+{
+    heading_regs(cr, HeadingFlatSpeedA(cr->db, (uint8_t)cr->a, cr->x, cr->y));
+}
+
 void abi_HeadingFlatSpeedA(void)
 {
-    heading_regs(HeadingFlatSpeedA(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HeadingFlatSpeedA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The flags N, Z, C, V of the last 16-bit add, for move_regs. */
@@ -485,10 +597,10 @@ static uint16_t move_by(uint8_t bank, uint16_t x)
 }
 
 /* The moves' registers: A the new +$10, M 8-bit, N, Z, C, V from its add. */
-static void move_regs(uint16_t v)
+static void move_regs(Carried *cr, uint16_t v)
 {
-    cpu.a = v;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | move_flags | P_M);
+    cr->a = v;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | move_flags | P_M));
 }
 
 /* ASL of the three words at $02, $08, $94 in that order. */
@@ -527,9 +639,22 @@ uint16_t ObjectMoveByVectorTimes4(uint8_t bank, uint16_t x)
     return v;
 }
 
+void ObjectMoveByVectorTimes4_cr(Carried *cr)
+{
+    move_regs(cr, ObjectMoveByVectorTimes4(cr->db, cr->x));
+}
+
 void abi_ObjectMoveByVectorTimes4(void)
 {
-    move_regs(ObjectMoveByVectorTimes4(cpu.db, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectMoveByVectorTimes4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -549,9 +674,22 @@ uint16_t ObjectMoveByVectorTimes2(uint8_t bank, uint16_t x)
     return v;
 }
 
+void ObjectMoveByVectorTimes2_cr(Carried *cr)
+{
+    move_regs(cr, ObjectMoveByVectorTimes2(cr->db, cr->x));
+}
+
 void abi_ObjectMoveByVectorTimes2(void)
 {
-    move_regs(ObjectMoveByVectorTimes2(cpu.db, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectMoveByVectorTimes2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -569,9 +707,22 @@ uint16_t ObjectMoveByVector(uint8_t bank, uint16_t x)
     return v;
 }
 
+void ObjectMoveByVector_cr(Carried *cr)
+{
+    move_regs(cr, ObjectMoveByVector(cr->db, cr->x));
+}
+
 void abi_ObjectMoveByVector(void)
 {
-    move_regs(ObjectMoveByVector(cpu.db, cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectMoveByVector_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The carry the velocity routines' last shift leaves (set, as
@@ -610,13 +761,13 @@ static uint16_t velocity_from_vector(uint8_t bank, uint16_t x, uint16_t y, int s
 
 /* The velocity routines' registers: A the last word, M 8-bit, X 16-bit;
    N, Z from A; C and V as left. */
-static void vel_regs(uint16_t v)
+static void vel_regs(Carried *cr, uint16_t v)
 {
-    uint8_t p = heading_p(cpu.p);
+    uint8_t p = heading_p(cr->p);
 
     p = (uint8_t)((p & ~P_C) | (vel_carry ? P_C : 0));
-    cpu.p = (uint8_t)(nz16(p, v) | P_M);
-    cpu.a = v;
+    set_p(cr, (uint8_t)(nz16(p, v) | P_M));
+    cr->a = v;
 }
 
 /*
@@ -634,9 +785,22 @@ uint16_t ObjectVelocityFromHeading(uint8_t bank, uint16_t x, uint16_t y)
     return velocity_from_vector(bank, x, y, 0);
 }
 
+void ObjectVelocityFromHeading_cr(Carried *cr)
+{
+    vel_regs(cr, ObjectVelocityFromHeading(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectVelocityFromHeading(void)
 {
-    vel_regs(ObjectVelocityFromHeading(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectVelocityFromHeading_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -651,9 +815,22 @@ uint16_t ObjectVelocityFromHeadingTimes2(uint8_t bank, uint16_t x, uint16_t y)
     return velocity_from_vector(bank, x, y, 1);
 }
 
+void ObjectVelocityFromHeadingTimes2_cr(Carried *cr)
+{
+    vel_regs(cr, ObjectVelocityFromHeadingTimes2(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectVelocityFromHeadingTimes2(void)
 {
-    vel_regs(ObjectVelocityFromHeadingTimes2(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectVelocityFromHeadingTimes2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -668,9 +845,22 @@ uint16_t ObjectVelocityFromHeadingTimes4(uint8_t bank, uint16_t x, uint16_t y)
     return velocity_from_vector(bank, x, y, 2);
 }
 
+void ObjectVelocityFromHeadingTimes4_cr(Carried *cr)
+{
+    vel_regs(cr, ObjectVelocityFromHeadingTimes4(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectVelocityFromHeadingTimes4(void)
 {
-    vel_regs(ObjectVelocityFromHeadingTimes4(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectVelocityFromHeadingTimes4_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -685,9 +875,22 @@ uint16_t ObjectVelocityFromHeadingTimes8(uint8_t bank, uint16_t x, uint16_t y)
     return velocity_from_vector(bank, x, y, 3);
 }
 
+void ObjectVelocityFromHeadingTimes8_cr(Carried *cr)
+{
+    vel_regs(cr, ObjectVelocityFromHeadingTimes8(cr->db, cr->x, cr->y));
+}
+
 void abi_ObjectVelocityFromHeadingTimes8(void)
 {
-    vel_regs(ObjectVelocityFromHeadingTimes8(cpu.db, cpu.x, cpu.y));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectVelocityFromHeadingTimes8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -729,8 +932,22 @@ uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
     return v;
 }
 
-void abi_ObjectVelocityLevelFromDp(void)
+void ObjectVelocityLevelFromDp_cr(Carried *cr)
 {
     vel_carry = 1;
-    vel_regs(ObjectVelocityLevelFromDp(cpu.db, cpu.x, cpu.y));
+    vel_regs(cr, ObjectVelocityLevelFromDp(cr->db, cr->x, cr->y));
 }
+
+void abi_ObjectVelocityLevelFromDp(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectVelocityLevelFromDp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

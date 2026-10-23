@@ -6,6 +6,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "video_calls.h"
+#include "carried.h"
+
 
 /*
  * @routine 03:FE06 WindowStep3437
@@ -35,13 +37,34 @@ uint8_t WindowStep3437(uint8_t bank, uint8_t *x, uint8_t *p)
     return r;
 }
 
+void WindowEdgesStep_cr(Carried *cr);
+void WindowStep3433By2_cr(Carried *cr);
+void WindowStep3433By3_cr(Carried *cr);
+void WindowStep3435_cr(Carried *cr);
+void WindowStep3437_cr(Carried *cr);
+void WindowStep3437By3_cr(Carried *cr);
+void WindowStep3439_cr(Carried *cr);
+
+void WindowStep3437_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowStep3437(cr->db, &x, &p));
+    cr->x = x;
+    set_p(cr, p);
+}
+
 void abi_WindowStep3437(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3437(cpu.db, &x, &p));
-    cpu.x = x;
-    cpu.p = p;
+    WindowStep3437_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -70,13 +93,26 @@ uint8_t WindowStep3435(uint8_t bank, uint8_t *x, uint8_t *p)
     return r;
 }
 
+void WindowStep3435_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowStep3435(cr->db, &x, &p));
+    cr->x = x;
+    set_p(cr, p);
+}
+
 void abi_WindowStep3435(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3435(cpu.db, &x, &p));
-    cpu.x = x;
-    cpu.p = p;
+    WindowStep3435_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -107,13 +143,26 @@ uint8_t WindowStep3439(uint8_t bank, uint8_t *x, uint8_t *p)
     return r;
 }
 
+void WindowStep3439_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowStep3439(cr->db, &x, &p));
+    cr->x = x;
+    set_p(cr, p);
+}
+
 void abi_WindowStep3439(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3439(cpu.db, &x, &p));
-    cpu.x = x;
-    cpu.p = p;
+    WindowStep3439_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Subtract n from the byte at addr in the bank, stopping at 1 (*x
@@ -151,14 +200,27 @@ uint8_t WindowStep3433By2(uint8_t bank, uint8_t *x, uint8_t *p)
     return window_step_down(bank, 0x3433, 2, x, p);
 }
 
+void WindowStep3433By2_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowStep3433By2(cr->db, &x, &p));
+    if (x != (uint8_t)cr->x)
+        cr->x = x;
+    set_p(cr, p);
+}
+
 void abi_WindowStep3433By2(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3433By2(cpu.db, &x, &p));
-    if (x != (uint8_t)cpu.x)
-        cpu.x = x;
-    cpu.p = p;
+    WindowStep3433By2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -173,14 +235,27 @@ uint8_t WindowStep3433By3(uint8_t bank, uint8_t *x, uint8_t *p)
     return window_step_down(bank, 0x3433, 3, x, p);
 }
 
+void WindowStep3433By3_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowStep3433By3(cr->db, &x, &p));
+    if (x != (uint8_t)cr->x)
+        cr->x = x;
+    set_p(cr, p);
+}
+
 void abi_WindowStep3433By3(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3433By3(cpu.db, &x, &p));
-    if (x != (uint8_t)cpu.x)
-        cpu.x = x;
-    cpu.p = p;
+    WindowStep3433By3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -210,14 +285,27 @@ uint8_t WindowStep3437By3(uint8_t bank, uint8_t *x, uint8_t *p)
     return r;
 }
 
+void WindowStep3437By3_cr(Carried *cr)
+{
+    uint8_t x = (uint8_t)cr->x, p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowStep3437By3(cr->db, &x, &p));
+    if (x != (uint8_t)cr->x)
+        cr->x = x;
+    set_p(cr, p);
+}
+
 void abi_WindowStep3437By3(void)
 {
-    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3437By3(cpu.db, &x, &p));
-    if (x != (uint8_t)cpu.x)
-        cpu.x = x;
-    cpu.p = p;
+    WindowStep3437By3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -277,14 +365,28 @@ uint8_t WindowEdgesStep(uint8_t db0, uint8_t *p, uint8_t *x)
     return a;
 }
 
-void abi_WindowEdgesStep(void)
+void WindowEdgesStep_cr(Carried *cr)
 {
     uint8_t x, p, a;
 
-    op_sep(P_M | P_X);
-    p = cpu.p;
-    a = WindowEdgesStep(cpu.db, &p, &x);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = x;
-    cpu.p = p;
+    r_sep(cr, P_M | P_X);
+    p = cr->p;
+    a = WindowEdgesStep(cr->db, &p, &x);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->x = x;
+    set_p(cr, p);
 }
+
+void abi_WindowEdgesStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowEdgesStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
