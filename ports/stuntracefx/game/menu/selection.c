@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "carried.h"
 
 /*
  * @routine 0B:C58D MenuRowPosition
@@ -573,6 +574,20 @@ void abi_MenuCursorFourWay(void)
         cpu.p = (uint8_t)((cpu.p & ~P_C) | mc_c);
     cpu.a = (uint16_t)((mc_pad & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+}
+
+/* MenuCursorFourWay on carried registers, as abi_MenuCursorFourWay leaves them. */
+void MenuCursorFourWay_cr(Carried *cr)
+{
+    uint8_t v = MenuCursorFourWay(cr->db);
+
+    cr->p |= P_M | P_X;
+    cr->x = mc_x >= 0 ? (uint16_t)mc_x : (uint16_t)(cr->x & 0x00FF);
+    cr->y &= 0x00FF;
+    if (mc_c >= 0)
+        cr->p = (uint8_t)((cr->p & ~P_C) | mc_c);
+    cr->a = (uint16_t)((mc_pad & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
 }
 
 static int cs_c;                        /* C as the car steps leave it, or -1 */

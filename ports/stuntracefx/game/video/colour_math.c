@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "native.h"
 #include "video_calls.h"
+#include "carried.h"
 
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 
@@ -86,6 +87,17 @@ void abi_FixedColourFromStep(void)
     cpu.x = fixed_step;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M | P_X);
+}
+
+/* FixedColourFromStep on carried registers, as abi_FixedColourFromStep leaves them. */
+void FixedColourFromStep_cr(Carried *cr)
+{
+    uint8_t v = FixedColourFromStep();
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = fixed_step;
+    cr->y &= 0x00FF;
+    cr->p = (uint8_t)(nz8(cr->p, v) | P_M | P_X);
 }
 
 void WindowsColourWindowOnly(void);
