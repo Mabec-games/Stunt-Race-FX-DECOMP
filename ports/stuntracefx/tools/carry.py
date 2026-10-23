@@ -160,8 +160,25 @@ def make_wrapper(n):
     wrapcode.append('/* %s as its adapter leaves the registers. */\nstatic void w_%s(Carried *cr)\n{\n%s}\n' % (n, n, bb))
     return wrap[n]
 
+# other files' public helpers that work on the register file: their
+# carried forms, or a stop
+EXTMAP = {'approach_regs': 'r_approach', 'approach_regs_byte': 'r_approach_byte'}
+EXTREG = set()
+for f, t in src.items():
+    if f == FILE:
+        continue
+    for (s0, e, n, hdr, params, bs) in functions(t):
+        if not hdr.startswith('static') and not n.startswith('abi_') and REG.search(t[bs:e]):
+            EXTREG.add(n)
+stops = set()
+
 cvariants = set()
 def rewrite_body(b):
+    for n in EXTMAP:
+        b = re.sub(r'(?<![\w>.])%s\s*\(' % n, EXTMAP[n] + '(cr, ', b)
+    for n in EXTREG - set(EXTMAP):
+        if re.search(r'(?<![\w>.])%s\s*\(' % n, b):
+            stops.add(n)
     # calls of helpers still in registers: through their _c variants, which
     # load the registers and take them back
     for n in glue:
@@ -256,8 +273,8 @@ for h in sorted(gvariants):
     cpu.p = c.p;
     cpu.db = c.db;%s
 }
-''' % (ret, h, params, '' if isvoid else re.sub(r'\bstatic\b|\binline\b', '', ret).strip() + ' v = ', call,
-       '' if isvoid else '\n    return v;')
+''' % (ret, h, params, '' if isvoid else re.sub(r'\bstatic\b|\binline\b', '', ret).strip() + ' ret_ = ', call,
+       '' if isvoid else '\n    return ret_;')
     m = re.search(r'^[^\n]*\b%s\(Carried \*cr[^)]*\)\n\{\n.*?^\}\n' % h, res, re.M | re.S)
     res = res[:m.end()] + '\n' + g + res[m.end():]
 
@@ -287,7 +304,7 @@ for h in sorted(cvariants):
     cr->p = cpu.p;
     cr->db = cpu.db;%s
 }
-''' % (rt, h, np, '' if rt == 'void' else rt + ' v = ', call, '' if rt == 'void' else '\n    return v;')
+''' % (rt, h, np, '' if rt == 'void' else rt + ' ret_ = ', call, '' if rt == 'void' else '\n    return ret_;')
     m = re.search(r'^[^\n]*\b%s\((?!Carried)[^)]*\)\n\{\n.*?^\}\n' % h, res, re.M | re.S)
     res = res[:m.end()] + '\n' + g + res[m.end():]
 
@@ -324,7 +341,22 @@ if wrapcode or regfn:
             protos.append(pr + '\n')
     absyn = ''.join('void abi_%s(void);\n' % n for n in sorted(syncw)
                     if not re.search(r'^void abi_%s\(void\);' % n, res, re.M))
-    res = res[:inc.end()] + add + '\n' + ''.join(protos) + absyn + fwd + res[inc.end():] + '\n' + wcode
+    # the declarations before the first function that uses any of them
+    names = [newname[n] for n in regfn] + ['w_' + n for n in wrap if wrap[n].startswith('w_')]
+    use = re.compile(r'(?<![\w>.])(%s)\s*\(' % '|'.join(map(re.escape, names))) if names else None
+    at = inc.end()
+    if use:
+        for m in HDR.finditer(res):
+            e = res.find('\n}\n', m.end() - 1)
+            if use.search(res, m.start(), e if e > 0 else len(res)):
+                at = max(inc.end(), m.start())
+                c = res.rfind('/*', inc.end(), at)
+                if c >= 0 and res.find('*/', c) < at and res[res.find('*/', c) + 2:at].strip() == '':
+                    at = c
+                break
+    res = res[:inc.end()] + add + '\n' + ''.join(protos) + absyn + res[inc.end():at] + fwd + '\n' + res[at:] + '\n' + wcode
+if stops:
+    sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))
 open(os.path.join(G, FILE), 'w').write(res)
 print('converted %d, glue %d (%s), sync wrappers %d (%s)' % (len(regfn), len(glue), ', '.join(sorted(glue)), len(syncw), ', '.join(sorted(syncw))))
 for n, w in left.items():
