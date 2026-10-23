@@ -114,6 +114,37 @@ if EXPORT:
 if re.search(r'^[^\n]*\(Carried \*cr[,)]', text, re.M) and re.search(r'^\s*Carried r = \{cpu\.a', text, re.M):
     sys.exit('%s is converted already: run it on its register version' % FILE)
 
+# a call or jump to a constant address is the routine that starts there
+# (dispatch.c looks it up in the table routines.py makes from the same
+# @routine and @alias tags): written as the call of its adapter
+TAGS = {}
+for t in src.values():
+    for c in re.findall(r'/\*.*?\*/', t, re.S):
+        m = re.search(r'@routine\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})\s+(\w+)', c)
+        if not m:
+            continue
+        TAGS[int(m.group(1) + m.group(2), 16)] = m.group(3)
+        for a in re.findall(r'@alias\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})', c):
+            TAGS[int(a[0] + a[1], 16)] = m.group(3)
+ABI = {n for t in src.values() for n in re.findall(r'^void abi_(\w+)\(void\)\n\{', t, re.M)}
+resolved = set()
+def const_target(m):
+    n = TAGS.get(int(m.group(1), 16) & 0xFFFFFF)
+    if not n or n not in ABI:
+        return m.group(0)
+    resolved.add(n)
+    return 'abi_%s()' % n
+text = re.sub(r'\bcall_routine\(\s*0x([0-9A-Fa-f]{6})u?\s*,\s*[01]\s*\)', const_target, text)
+text = re.sub(r'\bjump_routine\(\s*0x([0-9A-Fa-f]{6})u?\s*\)', const_target, text)
+decl = ''.join('void abi_%s(void);\n' % n for n in sorted(resolved)
+               if not re.search(r'\babi_%s\s*\(\s*void\s*\)\s*;' % n, text))
+if decl:
+    inc = list(re.finditer(r'^#include .*\n', text, re.M))[-1]
+    text = text[:inc.end()] + decl + text[inc.end():]
+src[FILE] = text
+if resolved:
+    print('constant calls resolved: %s' % ', '.join(sorted(resolved)))
+
 fns = functions(text)
 byname = {f[2]: f for f in fns}
 isroutine = {f[2]: f[2].startswith('abi_') and f[4].strip() in ('void', '') for f in fns}
