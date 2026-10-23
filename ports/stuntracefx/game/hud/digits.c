@@ -89,19 +89,26 @@ draw:
     return end;
 }
 
-void HudDrawTime(void)
+/* From C: returns A's low byte; *x_set when X was set, to *x. */
+uint8_t HudDrawTime(uint16_t *x, int *x_set)
 {
-    hud_draw_time();
+    TimeEnd end = hud_draw_time();
+
+    cyc(70);
+    *x = end.x;
+    *x_set = end.x_set;
+    return end.a;
 }
 
 void abi_HudDrawTime(void)
 {
-    TimeEnd end = hud_draw_time();
+    uint16_t x;
+    int x_set;
+    uint8_t a = HudDrawTime(&x, &x_set);
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | end.a);
-    if (end.x_set)
-        cpu.x = (cpu.p & P_X) ? (uint8_t)end.x : end.x;
-    cyc(70);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    if (x_set)
+        cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
 
 /*
@@ -132,23 +139,24 @@ static uint8_t hud_draw_digits_19ec(int *drew)
     return (uint8_t)(((v >> 4) << 1) + 1);
 }
 
-void HudDrawDigits19EC(void)
+/* From C: returns A's low byte; *drew when it drew. */
+uint8_t HudDrawDigits19EC(int *drew)
 {
-    int drew;
+    uint8_t a = hud_draw_digits_19ec(drew);
 
-    hud_draw_digits_19ec(&drew);
+    cyc(42);
+    return a;
 }
 
 void abi_HudDrawDigits19EC(void)
 {
     int drew;
-    uint8_t a = hud_draw_digits_19ec(&drew);
+    uint8_t a = HudDrawDigits19EC(&drew);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cpu.p = (uint8_t)(nz8(cpu.p, a) | P_M);
     if (drew)
         cpu.p &= (uint8_t)~P_C;
-    cyc(42);
 }
 
 /*
@@ -284,6 +292,7 @@ void abi_HudDrawValueC(void)
 }
 
 void SoundPort0QueuePush(uint8_t command);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
 
 /* An 8-bit ADC in decimal mode, as the 65816 does it (carry in `c`). */
 static uint8_t adc_bcd8(uint8_t a, uint8_t m, int c, uint8_t *p)
@@ -353,27 +362,25 @@ static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
     return (uint8_t)((d << 1) + 1);
 }
 
-uint8_t HudDigitSprites62(uint8_t bank)
+/* From C: returns A's low byte; *d the digit. */
+uint8_t HudDigitSprites62(uint8_t bank, uint8_t *d)
 {
-    uint8_t d;
+    uint8_t v = hud_digit_sprites_62(bank, d);
 
-    return hud_digit_sprites_62(bank, &d);
+    cyc(42);
+    return v;
 }
 
 void abi_HudDigitSprites62(void)
 {
-    uint8_t d, v = hud_digit_sprites_62(cpu.db, &d);
+    uint8_t d, v = HudDigitSprites62(cpu.db, &d);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | ((d & 0x80) ? P_C : 0));
-    cyc(42);
 }
 
 uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
 uint16_t GsuRecordLower82(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
-void abi_SoundPort0QueuePush(void);
-void abi_GsuRecordRaise6A(void);
-void abi_GsuRecordLower82(void);
 
 /*
  * @routine 09:C08E HudCountMove19EE
@@ -386,45 +393,40 @@ void abi_GsuRecordLower82(void);
  * from it. Otherwise: A = the old $19EE's high byte and 1; N, Z from 1;
  * M 8-bit; X, Y unchanged.
  */
-void HudCountMove19EE(uint8_t bank, uint16_t rec)
+static int hc_skipped;                  /* $0E59 was set: A's low byte only */
+
+uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p);
+
+/* From C: x = X (for the flags the record calls leave), *p = P in and
+   out; returns A (its low byte only when hc_skipped). */
+uint16_t HudCountMove19EE(uint8_t bank, uint16_t rec, uint16_t x, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint8_t p = 0;
-    uint16_t n;
+    uint8_t v;
 
-    if (rd8(b | 0x0E59))
-        return;
-    SoundPort0QueuePush(0x35);
-    GsuRecordRaise6A(bank, rec, 0x7F, &p);
-    GsuRecordLower82(bank, rec, 0x7F, &p);
-    n = rd16(b | 0x19EE);
-    wr16(b | 0x19F0, n);
-    wr16(b | 0x19EE, 0x0000);
-    wr8(b | 0x19F2, 0x01);
+    cyc(46);
+    v = rd8(b | 0x0E59);
+    *p = nz8((uint8_t)(*p | P_M), v);
+    hc_skipped = v != 0;
+    if (v)
+        return v;
+    cyc(94);
+    SoundPort0QueuePushW(0x35, (*p & P_X) ? 0 : 16);
+    *p = nz8(*p, bank);
+    (cyc(100), GsuRecordRaise6A(bank, rec, 0x7F, p));
+    *p = (uint8_t)((nz16(*p, x) | P_M) & ~P_X);
+    (cyc(100), GsuRecordLower82(bank, rec, 0x7F, p));
+    *p = (uint8_t)((nz16(*p, x) | P_M) & ~P_X);
+    return (cyc(72), HudCountMove19EECopy(bank, p));
 }
-
-void abi_HudCountMove19EECopy(void);
 
 void abi_HudCountMove19EE(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    cyc(46);
-    uint8_t v = rd8(b | 0x0E59);
+    uint8_t p = cpu.p;
+    uint16_t a = HudCountMove19EE(cpu.db, cpu.y, cpu.x, &p);
 
-    cpu.p |= P_M;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    if (v)
-        return; else { cyc(94); }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
-    abi_SoundPort0QueuePush();
-    cpu.p |= P_M;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
-    (cyc(100), abi_GsuRecordRaise6A());
-    cpu.p |= P_M;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
-    (cyc(100), abi_GsuRecordLower82());
-    (cyc(72), abi_HudCountMove19EECopy());
+    cpu.a = hc_skipped ? (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a) : a;
+    cpu.p = p;
 }
 
 /*
@@ -435,10 +437,11 @@ void abi_HudCountMove19EE(void)
  * HOW: 16-bit copy and STZ through the data bank, then an 8-bit store.
  * Entry: any widths. Exit: A = the old $19EE's high byte and 1; N, Z from
  * 1; M 8-bit.
+ * From C: returns A; *p as P leaves.
  */
-void abi_HudCountMove19EECopy(void)
+uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t n;
 
     cyc(46);
@@ -449,7 +452,15 @@ void abi_HudCountMove19EECopy(void)
     wr16(b | 0x19EE, 0x0000);
     cyc(62);
     wr8(b | 0x19F2, 0x01);
-    cpu.a = (uint16_t)((n & 0xFF00) | 0x01);
-    cpu.p = (uint8_t)(nz8(cpu.p, 0x01) | P_M);
+    *p = (uint8_t)(nz8(*p, 0x01) | P_M);
     cyc(42);
+    return (uint16_t)((n & 0xFF00) | 0x01);
+}
+
+void abi_HudCountMove19EECopy(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = HudCountMove19EECopy(cpu.db, &p);
+    cpu.p = p;
 }
