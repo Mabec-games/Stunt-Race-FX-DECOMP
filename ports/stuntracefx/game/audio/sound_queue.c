@@ -12,6 +12,7 @@
 #include "hw.h"
 #include "wram.h"
 #include "audio_calls.h"
+#include "carried.h"
 
 /* Append a byte to a ring, unless sound is muted or the ring is full. The
    count is incremented in place (read again, as INC does): the frame code
@@ -70,6 +71,14 @@ void abi_SoundPort0QueuePushRaw(void)
     cyc(8);
 }
 
+/* SoundPort0QueuePushRaw on carried registers, as abi_SoundPort0QueuePushRaw leaves them. */
+void SoundPort0QueuePushRaw_cr(Carried *cr)
+{
+    SoundPort0QueuePushRaw((uint8_t)cr->a);
+    cr->p = nz8(cr->p, cr->db);  /* the last pull restores DB */
+    cyc(8);
+}
+
 /* From a caller with M and X 8-bit: the pulls take no extra byte. */
 void SoundPort0QueuePushRawX8(uint8_t command)
 {
@@ -80,6 +89,13 @@ void abi_SoundPort0QueuePushRawX8(void)
 {
     SoundPort0QueuePushRawX8((uint8_t)cpu.a);
     cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* SoundPort0QueuePushRawX8 on carried registers, as abi_SoundPort0QueuePushRawX8 leaves them. */
+void SoundPort0QueuePushRawX8_cr(Carried *cr)
+{
+    SoundPort0QueuePushRawX8((uint8_t)cr->a);
+    cr->p = nz8(cr->p, cr->db);
 }
 
 /* With the caller's widths: wide as for SoundPort0QueuePushW (the entry's
@@ -95,6 +111,13 @@ void abi_SoundPort0QueuePushRawWide(void)
 {
     SoundPort0QueuePushRawWide((uint8_t)cpu.a, push_wide(cpu.p));
     cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* SoundPort0QueuePushRawWide on carried registers, as abi_SoundPort0QueuePushRawWide leaves them. */
+void SoundPort0QueuePushRawWide_cr(Carried *cr)
+{
+    SoundPort0QueuePushRawWide((uint8_t)cr->a, push_wide(cr->p));
+    cr->p = nz8(cr->p, cr->db);
 }
 
 /*
@@ -128,6 +151,13 @@ void abi_SoundPort0QueuePush(void)
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
 }
 
+/* SoundPort0QueuePush on carried registers, as abi_SoundPort0QueuePush leaves them. */
+void SoundPort0QueuePush_cr(Carried *cr)
+{
+    SoundPort0QueuePushW((uint8_t)cr->a, push_wide(cr->p));
+    cr->p = nz8(cr->p, cr->db);  /* the last pull restores DB */
+}
+
 void abi_SoundPort0QueuePushX8(void)
 {
     abi_SoundPort0QueuePush();
@@ -157,6 +187,13 @@ void abi_SoundPort1QueuePush(void)
 {
     SoundPort1QueuePushW((uint8_t)cpu.a, push_wide(cpu.p));
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
+}
+
+/* SoundPort1QueuePush on carried registers, as abi_SoundPort1QueuePush leaves them. */
+void SoundPort1QueuePush_cr(Carried *cr)
+{
+    SoundPort1QueuePushW((uint8_t)cr->a, push_wide(cr->p));
+    cr->p = nz8(cr->p, cr->db);  /* the last pull restores DB */
 }
 
 void abi_SoundPort1QueuePushX8(void)
@@ -206,6 +243,15 @@ void abi_SoundReset(void)
     cpu.a &= 0xFF00;
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
+}
+
+/* SoundReset on carried registers, as abi_SoundReset leaves them. */
+void SoundReset_cr(Carried *cr)
+{
+    SoundReset();
+    cr->a &= 0xFF00;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
 }
 
 /* One ring to its port: 0 when the port still shows a command, else the
@@ -352,4 +398,16 @@ void abi_SoundPortsSend(void)
     cpu.x = end.x;
     cpu.y &= 0x00FF;
     cpu.p = p0;
+}
+
+/* SoundPortsSend on carried registers, as abi_SoundPortsSend leaves them. */
+void SoundPortsSend_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+    SoundPortsEnd end = SoundPortsSend(cr->db, (uint8_t)cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | end.a);
+    cr->x = end.x;
+    cr->y &= 0x00FF;
+    cr->p = p0;
 }

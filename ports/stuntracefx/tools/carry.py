@@ -18,7 +18,8 @@ Check the result with the side-by-side harness and same.py.
 """
 import os, re, sys
 G = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'game')
-FILE = sys.argv[1]
+EXPORT = sys.argv[1] == '--export'
+FILE = sys.argv[2] if EXPORT else sys.argv[1]
 src = {}
 for d, _, fs in os.walk(G):
     for f in fs:
@@ -41,6 +42,74 @@ def functions(t):
 
 REG = re.compile(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_(?!adc16|sbc16|adc8|sbc8)\w+\s*\(|\babi_\w+\s*\(\s*\)')
 GLUE = re.compile(r'\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b|\bcpu\.(s|pc|e|unwound)\b|\babi_\w+\b(?!\s*\()')
+
+_DEFS = None
+def all_defs():
+    global _DEFS
+    if _DEFS is None:
+        _DEFS = {'local': {}, 'pub': {}}
+        for ff, t in src.items():
+            for (s0, e, n, hdr, params, bs) in functions(t):
+                b = t[bs:e - 2]
+                _DEFS['local'][(ff, n)] = (b, params)
+                if not hdr.startswith('static'):
+                    _DEFS['pub'].setdefault(n, []).append((ff, b, params))
+    return _DEFS
+
+def touches_any(f, b, skip):
+    """Whether anything b (in file f) calls, followed into its own file,
+    uses the register file or dispatches; names in skip (carried here) and
+    functions on carried registers do not count."""
+    D = all_defs()
+    seen = set()
+    todo = [(f, c) for c in set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', b))]
+    while todo:
+        ff, c = todo.pop()
+        if (ff, c) in seen or (ff == FILE and c in skip):
+            continue
+        seen.add((ff, c))
+        cands = [(ff,) + D['local'][(ff, c)]] if (ff, c) in D['local'] else D['pub'].get(c, [])
+        for (fx, cb, params) in cands:
+            if 'Carried *cr' in params:
+                continue
+            if REG.search(cb) or GLUE.search(cb):
+                return True
+            todo += [(fx, x) for x in set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', cb))]
+    return False
+
+if EXPORT:
+    # each adapter abi_X here gets a carried form X_cr beside it: the
+    # adapter's body on carried registers (it may use this file's helpers)
+    made = []
+    fexp = functions(text)
+    out, pos = [], 0
+    for m in re.finditer(r'^void abi_(\w+)\(void\)\n\{\n(.*?)^\}\n', text, re.M | re.S):
+        n, b = m.group(1), m.group(2)
+        if 'Carried r' in b:
+            continue
+        if re.search(r'\bcpu\.(s|pc|e|unwound)\b|call_routine|jump_routine', b):
+            continue
+        bad = touches_any(FILE, b, set())
+        if bad or re.search(r'\babi_\w+\s*\(', b):
+            continue
+        if re.search(r'^void %s_cr\(Carried \*cr\)' % n, text, re.M):
+            continue
+        bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
+        bb = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', bb)
+        bb = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', bb)
+        bb = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', bb)
+        out.append(text[pos:m.end()])
+        out.append('\n/* %s on carried registers, as abi_%s leaves them. */\nvoid %s_cr(Carried *cr)\n{\n%s}\n' % (n, n, n, bb))
+        pos = m.end()
+        made.append(n)
+    out.append(text[pos:])
+    res = ''.join(out)
+    if made and '"carried.h"' not in res:
+        inc = list(re.finditer(r'^#include .*\n', res, re.M))[-1]
+        res = res[:inc.end()] + '#include "carried.h"\n' + res[inc.end():]
+    open(os.path.join(G, FILE), 'w').write(res)
+    print('exported %d: %s' % (len(made), ', '.join(made)))
+    sys.exit(0)
 
 fns = functions(text)
 byname = {f[2]: f for f in fns}
@@ -112,7 +181,30 @@ def statics(f):
     return set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*\(', t, re.M)) | \
            set(re.findall(r'^static [\w\s\*]*?\b(\w+)\s*(?:\[|=|;)', t, re.M))
 
+def touches_regs(f, b):
+    return touches_any(f, b, regfn if f == FILE else set())
+
+def _old_touches_regs(f, b):
+    """Whether anything b calls in file f (transitively, adapters aside)
+    uses the register file or dispatches."""
+    t = src[f]
+    fl = {d[2]: t[d[5]:d[1] - 2] for d in functions(t)}
+    seen, todo = set(), set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', b))
+    while todo:
+        c = todo.pop()
+        if c in seen or c not in fl:
+            continue
+        seen.add(c)
+        cb = fl[c]
+        if f == FILE and c in regfn:
+            continue                    # converted here: called carried
+        if REG.search(cb) or GLUE.search(cb):
+            return True
+        todo |= set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', cb))
+    return False
+
 wrap, wrapcode, syncw = {}, [], set()
+carried_ext = set()
 def sync_wrapper(n):
     wrapcode.append('''/* %s, still in registers: its call with the registers loaded and taken
    back. */
@@ -142,7 +234,16 @@ def make_wrapper(n):
         wrap[n] = newname['abi_' + n] + '(cr)'
         return wrap[n]
     wrap[n] = 'w_%s(cr)' % n
+    for t in src.values():
+        if re.search(r'^void %s_cr\(Carried \*cr\)' % n, t, re.M):
+            wrap[n] = '%s_cr(cr)' % n
+            carried_ext.add(n + '_cr')
+            return wrap[n]
     f, b = find_adapter(n)
+    if b is not None and re.search(r'Carried r = \{cpu\.a, cpu\.x, cpu\.y, cpu\.d, cpu\.p, cpu\.db\};\s*%s\(&r\);' % n, b):
+        wrap[n] = '%s(cr)' % n          # a routine on carried registers already
+        carried_ext.add(n)
+        return wrap[n]
     ok = b is not None and (f == FILE or re.search(r'(?<![\w])%s\s*\(' % n, b))
     if ok and f != FILE:
         st = statics(f)
@@ -150,6 +251,8 @@ def make_wrapper(n):
         if used & st:
             ok = False
     if ok and GLUE.search(b):
+        ok = False
+    if ok and touches_regs(f, b):
         ok = False
     if not ok:
         sync_wrapper(n)
@@ -404,6 +507,7 @@ if wrapcode or regfn:
         if not isroutine[n]:
             res = re.sub(r'^(?:static )?[A-Za-z_][\w \*]*\b%s\s*\((?!Carried)[^;{)]*\);\n' % n, '', res, flags=re.M)
     fwd += ''.join('static void w_%s(Carried *cr);\n' % n for n in sorted(wrap) if wrap[n].startswith('w_'))
+    fwd += ''.join('void %s(Carried *cr);\n' % n for n in sorted(carried_ext))
     wcode = '\n'.join(wrapcode)
     protos = []
     for c in sorted(set(re.findall(r'(?<![\w>.])([A-Za-z_]\w*)\s*\(', wcode + ''.join(body[n] for n in regfn)))):
@@ -430,6 +534,26 @@ if wrapcode or regfn:
                     at = c
                 break
     res = res[:inc.end()] + add + '\n' + ''.join(protos) + absyn + res[inc.end():at] + fwd + '\n' + res[at:] + '\n' + wcode
+# tidy: a macro whose register form nothing uses gives its name back to
+# the twin; register variants nothing calls go
+for name in list(macros):
+    rest = re.sub(r'^#define %s(?:_c)?\b[^\n]*\n' % name, '', res, flags=re.M)
+    if not re.search(r'(?<![\w])%s\s*\(' % name, rest):
+        res = re.sub(r'^#define %s\b[^\n]*\n' % name, '', res, flags=re.M)
+        res = re.sub(r'(?<![\w])%s_c\b' % name, name, res)
+changed = True
+while changed:
+    changed = False
+    for m in list(HDR.finditer(res)):
+        n = m.group(2)
+        if not (n.endswith('_g') or n.endswith('_c')) or not m.group(1).startswith('static'):
+            continue
+        if len(re.findall(r'(?<![\w])%s\b' % n, res)) == 1:
+            e = res.index('\n}\n', m.end() - 1) + 3
+            res = res[:m.start()] + res[e:].lstrip('\n')
+            changed = True
+            break
+
 if stops:
     sys.exit('stopped: converted code calls register helpers of other files: %s' % ', '.join(sorted(stops)))
 open(os.path.join(G, FILE), 'w').write(res)

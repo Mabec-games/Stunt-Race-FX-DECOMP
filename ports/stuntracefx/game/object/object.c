@@ -9,7 +9,6 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-void CrashGreen(uint8_t bank);
 uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has);
 uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj);
 uint8_t GsuRun(uint8_t bank, uint16_t start);
@@ -18,6 +17,708 @@ uint8_t RandomStepLong(void);
 uint8_t RotateXY(uint8_t angle);
 uint8_t RotateXZ(uint8_t angle);
 uint8_t RotateXZFrom08(uint8_t angle);
+void abi_ObjectFreeLong(void);
+void abi_ObjectRecordFlag70Step(void);
+void abi_ObjectRunHandlerA(void);
+void abi_ObjectRunHandlerB(void);
+
+/* A field of the object at offset `obj` in the data bank. */
+static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
+{
+    return (uint32_t)bank << 16 | (uint16_t)(0x2000 + off + obj);
+}
+
+/*
+ * @routine 03:89A8 ObjectLinkedSet1A
+ * WHAT IT DOES: Stores A in field +$1A of the object that X's object links to.
+ * HOW: Reads the link at +$4F, then stores there (bank $7E, long addressing).
+ * Entry: M 16-bit, X 16-bit; A = value, X = object. Exit: A unchanged; X =
+ * the linked object; N, Z from A.
+ */
+uint16_t ObjectLinkedSet1A(uint16_t obj, uint16_t value)
+{
+    cyc(62);
+    uint16_t linked = rd16(0x7E204F + obj);
+
+    cyc(82);
+    wr16(0x7E201A + linked, value);
+    cyc(44);
+    return linked;
+}
+
+void abi_ObjectLinkedSet1A(void)
+{
+    cpu.x = ObjectLinkedSet1A(cpu.x, cpu.a);
+    cpu.p = nz16(cpu.p, cpu.a);
+}
+
+/* ObjectLinkedSet1A on carried registers, as abi_ObjectLinkedSet1A leaves them. */
+void ObjectLinkedSet1A_cr(Carried *cr)
+{
+    cr->x = ObjectLinkedSet1A(cr->x, cr->a);
+    cr->p = nz16(cr->p, cr->a);
+}
+
+/* Copy n bytes of fields from one object to another, in the data bank. */
+static uint8_t copy_bytes(uint8_t bank, uint16_t from, uint16_t to, uint16_t off, unsigned n)
+{
+    uint8_t v = 0;
+    unsigned i;
+
+    cyc(0);
+    for (i = 0; i < n; i++) {
+        v = rd8(cyc_then(30, field(bank, from, (uint16_t)(off + i))));
+        wr8(field(bank, to, (uint16_t)(off + i)), cyc_then(30, v));
+    }
+    cyc(44);
+    return v;
+}
+
+static uint16_t copy_words(uint8_t bank, uint16_t from, uint16_t to)
+{
+    uint16_t v = 0;
+    unsigned i;
+
+    cyc(22);
+    for (i = 0; i < 3; i++) {
+        v = rd16(cyc_then(30, field(bank, from, (uint16_t)(0x0C + 2 * i))));
+        wr16(field(bank, to, (uint16_t)(0x0C + 2 * i)), cyc_then(30, v));
+    }
+    cyc(66);
+    return v;
+}
+
+/*
+ * @routine 03:D214 ObjectCopy14To
+ * WHAT IT DOES: Copies object X's three bytes at +$14-$16 to object Y.
+ * HOW: Three byte copies, in the data bank.
+ * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A low byte =
+ * the last byte; N, Z from it.
+ */
+void ObjectCopy14To(uint8_t bank, uint16_t from, uint16_t to)
+{
+    copy_bytes(bank, from, to, 0x14, 3);
+}
+
+void abi_ObjectCopy14To(void)
+{
+    uint8_t v = copy_bytes(cpu.db, cpu.x, cpu.y, 0x14, 3);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* ObjectCopy14To on carried registers, as abi_ObjectCopy14To leaves them. */
+void ObjectCopy14To_cr(Carried *cr)
+{
+    uint8_t v = copy_bytes(cr->db, cr->x, cr->y, 0x14, 3);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+/*
+ * @routine 03:D227 ObjectCopy14From
+ * WHAT IT DOES: Copies object Y's three bytes at +$14-$16 to object X.
+ * HOW: As ObjectCopy14To, the other way.
+ * Entry: as ObjectCopy14To. Exit: as ObjectCopy14To.
+ */
+void ObjectCopy14From(uint8_t bank, uint16_t to, uint16_t from)
+{
+    copy_bytes(bank, from, to, 0x14, 3);
+}
+
+void abi_ObjectCopy14From(void)
+{
+    uint8_t v = copy_bytes(cpu.db, cpu.y, cpu.x, 0x14, 3);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* ObjectCopy14From on carried registers, as abi_ObjectCopy14From leaves them. */
+void ObjectCopy14From_cr(Carried *cr)
+{
+    uint8_t v = copy_bytes(cr->db, cr->y, cr->x, 0x14, 3);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+}
+
+/*
+ * @routine 03:D1E6 ObjectCopyPositionTo
+ * WHAT IT DOES: Copies object X's position to object Y.
+ * HOW: Three 16-bit copies (+$0C, +$0E, +$10), in the data bank.
+ * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A = the
+ * last word; N, Z from it (16-bit); M 8-bit.
+ */
+uint16_t ObjectCopyPositionTo(uint8_t bank, uint16_t from, uint16_t to)
+{
+    return copy_words(bank, from, to);
+}
+
+void abi_ObjectCopyPositionTo(void)
+{
+    cpu.a = copy_words(cpu.db, cpu.x, cpu.y);
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
+}
+
+/* ObjectCopyPositionTo on carried registers, as abi_ObjectCopyPositionTo leaves them. */
+void ObjectCopyPositionTo_cr(Carried *cr)
+{
+    cr->a = copy_words(cr->db, cr->x, cr->y);
+    cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_M);
+}
+
+/*
+ * @routine 03:D1FD ObjectCopyPositionFrom
+ * WHAT IT DOES: Copies object Y's position to object X.
+ * HOW: As ObjectCopyPositionTo, the other way.
+ * Entry: as ObjectCopyPositionTo. Exit: as ObjectCopyPositionTo.
+ */
+uint16_t ObjectCopyPositionFrom(uint8_t bank, uint16_t to, uint16_t from)
+{
+    return copy_words(bank, from, to);
+}
+
+void abi_ObjectCopyPositionFrom(void)
+{
+    cpu.a = copy_words(cpu.db, cpu.y, cpu.x);
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
+}
+
+/* ObjectCopyPositionFrom on carried registers, as abi_ObjectCopyPositionFrom leaves them. */
+void ObjectCopyPositionFrom_cr(Carried *cr)
+{
+    cr->a = copy_words(cr->db, cr->y, cr->x);
+    cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_M);
+}
+
+/*
+ * @routine 03:C06C ObjectApplyVelocity
+ * WHAT IT DOES: Moves object X by its velocity.
+ * HOW: Adds +$2E, +$30, +$32 to +$0C, +$0E, +$10 (16-bit), in the data bank.
+ * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A = the new
+ * +$10; flags from the last add; M 8-bit.
+ */
+static uint16_t apply_velocity(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint16_t r = 0;
+    unsigned i;
+
+    cyc(22);
+    for (i = 0; i < 3; i++) {
+        uint16_t a = rd16(cyc_then(30, field(bank, obj, (uint16_t)(0x0C + 2 * i))));
+        uint16_t b = rd16(cyc_then(44, field(bank, obj, (uint16_t)(0x2E + 2 * i))));
+        uint32_t s = (uint32_t)a + b;
+        r = (uint16_t)s;
+        wr16(field(bank, obj, (uint16_t)(0x0C + 2 * i)), cyc_then(30, r));
+        *p = (uint8_t)((nz16(*p, r) & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
+                       | ((~(a ^ b) & (a ^ r) & 0x8000) ? P_V : 0));
+    }
+    cyc(66);
+    return r;
+}
+
+uint16_t ObjectApplyVelocity(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    return apply_velocity(bank, obj, p);
+}
+
+void abi_ObjectApplyVelocity(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = apply_velocity(cpu.db, cpu.x, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}
+
+/* ObjectApplyVelocity on carried registers, as abi_ObjectApplyVelocity leaves them. */
+void ObjectApplyVelocity_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = apply_velocity(cr->db, cr->x, &p);
+    cr->p = (uint8_t)(p | P_M);
+}
+
+/*
+ * @routine 03:D3DE ObjectPoolInit
+ * WHAT IT DOES: Empties the object table: links all $136 records into the
+ * free list and clears the counters at $0329-$032E.
+ * HOW: Starting at offset 1, each record's first word gets the next record's
+ * offset ($62 on); the last gets 0. Data bank $7E inside.
+ * Entry: any widths. Exit: A = 1 + $136 * $62; X = the last record; Y = 0;
+ * P unchanged.
+ */
+void ObjectPoolInit(void)
+{
+    uint16_t x = 1;
+    unsigned i;
+
+    cyc(178);
+    wr16(0x7E0329, 0);
+    cyc(24);
+    wr16(0x7E032B, 0);
+    cyc(48);
+    wr16(0x7E032D, 1);
+    for (i = 0; i < 0x136; i++) {
+        uint16_t next = (uint16_t)(x + 0x62);
+        cyc(106);
+        wr16(0x7E2000 + x, next);
+        if (i + 1 < 0x136)
+            { cyc(12); x = next; }
+    }
+    cyc(60);
+    wr16(0x7E2000 + x, 0);
+}
+
+void abi_ObjectPoolInit(void)
+{
+    ObjectPoolInit();
+    cpu.a = (uint16_t)(1 + 0x136 * 0x62);
+    cpu.x = (uint16_t)(1 + 0x135 * 0x62);
+    cpu.y = 0;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+    } else { cyc(106); }
+}
+
+/* ObjectPoolInit on carried registers, as abi_ObjectPoolInit leaves them. */
+void ObjectPoolInit_cr(Carried *cr)
+{
+    ObjectPoolInit();
+    cr->a = (uint16_t)(1 + 0x136 * 0x62);
+    cr->x = (uint16_t)(1 + 0x135 * 0x62);
+    cr->y = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+    } else { cyc(106); }
+}
+
+/*
+ * @routine 7F:12AC ObjectLinkFlag4000Step
+ * WHAT IT DOES: When the object two links on from the one at $0346 has bit
+ * 14 set in its first word, adds 8 to $06CD.
+ * HOW: Follows the link at +$4F twice (bank $7E), reads the record's first
+ * word in bank 0.
+ * Entry: any widths. Exit: A = the masked word, or the new $06CD; X, P
+ * unchanged.
+ */
+uint16_t ObjectLinkFlag4000Step(void)
+{
+    cyc(98);
+    uint16_t x = rd16(0x000346), a;
+
+    cyc(32);
+    x = rd16(0x7E204F + x);
+    cyc(46);
+    x = rd16(0x7E204F + x);
+    cyc(46);
+    a = rd16(0x000000 + x) & 0x4000;
+    if (!a)
+        { cyc(46); return a; }
+    cyc(72);
+    a = (uint16_t)(rd16(0x0006CD) + 8);
+    cyc(70);
+    wr16(0x0006CD, a);
+    return a;
+}
+
+void abi_ObjectLinkFlag4000Step(void)
+{
+    cpu.a = ObjectLinkFlag4000Step();
+    cyc(108);
+}
+
+/* ObjectLinkFlag4000Step on carried registers, as abi_ObjectLinkFlag4000Step leaves them. */
+void ObjectLinkFlag4000Step_cr(Carried *cr)
+{
+    cr->a = ObjectLinkFlag4000Step();
+    cyc(108);
+}
+
+/*
+ * @routine 08:B830 ObjectFlag40IfMatch
+ * WHAT IT DOES: When A equals the word at $70:2476, sets bit 6 of field
+ * +$25 of the object at $0346.
+ * HOW: 16-bit compare, then an 8-bit OR through the data bank.
+ * Entry: M 16-bit, X 16-bit; A = value. Exit: no match: A unchanged; M
+ * 16-bit; N, Z, C from the compare. Match: A low byte = the new field; X =
+ * the object; M 8-bit; N, Z from it; C set.
+ */
+int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    cyc(54);
+    uint16_t m = rd16(0x702476);
+
+    *p = (uint8_t)((nz16(*p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    if (a != m)
+        { cyc(22); return 0; }
+    cyc(40);
+    *x = rd16(b | 0x0346);
+    cyc(52);
+    *v = (uint8_t)(rd8(b | (uint16_t)(0x2025 + *x)) | 0x40);
+    cyc(46);
+    wr8(b | (uint16_t)(0x2025 + *x), *v);
+    *p = nz8(*p, *v);
+    return 1;
+}
+
+void abi_ObjectFlag40IfMatch(void)
+{
+    uint8_t v = 0, p = cpu.p;
+
+    if (ObjectFlag40IfMatch(cpu.db, cpu.a, &cpu.x, &v, &p)) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        p |= P_M;
+    }
+    cpu.p = p;
+}
+
+/* ObjectFlag40IfMatch on carried registers, as abi_ObjectFlag40IfMatch leaves them. */
+void ObjectFlag40IfMatch_cr(Carried *cr)
+{
+    uint8_t v = 0, p = cr->p;
+
+    if (ObjectFlag40IfMatch(cr->db, cr->a, &cr->x, &v, &p)) {
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+        p |= P_M;
+    }
+    cr->p = p;
+}
+
+/* An 8-bit add as ADC with carry clear: the sum, with C and V. */
+static uint8_t add8(uint8_t a, uint8_t b, uint8_t *p)
+{
+    unsigned s = (unsigned)a + b;
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(a ^ b) & (a ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    return (uint8_t)s;
+}
+
+/*
+ * @routine 08:E896 ObjectTableE8AF
+ * WHAT IT DOES: Returns the byte of the table at $08:E8AF for (A + object
+ * X's +$15 + $1F4C) / 8.
+ * HOW: 8-bit adds, three right shifts.
+ * Entry: M 8-bit, X 16-bit; X = object, A = value. Exit: A low byte = the
+ * table byte; X, Y unchanged; N, Z from X; C from the last shift; V from
+ * the second add.
+ */
+uint8_t ObjectTableE8AF(uint8_t bank, uint8_t a, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    cyc(44);
+    a = add8(a, rd8(b | (uint16_t)(0x2015 + obj)), p);
+    cyc(38);
+    a = add8(a, rd8(b | 0x1F4C), p);
+    *p = (uint8_t)((*p & ~P_C) | (a & 0x04 ? P_C : 0));
+    cyc(314);
+    return rd8(0x08E8AF + (a >> 3));
+}
+
+void abi_ObjectTableE8AF(void)
+{
+    uint8_t p = cpu.p, v = ObjectTableE8AF(cpu.db, (uint8_t)cpu.a, cpu.x, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz16(p, cpu.x);
+}
+
+/* ObjectTableE8AF on carried registers, as abi_ObjectTableE8AF leaves them. */
+void ObjectTableE8AF_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = ObjectTableE8AF(cr->db, (uint8_t)cr->a, cr->x, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz16(p, cr->x);
+}
+
+/*
+ * @routine 08:C03C ObjectTableC056
+ * WHAT IT DOES: Sets $1F5A to the byte of the table at $08:C056 for (object
+ * Y's +$15 - $1F5A) / 4.
+ * HOW: An 8-bit subtract, two right shifts.
+ * Entry: M 8-bit, X 16-bit; Y = object. Exit: A low byte = the new $1F5A;
+ * X, Y unchanged; N, Z from Y; C from the last shift; V from the subtract.
+ */
+uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    cyc(98);
+    uint8_t f = rd8(b | (uint16_t)(0x2015 + obj)), s = rd8(cyc_then(38, b | 0x1F5A)), d = (uint8_t)(f - s), v;
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (d & 0x02 ? P_C : 0) | (((f ^ s) & (f ^ d) & 0x80) ? P_V : 0));
+    cyc(188);
+    v = rd8(0x08C056 + (d >> 2));
+    wr8(b | 0x1F5A, v);
+    cyc(136);
+    return v;
+}
+
+void abi_ObjectTableC056(void)
+{
+    uint8_t p = cpu.p, v = ObjectTableC056(cpu.db, cpu.y, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz16(p, cpu.y);
+}
+
+/* ObjectTableC056 on carried registers, as abi_ObjectTableC056 leaves them. */
+void ObjectTableC056_cr(Carried *cr)
+{
+    uint8_t p = cr->p, v = ObjectTableC056(cr->db, cr->y, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz16(p, cr->y);
+}
+
+/*
+ * @routine 08:B75B ObjectListAppend
+ * WHAT IT DOES: Appends object X to the zero-ended list of up to 32 words at
+ * $7E:FFBD, whose length in bytes is at $7E:FFFD; a full list is left alone.
+ * HOW: Stores X at the end, steps the length by 2 and stores the 0 that
+ * ends the list.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = 0, or $40 when full (M
+ * 8-bit); X, Y unchanged; N, Z from X; C from the full-length compare.
+ */
+static int object_list_append(uint16_t obj, uint16_t *len)
+{
+    cyc(128);
+    uint16_t n = rd16(0x7EFFFD);
+
+    *len = n;
+    if (n == 0x0040)
+        return 0;
+    cyc(100);
+    wr16(0x7EFFBD + n, obj);
+    n = (uint16_t)(n + 2);
+    cyc(74);
+    wr16(0x7EFFFD, n);
+    cyc(56);
+    wr16(0x7EFFBD + n, 0x0000);
+    return 1;
+}
+
+int ObjectListAppend(uint16_t obj)
+{
+    uint16_t n;
+
+    return object_list_append(obj, &n);
+}
+
+void abi_ObjectListAppend(void)
+{
+    uint16_t n;
+
+    cpu.a = object_list_append(cpu.x, &n) ? (cyc(138), 0x0000) : 0x0040;
+    cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | (n >= 0x0040 ? P_C : 0) | P_M);
+}
+
+/* ObjectListAppend on carried registers, as abi_ObjectListAppend leaves them. */
+void ObjectListAppend_cr(Carried *cr)
+{
+    uint16_t n;
+
+    cr->a = object_list_append(cr->x, &n) ? (cyc(138), 0x0000) : 0x0040;
+    cr->p = (uint8_t)((nz16(cr->p, cr->x) & ~P_C) | (n >= 0x0040 ? P_C : 0) | P_M);
+}
+
+/*
+ * @routine 08:8364 ObjectBucketInsert
+ * WHAT IT DOES: Puts object X at the head of the list for its bucket: the
+ * bucket number is the object's +$40, the list heads are words at $7F:0000
+ * + the bucket, and +$3C/+$3E link to the next and previous objects.
+ * HOW: The old head becomes the object's next (+$3C, its previous cleared)
+ * and gets the object as its previous; the object becomes the head. Direct
+ * page $40 holds the object while the old head is updated. Data bank $7E
+ * inside.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = object. Exit: A = the object;
+ * X, Y unchanged; N, Z from the caller's data bank.
+ */
+void ObjectBucketInsert(uint16_t obj)
+{
+    cyc(222);
+    uint16_t bucket = rd16(0x7E2040 + obj), head;
+
+    cyc(30);
+    wr16(0x7E203E + obj, 0x0000);
+    cyc(60);
+    head = rd16(0x7F0000 + bucket);
+    cyc(30);
+    wr16(0x7E203C + obj, head);
+    if (head) {
+        cyc(32);
+        wr16(0x000040, obj);
+        cyc(30);
+        wr16(0x7E203E + head, cyc_then(30, rd16(0x000040)));
+    } else { cyc(8); }
+    cyc(60);
+    wr16(0x7F0000 + bucket, obj);
+}
+
+void abi_ObjectBucketInsert(void)
+{
+    ObjectBucketInsert(cpu.x);
+    cpu.a = cpu.x;
+    cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* ObjectBucketInsert on carried registers, as abi_ObjectBucketInsert leaves them. */
+void ObjectBucketInsert_cr(Carried *cr)
+{
+    ObjectBucketInsert(cr->x);
+    cr->a = cr->x;
+    cr->p = nz8(cr->p, cr->db);
+}
+
+/* An arithmetic shift right by one, as CMP #$8000 / ROR A does it. */
+static uint16_t asr1c(uint16_t v, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (v & 1 ? P_C : 0));
+    return (uint16_t)((v >> 1) | (v & 0x8000));
+}
+
+/*
+ * @routine 08:D5AB ObjectVelocityFromRecord
+ * WHAT IT DOES: Sets object X's X and Z velocity (+$2E, +$32) to an eighth
+ * of the values at +$2E and +$32 of the Super FX record of the object named
+ * by its +$27.
+ * HOW: Each value is shifted right three times keeping its sign.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the Z velocity (M 8-bit);
+ * X, Y = the object; N, Z from X; C from the last shift.
+ */
+uint16_t ObjectVelocityFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    cyc(30);
+    uint16_t rec = rd16(cyc_then(52, b | (uint16_t)(0x2022 + rd16(b | (uint16_t)(0x2027 + obj))))), v;
+
+    cyc(60);
+    v = asr1c(asr1c(asr1c(rd16(0x70002E + rec), p), p), p);
+    cyc(144);
+    wr16(b | (uint16_t)(0x202E + obj), v);
+    cyc(32);
+    v = asr1c(asr1c(asr1c(rd16(0x700032 + rec), p), p), p);
+    cyc(144);
+    wr16(b | (uint16_t)(0x2032 + obj), v);
+    *p = nz16(*p, obj);
+    cyc(78);
+    return v;
+}
+
+void abi_ObjectVelocityFromRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectVelocityFromRecord(cpu.db, cpu.x, &p);
+    cpu.y = cpu.x;
+    cpu.p = (uint8_t)(p | P_M);
+}
+
+/* ObjectVelocityFromRecord on carried registers, as abi_ObjectVelocityFromRecord leaves them. */
+void ObjectVelocityFromRecord_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectVelocityFromRecord(cr->db, cr->x, &p);
+    cr->y = cr->x;
+    cr->p = (uint8_t)(p | P_M);
+}
+
+/*
+ * @routine 08:8392 ObjectBucketRemove
+ * WHAT IT DOES: Takes object X out of its bucket's list (see
+ * ObjectBucketInsert): its previous object, or the bucket's head when it has
+ * none, is linked to its next, and its next gets its previous.
+ * HOW: Data bank $7E inside; the head is $7F:0000 + the object's +$40.
+ * Entry: X 16-bit; X = object. Exit: A = the previous object (or the next,
+ * when there is no next or no previous); X, Y unchanged; M 16-bit; N, Z
+ * from the caller's data bank.
+ */
+uint16_t ObjectBucketRemove(uint16_t obj)
+{
+    cyc(236);
+    uint16_t prev = rd16(0x7E203E + obj), next, bucket;
+
+    if (prev) {
+        cyc(60);
+        next = rd16(0x7E203C + obj);
+        cyc(30);
+        wr16(0x7E203C + prev, next);
+        if (!next)
+            { cyc(166); return next; }
+        cyc(74);
+        wr16(0x7E203E + next, prev);
+        cyc(166);
+        return prev;
+    }
+    cyc(52);
+    bucket = rd16(0x7E2040 + obj);  /* the bucket before the next object */
+    cyc(44);
+    next = rd16(0x7E203C + obj);
+    cyc(32);
+    wr16(0x7F0000 + bucket, next);
+    if (next)
+        { cyc(60); wr16(0x7E203E + next, 0x0000); } else { cyc(22); }
+    cyc(144);
+    return next;
+}
+
+void abi_ObjectBucketRemove(void)
+{
+    cpu.a = ObjectBucketRemove(cpu.x);
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_M);
+}
+
+/* ObjectBucketRemove on carried registers, as abi_ObjectBucketRemove leaves them. */
+void ObjectBucketRemove_cr(Carried *cr)
+{
+    cr->a = ObjectBucketRemove(cr->x);
+    cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~P_M);
+}
+
+/*
+ * @routine 08:B48E ObjectSet5DByKind
+ * WHAT IT DOES: Sets object X's +$5D to $9163, $9335 or $9507 for A = 1, 2 or
+ * 3, and to $8F91 otherwise.
+ * HOW: Compares in turn; one 16-bit store through the data bank.
+ * Entry: M 8-bit, X 16-bit; X = object, A = kind. Exit: A = the value (M
+ * 8-bit); N set, Z clear; C from the last compare.
+ */
+uint16_t ObjectSet5DByKind(uint8_t bank, uint16_t obj, uint8_t kind, uint8_t *p)
+{
+    uint16_t v = kind == 1 ? 0x9163 : (cyc(32), kind == 2 ? 0x9335 : (cyc(26), kind == 3 ? (cyc(6), 0x9507) : 0x8F91));
+    uint8_t last = kind == 1 ? 1 : kind == 2 ? 2 : 3;
+
+    *p = (uint8_t)((*p & ~(P_C | P_Z)) | P_N | (kind >= last ? P_C : 0));
+    cyc(160);
+    wr16((uint32_t)bank << 16 | (uint16_t)(0x205D + obj), v);
+    return v;
+}
+
+void abi_ObjectSet5DByKind(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectSet5DByKind(cpu.db, cpu.x, (uint8_t)cpu.a, &p);
+    cpu.p = (uint8_t)(p | P_M);
+    cyc(64);
+}
+
+/* ObjectSet5DByKind on carried registers, as abi_ObjectSet5DByKind leaves them. */
+void ObjectSet5DByKind_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectSet5DByKind(cr->db, cr->x, (uint8_t)cr->a, &p);
+    cr->p = (uint8_t)(p | P_M);
+    cyc(64);
+}
+
 void CarSpawnCrash(Carried *cr);
 void ObjectAdvance5DIfFlag(Carried *cr);
 void ObjectAttachedSignX(Carried *cr);
@@ -87,10 +788,8 @@ static void w_GsuRun(Carried *cr);
 static void w_ObjectAlloc(Carried *cr);
 static void w_ObjectApplyVelocity(Carried *cr);
 static void w_ObjectCarRecordTake(Carried *cr);
-static void w_ObjectChildrenSpawn(Carried *cr);
 static void w_ObjectCopyPositionFrom(Carried *cr);
 static void w_ObjectCopyPositionTo(Carried *cr);
-static void w_ObjectFree(Carried *cr);
 static void w_ObjectFreeLong(Carried *cr);
 static void w_ObjectInit(Carried *cr);
 static void w_ObjectNearFocus(Carried *cr);
@@ -108,562 +807,7 @@ static void w_RandomStepLong(Carried *cr);
 static void w_RotateXY(Carried *cr);
 static void w_RotateXZ(Carried *cr);
 static void w_RotateXZFrom08(Carried *cr);
-
-/* A field of the object at offset `obj` in the data bank. */
-static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
-{
-    return (uint32_t)bank << 16 | (uint16_t)(0x2000 + off + obj);
-}
-
-/*
- * @routine 03:89A8 ObjectLinkedSet1A
- * WHAT IT DOES: Stores A in field +$1A of the object that X's object links to.
- * HOW: Reads the link at +$4F, then stores there (bank $7E, long addressing).
- * Entry: M 16-bit, X 16-bit; A = value, X = object. Exit: A unchanged; X =
- * the linked object; N, Z from A.
- */
-uint16_t ObjectLinkedSet1A(uint16_t obj, uint16_t value)
-{
-    cyc(62);
-    uint16_t linked = rd16(0x7E204F + obj);
-
-    cyc(82);
-    wr16(0x7E201A + linked, value);
-    cyc(44);
-    return linked;
-}
-
-void abi_ObjectLinkedSet1A(void)
-{
-    cpu.x = ObjectLinkedSet1A(cpu.x, cpu.a);
-    cpu.p = nz16(cpu.p, cpu.a);
-}
-
-/* Copy n bytes of fields from one object to another, in the data bank. */
-static uint8_t copy_bytes(uint8_t bank, uint16_t from, uint16_t to, uint16_t off, unsigned n)
-{
-    uint8_t v = 0;
-    unsigned i;
-
-    cyc(0);
-    for (i = 0; i < n; i++) {
-        v = rd8(cyc_then(30, field(bank, from, (uint16_t)(off + i))));
-        wr8(field(bank, to, (uint16_t)(off + i)), cyc_then(30, v));
-    }
-    cyc(44);
-    return v;
-}
-
-static uint16_t copy_words(uint8_t bank, uint16_t from, uint16_t to)
-{
-    uint16_t v = 0;
-    unsigned i;
-
-    cyc(22);
-    for (i = 0; i < 3; i++) {
-        v = rd16(cyc_then(30, field(bank, from, (uint16_t)(0x0C + 2 * i))));
-        wr16(field(bank, to, (uint16_t)(0x0C + 2 * i)), cyc_then(30, v));
-    }
-    cyc(66);
-    return v;
-}
-
-/*
- * @routine 03:D214 ObjectCopy14To
- * WHAT IT DOES: Copies object X's three bytes at +$14-$16 to object Y.
- * HOW: Three byte copies, in the data bank.
- * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A low byte =
- * the last byte; N, Z from it.
- */
-void ObjectCopy14To(uint8_t bank, uint16_t from, uint16_t to)
-{
-    copy_bytes(bank, from, to, 0x14, 3);
-}
-
-void abi_ObjectCopy14To(void)
-{
-    uint8_t v = copy_bytes(cpu.db, cpu.x, cpu.y, 0x14, 3);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-}
-
-/*
- * @routine 03:D227 ObjectCopy14From
- * WHAT IT DOES: Copies object Y's three bytes at +$14-$16 to object X.
- * HOW: As ObjectCopy14To, the other way.
- * Entry: as ObjectCopy14To. Exit: as ObjectCopy14To.
- */
-void ObjectCopy14From(uint8_t bank, uint16_t to, uint16_t from)
-{
-    copy_bytes(bank, from, to, 0x14, 3);
-}
-
-void abi_ObjectCopy14From(void)
-{
-    uint8_t v = copy_bytes(cpu.db, cpu.y, cpu.x, 0x14, 3);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-}
-
-/*
- * @routine 03:D1E6 ObjectCopyPositionTo
- * WHAT IT DOES: Copies object X's position to object Y.
- * HOW: Three 16-bit copies (+$0C, +$0E, +$10), in the data bank.
- * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A = the
- * last word; N, Z from it (16-bit); M 8-bit.
- */
-uint16_t ObjectCopyPositionTo(uint8_t bank, uint16_t from, uint16_t to)
-{
-    return copy_words(bank, from, to);
-}
-
-void abi_ObjectCopyPositionTo(void)
-{
-    cpu.a = copy_words(cpu.db, cpu.x, cpu.y);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
-}
-
-/*
- * @routine 03:D1FD ObjectCopyPositionFrom
- * WHAT IT DOES: Copies object Y's position to object X.
- * HOW: As ObjectCopyPositionTo, the other way.
- * Entry: as ObjectCopyPositionTo. Exit: as ObjectCopyPositionTo.
- */
-uint16_t ObjectCopyPositionFrom(uint8_t bank, uint16_t to, uint16_t from)
-{
-    return copy_words(bank, from, to);
-}
-
-void abi_ObjectCopyPositionFrom(void)
-{
-    cpu.a = copy_words(cpu.db, cpu.y, cpu.x);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
-}
-
-/*
- * @routine 03:C06C ObjectApplyVelocity
- * WHAT IT DOES: Moves object X by its velocity.
- * HOW: Adds +$2E, +$30, +$32 to +$0C, +$0E, +$10 (16-bit), in the data bank.
- * Entry: M 8-bit, X 16-bit; DB = the object table's bank. Exit: A = the new
- * +$10; flags from the last add; M 8-bit.
- */
-static uint16_t apply_velocity(uint8_t bank, uint16_t obj, uint8_t *p)
-{
-    uint16_t r = 0;
-    unsigned i;
-
-    cyc(22);
-    for (i = 0; i < 3; i++) {
-        uint16_t a = rd16(cyc_then(30, field(bank, obj, (uint16_t)(0x0C + 2 * i))));
-        uint16_t b = rd16(cyc_then(44, field(bank, obj, (uint16_t)(0x2E + 2 * i))));
-        uint32_t s = (uint32_t)a + b;
-        r = (uint16_t)s;
-        wr16(field(bank, obj, (uint16_t)(0x0C + 2 * i)), cyc_then(30, r));
-        *p = (uint8_t)((nz16(*p, r) & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
-                       | ((~(a ^ b) & (a ^ r) & 0x8000) ? P_V : 0));
-    }
-    cyc(66);
-    return r;
-}
-
-uint16_t ObjectApplyVelocity(uint8_t bank, uint16_t obj, uint8_t *p)
-{
-    return apply_velocity(bank, obj, p);
-}
-
-void abi_ObjectApplyVelocity(void)
-{
-    uint8_t p = cpu.p;
-
-    cpu.a = apply_velocity(cpu.db, cpu.x, &p);
-    cpu.p = (uint8_t)(p | P_M);
-}
-
-/*
- * @routine 03:D3DE ObjectPoolInit
- * WHAT IT DOES: Empties the object table: links all $136 records into the
- * free list and clears the counters at $0329-$032E.
- * HOW: Starting at offset 1, each record's first word gets the next record's
- * offset ($62 on); the last gets 0. Data bank $7E inside.
- * Entry: any widths. Exit: A = 1 + $136 * $62; X = the last record; Y = 0;
- * P unchanged.
- */
-void ObjectPoolInit(void)
-{
-    uint16_t x = 1;
-    unsigned i;
-
-    cyc(178);
-    wr16(0x7E0329, 0);
-    cyc(24);
-    wr16(0x7E032B, 0);
-    cyc(48);
-    wr16(0x7E032D, 1);
-    for (i = 0; i < 0x136; i++) {
-        uint16_t next = (uint16_t)(x + 0x62);
-        cyc(106);
-        wr16(0x7E2000 + x, next);
-        if (i + 1 < 0x136)
-            { cyc(12); x = next; }
-    }
-    cyc(60);
-    wr16(0x7E2000 + x, 0);
-}
-
-void abi_ObjectPoolInit(void)
-{
-    ObjectPoolInit();
-    cpu.a = (uint16_t)(1 + 0x136 * 0x62);
-    cpu.x = (uint16_t)(1 + 0x135 * 0x62);
-    cpu.y = 0;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-    } else { cyc(106); }
-}
-
-/*
- * @routine 7F:12AC ObjectLinkFlag4000Step
- * WHAT IT DOES: When the object two links on from the one at $0346 has bit
- * 14 set in its first word, adds 8 to $06CD.
- * HOW: Follows the link at +$4F twice (bank $7E), reads the record's first
- * word in bank 0.
- * Entry: any widths. Exit: A = the masked word, or the new $06CD; X, P
- * unchanged.
- */
-uint16_t ObjectLinkFlag4000Step(void)
-{
-    cyc(98);
-    uint16_t x = rd16(0x000346), a;
-
-    cyc(32);
-    x = rd16(0x7E204F + x);
-    cyc(46);
-    x = rd16(0x7E204F + x);
-    cyc(46);
-    a = rd16(0x000000 + x) & 0x4000;
-    if (!a)
-        { cyc(46); return a; }
-    cyc(72);
-    a = (uint16_t)(rd16(0x0006CD) + 8);
-    cyc(70);
-    wr16(0x0006CD, a);
-    return a;
-}
-
-void abi_ObjectLinkFlag4000Step(void)
-{
-    cpu.a = ObjectLinkFlag4000Step();
-    cyc(108);
-}
-
-/*
- * @routine 08:B830 ObjectFlag40IfMatch
- * WHAT IT DOES: When A equals the word at $70:2476, sets bit 6 of field
- * +$25 of the object at $0346.
- * HOW: 16-bit compare, then an 8-bit OR through the data bank.
- * Entry: M 16-bit, X 16-bit; A = value. Exit: no match: A unchanged; M
- * 16-bit; N, Z, C from the compare. Match: A low byte = the new field; X =
- * the object; M 8-bit; N, Z from it; C set.
- */
-int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p)
-{
-    uint32_t b = (uint32_t)bank << 16;
-    cyc(54);
-    uint16_t m = rd16(0x702476);
-
-    *p = (uint8_t)((nz16(*p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
-    if (a != m)
-        { cyc(22); return 0; }
-    cyc(40);
-    *x = rd16(b | 0x0346);
-    cyc(52);
-    *v = (uint8_t)(rd8(b | (uint16_t)(0x2025 + *x)) | 0x40);
-    cyc(46);
-    wr8(b | (uint16_t)(0x2025 + *x), *v);
-    *p = nz8(*p, *v);
-    return 1;
-}
-
-void abi_ObjectFlag40IfMatch(void)
-{
-    uint8_t v = 0, p = cpu.p;
-
-    if (ObjectFlag40IfMatch(cpu.db, cpu.a, &cpu.x, &v, &p)) {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        p |= P_M;
-    }
-    cpu.p = p;
-}
-
-/* An 8-bit add as ADC with carry clear: the sum, with C and V. */
-static uint8_t add8(uint8_t a, uint8_t b, uint8_t *p)
-{
-    unsigned s = (unsigned)a + b;
-
-    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(a ^ b) & (a ^ (uint8_t)s) & 0x80) ? P_V : 0));
-    return (uint8_t)s;
-}
-
-/*
- * @routine 08:E896 ObjectTableE8AF
- * WHAT IT DOES: Returns the byte of the table at $08:E8AF for (A + object
- * X's +$15 + $1F4C) / 8.
- * HOW: 8-bit adds, three right shifts.
- * Entry: M 8-bit, X 16-bit; X = object, A = value. Exit: A low byte = the
- * table byte; X, Y unchanged; N, Z from X; C from the last shift; V from
- * the second add.
- */
-uint8_t ObjectTableE8AF(uint8_t bank, uint8_t a, uint16_t obj, uint8_t *p)
-{
-    uint32_t b = (uint32_t)bank << 16;
-
-    cyc(44);
-    a = add8(a, rd8(b | (uint16_t)(0x2015 + obj)), p);
-    cyc(38);
-    a = add8(a, rd8(b | 0x1F4C), p);
-    *p = (uint8_t)((*p & ~P_C) | (a & 0x04 ? P_C : 0));
-    cyc(314);
-    return rd8(0x08E8AF + (a >> 3));
-}
-
-void abi_ObjectTableE8AF(void)
-{
-    uint8_t p = cpu.p, v = ObjectTableE8AF(cpu.db, (uint8_t)cpu.a, cpu.x, &p);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz16(p, cpu.x);
-}
-
-/*
- * @routine 08:C03C ObjectTableC056
- * WHAT IT DOES: Sets $1F5A to the byte of the table at $08:C056 for (object
- * Y's +$15 - $1F5A) / 4.
- * HOW: An 8-bit subtract, two right shifts.
- * Entry: M 8-bit, X 16-bit; Y = object. Exit: A low byte = the new $1F5A;
- * X, Y unchanged; N, Z from Y; C from the last shift; V from the subtract.
- */
-uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p)
-{
-    uint32_t b = (uint32_t)bank << 16;
-    cyc(98);
-    uint8_t f = rd8(b | (uint16_t)(0x2015 + obj)), s = rd8(cyc_then(38, b | 0x1F5A)), d = (uint8_t)(f - s), v;
-
-    *p = (uint8_t)((*p & ~(P_C | P_V)) | (d & 0x02 ? P_C : 0) | (((f ^ s) & (f ^ d) & 0x80) ? P_V : 0));
-    cyc(188);
-    v = rd8(0x08C056 + (d >> 2));
-    wr8(b | 0x1F5A, v);
-    cyc(136);
-    return v;
-}
-
-void abi_ObjectTableC056(void)
-{
-    uint8_t p = cpu.p, v = ObjectTableC056(cpu.db, cpu.y, &p);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz16(p, cpu.y);
-}
-
-/*
- * @routine 08:B75B ObjectListAppend
- * WHAT IT DOES: Appends object X to the zero-ended list of up to 32 words at
- * $7E:FFBD, whose length in bytes is at $7E:FFFD; a full list is left alone.
- * HOW: Stores X at the end, steps the length by 2 and stores the 0 that
- * ends the list.
- * Entry: M 8-bit, X 16-bit; X = object. Exit: A = 0, or $40 when full (M
- * 8-bit); X, Y unchanged; N, Z from X; C from the full-length compare.
- */
-static int object_list_append(uint16_t obj, uint16_t *len)
-{
-    cyc(128);
-    uint16_t n = rd16(0x7EFFFD);
-
-    *len = n;
-    if (n == 0x0040)
-        return 0;
-    cyc(100);
-    wr16(0x7EFFBD + n, obj);
-    n = (uint16_t)(n + 2);
-    cyc(74);
-    wr16(0x7EFFFD, n);
-    cyc(56);
-    wr16(0x7EFFBD + n, 0x0000);
-    return 1;
-}
-
-int ObjectListAppend(uint16_t obj)
-{
-    uint16_t n;
-
-    return object_list_append(obj, &n);
-}
-
-void abi_ObjectListAppend(void)
-{
-    uint16_t n;
-
-    cpu.a = object_list_append(cpu.x, &n) ? (cyc(138), 0x0000) : 0x0040;
-    cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | (n >= 0x0040 ? P_C : 0) | P_M);
-}
-
-/*
- * @routine 08:8364 ObjectBucketInsert
- * WHAT IT DOES: Puts object X at the head of the list for its bucket: the
- * bucket number is the object's +$40, the list heads are words at $7F:0000
- * + the bucket, and +$3C/+$3E link to the next and previous objects.
- * HOW: The old head becomes the object's next (+$3C, its previous cleared)
- * and gets the object as its previous; the object becomes the head. Direct
- * page $40 holds the object while the old head is updated. Data bank $7E
- * inside.
- * Entry: M 16-bit, X 16-bit, D = $0000; X = object. Exit: A = the object;
- * X, Y unchanged; N, Z from the caller's data bank.
- */
-void ObjectBucketInsert(uint16_t obj)
-{
-    cyc(222);
-    uint16_t bucket = rd16(0x7E2040 + obj), head;
-
-    cyc(30);
-    wr16(0x7E203E + obj, 0x0000);
-    cyc(60);
-    head = rd16(0x7F0000 + bucket);
-    cyc(30);
-    wr16(0x7E203C + obj, head);
-    if (head) {
-        cyc(32);
-        wr16(0x000040, obj);
-        cyc(30);
-        wr16(0x7E203E + head, cyc_then(30, rd16(0x000040)));
-    } else { cyc(8); }
-    cyc(60);
-    wr16(0x7F0000 + bucket, obj);
-}
-
-void abi_ObjectBucketInsert(void)
-{
-    ObjectBucketInsert(cpu.x);
-    cpu.a = cpu.x;
-    cpu.p = nz8(cpu.p, cpu.db);
-}
-
-/* An arithmetic shift right by one, as CMP #$8000 / ROR A does it. */
-static uint16_t asr1c(uint16_t v, uint8_t *p)
-{
-    *p = (uint8_t)((*p & ~P_C) | (v & 1 ? P_C : 0));
-    return (uint16_t)((v >> 1) | (v & 0x8000));
-}
-
-/*
- * @routine 08:D5AB ObjectVelocityFromRecord
- * WHAT IT DOES: Sets object X's X and Z velocity (+$2E, +$32) to an eighth
- * of the values at +$2E and +$32 of the Super FX record of the object named
- * by its +$27.
- * HOW: Each value is shifted right three times keeping its sign.
- * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the Z velocity (M 8-bit);
- * X, Y = the object; N, Z from X; C from the last shift.
- */
-uint16_t ObjectVelocityFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
-{
-    uint32_t b = (uint32_t)bank << 16;
-    cyc(30);
-    uint16_t rec = rd16(cyc_then(52, b | (uint16_t)(0x2022 + rd16(b | (uint16_t)(0x2027 + obj))))), v;
-
-    cyc(60);
-    v = asr1c(asr1c(asr1c(rd16(0x70002E + rec), p), p), p);
-    cyc(144);
-    wr16(b | (uint16_t)(0x202E + obj), v);
-    cyc(32);
-    v = asr1c(asr1c(asr1c(rd16(0x700032 + rec), p), p), p);
-    cyc(144);
-    wr16(b | (uint16_t)(0x2032 + obj), v);
-    *p = nz16(*p, obj);
-    cyc(78);
-    return v;
-}
-
-void abi_ObjectVelocityFromRecord(void)
-{
-    uint8_t p = cpu.p;
-
-    cpu.a = ObjectVelocityFromRecord(cpu.db, cpu.x, &p);
-    cpu.y = cpu.x;
-    cpu.p = (uint8_t)(p | P_M);
-}
-
-/*
- * @routine 08:8392 ObjectBucketRemove
- * WHAT IT DOES: Takes object X out of its bucket's list (see
- * ObjectBucketInsert): its previous object, or the bucket's head when it has
- * none, is linked to its next, and its next gets its previous.
- * HOW: Data bank $7E inside; the head is $7F:0000 + the object's +$40.
- * Entry: X 16-bit; X = object. Exit: A = the previous object (or the next,
- * when there is no next or no previous); X, Y unchanged; M 16-bit; N, Z
- * from the caller's data bank.
- */
-uint16_t ObjectBucketRemove(uint16_t obj)
-{
-    cyc(236);
-    uint16_t prev = rd16(0x7E203E + obj), next, bucket;
-
-    if (prev) {
-        cyc(60);
-        next = rd16(0x7E203C + obj);
-        cyc(30);
-        wr16(0x7E203C + prev, next);
-        if (!next)
-            { cyc(166); return next; }
-        cyc(74);
-        wr16(0x7E203E + next, prev);
-        cyc(166);
-        return prev;
-    }
-    cyc(52);
-    bucket = rd16(0x7E2040 + obj);  /* the bucket before the next object */
-    cyc(44);
-    next = rd16(0x7E203C + obj);
-    cyc(32);
-    wr16(0x7F0000 + bucket, next);
-    if (next)
-        { cyc(60); wr16(0x7E203E + next, 0x0000); } else { cyc(22); }
-    cyc(144);
-    return next;
-}
-
-void abi_ObjectBucketRemove(void)
-{
-    cpu.a = ObjectBucketRemove(cpu.x);
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_M);
-}
-
-/*
- * @routine 08:B48E ObjectSet5DByKind
- * WHAT IT DOES: Sets object X's +$5D to $9163, $9335 or $9507 for A = 1, 2 or
- * 3, and to $8F91 otherwise.
- * HOW: Compares in turn; one 16-bit store through the data bank.
- * Entry: M 8-bit, X 16-bit; X = object, A = kind. Exit: A = the value (M
- * 8-bit); N set, Z clear; C from the last compare.
- */
-uint16_t ObjectSet5DByKind(uint8_t bank, uint16_t obj, uint8_t kind, uint8_t *p)
-{
-    uint16_t v = kind == 1 ? 0x9163 : (cyc(32), kind == 2 ? 0x9335 : (cyc(26), kind == 3 ? (cyc(6), 0x9507) : 0x8F91));
-    uint8_t last = kind == 1 ? 1 : kind == 2 ? 2 : 3;
-
-    *p = (uint8_t)((*p & ~(P_C | P_Z)) | P_N | (kind >= last ? P_C : 0));
-    cyc(160);
-    wr16((uint32_t)bank << 16 | (uint16_t)(0x205D + obj), v);
-    return v;
-}
-
-void abi_ObjectSet5DByKind(void)
-{
-    uint8_t p = cpu.p;
-
-    cpu.a = ObjectSet5DByKind(cpu.db, cpu.x, (uint8_t)cpu.a, &p);
-    cpu.p = (uint8_t)(p | P_M);
-    cyc(64);
-}
+void ObjectChildrenSpawn(Carried *cr);
 
 /*
  * @routine 08:B48A ObjectSet5DByKindLong
@@ -745,6 +889,12 @@ void abi_ObjectPlaceFromTable(void)
     cpu.a = ObjectPlaceFromTable((uint8_t)cpu.a, (uint8_t)cpu.x, &cpu.x, &cpu.y);
 }
 
+/* ObjectPlaceFromTable on carried registers, as abi_ObjectPlaceFromTable leaves them. */
+void ObjectPlaceFromTable_cr(Carried *cr)
+{
+    cr->a = ObjectPlaceFromTable((uint8_t)cr->a, (uint8_t)cr->x, &cr->x, &cr->y);
+}
+
 /*
  * @routine 7E:D397 ObjectLinkEventTrigger
  * WHAT IT DOES: Unless bit 7 of $0DA4 is already set: when the object two
@@ -802,6 +952,17 @@ void abi_ObjectLinkEventTrigger(void)
     cpu.p = (uint8_t)(p | P_M | P_X);
 }
 
+/* ObjectLinkEventTrigger on carried registers, as abi_ObjectLinkEventTrigger leaves them. */
+void ObjectLinkEventTrigger_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectLinkEventTrigger(cr->db, cr->a, &cr->x, &cr->y, &p);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    cr->p = (uint8_t)(p | P_M | P_X);
+}
+
 void abi_ObjectBucketInsert(void);
 
 /*
@@ -836,6 +997,14 @@ void abi_ObjectInit(void)
     ObjectInit(cpu.y);
     cpu.a = (uint16_t)((cpu.y & 0xFF00) | 0x69);
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) | P_M);
+}
+
+/* ObjectInit on carried registers, as abi_ObjectInit leaves them. */
+void ObjectInit_cr(Carried *cr)
+{
+    ObjectInit(cr->y);
+    cr->a = (uint16_t)((cr->y & 0xFF00) | 0x69);
+    cr->p = (uint8_t)(nz8(cr->p, cr->db) | P_M);
 }
 
 /*
@@ -889,6 +1058,13 @@ void abi_ObjectPlaceAll(void)
 {
     cpu.a = ObjectPlaceAll(cpu.db);
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+}
+
+/* ObjectPlaceAll on carried registers, as abi_ObjectPlaceAll leaves them. */
+void ObjectPlaceAll_cr(Carried *cr)
+{
+    cr->a = ObjectPlaceAll(cr->db);
+    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x);
 }
 
 /*
@@ -956,6 +1132,16 @@ void abi_ObjectCountStep5F(void)
     ObjectCountStep5F(cpu.db, cpu.x, &a, &p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cpu.p = p;
+}
+
+/* ObjectCountStep5F on carried registers, as abi_ObjectCountStep5F leaves them. */
+void ObjectCountStep5F_cr(Carried *cr)
+{
+    uint8_t a = 0, p = cr->p;
+
+    ObjectCountStep5F(cr->db, cr->x, &a, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->p = p;
 }
 
 /* A 16-bit subtract as SBC with carry set; V from it. */
@@ -1036,6 +1222,17 @@ void abi_ObjectNearFocus(void)
     cyc(128);
 }
 
+/* ObjectNearFocus on carried registers, as abi_ObjectNearFocus leaves them. */
+void ObjectNearFocus_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectNearFocus(cr->db, cr->x, &p);
+    cr->y = 0x1A64;
+    cr->p = (uint8_t)(p | P_M);
+    cyc(128);
+}
+
 uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p);
 
 /*
@@ -1073,6 +1270,12 @@ uint16_t ObjectRebucket(uint16_t obj)
 void abi_ObjectRebucket(void)
 {
     cpu.a = ObjectRebucket(cpu.x);
+}
+
+/* ObjectRebucket on carried registers, as abi_ObjectRebucket leaves them. */
+void ObjectRebucket_cr(Carried *cr)
+{
+    cr->a = ObjectRebucket(cr->x);
 }
 
 void CrashWhite(uint8_t bank);
@@ -1249,6 +1452,16 @@ void abi_ObjectLinkedHandlerByState(void)
     cyc(44);
 }
 
+/* ObjectLinkedHandlerByState on carried registers, as abi_ObjectLinkedHandlerByState leaves them. */
+void ObjectLinkedHandlerByState_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectLinkedHandlerByState(cr->db, cr->x, cr->a, &cr->y, &p);
+    cr->p = (uint8_t)(p | P_M);
+    cyc(44);
+}
+
 #define ATTACH_VALUES 0x098090u
 
 /*
@@ -1347,6 +1560,17 @@ void abi_ObjectAttachLinked(void)
     cpu.p = (uint8_t)(p | P_M);
 }
 
+/* ObjectAttachLinked on carried registers, as abi_ObjectAttachLinked leaves them. */
+void ObjectAttachLinked_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    uint16_t y;
+
+    cr->a = object_attach_linked(cr->db, cr->x, cr->y, &p, &y);
+    cr->y = y;
+    cr->p = (uint8_t)(p | P_M);
+}
+
 /*
  * @routine 7E:F0E1 ObjectGroupsActivate
  * WHAT IT DOES: For each entry in the list at $1AF5 (4 bytes each, ended by
@@ -1434,6 +1658,17 @@ void abi_ObjectGroupsActivate(void)
     if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
+    } else { cyc(78); }
+}
+
+/* ObjectGroupsActivate on carried registers, as abi_ObjectGroupsActivate leaves them. */
+void ObjectGroupsActivate_cr(Carried *cr)
+{
+    cr->x = ObjectGroupsActivate(&cr->y);
+    cr->a = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     } else { cyc(78); }
 }
 
@@ -1617,6 +1852,17 @@ void abi_BucketTriggersFromArea(void)
     cpu.x = e.x;
     cpu.y = e.y;
     cpu.p = e.p;
+}
+
+/* BucketTriggersFromArea on carried registers, as abi_BucketTriggersFromArea leaves them. */
+void BucketTriggersFromArea_cr(Carried *cr)
+{
+    AreaEnd e = bucket_triggers_from_area(cr->db, cr->a, cr->p);
+
+    cr->a = e.a;
+    cr->x = e.x;
+    cr->y = e.y;
+    cr->p = e.p;
 }
 
 /* The window and bucket origin: three words from src to $1F01-$1F06. */
@@ -1813,6 +2059,14 @@ void abi_ObjectAlloc(void)
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (got ? (cyc(26), P_C) : (cyc(130), 0)));
 }
 
+/* ObjectAlloc on carried registers, as abi_ObjectAlloc leaves them. */
+void ObjectAlloc_cr(Carried *cr)
+{
+    int got = ObjectAlloc(&cr->a, &cr->x, &cr->y);
+
+    cr->p = (uint8_t)((cr->p & ~P_C) | (got ? (cyc(26), P_C) : (cyc(130), 0)));
+}
+
 /*
  * @routine 03:CCBB ObjectSpawn
  * WHAT IT DOES: Unless the count at $0CEE has reached $2E, takes a new
@@ -1864,6 +2118,16 @@ void abi_ObjectSpawn(void)
         { cyc(22); cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_C | P_M); }
     else
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | P_M);
+    cyc(58);
+}
+
+/* ObjectSpawn on carried registers, as abi_ObjectSpawn leaves them. */
+void ObjectSpawn_cr(Carried *cr)
+{
+    if (ObjectSpawn(cr->db, &cr->a, cr->x, &cr->y))
+        { cyc(22); cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_C | P_M); }
+    else
+        cr->p = (uint8_t)((nz16(cr->p, cr->x) & ~P_C) | P_M);
     cyc(58);
 }
 
@@ -1921,6 +2185,13 @@ void abi_ObjectFree(void)
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : (cyc(0), nz16(cpu.p, cpu.x));
 }
 
+/* ObjectFree on carried registers, as abi_ObjectFree leaves them. */
+void ObjectFree_cr(Carried *cr)
+{
+    cr->a = ObjectFree(cr->db, cr->x);
+    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : (cyc(0), nz16(cr->p, cr->x));
+}
+
 /*
  * @routine 03:B8A1 ObjectFreeLong
  * WHAT IT DOES: ObjectFree for callers in other banks.
@@ -1976,6 +2247,15 @@ void abi_ObjectRelease(void)
 
     cpu.a = ObjectRelease(cpu.db, cpu.x, cpu.a, &p);
     cpu.p = p;
+}
+
+/* ObjectRelease on carried registers, as abi_ObjectRelease leaves them. */
+void ObjectRelease_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectRelease(cr->db, cr->x, cr->a, &p);
+    cr->p = p;
 }
 
 /*
@@ -2051,24 +2331,6 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     call_routine((uint32_t)hb << 16 | h, 1);
     cyc(108);
     return 1;
-}
-
-static int run_handler_c(Carried *cr, uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    int v = run_handler(bank, obj, word_at, bank_at, need_no_record);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-    return v;
 }
 
 /*
@@ -2466,6 +2728,15 @@ void abi_ObjectStep48To8(void)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | ObjectStep48To8(cpu.db, cpu.x, &p));
     cpu.p = p;
+}
+
+/* ObjectStep48To8 on carried registers, as abi_ObjectStep48To8 leaves them. */
+void ObjectStep48To8_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | ObjectStep48To8(cr->db, cr->x, &p));
+    cr->p = p;
 }
 
 void abi_RandomStepLong(void);
@@ -4220,7 +4491,7 @@ static uint32_t car_field(Carried *cr, uint16_t off)
 static uint32_t car_field_g(uint16_t off)
 {
     Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint32_t v = car_field(&c, off);
+    uint32_t ret_ = car_field(&c, off);
 
     cpu.a = c.a;
     cpu.x = c.x;
@@ -4228,7 +4499,7 @@ static uint32_t car_field_g(uint16_t off)
     cpu.d = c.d;
     cpu.p = c.p;
     cpu.db = c.db;
-    return v;
+    return ret_;
 }
 
 /*
@@ -4634,7 +4905,7 @@ void ObjectCarRecordRestart(Carried *cr)
     wr16(car_field(cr, 0x2057), cyc_then(38, 0x008C));
     r_sep(cr, P_M);
     w_GsuRecordFromObject(cr);
-    (cyc(62), w_ObjectChildrenSpawn(cr));
+    (cyc(62), ObjectChildrenSpawn(cr));
     cyc(44);                            /* RTL */
 }
 
@@ -5184,48 +5455,80 @@ static void w_ObjectRelease(Carried *cr)
     cr->p = p;
 }
 
-/* ObjectFree as its adapter leaves the registers. */
-static void w_ObjectFree(Carried *cr)
-{
-    cr->a = ObjectFree(cr->db, cr->x);
-    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : (cyc(0), nz16(cr->p, cr->x));
-}
-
-/* ObjectFreeLong as its adapter leaves the registers. */
+/* ObjectFreeLong, still in registers: its call with the registers loaded and taken
+   back. */
 static void w_ObjectFreeLong(Carried *cr)
 {
-    (cyc(46), w_ObjectFree(cr));
-    cyc(44);
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectFreeLong();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
-/* ObjectRunHandlerA as its adapter leaves the registers. */
+/* ObjectRunHandlerA, still in registers: its call with the registers loaded and taken
+   back. */
 static void w_ObjectRunHandlerA(Carried *cr)
 {
-    uint16_t x = cr->x;
-    uint8_t p = cr->p;
-
-    run_handler_c(cr, cr->db, x, 0x201A, 0x201C, 0);
-    cr->x = x;
-    cr->p = p;
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectRunHandlerA();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
-/* ObjectRunHandlerB as its adapter leaves the registers. */
+/* ObjectRunHandlerB, still in registers: its call with the registers loaded and taken
+   back. */
 static void w_ObjectRunHandlerB(Carried *cr)
 {
-    uint16_t x = cr->x;
-    uint8_t p = cr->p;
-
-    cyc(0);
-    run_handler_c(cr, cr->db, x, 0x201D, 0x201F, 1);
-    cr->x = x;
-    cr->p = p;
-    cyc(44);
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectRunHandlerB();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
-/* CrashGreen as its adapter leaves the registers. */
+/* CrashGreen, still in registers: its call with the registers loaded and taken
+   back. */
 static void w_CrashGreen(Carried *cr)
 {
-    CrashGreen(cr->db);
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_CrashGreen();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /* ObjectAlloc as its adapter leaves the registers. */
@@ -5349,19 +5652,42 @@ static void w_ObjectPoseFromRecord(Carried *cr)
     cr->p = (uint8_t)(p | P_M);
 }
 
-/* ObjectRecordFlag70Step as its adapter leaves the registers. */
+/* ObjectRecordFlag70Step, still in registers: its call with the registers loaded and taken
+   back. */
 static void w_ObjectRecordFlag70Step(Carried *cr)
 {
-    uint8_t p = cr->p;
-
-    cr->a = ObjectRecordFlag70Step(cr->db, cr->x, cr->a, &p);
-    cr->p = (uint8_t)(p | P_M);
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectRecordFlag70Step();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
-/* CrashWhite as its adapter leaves the registers. */
+/* CrashWhite, still in registers: its call with the registers loaded and taken
+   back. */
 static void w_CrashWhite(Carried *cr)
 {
-    CrashWhite(cr->db);
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_CrashWhite();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /* GsuRun as its adapter leaves the registers. */
@@ -5399,25 +5725,6 @@ static void w_GsuRecordFromObject(Carried *cr)
     cr->a = GsuRecordFromObject(cr->db, cr->x);
     cr->y = cr->x;
     cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
-}
-
-/* ObjectChildrenSpawn, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ObjectChildrenSpawn(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ObjectChildrenSpawn();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* GsuRecordFlag4 as its adapter leaves the registers. */
