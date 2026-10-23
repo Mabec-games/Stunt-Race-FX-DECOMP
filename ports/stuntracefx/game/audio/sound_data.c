@@ -10,6 +10,7 @@
 #include "audio_calls.h"
 #include "carried.h"
 
+
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 void ApuPort1Send05(void);
 void ApuSettleDelay(void);
@@ -188,23 +189,38 @@ void MusicLoadForCourse(uint8_t bank, uint16_t music)
     cyc(42);
 }
 
+static void music_exit(Carried *cr);
+
 /* The registers MusicLoadForCourse leaves. */
-static void music_exit(void)
+static void music_exit(Carried *cr)
 {
-    cpu.a = 0x0000;
-    cpu.x = ml_x;
+    cr->a = 0x0000;
+    cr->x = ml_x;
     if (ml_uploaded) {
-        cpu.y = up_y;
-        cpu.p &= (uint8_t)~P_V;
+        cr->y = up_y;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_V)));
     }
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M | P_X)) | P_Z | P_C);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_M | P_X)) | P_Z | P_C));
+}
+
+static void music_exit_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    music_exit(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_MusicLoadForCourse(void)
 {
     ml_uploaded = 0;
     MusicLoadForCourse(cpu.db, cpu.a);
-    music_exit();
+    music_exit_g();
 }
 
 /* LDA #$4000, DEC A until 0 (16-bit A). */
@@ -430,3 +446,4 @@ void CourseSoundLoad_cr(Carried *cr)
         cr->y &= 0x00FF;
     }
 }
+

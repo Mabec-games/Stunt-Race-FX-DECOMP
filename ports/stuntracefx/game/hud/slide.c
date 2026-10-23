@@ -6,6 +6,7 @@
 #include "hud_calls.h"
 #include "carried.h"
 
+
 /* The sliding panel's offset; $10 is fully shown. */
 #define HUD_SLIDE 0x000D57u
 
@@ -48,12 +49,28 @@ void HudSlideIn(void)
     hud_slide_in(&p);
 }
 
+void HudSlideIn_cr(Carried *cr);
+static void panel_exit(Carried *cr, uint8_t a, uint16_t x);
+
+void HudSlideIn_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | hud_slide_in(&p));
+    set_p(cr, p);
+}
+
 void abi_HudSlideIn(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | hud_slide_in(&p));
-    cpu.p = p;
+    HudSlideIn_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint8_t SpriteYOnScreen(uint8_t y);
@@ -311,15 +328,34 @@ uint8_t HudPanelASlide(uint8_t bank, uint16_t d)
 
 /* The panels' registers: A's low byte, X; P restored (8-bit index
    registers keep X's low byte). */
-static void panel_exit(uint8_t a, uint16_t x)
+static void panel_exit(Carried *cr, uint8_t a, uint16_t x)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : x;
+}
+
+static void panel_exit_g(uint8_t a, uint16_t x)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    panel_exit(&c, a, x);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_HudPanelASlide(void)
 {
-    panel_exit(HudPanelASlide(cpu.db, cpu.d), 0x0020);
+    panel_exit_g(HudPanelASlide(cpu.db, cpu.d), 0x0020);
+}
+
+/* HudPanelASlide on carried registers, as abi_HudPanelASlide leaves them. */
+void HudPanelASlide_cr(Carried *cr)
+{
+    panel_exit(cr, HudPanelASlide(cr->db, cr->d), 0x0020);
 }
 
 /*
@@ -336,7 +372,13 @@ uint8_t HudPanelBSlide(uint8_t bank, uint16_t d)
 
 void abi_HudPanelBSlide(void)
 {
-    panel_exit(HudPanelBSlide(cpu.db, cpu.d), 0x0120);
+    panel_exit_g(HudPanelBSlide(cpu.db, cpu.d), 0x0120);
+}
+
+/* HudPanelBSlide on carried registers, as abi_HudPanelBSlide leaves them. */
+void HudPanelBSlide_cr(Carried *cr)
+{
+    panel_exit(cr, HudPanelBSlide(cr->db, cr->d), 0x0120);
 }
 
 /*
@@ -446,3 +488,4 @@ void HudPanelsStep_cr(Carried *cr)
     cr->x = step_x;
     cr->y &= 0x00FF;
 }
+

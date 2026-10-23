@@ -9,6 +9,7 @@
 #include "wram.h"
 #include "carried.h"
 
+
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 uint16_t GsuParam216A(uint8_t bank, uint16_t index);
 void GsuBytes200_BFB5BB(void);
@@ -61,13 +62,29 @@ static uint16_t digit_a(uint8_t bank, uint16_t d, uint8_t mode)
     return (uint16_t)((rd16((uint32_t)bank << 16 | (uint16_t)(0x8E3E + (d << 1))) & 0xFF00) | mode);
 }
 
+static void bonus_exit(Carried *cr, uint16_t a, int32_t x);
+static void digit_exit(Carried *cr, uint16_t a);
+
 /* The registers a digit draw leaves besides A: X = $F15B, M 16-bit, X
    16-bit, C clear, N and Z from the data bank. */
-static void digit_exit(uint16_t a)
+static void digit_exit(Carried *cr, uint16_t a)
 {
-    cpu.a = a;
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_C | P_M | P_X));
+    cr->a = a;
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_C | P_M | P_X)));
+}
+
+static void digit_exit_g(uint16_t a)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    digit_exit(&c, a);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The body of GsuTimeDigits; returns the last digit drawn, *mode the screen
@@ -130,7 +147,13 @@ uint16_t GsuTimeDigits(uint8_t bank, int x8)
 
 void abi_GsuTimeDigits(void)
 {
-    digit_exit(GsuTimeDigits(cpu.db, cpu.p & P_X));
+    digit_exit_g(GsuTimeDigits(cpu.db, cpu.p & P_X));
+}
+
+/* GsuTimeDigits on carried registers, as abi_GsuTimeDigits leaves them. */
+void GsuTimeDigits_cr(Carried *cr)
+{
+    digit_exit(cr, GsuTimeDigits(cr->db, cr->p & P_X));
 }
 
 /*
@@ -157,7 +180,7 @@ uint16_t GsuTimeDigitsGrow(uint8_t bank, int x8)
 
 void abi_GsuTimeDigitsGrow(void)
 {
-    digit_exit(GsuTimeDigitsGrow(cpu.db, cpu.p & P_X));
+    digit_exit_g(GsuTimeDigitsGrow(cpu.db, cpu.p & P_X));
 }
 
 /*
@@ -177,7 +200,13 @@ uint16_t GsuTimeDigitsFull(uint8_t bank, int x8)
 
 void abi_GsuTimeDigitsFull(void)
 {
-    digit_exit(GsuTimeDigitsFull(cpu.db, cpu.p & P_X));
+    digit_exit_g(GsuTimeDigitsFull(cpu.db, cpu.p & P_X));
+}
+
+/* GsuTimeDigitsFull on carried registers, as abi_GsuTimeDigitsFull leaves them. */
+void GsuTimeDigitsFull_cr(Carried *cr)
+{
+    digit_exit(cr, GsuTimeDigitsFull(cr->db, cr->p & P_X));
 }
 
 uint16_t GsuDigitPair0E74A(uint8_t bank);
@@ -204,16 +233,29 @@ static uint16_t bonus_digits(uint8_t bank, uint16_t size)
 
 /* The exit: drawn, as GsuDigitPair0E74; else A = 0, Z set, N clear and
    X = x (or unchanged when x is negative). */
-static void bonus_exit(uint16_t a, int32_t x)
+static void bonus_exit(Carried *cr, uint16_t a, int32_t x)
 {
     if (bd_drawn) {
-        digit_exit(a);
+        digit_exit(cr, a);
         return;
     }
-    cpu.a = 0x0000;
+    cr->a = 0x0000;
     if (x >= 0)
-        cpu.x = (uint16_t)x;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+        cr->x = (uint16_t)x;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
+static void bonus_exit_g(uint16_t a, int32_t x)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    bonus_exit(&c, a, x);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 static uint16_t bd_x;                   /* the step $0D6B the size came by */
@@ -242,7 +284,7 @@ void abi_GsuBonusDigitsGrow(void)
 {
     uint16_t a = GsuBonusDigitsGrow(cpu.db);
 
-    bonus_exit(a, bd_x);
+    bonus_exit_g(a, bd_x);
 }
 
 /*
@@ -265,7 +307,7 @@ void abi_GsuBonusDigitsBounce(void)
 {
     uint16_t a = GsuBonusDigitsBounce(cpu.db);
 
-    bonus_exit(a, bd_x);
+    bonus_exit_g(a, bd_x);
 }
 
 /*
@@ -283,7 +325,7 @@ uint16_t GsuBonusDigitsFull(uint8_t bank)
 
 void abi_GsuBonusDigitsFull(void)
 {
-    bonus_exit(GsuBonusDigitsFull(cpu.db), -1);
+    bonus_exit_g(GsuBonusDigitsFull(cpu.db), -1);
 }
 
 /* The 65816's 16-bit ADC and SBC, binary or decimal as the D flag in *p
@@ -1183,6 +1225,20 @@ void abi_TimeBonusTally(void)
     cyc(70);
 }
 
+/* TimeBonusTally on carried registers, as abi_TimeBonusTally leaves them. */
+void TimeBonusTally_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    TbRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    TimeBonusTally(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, p);
+    cyc(70);
+}
+
 /* Register-level steps for the routines below, whose exit registers and
    flags follow every instruction: each sets A (or X) and the flags as the
    65816 instruction named does. */
@@ -1420,6 +1476,19 @@ void abi_TimeBonusTransfer(void)
     cpu.p = r.p;
 }
 
+/* TimeBonusTransfer on carried registers, as abi_TimeBonusTransfer leaves them. */
+void TimeBonusTransfer_cr(Carried *cr)
+{
+    TbRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    TimeBonusTransfer(cr->db, &r);
+    cyc(42);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 /*
  * @routine 07:8C82 TimeLeftDigits
  * WHAT IT DOES: Draws the race time at $0E70 (BCD) with Super FX program
@@ -1584,6 +1653,18 @@ void abi_TimeLeftDigits(void)
     cpu.p = r.p;
 }
 
+/* TimeLeftDigits on carried registers, as abi_TimeLeftDigits leaves them. */
+void TimeLeftDigits_cr(Carried *cr)
+{
+    TbRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    TimeLeftDigits(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 /* SEP #$20, REP #$10, LDX #$F15B, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
    program $07:F15B (a digit). */
 static void run_f15b(uint8_t bank, TbRegs *r)
@@ -1654,7 +1735,7 @@ void GsuDigitPair0E74At_cr(Carried *cr)
     cr->a = r.a;
     cr->x = r.x;
     cr->y = r.y;
-    cr->p = r.p;
+    set_p(cr, r.p);
 }
 
 /*
@@ -1691,4 +1772,5 @@ void abi_TimeBonusPiecesMirrored(void)
     cyc(20);
     op_plp(rd8((uint16_t)cpu.s));
 }
+
 

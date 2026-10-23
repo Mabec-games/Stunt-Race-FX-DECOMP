@@ -15,6 +15,7 @@
 #include "system_calls.h"
 #include "carried.h"
 
+
 #define FRAME_UPDATE_FLAGS 0x0011D7u
 #define BYTE_WRITES_SIZE 0x00162Du   /* bytes used in the list below */
 #define BYTE_WRITES 0x00162Fu        /* entries: 16-bit address, 16-bit value */
@@ -270,9 +271,24 @@ uint16_t VramDmaQueueAddTimed(uint16_t a)
     return a;
 }
 
+void VramDmaQueueAdd_cr(Carried *cr);
+
+void VramDmaQueueAdd_cr(Carried *cr)
+{
+    cr->a = VramDmaQueueAddTimed(cr->a);
+}
+
 void abi_VramDmaQueueAdd(void)
 {
-    cpu.a = VramDmaQueueAddTimed(cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VramDmaQueueAdd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Append A to a list of up to eight words; returns X, the new size (the
@@ -521,7 +537,7 @@ void FrameInputAndCountEnd_cr(Carried *cr)
 
     cr->a = (uint16_t)(hi | v);
     cr->x = (cr->p & P_X) ? (cyc(44), (uint8_t)x) : x;
-    cr->p = (uint8_t)(nz8(cr->p, v) | P_M);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
 }
 
 int JoypadPortCheck(uint8_t bank, uint8_t port);
@@ -587,3 +603,4 @@ void abi_FrameCountAndPortsEnd(void)
     cyc(44);
     cpu.p = (uint8_t)(nz8(cpu.p, lum) | P_M);
 }
+

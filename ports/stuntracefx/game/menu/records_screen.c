@@ -136,8 +136,6 @@ static void w_OamPalettesE28D(Carried *cr);
 static void w_OamSprite0AddY(Carried *cr);
 static void w_RecordNameLetters(Carried *cr);
 static void w_RecordNameLettersSmall(Carried *cr);
-static void w_RecordRowsFirstTimes(Carried *cr);
-static void w_RecordRowsGroupFirsts(Carried *cr);
 static void w_RecordTagCarSet(Carried *cr);
 static void w_SpriteTextAt8152(Carried *cr);
 static void w_SpriteTextAt8152B(Carried *cr);
@@ -154,6 +152,8 @@ void OamAttr38x7_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
 void OamPaletteForD75_cr(Carried *cr);
 void RecordNameLettersLarge_cr(Carried *cr);
+void RecordRowsFirstTimes_cr(Carried *cr);
+void RecordRowsGroupFirsts(Carried *cr);
 void RecordScoreDigits_cr(Carried *cr);
 void RecordTimeDigitsLarge_cr(Carried *cr);
 void RecordTimeDigitsSmall_cr(Carried *cr);
@@ -182,7 +182,7 @@ static uint32_t dp(Carried *cr, uint8_t a)
 static void lda8(Carried *cr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* LDA $0D1A (the pad's new presses, 16-bit), BIT #mask: whether any of
@@ -190,7 +190,7 @@ static void lda8(Carried *cr, uint8_t v)
 static int pressed(Carried *cr, uint16_t mask)
 {
     r_lda16(cr, cyc_then(24, db(cr) | 0x0D1A));
-    cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(50), 0) : (cyc(16), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(50), 0) : (cyc(16), P_Z))));
     return (cr->a & mask) != 0;
 }
 
@@ -230,7 +230,7 @@ static void md_first(Carried *cr, uint16_t id, uint8_t bra)
 {
     cr->y = 0x0000;
     cr->x = id;
-    cr->p = nz16(cr->p, id);
+    set_p(cr, nz16(cr->p, id));
     wr16(db(cr) | 0x0D71, cyc_then(72, 0x0000));
     (cyc(46), MetaspriteDraw_cr(cr));
     if (bra)
@@ -251,7 +251,7 @@ static void md_next(Carried *cr, uint32_t group, uint16_t prev, uint16_t slot, u
     cyc(38);
     wr16(b | slot, cr->a);
     cr->x = id;
-    cr->p = nz16(cr->p, id);
+    set_p(cr, nz16(cr->p, id));
     (cyc(70), MetaspriteDraw_cr(cr));
 }
 
@@ -263,7 +263,7 @@ static void slot_to_y(Carried *cr, uint16_t slot, int d)
     if (d) {
         cyc(14);
         cr->a = (uint16_t)(cr->a + d);
-        cr->p = nz16(cr->p, cr->a);
+        set_p(cr, nz16(cr->p, cr->a));
     }
     r_asl16(cr);
     r_asl16(cr);
@@ -454,7 +454,7 @@ void RecordsMenuAllMiddle(Carried *cr)
     cyc(46);
     r_lda8(cr, b | 0x0D24);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : (cyc(32), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : (cyc(32), 0))));
     if (v != 0x03) {
         r_rep(cr, P_M);
         if (pressed(cr, 0x9000)) {
@@ -543,7 +543,7 @@ static int menu_wait(Carried *cr)
     v = (uint8_t)(rd8(b | 0x0D41) - 1);
     cyc(6);
     wr8(b | 0x0D41, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(42);
     return 0;
 }
@@ -565,7 +565,7 @@ static uint16_t menu_handler(Carried *cr, uint16_t table)
     uint8_t x = rd8(cyc_then(24, db(cr) | 0x0D50));
 
     cr->x = x;
-    cr->p = nz8(cr->p, x);
+    set_p(cr, nz8(cr->p, x));
     cyc(46);
     return rd16(0x020000 | (uint16_t)(table + x));
 }
@@ -734,7 +734,7 @@ static void speed_alt_leave(Carried *cr)
     v = (uint8_t)(rd8(b | 0x0D48) + 1);
     cyc(6);
     wr8(b | 0x0D48, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     (cyc(62), OamBufferHideLargeLong_cr(cr));
     lda8(cr, 0xF0);
     cyc(48);
@@ -1277,14 +1277,14 @@ void SpeedRecordsPage(Carried *cr)
         cyc(42);
         r_lda8(cr, b | 0x10D8);
         v = (uint8_t)cr->a;
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x04)) & ~P_C) | (v >= 0x04 ? P_C : (cyc(58), 0)));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x04)) & ~P_C) | (v >= 0x04 ? P_C : (cyc(58), 0))));
         if (v < 0x04) {
             sound8(cr, 0x45);
             cyc(24);
             v = (uint8_t)(rd8(b | 0x10D8) + 1);
             cyc(6);
             wr8(b | 0x10D8, v);
-            cr->p = nz8(cr->p, v);
+            set_p(cr, nz8(cr->p, v));
         }
     } else { cyc(24); if (pressed(cr, 0x0200)) {
         r_sep(cr, P_M);
@@ -1297,7 +1297,7 @@ void SpeedRecordsPage(Carried *cr)
             v = (uint8_t)(rd8(b | 0x10D8) - 1);
             cyc(6);
             wr8(b | 0x10D8, v);
-            cr->p = nz8(cr->p, v);
+            set_p(cr, nz8(cr->p, v));
         }
     cyc(22);
         } else { cyc(30); } }
@@ -1305,7 +1305,7 @@ void SpeedRecordsPage(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x10D8);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(38), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(38), 0))));
     if (v >= 0x05) {
         v = 0x00;
         lda8(cr, 0x00);
@@ -1314,7 +1314,7 @@ void SpeedRecordsPage(Carried *cr)
     }
     v = (uint8_t)(v << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cr->x = v;
     cyc(106);
     h = rd16(0x020000 | (uint16_t)(0xEF3B + v));
@@ -1322,7 +1322,7 @@ void SpeedRecordsPage(Carried *cr)
     case 0xEF45:
         lda8(cr, 0x24);
         wr8(dp(cr, 0xF7), 0x24);
-        (cyc(46), w_RecordRowsFirstTimes(cr));
+        (cyc(46), RecordRowsFirstTimes_cr(cr));
         break;
     case 0xEF4E:
     case 0xEF5A:
@@ -1332,14 +1332,14 @@ void SpeedRecordsPage(Carried *cr)
         v = h == 0xEF4E ? 0x00 : h == 0xEF5A ? 0x03 : 0x06;
         lda8(cr, v);
         wr8(dp(cr, 0xF7), cyc_then(32, v));
-        (cyc(46), w_RecordRowsGroupFirsts(cr));
+        (cyc(46), RecordRowsGroupFirsts(cr));
         break;
     case 0xEF72:
         cyc(14);
         RecordsPageMarkFlipHide(cr);
         lda8(cr, 0x09);
         wr8(dp(cr, 0xF7), cyc_then(32, 0x09));
-        (cyc(46), w_RecordRowsGroupFirsts(cr));
+        (cyc(46), RecordRowsGroupFirsts(cr));
         join = 46;                      /* falls into .title: no BRA */
         break;
     default:
@@ -1359,7 +1359,7 @@ void SpeedRecordsPage(Carried *cr)
         r_lda8(cr, b | 0x0D4A);
         p = (uint8_t)(cr->p & ~P_C);
         v = alu_adc8((uint8_t)(cr->a << 2), rd8(cyc_then(58, dp(cr, 0xF1))), &p);
-        cr->p = p;
+        set_p(cr, p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } else {
         cyc(16);
@@ -1547,7 +1547,7 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
     r_asl16(cr);
     p = (uint8_t)(cr->p & ~P_C);
     cr->a = alu_adc16(cr->a, rd16(cyc_then(58, dp(cr, 0xF1))), &p);
-    cr->p = p;
+    set_p(cr, p);
     r_and16(cr, 0x00FF);
     r_tax16(cr);
     x = cr->x;
@@ -1559,7 +1559,7 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
         r_lda16(cr, save + x);
         (cyc(46), RecordTimeDigitsLarge_cr(cr));
         cr->x = x;
-        cr->p = nz16(cr->p, x);
+        set_p(cr, nz16(cr->p, x));
         cyc(68);
         r_lda16(cr, save + 2 + x);
         (cyc(46), RecordNameLettersLarge_cr(cr));
@@ -1614,7 +1614,7 @@ static void special_row(Carried *cr, uint16_t slot, uint16_t k, int stunt, Carri
         cyc(32);
         r_lda16(cr, 0x000F13 + k);
         cr->y = y;
-        cr->p = nz16(cr->p, y);
+        set_p(cr, nz16(cr->p, y));
         (cyc(128), w_RecordTagCarSet(cr));
         place(cr);
         cyc(22);                        /* BRA over the hiding calls */
@@ -1735,7 +1735,7 @@ void BattleRecordsScreen(Carried *cr)
     p = (uint8_t)(cr->p & ~P_C);
     cyc(52);
     cr->a = alu_adc16(cr->a, rd16(b | 0x0D89), &p);
-    cr->p = p;
+    set_p(cr, p);
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtLeft_cr(cr));
     cyc(24);
@@ -1750,7 +1750,7 @@ void BattleRecordsScreen(Carried *cr)
     p = (uint8_t)(cr->p & ~P_C);
     cyc(52);
     cr->a = alu_adc16(cr->a, rd16(b | 0x0D8A), &p);
-    cr->p = p;
+    set_p(cr, p);
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtRight_cr(cr));
     (cyc(46), w_SpriteTextAt8152B(cr));
@@ -1840,7 +1840,7 @@ static void w_ColourMathA7Start(Carried *cr)
     cr->a = 0;
     cr->x &= 0x00FF;
     cr->y &= 0x00FF;
-    cr->p = (uint8_t)(((cr->p & ~(P_N | P_M)) | P_Z | P_X));
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_M)) | P_Z | P_X)));
 }
 
 /* OamSprite0AddY as its adapter leaves the registers. */
@@ -1849,45 +1849,7 @@ static void w_OamSprite0AddY(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamSprite0AddY(cr->db, (uint8_t)cr->a, &p));
-    cr->p = p;
-}
-
-/* RecordRowsFirstTimes, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordRowsFirstTimes(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordRowsFirstTimes();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RecordRowsGroupFirsts, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordRowsGroupFirsts(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordRowsGroupFirsts();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, p);
 }
 
 /* SpriteTextAt895E, still in registers: its call with the registers loaded and taken
@@ -1931,7 +1893,7 @@ static void w_OamHideEntries0To2(Carried *cr)
 {
     OamHideEntries0To2(cr->db, cr->y);
     cr->a = 0xF000;
-    cr->p = (uint8_t)((cr->p & ~P_Z) | P_N);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
 }
 
 /* OamHideEntries3And9 as its adapter leaves the registers. */
@@ -1939,21 +1901,21 @@ static void w_OamHideEntries3And9(Carried *cr)
 {
     OamHideEntries3And9(cr->db, cr->y);
     cr->a = 0xF000;
-    cr->p = (uint8_t)((cr->p & ~P_Z) | P_N);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
 }
 
 /* RecordNameLetters as its adapter leaves the registers. */
 static void w_RecordNameLetters(Carried *cr)
 {
     cr->a = RecordNameLetters(cr->db, cr->a, cr->y);
-    cr->p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M))));
 }
 
 /* RecordNameLettersSmall as its adapter leaves the registers. */
 static void w_RecordNameLettersSmall(Carried *cr)
 {
     cr->a = RecordNameLettersSmall(cr->db, cr->a, cr->y);
-    cr->p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_N | P_Z | P_C | P_V | P_M))));
 }
 
 /* RecordTagCarSet as its adapter leaves the registers. */
@@ -1961,7 +1923,7 @@ static void w_RecordTagCarSet(Carried *cr)
 {
     uint8_t t = (uint8_t)cr->a, v = RecordTagCarSet(t);
 
-    cr->p = (uint8_t)((nz8(cr->p, v) & ~(P_C | P_M)) | (t >= 0x0C ? P_C : 0));
+    set_p(cr, (uint8_t)((nz8(cr->p, v) & ~(P_C | P_M)) | (t >= 0x0C ? P_C : 0)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
 }
 

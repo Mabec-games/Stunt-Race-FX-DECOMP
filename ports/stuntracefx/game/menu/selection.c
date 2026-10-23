@@ -7,6 +7,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
+
 /*
  * @routine 0B:C58D MenuRowPosition
  * WHAT IT DOES: Returns a position from object X's +$12 and the value at
@@ -401,13 +402,28 @@ uint16_t MenuChoiceUpDownY(uint8_t bank, uint16_t *y)
     return menu_choice_up_down(bank, y);
 }
 
-void abi_MenuChoiceUpDown(void)
+void MenuChoiceUpDown_cr(Carried *cr);
+
+void MenuChoiceUpDown_cr(Carried *cr)
 {
     uint16_t y;
 
-    cpu.a = menu_choice_up_down(cpu.db, &y);
-    cpu.y = y;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+    cr->a = menu_choice_up_down(cr->db, &y);
+    cr->y = y;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
+}
+
+void abi_MenuChoiceUpDown(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuChoiceUpDown_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -581,13 +597,13 @@ void MenuCursorFourWay_cr(Carried *cr)
 {
     uint8_t v = MenuCursorFourWay(cr->db);
 
-    cr->p |= P_M | P_X;
+    set_p(cr, (uint8_t)(cr->p | (P_M | P_X)));
     cr->x = mc_x >= 0 ? (uint16_t)mc_x : (uint16_t)(cr->x & 0x00FF);
     cr->y &= 0x00FF;
     if (mc_c >= 0)
-        cr->p = (uint8_t)((cr->p & ~P_C) | mc_c);
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | mc_c));
     cr->a = (uint16_t)((mc_pad & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
 }
 
 static int cs_c;                        /* C as the car steps leave it, or -1 */
@@ -715,3 +731,18 @@ void abi_CarSelectTwoPlayers(void)
         cpu.p = (uint8_t)((cpu.p & ~P_C) | cs_c);
     cpu.p = nz8(cpu.p, cs_last);
 }
+
+/* CarSelectTwoPlayers on carried registers, as abi_CarSelectTwoPlayers leaves them. */
+void CarSelectTwoPlayers_cr(Carried *cr)
+{
+    uint16_t x;
+
+    cr->a = CarSelectTwoPlayers(cr->db, !(cr->p & P_X), &x);
+    cr->x = (uint8_t)x;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)(cr->p | (P_M | P_X)));
+    if (cs_c >= 0)
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | cs_c));
+    set_p(cr, nz8(cr->p, cs_last));
+}
+

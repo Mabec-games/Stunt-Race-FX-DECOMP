@@ -40,6 +40,20 @@ def functions(t):
         out.append((m.start(), e, m.group(2), m.group(1), m.group(3), m.end()))
     return out
 
+# P's I flag is the CPU's interrupt mask, which the machine reads at every
+# access: carried code sets P through set_p (carried.h), which takes a
+# change to I to the machine
+PSTMT = r'((?:^|[{;:]|\belse|\))\s*)'
+def carried_p(b):
+    b = re.sub(PSTMT + r'cr->p\s*\|=\s*([^;]+);', r'\1set_p(cr, (uint8_t)(cr->p | (\2)));', b, flags=re.M)
+    b = re.sub(PSTMT + r'cr->p\s*&=\s*([^;]+);', r'\1set_p(cr, (uint8_t)(cr->p & (\2)));', b, flags=re.M)
+    b = re.sub(PSTMT + r'cr->p\s*=(?!=)\s*([^;]+);', r'\1set_p(cr, \2);', b, flags=re.M)
+    left = re.findall(r'cr->p\s*(?:\|=|&=|\^=|=(?!=))', b)
+    if left:
+        p_left.append(len(left))
+    return b
+p_left = []
+
 REG = re.compile(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_(?!adc16|sbc16|adc8|sbc8)\w+\s*\(|\babi_\w+\s*\(\s*\)')
 GLUE = re.compile(r'\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b|\bcpu\.(s|pc|e|unwound)\b')
 
@@ -95,6 +109,7 @@ if EXPORT:
         if re.search(r'^void %s_cr\(Carried \*cr\)' % n, text, re.M):
             continue
         bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
+        bb = carried_p(bb)
         bb = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', bb)
         bb = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', bb)
         bb = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', bb)
@@ -169,6 +184,37 @@ fptypes = set(re.findall(r'typedef\s+void\s*\(\s*\*\s*(\w+)\s*\)\s*\(\s*void\s*\
 def takes_routine(params):
     return re.search(r'\(\s*\*\s*\w+\s*\)\s*\(\s*void\s*\)', params) or \
         any(re.search(r'\b%s\b' % t, params) for t in fptypes)
+_passes = {}
+def passes_routines(n, seen=()):
+    """Whether this file's calls of n pass register routines (abi_X as a
+    value, or a routine parameter of a caller that is passed them): a
+    void (*)(void) parameter that only ever gets typed functions is a typed
+    callback and stays one."""
+    if n in _passes:
+        return _passes[n]
+    if n in seen:
+        return False
+    got = False
+    for m in re.finditer(r'(?<![\w>.])%s\s*\(' % n, text):
+        depth, i = 1, m.end()
+        while depth and i < len(text):
+            depth += {'(': 1, ')': -1}.get(text[i], 0)
+            i += 1
+        args = text[m.end():i]
+        if re.search(r'\babi_\w+\b(?!\s*\()', args):
+            got = True
+            break
+        # the enclosing function's routine parameters handed on
+        encl = [f for f in fns if f[0] <= m.start() < f[1]]
+        if encl:
+            en = encl[0][2]
+            fps = [fp for fp in re.findall(r'\(\s*\*\s*(\w+)\s*\)\s*\(\s*void\s*\)', encl[0][4])]
+            if any(re.search(r'\b%s\b' % fp, args) for fp in fps) and passes_routines(en, seen + (n,)):
+                got = True
+                break
+    if not seen:
+        _passes[n] = got
+    return got
 adapter, regfn, glue = set(), set(), set()
 for n, b in body.items():
     if isroutine[n] and re.search(r'(?<![\w])%s\s*\(' % n[4:], b):
@@ -178,7 +224,7 @@ for n, b in body.items():
         continue
     if GLUE.search(b):
         glue.add(n)
-    elif REG.search(b) or takes_routine(byname[n][4]) or re.search(r'\babi_\w+\b(?!\s*\()', b):
+    elif REG.search(b) or (takes_routine(byname[n][4]) and passes_routines(n)) or re.search(r'\babi_\w+\b(?!\s*\()', b):
         regfn.add(n)
 # transitive: callers of regfn helpers
 changed = True
@@ -198,16 +244,18 @@ for n in list(regfn):
     hdr = byname[n][3]
     if isroutine[n]:
         t = n[4:]
-        if (t in byname and t not in regfn) or [f for f in typed_elsewhere(t) if f != FILE]:
+        if t in byname or [f for f in typed_elsewhere(t) if f != FILE]:
             crname.add(n); continue
     elif not hdr.startswith('static'):
         ext = callers_elsewhere(n)
-        if ext:
-            left[n] = 'called from %s' % ext; regfn.discard(n); glue.add(n)
+        hh = [hf for hf in os.listdir(os.path.join(G, 'include')) if hf.endswith('.h') and
+              re.search(r'(?<![\w>.])%s\s*\(' % n, open(os.path.join(G, 'include', hf)).read())]
+        if ext or hh:
+            left[n] = 'called from %s' % (ext or hh); regfn.discard(n); glue.add(n)
 newname = {n: (n[4:] + ('_cr' if n in crname else '') if isroutine[n] else n) for n in regfn}
 # glue that takes routines: its callers pass carried routines, which it
 # calls through cr_call
-cglue = {n for n in glue if not isroutine[n] and takes_routine(byname[n][4])}
+cglue = {n for n in glue if not isroutine[n] and takes_routine(byname[n][4]) and passes_routines(n)}
 
 # wrappers for calls of other routines' adapters
 def find_adapter(n):
@@ -245,6 +293,7 @@ def export_into(f, n, b):
     if touches_any(f, b, set()):
         return False
     bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
+    bb = carried_p(bb)
     bb = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', bb)
     bb = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', bb)
     bb = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', bb)
@@ -337,6 +386,7 @@ def make_wrapper(n):
         call = make_wrapper(c)
         bb = re.sub(r'\babi_%s\s*\(\s*\)' % c, call, bb)
     bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', bb)
+    bb = carried_p(bb)
     bb = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', bb)
     bb = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', bb)
     bb = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', bb)
@@ -424,9 +474,17 @@ def rewrite_body(b):
     for c in sorted(set(re.findall(r'\babi_(\w+)\s*\(\s*\)', b))):
         b = re.sub(r'\babi_%s\s*\(\s*\)' % c, make_wrapper(c), b)
     b = routine_values(b)
+    # tables of converted helpers (any return type): carried pointers
+    for m in list(re.finditer(r'\(\s*\*\s*(?:const\s+)?(\w+)(\[[^\]]*\])?\s*\)\s*\(\s*void\s*\)(\s*=\s*\{([^}]*)\})', b)):
+        names = [x.strip() for x in m.group(4).split(',') if x.strip()]
+        if names and all(x in regfn and not isroutine[x] for x in names):
+            v = m.group(1)
+            b = b.replace(m.group(0), m.group(0).replace('(void)', '(Carried *)', 1))
+            b = re.sub(r'\b%s(\[[^\]]*\])\s*\(\s*\)' % v, r'%s\1(cr)' % v, b)
     b = re.sub(r'\bdispatch_call_\(', 'carried_call(cr, ', b)
     b = re.sub(r'\bdispatch_jump_\(', 'carried_jump(cr, ', b)
     b = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
+    b = carried_p(b)
     b = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', b)
     b = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', b)
     b = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', b)
@@ -560,8 +618,9 @@ void %s(void)
 ''' % (n, nn))
         else:
             p = params.strip()
-            np = 'Carried *cr' if p in ('void', '') else 'Carried *cr, ' + routine_values(params)
-            for fp in rparams(params):
+            cb = passes_routines(n)
+            np = 'Carried *cr' if p in ('void', '') else 'Carried *cr, ' + (routine_values(params) if cb else params)
+            for fp in (rparams(params) if cb else []):
                 b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % fp, '%s(cr)' % fp, b)
             for fp, fargs in carried_fp.get(n, {}).items():
                 np = re.sub(r'\(\s*\*\s*%s\s*\)\s*\(' % fp, '(*%s)(Carried *, ' % fp, np)
@@ -598,6 +657,7 @@ def fix_macro(m):
     twin = line.replace('#define %s' % name, '#define %s_c' % name, 1)
     orig = line
     twin = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', twin)
+    twin = carried_p(twin)
     for n in hits:
         twin = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % n, '%s(cr)' % n, twin)
         twin = re.sub(r'(?<![\w>.])%s\s*\((?!cr\b)' % n, '%s(cr, ' % n, twin)
@@ -633,7 +693,8 @@ for h in sorted(gvariants):
     plist = [] if params.strip() in ('void', '') else split_params(params)
     names = [pname(p) for p in plist]
     call = '%s(&c%s)' % (h, ''.join(', ' + x for x in names))
-    params = routine_values(params)
+    if passes_routines(h):
+        params = routine_values(params)
     isvoid = re.sub(r'\bstatic\b|\binline\b', '', ret).strip() == 'void'
     g = '''%s %s_g(%s)
 {
@@ -794,6 +855,8 @@ if stops:
 res = re.sub(r'\bdispatch_call_\(', 'call_routine(', res)
 res = re.sub(r'\bdispatch_jump_\(', 'jump_routine(', res)
 open(os.path.join(G, FILE), 'w').write(res)
+if p_left:
+    print('P written other than through set_p: %d places' % sum(p_left))
 print('converted %d, glue %d (%s), sync wrappers %d (%s)' % (len(regfn), len(glue), ', '.join(sorted(glue)), len(syncw | extsw), ', '.join(sorted(syncw | extsw))))
 for n, w in left.items():
     print('left', n, w)

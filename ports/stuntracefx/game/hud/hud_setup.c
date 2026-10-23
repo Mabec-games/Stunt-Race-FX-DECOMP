@@ -17,8 +17,12 @@
 #include "hw.h"
 #include "carried.h"
 
+#include "video_calls.h"
 void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out);
 uint16_t MenuCourseScreenSetup(uint8_t bank);
+void OamBufferClear(void);
+void OamDmaAll(void);
+void OamFromList(uint8_t bank, uint16_t *x, uint16_t *y);
 #include "video_palette_calls.h"
 #include "hud_calls.h"
 
@@ -108,6 +112,8 @@ static const HudByte battle_p2_sprites[6] = {
 
 void HudBestTimeDigits(Carried *cr);
 void HudBestTimeSprites(Carried *cr);
+void RaceHudSetup_cr(Carried *cr);
+void RaceHudSetupTwoPlayers_cr(Carried *cr);
 void RaceHudSpritesHide(Carried *cr);
 void RecordOffsetAllCourses(Carried *cr);
 static void digit_tiles(Carried *cr, uint32_t at, uint8_t d);
@@ -120,33 +126,26 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed);
 static void mode_stunt(Carried *cr, uint32_t b);
 static void no_time(Carried *cr);
 static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at);
+static void race_hud_setup(Carried *cr);
 static void race_hud_setup_two(Carried *cr);
 static void slide_word(Carried *cr, uint16_t v);
 static void time_tiles(Carried *cr, uint8_t min, uint8_t sec, uint8_t hund);
+static void w_GradientFillCgadd(Carried *cr);
 static void w_GsuCF42ToVram(Carried *cr);
 static void w_MenuCourseScreenSetup(Carried *cr);
+static void w_OamBufferClear(Carried *cr);
+static void w_OamDmaAll(Carried *cr);
+static void w_OamFromList(Carried *cr);
 static void w_PaletteCourseLoad(Carried *cr);
+static void w_RaceVarsReset(Carried *cr);
+static void w_SoundFromTableD89(Carried *cr);
 static void w_TimeUnpackBcdLong(Carried *cr);
-void RaceVarsReset(Carried *cr);
 
 /* LDA #v with M 8-bit. */
 static void lda8(Carried *cr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void lda8_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    lda8(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* A run of sprite macros: each byte LDA # / STA.L to $00:addr, the index
@@ -176,7 +175,7 @@ static void digit_tiles(Carried *cr, uint32_t at, uint8_t d)
 {
     uint8_t v = (uint8_t)(d << 1);
 
-    cr->p = (uint8_t)((cr->p & ~P_C) | (d >> 7));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (d >> 7)));
     lda8(cr, v);
     cyc(62);
     wr8(at, v);
@@ -313,7 +312,7 @@ void RecordOffsetAllCourses(Carried *cr)
     p = (uint8_t)(cr->p & ~P_C);
     cyc(58);
     cr->a = alu_adc16(cr->a, rd16((uint16_t)(cr->d + 0xF1)), &p);
-    cr->p = p;
+    set_p(cr, p);
     r_and16(cr, 0x00FF);
     r_tax16(cr);
 }
@@ -437,20 +436,6 @@ static int mode_all(Carried *cr, uint32_t b)
     return 0;
 }
 
-static int mode_all_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = mode_all(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 /* HUD mode 1 (Stunt Trax). With $0D4E set (a course's records run):
    $7F:3470 = $7FFF, $0E16 = $AC, $0E18 = $8C, sprites 116-127 placed, and
    the course's record time from the save ($70:FC4A + (course - $17) * 5)
@@ -487,7 +472,7 @@ static void mode_stunt(Carried *cr, uint32_t b)
         p = (uint8_t)(cr->p & ~P_C);
         cyc(58);
         cr->a = alu_adc16(cr->a, rd16((uint16_t)(cr->d + 0xF1)), &p);
-        cr->p = p;
+        set_p(cr, p);
         r_tax16(cr);
         x = cr->x;
         cyc(16);
@@ -517,19 +502,6 @@ static void mode_stunt(Carried *cr, uint32_t b)
     slide_word(cr, 0x2127);
 }
 
-static void mode_stunt_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    mode_stunt(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* LDA $addr, ASL, STA.W at, INC, STA.W at + 4: a player's number as its
    two tiles. */
 static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at)
@@ -538,7 +510,7 @@ static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at)
 
     r_lda8(cr, b | from);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
     lda8(cr, v);
     cyc(38);
@@ -601,229 +573,216 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
         cyc(6);                         /* BEQ taken */
 }
 
-static void mode_speed_battle_g(uint32_t b, int speed)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    mode_speed_battle(&c, b, speed);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The end of both set-ups: RaceVarsReset, SEP #$20. */
 static void hud_end(Carried *cr)
 {
-    (cyc(62), RaceVarsReset(cr));
+    (cyc(62), w_RaceVarsReset(cr));
     r_sep(cr, P_M);
     cyc(8);
 }
 
-static void hud_end_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    hud_end(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The one-player HUD (from $03:DECA up to the end's PLB, PLP). */
-static void race_hud_setup(void)
+static void race_hud_setup(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t h;
     unsigned i;
     static const uint16_t hdma_bytes[9] = {0x20, 0x13, 0x40, 0x12, 0x40, 0x12, 0x01, 0x13, 0x00};
 
-    op_sep(P_M);
-    (cyc(84), abi_SoundFromTableD89());
-    op_rep(P_M | P_X);
-    op_lda16_imm(0xA325);
+    r_sep(cr, P_M);
+    (cyc(84), w_SoundFromTableD89(cr));
+    r_rep(cr, P_M | P_X);
+    r_lda16_imm(cr, 0xA325);
     cyc(18);
     wr16(0x70004E, 0xA325);
-    (cyc(62), abi_OamBufferClear());
-    op_sep(P_M);
-    op_rep(P_X);
-    cpu.x = 0x0000;
-    cpu.y = 0x0000;
-    cpu.p = nz16(cpu.p, 0);
-    (cyc(116), abi_OamFromList());
+    (cyc(62), w_OamBufferClear(cr));
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
+    cr->x = 0x0000;
+    cr->y = 0x0000;
+    set_p(cr, nz16(cr->p, 0));
+    (cyc(116), w_OamFromList(cr));
     cyc(42);                            /* RTS */
-    cpu.x = 0x0200;
-    cpu.y = 0x01AA;
-    cpu.p = nz16(cpu.p, 0x01AA);
-    (cyc(52), abi_OamFromList());
-    op_sep(P_M | P_X);
-    b = (uint32_t)cpu.db << 16;
+    cr->x = 0x0200;
+    cr->y = 0x01AA;
+    set_p(cr, nz16(cr->p, 0x01AA));
+    (cyc(52), w_OamFromList(cr));
+    r_sep(cr, P_M | P_X);
+    b = (uint32_t)cr->db << 16;
     cyc(24);
-    op_lda8(b | 0x0D2B);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(cpu.a << 1));
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
-    cpu.x = (uint8_t)cpu.a;
+    r_lda8(cr, b | 0x0D2B);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(cr->a << 1));
+    set_p(cr, nz8(cr->p, (uint8_t)cr->a));
+    cr->x = (uint8_t)cr->a;
     cyc(74);
-    h = rd16(0x030000 | (uint16_t)(0xE052 + cpu.x));
+    h = rd16(0x030000 | (uint16_t)(0xE052 + cr->x));
     switch (h) {
     case 0xE05A:
-        if (mode_all_g(b))
-            mode_speed_battle_g(b, 1); else { cyc(30); }
+        if (mode_all(cr, b))
+            mode_speed_battle(cr, b, 1); else { cyc(30); }
         break;
-    case 0xE263: mode_stunt_g(b); cyc(8); break;
-    case 0xE4DD: mode_speed_battle_g(b, 1); break;
-    case 0xE4E7: mode_speed_battle_g(b, 0); break;
-    default: jump_routine(0x030000 | h); return;
+    case 0xE263: mode_stunt(cr, b); cyc(8); break;
+    case 0xE4DD: mode_speed_battle(cr, b, 1); break;
+    case 0xE4E7: mode_speed_battle(cr, b, 0); break;
+    default: carried_jump(cr, 0x030000 | h); return;
     }
     /* $03:E5C4: the sprite tables out, scrolls, HUD positions, HDMA. */
     cyc(100);
-    op_sep(P_M);
-    op_rep(P_X);
-    abi_OamDmaAll();
-    op_sep(P_M | P_X);
-    b = (uint32_t)cpu.db << 16;
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
+    w_OamDmaAll(cr);
+    r_sep(cr, P_M | P_X);
+    b = (uint32_t)cr->db << 16;
     cyc(24);
     ppu_wr(b | BG1HOFS, 0x00);
     cyc(24);
     ppu_wr(b | BG1HOFS, 0x00);
-    lda8_g(0xEF);
+    lda8(cr, 0xEF);
     cyc(40);
     ppu_wr(b | BG1VOFS, 0xEF);
-    cpu.x = 0xFF;
-    cpu.p = nz8(cpu.p, 0xFF);
+    cr->x = 0xFF;
+    set_p(cr, nz8(cr->p, 0xFF));
     cyc(40);
     ppu_wr(b | BG1VOFS, 0xFF);
     cyc(24);
     ppu_wr(b | BG2HOFS, 0x00);
     cyc(24);
     ppu_wr(b | BG2HOFS, 0x00);
-    lda8_g(0x80);
+    lda8(cr, 0x80);
     cyc(40);
     ppu_wr(b | BG2VOFS, 0x80);
     cyc(24);
     ppu_wr(b | BG2VOFS, 0x00);
-    lda8_g(0x04);
+    lda8(cr, 0x04);
     cyc(40);
     wr8(b | 0x0D3F, 0x04);
-    lda8_g(0xFF);
+    lda8(cr, 0xFF);
     cyc(40);
     wr8(b | 0x0E46, 0xFF);
     cyc(24);
     wr8(b | 0x0E45, 0xFF);
     cyc(24);
     wr8(b | 0x0D7D, 0x00);
-    lda8_g(0xC4);
+    lda8(cr, 0xC4);
     cyc(40);
     wr8(b | 0x0E12, 0xC4);
-    lda8_g(0x93);
+    lda8(cr, 0x93);
     cyc(40);
     wr8(b | 0x0E14, 0x93);
-    lda8_g(0x2A);
+    lda8(cr, 0x2A);
     cyc(40);
     wr8(b | 0x0E09, 0x2A);
-    lda8_g(0x7A);
+    lda8(cr, 0x7A);
     cyc(56);
     wr8(b | 0x0E0C, 0x7A);
-    lda8_g(0x00);
+    lda8(cr, 0x00);
     cyc(40);
     wr8(b | 0x0E0B, 0x00);
-    lda8_g(0xE0);
+    lda8(cr, 0xE0);
     cyc(40);
     wr8(b | 0x0D57, 0xE0);
-    lda8_g(0x20);
+    lda8(cr, 0x20);
     cyc(40);
     wr8(b | 0x0D58, 0x20);
-    lda8_g(0x50);
+    lda8(cr, 0x50);
     cyc(40);
     wr8(b | 0x0E0E, 0x50);
-    lda8_g(0xB8);
+    lda8(cr, 0xB8);
     cyc(40);
     wr8(b | 0x0E10, 0xB8);
-    lda8_g(0x00);
+    lda8(cr, 0x00);
     cyc(62);
     dma_wr(b | DMAP1, 0x00);
-    lda8_g(0x2C);
+    lda8(cr, 0x2C);
     cyc(40);
     dma_wr(b | BBAD1, 0x2C);
-    lda8_g(0x7F);
+    lda8(cr, 0x7F);
     cyc(40);
     dma_wr(b | A1B1, 0x7F);
-    op_rep(P_M);
-    op_lda16_imm(0x3480);
+    r_rep(cr, P_M);
+    r_lda16_imm(cr, 0x3480);
     cyc(10);
     dma_wr16(b | A1T1L, 0x3480);
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(22);
     for (i = 0; i < 9; i++) {
-        lda8_g((uint8_t)hdma_bytes[i]);
+        lda8(cr, (uint8_t)hdma_bytes[i]);
         cyc(48);
         wr8(0x7F3480 + i, (uint8_t)hdma_bytes[i]);
     }
-    lda8_g(0x00);
+    lda8(cr, 0x00);
     cyc(40);
     dma_wr(b | DMAP2, 0x00);
-    lda8_g(0x21);
+    lda8(cr, 0x21);
     cyc(40);
     dma_wr(b | BBAD2, 0x21);
-    lda8_g(0x7F);
+    lda8(cr, 0x7F);
     cyc(40);
     dma_wr(b | A1B2, 0x7F);
-    op_rep(P_M);
-    op_lda16_imm(0x3497);
+    r_rep(cr, P_M);
+    r_lda16_imm(cr, 0x3497);
     cyc(10);
     dma_wr16(b | A1T2L, 0x3497);
-    op_lda16_imm(0x0042);
+    r_lda16_imm(cr, 0x0042);
     cyc(10);
     dma_wr16(b | DMAP3, 0x0042);
-    op_lda16_imm(0x0022);
+    r_lda16_imm(cr, 0x0022);
     cyc(10);
     dma_wr16(b | BBAD3, 0x0022);
-    op_lda16_imm(0x007F);
+    r_lda16_imm(cr, 0x007F);
     cyc(10);
     dma_wr16(b | A1B3, 0x007F);
-    op_lda16_imm(0x3489);
+    r_lda16_imm(cr, 0x3489);
     cyc(32);
     dma_wr16(b | A1T3L, 0x3489);
-    op_rep(P_M | P_X);
-    op_lda16_imm(0x0120);
+    r_rep(cr, P_M | P_X);
+    r_lda16_imm(cr, 0x0120);
     cyc(18);
     wr16(0x7F3497, 0x0120);
-    cpu.y = 0x0080;
-    cpu.x = 0x0002;
-    op_lda16_imm(0x0181);
-    (cyc(80), abi_GradientFillCgadd());
-    op_lda16_imm(0x0000);
+    cr->y = 0x0080;
+    cr->x = 0x0002;
+    r_lda16_imm(cr, 0x0181);
+    (cyc(80), w_GradientFillCgadd(cr));
+    r_lda16_imm(cr, 0x0000);
     cyc(18);
-    wr16(0x7F3497 + cpu.x, 0x0000);
-    op_lda16_imm(0xEC57);
+    wr16(0x7F3497 + cr->x, 0x0000);
+    r_lda16_imm(cr, 0xEC57);
     cyc(18);
     wr16(0x7F348A, 0xEC57);
-    op_sep(P_M);
-    lda8_g(0x20);
+    r_sep(cr, P_M);
+    lda8(cr, 0x20);
     cyc(70);
     wr8(0x7F3489, 0x20);
-    lda8_g(0xFF);
+    lda8(cr, 0xFF);
     cyc(48);
     wr8(0x7F348C, 0xFF);
-    lda8_g(0x00);
+    lda8(cr, 0x00);
     cyc(48);
     wr8(0x7F348F, 0x00);
-    lda8_g(0x7F);
+    lda8(cr, 0x7F);
     cyc(40);
     dma_wr(b | DASB3, 0x7F);
-    lda8_g(0x03);
+    lda8(cr, 0x03);
     cyc(40);
     wr8(b | 0x0374, 0x03);
-    op_rep(P_M);
-    op_lda16_imm(0x0001);
+    r_rep(cr, P_M);
+    r_lda16_imm(cr, 0x0001);
     cyc(18);
     wr16(0x7001C4, 0x0001);
-    (cyc(24), hud_end_g());
+    (cyc(24), hud_end(cr));
+}
+
+static void race_hud_setup_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    race_hud_setup(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 /* The two-player HUD (from $03:E6FA up to the end's PLB, PLP): the Super
@@ -936,11 +895,11 @@ static void race_hud_setup_two(Carried *cr)
         cr->y++;
     }
     cyc(178);
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_Z | P_C);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_Z | P_C));
     r_rep(cr, P_M | P_X);
     cr->y = 0xF845;
     cr->x = 0xF804;
-    cr->p = nz16(cr->p, 0xF804);
+    set_p(cr, nz16(cr->p, 0xF804));
     w_GsuCF42ToVram(cr);
     (cyc(0), hud_end(cr));
 }
@@ -985,6 +944,23 @@ static void hud_leave_stack(void)
     cpu.unwound = 1;
 }
 
+static void hud_leave_stack_c(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    hud_leave_stack();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
 /*
  * @routine 03:DECA RaceHudSetup
  * WHAT IT DOES: The one-player race HUD after RaceHudLoad: sounds
@@ -1008,16 +984,29 @@ static void hud_leave_stack(void)
  */
 void RaceHudSetup(uint8_t p, uint8_t db)
 {
-    race_hud_setup();
+    race_hud_setup_g();
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);
 }
 
+void RaceHudSetup_cr(Carried *cr)
+{
+    race_hud_setup(cr);
+    hud_leave_stack_c(cr);
+}
+
 void abi_RaceHudSetup(void)
 {
-    race_hud_setup();
-    hud_leave_stack();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceHudSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1039,10 +1028,23 @@ void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
     op_plp(p);
 }
 
+void RaceHudSetupTwoPlayers_cr(Carried *cr)
+{
+    race_hud_setup_two(cr);
+    hud_leave_stack_c(cr);
+}
+
 void abi_RaceHudSetupTwoPlayers(void)
 {
-    race_hud_setup_two_g();
-    hud_leave_stack();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceHudSetupTwoPlayers_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* TimeUnpackBcdLong as its adapter leaves the registers. */
@@ -1055,7 +1057,78 @@ static void w_TimeUnpackBcdLong(Carried *cr)
     cr->a = min;
     cr->x = sec;
     cr->y = hund;
-    cr->p = p;
+    set_p(cr, p);
+}
+
+/* RaceVarsReset, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_RaceVarsReset(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_RaceVarsReset();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GradientFillCgadd as its adapter leaves the registers. */
+static void w_GradientFillCgadd(Carried *cr)
+{
+    cr->x = GradientFillCgadd(cr->a, cr->x, cr->y);
+    cr->y = 0;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
+/* OamBufferClear as its adapter leaves the registers. */
+static void w_OamBufferClear(Carried *cr)
+{
+    OamBufferClear();
+    cr->a = 0x0000;
+    cr->x = (cr->p & P_X) ? 0x00FE : 0xFFFE;
+}
+
+/* OamDmaAll as its adapter leaves the registers. */
+static void w_OamDmaAll(Carried *cr)
+{
+    OamDmaAll();
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
+    cr->x = (cr->p & P_X) ? (cyc(0), 0x00) : 0x0400;
+    cr->y = (cr->p & P_X) ? 0x20 : 0x0220;
+}
+
+/* OamFromList as its adapter leaves the registers. */
+static void w_OamFromList(Carried *cr)
+{
+    OamFromList(cr->db, &cr->x, &cr->y);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_C));
+}
+
+/* SoundFromTableD89, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SoundFromTableD89(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SoundFromTableD89();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /* GsuCF42ToVram as its adapter leaves the registers. */
@@ -1064,7 +1137,7 @@ static void w_GsuCF42ToVram(Carried *cr)
     GsuCF42ToVram(cr->db, cr->x, cr->y);
     cr->a = 0x0001;
     cr->x = cr->y;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M));
 }
 
 /* MenuCourseScreenSetup as its adapter leaves the registers. */

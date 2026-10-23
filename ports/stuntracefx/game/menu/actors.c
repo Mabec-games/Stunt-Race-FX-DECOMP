@@ -18,6 +18,7 @@
 #include "menu_calls.h"
 #include "carried.h"
 
+
 #define ACTOR_FIRST 0x1265u
 #define ACTOR_SIZE 0x2Cu
 #define ACTOR_END 0x162Du
@@ -259,14 +260,14 @@ void MenuActorFind_cr(Carried *cr)
         cr->x = x;
         cr->y = y;
         cr->a = (uint16_t)((cr->a & 0xFF00) | a8);
-        cr->p = p;
+        set_p(cr, p);
         return;
     }
     MenuActorFind(cr->db, cr->a, &x, &y, &p);
     cr->x = x;
     cr->y = y;
     cr->a = find_last_kind;
-    cr->p = p;
+    set_p(cr, p);
 }
 
 /*
@@ -1285,10 +1286,28 @@ uint16_t MenuActorAnimateOnly(uint8_t bank, uint16_t *x, uint8_t *p)
     return MenuActorAnimateFrame(bank, x, p);
 }
 
+void MenuActorAnimateOnly_cr(Carried *cr);
+void MenuDropAwayFinishCurrent_cr(Carried *cr);
+static void w_MenuActorAnimateFrame(Carried *cr);
+static void w_MenuDropAwayFinish(Carried *cr);
+
+void MenuActorAnimateOnly_cr(Carried *cr)
+{
+    w_MenuActorAnimateFrame(cr);
+    cyc(42);
+}
+
 void abi_MenuActorAnimateOnly(void)
 {
-    abi_MenuActorAnimateFrame();
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorAnimateOnly_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* +$02 = top - $18C1 (SEC; SBC: C, V, N, Z from it), then the animation
@@ -2656,10 +2675,23 @@ void MenuDropAwayFinishCurrent(uint8_t bank, uint8_t *p)
     MenuDropAwayFinish(bank, p);
 }
 
+void MenuDropAwayFinishCurrent_cr(Carried *cr)
+{
+    (cyc(40), w_MenuDropAwayFinish(cr));
+    cyc(42);
+}
+
 void abi_MenuDropAwayFinishCurrent(void)
 {
-    (cyc(40), abi_MenuDropAwayFinish());
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuDropAwayFinishCurrent_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ROR of a 16-bit word in memory: c in at bit 15, bit 0 out to c. */
@@ -2982,4 +3014,24 @@ void MenuActorsRun(void)
 void abi_MenuActorsRun(void)
 {
     MenuActorsRun();
+}
+
+/* MenuActorAnimateFrame as its adapter leaves the registers. */
+static void w_MenuActorAnimateFrame(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuActorAnimateFrame(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
+/* MenuDropAwayFinish as its adapter leaves the registers. */
+static void w_MenuDropAwayFinish(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->x = MenuDropAwayFinish(cr->db, &p);
+    cr->a = 0x0040;
+    cr->y = 0xFFFE;
+    set_p(cr, p);
 }

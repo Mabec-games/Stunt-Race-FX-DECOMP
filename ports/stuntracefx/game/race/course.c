@@ -163,11 +163,11 @@ static void wipe_in_body(Carried *cr);
 static void wipe_out_body(Carried *cr);
 static void zoom_in_body(Carried *cr);
 static void zoom_out_body(Carried *cr);
+static void w_AllRecordsScreen(Carried *cr);
+static void w_BattleRecordsScreen(Carried *cr);
 static void w_BlendStepDown(Carried *cr);
 static void w_BlendStepUp(Carried *cr);
 static void w_ColourMathA3(Carried *cr);
-static void w_ColourMathA3Long(Carried *cr);
-static void w_ColourMathOffLong(Carried *cr);
 static void w_CourseFromSelection(Carried *cr);
 static void w_CourseScreenNothing(Carried *cr);
 static void w_FlashingMetaspriteDraw(Carried *cr);
@@ -175,20 +175,20 @@ static void w_FlashingMetaspriteDraw0(Carried *cr);
 static void w_FlashingMetaspriteDrawByMode(Carried *cr);
 static void w_PreviewRowDrawAll(Carried *cr);
 static void w_PreviewRowDrawStunt(Carried *cr);
-static void w_RecordsLoadForCourse(Carried *cr);
-static void w_RecordsUnpackCourseTotals(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
 static void w_Set0D37FromTable(Carried *cr);
+static void w_SpeedRecordsScreen(Carried *cr);
+static void w_StuntRecordsScreen(Carried *cr);
 static void w_TilemapLevelColumns(Carried *cr);
 static void w_WindowEdgesStep(Carried *cr);
-void AllRecordsScreen(Carried *cr);
-void BattleRecordsScreen(Carried *cr);
+void ColourMathA3Long_cr(Carried *cr);
+void ColourMathOffLong_cr(Carried *cr);
 void FixedColourFromStep_cr(Carried *cr);
 void MenuCursorFourWay_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
+void RecordsLoadForCourse_cr(Carried *cr);
+void RecordsUnpackCourseTotals(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
-void SpeedRecordsScreen(Carried *cr);
-void StuntRecordsScreen(Carried *cr);
 void WindowTable7FLong(Carried *cr);
 
 void CourseFromSelectionLong_cr(Carried *cr)
@@ -223,7 +223,7 @@ static int cursor_pressed(Carried *cr, uint32_t b, uint16_t mask)
 {
     cyc(24);
     r_lda16(cr, b | 0x0D1A);
-    cr->p = (cr->a & mask) ? (cyc(94), (uint8_t)(cr->p & ~P_Z)) : (cyc(40), (uint8_t)(cr->p | P_Z));
+    set_p(cr, (cr->a & mask) ? (cyc(94), (uint8_t)(cr->p & ~P_Z)) : (cyc(40), (uint8_t)(cr->p | P_Z)));
     return (cr->a & mask) != 0;
 }
 
@@ -232,11 +232,11 @@ static void cursor_to(Carried *cr, uint32_t b, uint8_t to)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x45);
-    cr->p = nz8(cr->p, 0x45);
+    set_p(cr, nz8(cr->p, 0x45));
     cyc(16);
     SoundPort0QueuePush_cr(cr);
     cr->a = (uint16_t)((cr->a & 0xFF00) | to);
-    cr->p = nz8(cr->p, to);
+    set_p(cr, nz8(cr->p, to));
     cyc(40);
     wr8(b | 0x0D48, to);
 }
@@ -250,15 +250,15 @@ static int cursor_up_open(Carried *cr, uint32_t b)
     r_sep(cr, P_M);
     v = (uint8_t)(rd8(0x70FC06) & 0x0F);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? (cyc(110), P_C) : (cyc(48), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? (cyc(110), P_C) : (cyc(48), 0))));
     if (v != 0x0F)
         return 0;
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x45);
-    cr->p = nz8(cr->p, 0x45);
+    set_p(cr, nz8(cr->p, 0x45));
     cyc(16);
     SoundPort0QueuePush_cr(cr);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
-    cr->p = nz8(cr->p, 0xFF);
+    set_p(cr, nz8(cr->p, 0xFF));
     cyc(40);
     wr8(b | 0x0D63, 0xFF);
     return 1;
@@ -463,18 +463,18 @@ void CourseCursorStep(Carried *cr)
     if (cr->p & P_M) {
         uint8_t v = rd8(b | 0x0D48);
 
-        cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
         v = (uint8_t)(v << 1);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } else {
         cyc(24);
         uint16_t v = rd16(b | 0x0D48);
 
-        cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 15));
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 15)));
         cr->a = (uint16_t)(v << 1);
     }
     cr->x = (cr->p & P_X) ? (uint8_t)cr->a : cr->a;
-    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x);
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
     cyc(74);
     carried_call(cr, 0x020000 | rd16(0x020000 | (uint16_t)(0xEC28 + cr->x)), 0);
 }
@@ -511,7 +511,7 @@ void CourseZoomInStep(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
     uint8_t a8, m8;
 
-    w_ColourMathA3Long(cr);
+    ColourMathA3Long_cr(cr);
     r_rep(cr, P_M | P_X);
     (cyc(62), w_BlendStepUp(cr));
     (cyc(62), FixedColourFromStep_cr(cr));
@@ -520,19 +520,19 @@ void CourseZoomInStep(Carried *cr)
     a8 = (uint8_t)cr->a;
     cyc(32);
     m8 = rd8(0x7F340A);
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : (cyc(64), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : (cyc(64), 0))));
     if (a8 != m8)
         return;
     r_sep(cr, P_M);
     cyc(62);
     wr8(b | 0x0D50, 0x00);
-    (cyc(62), w_RecordsLoadForCourse(cr));
+    (cyc(62), RecordsLoadForCourse_cr(cr));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x20);
-    cr->p = nz8(cr->p, 0x20);
+    set_p(cr, nz8(cr->p, 0x20));
     cyc(40);
     wr8(b | 0x0D41, 0x20);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
-    cr->p = nz8(cr->p, 0x06);
+    set_p(cr, nz8(cr->p, 0x06));
     cyc(40);
     wr8(b | 0x0D40, 0x06);
     cyc(24);
@@ -568,11 +568,11 @@ void RaceFadeStageDispatch(Carried *cr)
     cyc(24);
     r_lda8(cr, (uint32_t)cr->db << 16 | 0x0D48);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = v;
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(74);
     carried_call(cr, 0x020000 | rd16(0x020000 | (uint16_t)(0xEC18 + v)), 0);
 }
@@ -626,7 +626,7 @@ void CourseWindowZoomSetup(Carried *cr)
     cyc(56);
     wr16(0x7F340A, 0x000F);
     cr->a = 0x0000;
-    cr->p = nz16(cr->p, 0x0000);
+    set_p(cr, nz16(cr->p, 0x0000));
     cyc(56);
     wr16(0x7F3408, 0x0000);
     (cyc(62), WindowTable7FLong(cr));
@@ -657,7 +657,7 @@ static void course_zoom(Carried *cr, uint16_t x, uint16_t y)
     cr->y = y;
     r_sep(cr, P_M);
     cr->db = 0x03;
-    cr->p = nz8(cr->p, 0x03);
+    set_p(cr, nz8(cr->p, 0x03));
     r_rep(cr, P_M | P_X);
     CourseWindowZoomSetup(cr);
     w_ColourMathA3(cr);
@@ -667,17 +667,17 @@ static void course_zoom(Carried *cr, uint16_t x, uint16_t y)
     cyc(62);
     wr8(0x030D40, 0x04);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x24);
-    cr->p = nz8(cr->p, 0x24);
+    set_p(cr, nz8(cr->p, 0x24));
     (cyc(78), SoundPort0QueuePush_cr(cr));
     r_sep(cr, P_M);
     cr->db = db0;
-    cr->p = nz8(cr->p, db0);
+    set_p(cr, nz8(cr->p, db0));
 }
 
 /* CLC, ADC #add, TAX: the start box's offset. */
 static uint16_t box_offset_in(Carried *cr, uint16_t a, uint16_t add, uint32_t clocks)
 {
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cr->a = alu_adc16(a, add, &cr->p);
     cyc(clocks);
     return cr->a;
@@ -691,9 +691,9 @@ static uint16_t box_offset(Carried *cr, uint16_t a, uint16_t add)
 /* ASL A three times (16-bit): C the last bit out. */
 static uint16_t asl3(Carried *cr, uint16_t a)
 {
-    cr->p = (uint8_t)((cr->p & ~P_C) | (a & 0x2000 ? P_C : 0));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (a & 0x2000 ? P_C : 0)));
     a = (uint16_t)(a << 3);
-    cr->p = nz16(cr->p, a);
+    set_p(cr, nz16(cr->p, a));
     return a;
 }
 
@@ -711,7 +711,7 @@ static void course_choose(Carried *cr, uint16_t list, uint16_t y)
     cyc(96);
     a = (uint16_t)(rd16(0x030000 + list + cr->x) & 0x00FF);
     cr->a = a;
-    cr->p = nz16(cr->p, a);
+    set_p(cr, nz16(cr->p, a));
     wr16(b | 0x0E3D, a);
     cyc(list == 0xFB86 ? 48 : 24);      /* the stunt list: AND #$00FF before the LDA */
     a = asl3(cr, rd16(b | 0x0D48));
@@ -781,7 +781,7 @@ static void course_zoom_race(Carried *cr, uint16_t a)
 {
     a = asl3(cr, a);
     cr->x = rd16(((uint32_t)cr->db << 16) | 0x0D2B);
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     if (cr->x)
         course_zoom(cr, box_offset_in(cr, a, 0x0040, 256), 0x0018);   /* BEQ not taken */
     else
@@ -816,11 +816,11 @@ void CourseZoomFromSelection4(Carried *cr)
     r_sep(cr, P_M);
     CourseFromSelectionLong_cr(cr);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(88), P_C) : (cyc(160), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(88), P_C) : (cyc(160), 0))));
     if (v < 0x0C) {
         r_rep(cr, P_M | P_X);
         a = (uint16_t)(cr->a & 0x00FF);
-        cr->p |= P_C;
+        set_p(cr, (uint8_t)(cr->p | (P_C)));
         a = alu_sbc16(a, 0x0004, &cr->p);
         course_zoom_race(cr, a);
     } else if (v == 0x15)
@@ -859,7 +859,7 @@ void CourseZoomFromSelection(Carried *cr)
     r_sep(cr, P_M | P_X);
     (cyc(62), CourseFromSelectionLong_cr(cr));
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(88), P_C) : (cyc(128), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(88), P_C) : (cyc(128), 0))));
     if (v < 0x0C) {
         r_rep(cr, P_M | P_X);
         course_zoom_race(cr, (uint16_t)(cr->a & 0x00FF));
@@ -935,7 +935,7 @@ static int sel_open(Carried *cr, uint8_t bit)
     uint8_t v = rd8(0x70FC0B);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | (v & 0xC0) | ((v & bit) ? (cyc(54), 0) : P_Z));
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | (v & 0xC0) | ((v & bit) ? (cyc(54), 0) : P_Z)));
     return (v & bit) != 0;
 }
 
@@ -947,7 +947,7 @@ static int sel_pressed(Carried *cr, uint32_t b, uint16_t mask)
     r_rep(cr, P_M);
     v = rd16(b | 0x0D1A);
     cr->a = v;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((v >> 8) & 0xC0) | ((v & mask) ? (cyc(84), 0) : (cyc(24), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((v >> 8) & 0xC0) | ((v & mask) ? (cyc(84), 0) : (cyc(24), P_Z))));
     r_sep(cr, P_M);
     return (v & mask) != 0;
 }
@@ -957,7 +957,7 @@ static int sel_pressed16(Carried *cr, uint32_t b, uint16_t mask)
 {
     r_rep(cr, P_M);
     r_lda16(cr, b | 0x0D1A);
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & mask) ? 0 : (cyc(46), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & mask) ? 0 : (cyc(46), P_Z))));
     return (cr->a & mask) != 0;
 }
 
@@ -965,7 +965,7 @@ static int sel_pressed16(Carried *cr, uint32_t b, uint16_t mask)
 static void sel_sound(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x45);
-    cr->p = nz8(cr->p, 0x45);
+    set_p(cr, nz8(cr->p, 0x45));
     (cyc(56), SoundPort0QueuePush_cr(cr));
     cyc(16);
 }
@@ -974,7 +974,7 @@ static void sel_sound(Carried *cr)
 static void sel_row(Carried *cr, uint32_t b, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(24);
     wr8(b | 0x0D4A, v);
 }
@@ -986,7 +986,7 @@ static void sel_scroll(Carried *cr, uint32_t b, uint8_t v)
     cyc(118);
     wr8(b | 0x0E37, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
-    cr->p = nz8(cr->p, 0xF0);
+    set_p(cr, nz8(cr->p, 0xF0));
     cyc(40);
     wr8(b | 0x0E92, 0xF0);
     (cyc(62), OamBufferHideLargeLong_cr(cr));
@@ -996,7 +996,7 @@ static void sel_scroll(Carried *cr, uint32_t b, uint8_t v)
 static void sel_cursor(Carried *cr, uint32_t b, uint8_t y)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | y);
-    cr->p = nz8(cr->p, y);
+    set_p(cr, nz8(cr->p, y));
     cyc(56);
     wr8(b | 0x0D38, y);
     (cyc(46), MenuCursorFourWay_cr(cr));
@@ -1010,7 +1010,7 @@ static void sel_choose(Carried *cr, uint32_t b)
     uint8_t page = rd8(b | 0x0D63), v;
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | page);
-    cr->p = nz8(cr->p, page);
+    set_p(cr, nz8(cr->p, page));
     cyc(page ? 46 : 40);                /* BNE taken or not */
     if (sel_pressed16(cr, b, 0x9000)) {
         if (page)
@@ -1025,7 +1025,7 @@ static void sel_choose(Carried *cr, uint32_t b)
     v = (uint8_t)cr->a;
     if (page) {
         cyc(16);
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0)));
         sel_cursor(cr, b, v == 0x01 ? 0xB0 : (cyc(6), 0x60));
     } else {
         sel_cursor(cr, b, v ? (cyc(6), 0x60) : 0xB0);
@@ -1047,16 +1047,16 @@ static void speed_select_body(Carried *cr)
         /* the first copy branches with BNE, the others with BEQ */
         v = open ? (cyc(i ? 78 : 62), 0x00) : (cyc(i ? 116 : 132), 0x04);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-        cr->p = nz8(cr->p, v);
+        set_p(cr, nz8(cr->p, v));
         cr->x = (uint16_t)(i * 4);
-        cr->p = nz8(cr->p, (uint8_t)cr->x);
+        set_p(cr, nz8(cr->p, (uint8_t)cr->x));
         LevelColumnsSet4(cr);
     }
     (cyc(46), w_TilemapLevelColumns(cr));
     cyc(24);                           /* its end is TilemapLevelColumns' now */
     r_lda8(cr, b | 0x0D61);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(32), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(32), 0))));
     if (v != 0x0F)
         return;
     r_sep(cr, P_M);
@@ -1069,7 +1069,7 @@ static void speed_select_body(Carried *cr)
         if (v != 0x50) {
             cyc(32);
             v = (uint8_t)(v + 4);
-            cr->p = (uint8_t)((cr->p & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0));
+            set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0)));
             if (v >= 0x50)
                 v = 0x50;
             sel_scroll(cr, b, v);
@@ -1128,7 +1128,7 @@ static void speed_select_body(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x0D4A);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0)));
     cyc(56);
     if (v == 0x01) {
         if (sel_pressed(cr, b, 0x0400)) {
@@ -1219,7 +1219,7 @@ void StuntCourseSelectStep(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x0D61);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0)));
     if (v != 0x0F)
         { cyc(74); return; }
     cyc(62);
@@ -1231,7 +1231,7 @@ void StuntCourseSelectStep(Carried *cr)
         if (v != 0x50) {
             cyc(32);
             v = (uint8_t)(v + 4);
-            cr->p = (uint8_t)((cr->p & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0));
+            set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0)));
             if (v >= 0x50)
                 v = 0x50;
             sel_scroll(cr, b, v);
@@ -1313,7 +1313,7 @@ void BattleCourseSelectStep(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x0D61);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0)));
     if (v != 0x0F)
         { cyc(74); return; }
     (cyc(84), w_Set0D37FromTable(cr));
@@ -1394,7 +1394,7 @@ static void time_up_sound(Carried *cr)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x45);
-    cr->p = nz8(cr->p, 0x45);
+    set_p(cr, nz8(cr->p, 0x45));
     (cyc(140), SoundPort0QueuePush_cr(cr));
 }
 
@@ -1402,7 +1402,7 @@ static void time_up_sound(Carried *cr)
 static void time_up_set(Carried *cr, uint32_t at, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(40);
     wr8(at, v);
 }
@@ -1465,7 +1465,7 @@ static void time_up_cursor_body(Carried *cr)
     cyc(46);
     r_lda8(cr, b | 0x0D48);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? (cyc(62), P_C) : (cyc(56), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? (cyc(62), P_C) : (cyc(56), 0))));
     if (v != 0x02) {
         if (sel_pressed16(cr, b, 0x0400)) {
             time_up_sound(cr);
@@ -1476,7 +1476,7 @@ static void time_up_cursor_body(Carried *cr)
         }
         cyc(24);
         r_lda16(cr, b | 0x0D1A);
-        cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0200) ? 0 : (cyc(46), P_Z)));
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0200) ? 0 : (cyc(46), P_Z))));
         if (cr->a & 0x0200) {
             time_up_sound(cr);
             time_up_set(cr, b | 0x0D48, 0x02);
@@ -1492,7 +1492,7 @@ static void time_up_cursor_body(Carried *cr)
     }
     cyc(24);
     r_lda16(cr, b | 0x0D1A);
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0100) ? 0 : (cyc(46), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0100) ? 0 : (cyc(46), P_Z))));
     if (cr->a & 0x0100) {
         time_up_sound(cr);
         time_up_set(cr, b | 0x0D48, 0x03);
@@ -1518,11 +1518,11 @@ void CourseZoomTimeUp(Carried *cr)
     cyc(96);
     a = (uint16_t)(rd16(0x03FB86 + cr->x) & 0x00FF);
     cr->a = a;
-    cr->p = nz16(cr->p, a);
+    set_p(cr, nz16(cr->p, a));
     wr16(b | 0x0E3D, a);
     cyc(48);
     r_lda16(cr, b | 0x0D48);
-    cr->p |= P_C;
+    set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc16(cr->a, 0x0002, &cr->p);
     cyc(50);
     a = asl3(cr, a);
@@ -1566,7 +1566,7 @@ void CourseZoomTimeUpNext(Carried *cr)
         cyc(16 + 14);                   /* BCC not taken, INC */
         a = (uint16_t)(a + 1);
         cr->a = a;
-        cr->p = nz16(cr->p, a);
+        set_p(cr, nz16(cr->p, a));
         cyc(24);
         r_cmp16(cr, 0x001B);
         if (a < 0x001B)
@@ -1575,13 +1575,13 @@ void CourseZoomTimeUpNext(Carried *cr)
     } else { cyc(22); }
     a = 0x0017;
     cr->a = a;
-    cr->p = nz16(cr->p, a);
+    set_p(cr, nz16(cr->p, a));
     cyc(24);                            /* LDA # */
 store:
     cyc(24);
     wr16(b | 0x0E3D, a);
     cr->a = 0x0000;
-    cr->p = nz16(cr->p, 0x0000);
+    set_p(cr, nz16(cr->p, 0x0000));
     course_zoom(cr, box_offset_in(cr, 0x0000, 0x00A0, 264), 0x0008);
     cyc(94);
 }
@@ -1613,7 +1613,7 @@ static int records_key(Carried *cr, uint32_t b)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x30);
-    cr->p = nz8(cr->p, 0x30);
+    set_p(cr, nz8(cr->p, 0x30));
     cyc(62);
     wr8(b | 0x0E91, 0x30);
     cyc(24);
@@ -1622,26 +1622,26 @@ static int records_key(Carried *cr, uint32_t b)
         cyc(40);
         if (!sel_pressed(cr, b, 0x9000)) {
             cr->a = (uint16_t)(cr->a & 0xFF00);
-            cr->p = nz8(cr->p, 0);
+            set_p(cr, nz8(cr->p, 0));
             cyc(84);
             wr8(b | 0x0D35, 0x00);
             (cyc(46), w_FlashingMetaspriteDraw0(cr));
             return 0;
         } else { cyc(56); }
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x46);
-        cr->p = nz8(cr->p, 0x46);
+        set_p(cr, nz8(cr->p, 0x46));
         SoundPort0QueuePush_cr(cr);
         cyc(16);
     } else { cyc(38); }
     cyc(46);
-    w_RecordsUnpackCourseTotals(cr);
+    RecordsUnpackCourseTotals(cr);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     cyc(40);
     wr8(b | 0x0D44, 0x02);
     cyc(24);
     wr8(b | 0x0D43, 0x02);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x1E);
-    cr->p = nz8(cr->p, 0x1E);
+    set_p(cr, nz8(cr->p, 0x1E));
     cyc(40);
     wr8(b | 0x0D42, 0x1E);
     return 1;
@@ -1699,7 +1699,7 @@ static int records_key_inner(Carried *cr, uint32_t b)
     if (!records_key(cr, b))
         { cyc(42); return 0; } else { cyc(98); }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xE6);
-    cr->p = nz8(cr->p, 0xE6);
+    set_p(cr, nz8(cr->p, 0xE6));
     return 1;
 }
 
@@ -1710,7 +1710,7 @@ static void records_sprite(Carried *cr, uint32_t b, uint8_t y)
     cyc(56);
     wr8(b | 0x0D37, 0x80);
     cr->a = (uint16_t)((cr->a & 0xFF00) | y);
-    cr->p = nz8(cr->p, y);
+    set_p(cr, nz8(cr->p, y));
     cyc(40);
     wr8(b | 0x0D38, y);
 }
@@ -1742,13 +1742,13 @@ void CourseRecordsSelectStep(Carried *cr)
         cyc(40);
         r_lda8(cr, b | 0x0E37);
         v = (uint8_t)cr->a;
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? (cyc(84), P_C) : 0));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? (cyc(84), P_C) : 0)));
         if (v != 0x50) {
             v = (uint8_t)(v + 4);
-            cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0));
+            set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0)));
             if (v >= 0x50) {
                 v = 0x50;
-                cr->p = nz8(cr->p, v);
+                set_p(cr, nz8(cr->p, v));
             }
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             cyc(150);
@@ -1798,11 +1798,11 @@ void CourseRecordsSelectStep(Carried *cr)
     v = (uint8_t)cr->a;
     if (v) {
         v = (uint8_t)(v - 4);
-        cr->p = nz8(cr->p, v);
+        set_p(cr, nz8(cr->p, v));
         if (v & 0x80) {
             cyc(10);
             v = 0x00;
-            cr->p = nz8(cr->p, v);
+            set_p(cr, nz8(cr->p, v));
         }
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(124);
@@ -1815,7 +1815,7 @@ void CourseRecordsSelectStep(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x0D4A);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(16), P_C) : (cyc(22), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(16), P_C) : (cyc(22), 0))));
     if (v == 0x01) {
         records_sprite(cr, b, 0xB0);
         cyc(24);
@@ -1874,7 +1874,7 @@ void CourseRecordsOpening(Carried *cr)
 
     cyc(6);
     wr8(b | 0x0D42, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     if (v)
         { cyc(64); return; }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x2A);
@@ -1888,7 +1888,7 @@ void CourseRecordsOpening(Carried *cr)
     if ((uint8_t)cr->a)
         { cyc(64); return; } else { cyc(94); }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x2D);
-    cr->p = nz8(cr->p, 0x2D);
+    set_p(cr, nz8(cr->p, 0x2D));
     SoundPort0QueuePush_cr(cr);
     cyc(42);
 }
@@ -1944,14 +1944,14 @@ static void records_reopen_body(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(38);
     wr8(b | 0x0D42, v);
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : (cyc(38), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : (cyc(38), 0))));
     if (v < 0x2A)
         return;
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     cyc(72);
     wr8(b | 0x0D44, 0x02);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     cyc(40);
     wr8(b | 0x0D43, 0x00);
 }
@@ -1973,25 +1973,25 @@ static void records_pulse(Carried *cr, uint32_t b)
     cyc(38);
     r_lda8(cr, b | 0x0D42);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x22)) & ~P_C) | (v >= 0x22 ? P_C : (cyc(54), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x22)) & ~P_C) | (v >= 0x22 ? P_C : (cyc(54), 0))));
     if (v >= 0x22)
         v = 0x04;
     else {
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? P_C : (cyc(32), 0)));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? P_C : (cyc(32), 0))));
         if (v >= 0x20)
             v = 0x03;
         else {
-            cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : (cyc(26), 0)));
+            set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : (cyc(26), 0))));
             if (v >= 0x18)
                 v = 0x02;
             else {
-                cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x10)) & ~P_C) | (v >= 0x10 ? (cyc(6), P_C) : 0));
+                set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x10)) & ~P_C) | (v >= 0x10 ? (cyc(6), P_C) : 0)));
                 v = v >= 0x10 ? 0x01 : 0x00;
             }
         }
     }
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(86);
     wr8(0x000F05 + (uint32_t)x, v);
     cyc(42);
@@ -2016,13 +2016,13 @@ void CourseRecordsClosing(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(38);
     wr8(b | 0x0D42, v);
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : (cyc(16), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : (cyc(16), 0))));
     if (v < 0x2A) {
         records_pulse(cr, b);
         return;
     }
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     cyc(72);
     wr8(b | 0x0D43, 0x00);
     cyc(24);
@@ -2063,10 +2063,10 @@ void CourseRecordsShown(Carried *cr)
 
     cyc(6);
     wr8(b | 0x0D42, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     if (!v) {
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
-        cr->p = nz8(cr->p, 0x02);
+        set_p(cr, nz8(cr->p, 0x02));
         cyc(56);
         wr8(b | 0x0D40, 0x02);
         cyc(24);
@@ -2175,13 +2175,13 @@ static void wipe_out_body(Carried *cr)
 
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
-    cr->p = nz8(cr->p, 0x06);
+    set_p(cr, nz8(cr->p, 0x06));
     cyc(62);
     wr8(b | 0x0D45, 0x06);
     p = (uint8_t)(cr->p | P_C);
     cyc(24);
     v = alu_sbc8(rd8(b | 0x10AD), 0x04, &p);
-    cr->p = p;
+    set_p(cr, p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (cr->p & P_C) {
         cyc(54);
@@ -2193,7 +2193,7 @@ static void wipe_out_body(Carried *cr)
         wr8(b | 0x10B0, v);
         cyc(24);
         v = alu_adc8(rd8(b | 0x10B3), 0x04, &p);
-        cr->p = p;
+        set_p(cr, p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(40);
         wr8(b | 0x10B3, v);
@@ -2211,7 +2211,7 @@ static void wipe_out_body(Carried *cr)
     cyc(6);
     wr8(b | 0x10B3, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x10);
-    cr->p = nz8(cr->p, 0x10);
+    set_p(cr, nz8(cr->p, 0x10));
     cyc(62);
     wr8(b | 0x0D40, 0x10);
 }
@@ -2253,13 +2253,13 @@ static void wipe_in_body(Carried *cr)
 
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
-    cr->p = nz8(cr->p, 0x06);
+    set_p(cr, nz8(cr->p, 0x06));
     cyc(62);
     wr8(b | 0x0D45, 0x06);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(24);
     v = alu_adc8(rd8(b | 0x10AD), 0x04, &p);
-    cr->p = (uint8_t)((nz8(p, (uint8_t)(v - 0x4F)) & ~P_C) | (v >= 0x4F ? P_C : 0));
+    set_p(cr, (uint8_t)((nz8(p, (uint8_t)(v - 0x4F)) & ~P_C) | (v >= 0x4F ? P_C : 0)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v < 0x4F) {
         cyc(86);
@@ -2271,7 +2271,7 @@ static void wipe_in_body(Carried *cr)
         wr8(b | 0x10B0, v);
         cyc(24);
         v = alu_sbc8(rd8(b | 0x10B3), 0x04, &p);
-        cr->p = p;
+        set_p(cr, p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(24);
         wr8(b | 0x10B3, v);
@@ -2289,7 +2289,7 @@ static void wipe_in_body(Carried *cr)
     cyc(40);
     wr8(b | 0x0D40, 0x14);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
-    cr->p = nz8(cr->p, 0x02);
+    set_p(cr, nz8(cr->p, 0x02));
     cyc(40);
     wr8(b | 0x0D45, 0x02);
 }
@@ -2313,7 +2313,7 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
         cyc(84);
         wr8(b | 0x0D40, 0x12);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x2F);
-        cr->p = nz8(cr->p, 0x2F);
+        set_p(cr, nz8(cr->p, 0x2F));
         (cyc(78), SoundPort0QueuePush_cr(cr));
         return;
     }
@@ -2334,7 +2334,7 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
         r_lda16(cr, b | 0x0FA8);
         v = (uint16_t)(cr->a + 1);
         cr->a = v;
-        cr->p = nz16(cr->p, v);
+        set_p(cr, nz16(cr->p, v));
         r_cmp16(cr, 0x0004);
         if (v >= 0x0004)
             break;
@@ -2349,7 +2349,7 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
         v = (uint16_t)(rd16(b | 0x0FA6) + 1);
         cyc(14);
         wr16(b | 0x0FA6, v);
-        cr->p = nz16(cr->p, v);
+        set_p(cr, nz16(cr->p, v));
         return;
     }
     cyc(70);
@@ -2358,7 +2358,7 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
     v = (uint16_t)(rd16(b | 0x0FAA) + 1);
     cyc(14);
     wr16(b | 0x0FAA, v);
-    cr->p = nz16(cr->p, v);
+    set_p(cr, nz16(cr->p, v));
 }
 
 /*
@@ -2447,7 +2447,7 @@ void CoursePreviewReset(Carried *cr)
     cr->y = 0xA3D7;
     r_plp(cr, p0);
     cr->db = db0;
-    cr->p = nz8(cr->p, db0);
+    set_p(cr, nz8(cr->p, db0));
 }
 
 void abi_CoursePreviewReset(void)
@@ -2467,7 +2467,7 @@ void abi_CoursePreviewReset(void)
 static void screen_state2(Carried *cr, uint32_t b)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
-    cr->p = nz8(cr->p, 0x02);
+    set_p(cr, nz8(cr->p, 0x02));
     cyc(40);
     wr8(b | 0x0D40, 0x02);
 }
@@ -2639,16 +2639,16 @@ static void zoom_out_body(Carried *cr)
     p = (uint8_t)(p | P_C);
     cyc(46);
     w = alu_sbc16(w, rd16(0x7F3434), &p);
-    cr->p = (uint8_t)((nz16(p, (uint16_t)(w - 0x0700)) & ~P_C) | (w >= 0x0700 ? (cyc(34), P_C) : 0));
+    set_p(cr, (uint8_t)((nz16(p, (uint16_t)(w - 0x0700)) & ~P_C) | (w >= 0x0700 ? (cyc(34), P_C) : 0)));
     cr->a = w;
     if (w >= 0x0700)
         return;
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0E);
-    cr->p = nz8(cr->p, 0x0E);
+    set_p(cr, nz8(cr->p, 0x0E));
     cyc(102);
     wr8(((uint32_t)cr->db << 16) | 0x0D40, 0x0E);
-    (cyc(62), w_ColourMathOffLong(cr));
+    (cyc(62), ColourMathOffLong_cr(cr));
     (cyc(46), CoursePreviewReset(cr));
 }
 
@@ -2688,7 +2688,7 @@ static void zoom_in_body(Carried *cr)
     uint16_t v, t;
     uint8_t p;
 
-    (cyc(62), w_ColourMathA3Long(cr));
+    (cyc(62), ColourMathA3Long_cr(cr));
     r_rep(cr, P_M | P_X);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(32);
@@ -2702,7 +2702,7 @@ static void zoom_in_body(Carried *cr)
     wr16(0x7F3434, v);
     cyc(32);
     t = rd16(0x7F343C);
-    cr->p = (uint8_t)((nz16(p, (uint16_t)(v - t)) & ~P_C) | (v >= t ? (cyc(22), P_C) : 0));
+    set_p(cr, (uint8_t)((nz16(p, (uint16_t)(v - t)) & ~P_C) | (v >= t ? (cyc(22), P_C) : 0)));
     cr->a = v;
     if (v >= t)
         return;
@@ -2716,7 +2716,7 @@ static void zoom_in_body(Carried *cr)
     wr16(0x7F3438, cr->a);
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
-    cr->p = nz8(cr->p, 0x06);
+    set_p(cr, nz8(cr->p, 0x06));
     cyc(62);
     wr8(((uint32_t)cr->db << 16) | 0x0D40, 0x06);
 }
@@ -2743,12 +2743,12 @@ void CourseRecordsDispatch(Carried *cr)
     cyc(46);                           /* its end is TilemapLevelColumns' now */
     r_lda8(cr, b | 0x0D61);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(74), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(74), 0))));
     if (v != 0x0F)
         return;
     cyc(62);
     cr->x = rd8(b | 0x0D43);
-    cr->p = nz8(cr->p, (uint8_t)cr->x);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(46);
     switch (rd16(0x02E603 + cr->x)) {
     case 0xE648: CourseRecordsSelectStep(cr); cyc(0); break;
@@ -2779,7 +2779,7 @@ static void screen_state(Carried *cr, uint32_t b, uint16_t table)
 {
     cyc(62);
     cr->x = rd8(b | 0x0D40);
-    cr->p = nz8(cr->p, (uint8_t)cr->x);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(46);
     switch (rd16(0x020000 | (uint16_t)(table + cr->x))) {
     case 0xE564: CourseScreenStartSpeed(cr); cyc(0); break;
@@ -2800,11 +2800,11 @@ static void screen_state(Carried *cr, uint32_t b, uint16_t table)
     case 0xE44B: CourseScreenWipeIn(cr); break;
     case 0xE5B4: CourseScreenZoomIn(cr); break;
     case 0xED98: CourseScreenFadeBack(cr); break;
-    case 0xEDD2: SpeedRecordsScreen(cr); cyc(0); break;
+    case 0xEDD2: w_SpeedRecordsScreen(cr); cyc(0); break;
     case 0xED75: CourseScreenFadeLeave(cr); break;
-    case 0xF148: StuntRecordsScreen(cr); break;
-    case 0xF30A: BattleRecordsScreen(cr); break;
-    case 0xF37A: AllRecordsScreen(cr); break;
+    case 0xF148: w_StuntRecordsScreen(cr); break;
+    case 0xF30A: w_BattleRecordsScreen(cr); break;
+    case 0xF37A: w_AllRecordsScreen(cr); break;
     default: carried_jump(cr, 0x020000 | rd16(0x020000 | (uint16_t)(table + cr->x))); break;
     }
 }
@@ -2836,7 +2836,7 @@ void CourseScreenStep(Carried *cr)
     v = (uint8_t)(cr->a << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = v;
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(36);
     switch (rd16(0x02E360 + cr->x)) {
     case 0xE3F6:
@@ -2870,11 +2870,11 @@ void CourseScreenStep(Carried *cr)
         } else {
             cyc(62);
             r_lda16(cr, b | 0x0D1C);
-            cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x2000) ? 0 : (cyc(46), P_Z)));
+            set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x2000) ? 0 : (cyc(46), P_Z))));
             if (cr->a & 0x2000) {
                 cyc(64);
                 r_lda16(cr, b | 0x030D);
-                cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0020) ? 0 : P_Z));
+                set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0020) ? 0 : P_Z)));
                 if (!(cr->a & 0x0020)) {
                     r_sep(cr, P_M);
                     cyc(92);
@@ -2891,7 +2891,7 @@ void CourseScreenStep(Carried *cr)
                     cyc(24);
                     r_lda8(cr, b | 0x0D25);
                     v = (uint8_t)cr->a;
-                    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x07)) & ~P_C) | (v >= 0x07 ? P_C : (cyc(38), 0)));
+                    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x07)) & ~P_C) | (v >= 0x07 ? P_C : (cyc(38), 0))));
                     if (v >= 0x07) {
                         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
                         cyc(72);
@@ -2903,7 +2903,7 @@ void CourseScreenStep(Carried *cr)
                         cyc(108);
                         cr->x = 0xFF;
                         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x36);
-                        cr->p = nz8(cr->p, 0x36);
+                        set_p(cr, nz8(cr->p, 0x36));
                         SoundPort0QueuePush_cr(cr);
                         cyc(16);
                         r_sep(cr, P_M | P_X);
@@ -2913,7 +2913,7 @@ void CourseScreenStep(Carried *cr)
                         cyc(32);
                         wr8(0x70FC07, 0x0F);
                         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x07);
-                        cr->p = nz8(cr->p, 0x07);
+                        set_p(cr, nz8(cr->p, 0x07));
                         cyc(48);
                         wr8(0x70FC0B, 0x07);
                         (cyc(62), w_SaveChecksum(cr));
@@ -2927,7 +2927,7 @@ void CourseScreenStep(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x0D24);
     v = (uint8_t)cr->a;
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? (cyc(18), P_C) : 0));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? (cyc(18), P_C) : 0)));
     if (v == 0x03) {
         r_sep(cr, P_M | P_X);
         screen_state(cr, b, 0xE4A7);
@@ -2962,7 +2962,7 @@ void CourseScreenState8(Carried *cr)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
-    cr->p = nz8(cr->p, 0x08);
+    set_p(cr, nz8(cr->p, 0x08));
     cyc(62);
     wr8(((uint32_t)cr->db << 16) | 0x0D40, 0x08);
     cyc(42);
@@ -3003,10 +3003,10 @@ static void fade_done(Carried *cr, uint32_t b, uint8_t panel, uint8_t state)
     cyc(24);
     wr8(b | 0x0D42, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | state);
-    cr->p = nz8(cr->p, state);
+    set_p(cr, nz8(cr->p, state));
     cyc(40);
     wr8(b | 0x0D40, state);
-    (cyc(62), w_ColourMathOffLong(cr));
+    (cyc(62), ColourMathOffLong_cr(cr));
 }
 
 /*
@@ -3085,16 +3085,16 @@ static void fade_back_body(Carried *cr)
     r_lda8(cr, b | 0x0D24);
     if ((uint8_t)cr->a == 0x03) {
         cyc(38);
-        cr->p = (uint8_t)((nz8(cr->p, 0) | P_C));
+        set_p(cr, (uint8_t)((nz8(cr->p, 0) | P_C)));
         return;
     }
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)((uint8_t)cr->a - 0x03)) & ~P_C) | ((uint8_t)cr->a >= 0x03 ? P_C : 0));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)((uint8_t)cr->a - 0x03)) & ~P_C) | ((uint8_t)cr->a >= 0x03 ? P_C : 0)));
     cyc(56);
     r_lda8(cr, b | 0x0D4C);
     if ((uint8_t)cr->a)
         { cyc(22); return; } else { cyc(94); }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x2D);
-    cr->p = nz8(cr->p, 0x2D);
+    set_p(cr, nz8(cr->p, 0x2D));
     SoundPort0QueuePush_cr(cr);
 }
 
@@ -3105,7 +3105,7 @@ static void w_CourseFromSelection(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | CourseFromSelection(cr->db, &p));
-    cr->p = p;
+    set_p(cr, p);
 }
 
 /* BlendStepUp, still in registers: its call with the registers loaded and taken
@@ -3127,50 +3127,12 @@ static void w_BlendStepUp(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* ColourMathA3Long, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ColourMathA3Long(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ColourMathA3Long();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RecordsLoadForCourse, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsLoadForCourse(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsLoadForCourse();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* ColourMathA3 as its adapter leaves the registers. */
 static void w_ColourMathA3(Carried *cr)
 {
     ColourMathA3();
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xA3);
-    cr->p = (uint8_t)((cr->p & ~P_Z) | P_N | P_M);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
 }
 
 /* FlashingMetaspriteDrawByMode as its adapter leaves the registers. */
@@ -3224,25 +3186,6 @@ static void w_FlashingMetaspriteDraw0(Carried *cr)
     cyc(0);
 }
 
-/* RecordsUnpackCourseTotals, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsUnpackCourseTotals(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsUnpackCourseTotals();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* WindowEdgesStep as its adapter leaves the registers. */
 static void w_WindowEdgesStep(Carried *cr)
 {
@@ -3253,7 +3196,7 @@ static void w_WindowEdgesStep(Carried *cr)
     a = WindowEdgesStep(cr->db, &p, &x);
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     cr->x = x;
-    cr->p = p;
+    set_p(cr, p);
 }
 
 /* PreviewRowDrawAll, still in registers: its call with the registers loaded and taken
@@ -3294,9 +3237,9 @@ static void w_PreviewRowDrawStunt(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* ColourMathOffLong, still in registers: its call with the registers loaded and taken
+/* AllRecordsScreen, still in registers: its call with the registers loaded and taken
    back. */
-static void w_ColourMathOffLong(Carried *cr)
+static void w_AllRecordsScreen(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -3304,7 +3247,26 @@ static void w_ColourMathOffLong(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_ColourMathOffLong();
+    abi_AllRecordsScreen();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* BattleRecordsScreen, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_BattleRecordsScreen(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_BattleRecordsScreen();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
@@ -3317,6 +3279,44 @@ static void w_ColourMathOffLong(Carried *cr)
 static void w_CourseScreenNothing(Carried *cr)
 {
     cyc(42);
+}
+
+/* SpeedRecordsScreen, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_SpeedRecordsScreen(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_SpeedRecordsScreen();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* StuntRecordsScreen, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_StuntRecordsScreen(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_StuntRecordsScreen();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }
 
 /* SaveChecksum as its adapter leaves the registers. */

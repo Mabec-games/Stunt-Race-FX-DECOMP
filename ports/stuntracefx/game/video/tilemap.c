@@ -7,7 +7,10 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-void abi_ChampionshipScreenStep(void);
+void OamHide36And96(uint8_t bank);
+uint8_t WindowSlideUpSound(uint8_t bank, int x16);
+void abi_RaceEndLeave(void);
+void abi_RaceRestart(void);
 
 /*
  * @routine 03:ED89 TilemapRowFromGsuRam
@@ -438,27 +441,35 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 }
 
 void ChampionshipScreenLoop(Carried *cr);
+void ChampionshipScreenStep(Carried *cr);
 void TilemapRow107Palette5_cr(Carried *cr);
 void TilemapRow187Palette4_cr(Carried *cr);
 void TilemapRow187Palette5_cr(Carried *cr);
 void TilemapRow207Palette4_cr(Carried *cr);
 void TilemapRow287Palette4_cr(Carried *cr);
 void TilemapRow87Palette5_cr(Carried *cr);
+void WindowClosedDigitStep(Carried *cr);
 static void abi_row_mark(Carried *cr, uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits);
 static void bg2_scroll_corner(Carried *cr, uint32_t b);
 static void palette_cycle_exit(Carried *cr, int r);
 static void stage_next(Carried *cr, uint32_t b);
-static void w_ChampionshipScreenStep(Carried *cr);
-static void w_OverlaySpritesStep(Carried *cr);
+static void w_DigitTiles1184(Carried *cr);
+static void w_GsuCF42To3000(Carried *cr);
+static void w_OamHide36And96(Carried *cr);
+static void w_RaceEndLeave(Carried *cr);
+static void w_RaceRestart(Carried *cr);
+static void w_TimesKeepAndAdvance(Carried *cr);
+static void w_WindowSlideUpSound(Carried *cr);
+void OverlaySpritesStep_cr(Carried *cr);
 
 /* TilemapPaletteCycle's exit flags from its result. */
 static void palette_cycle_exit(Carried *cr, int r)
 {
     if (r == 0)
-        cr->p = nz8(cr->p, (uint8_t)cr->a);
+        set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     else
-        cr->p = (uint8_t)((cr->p & ~(P_N | P_C)) | P_Z | (r == 2 ? P_C : 0));
-    cr->p |= P_M;
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_C)) | P_Z | (r == 2 ? P_C : 0)));
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
 }
 
 static void palette_cycle_exit_g(int r)
@@ -477,6 +488,12 @@ static void palette_cycle_exit_g(int r)
 void abi_TilemapPaletteCycle(void)
 {
     palette_cycle_exit_g(TilemapPaletteCycle(cpu.db, &cpu.x, &cpu.y, &cpu.a));
+}
+
+/* TilemapPaletteCycle on carried registers, as abi_TilemapPaletteCycle leaves them. */
+void TilemapPaletteCycle_cr(Carried *cr)
+{
+    palette_cycle_exit(cr, TilemapPaletteCycle(cr->db, &cr->x, &cr->y, &cr->a));
 }
 
 /*
@@ -913,6 +930,13 @@ void abi_TilemapPaletteCycle87(void)
     palette_cycle_exit_g(TilemapPaletteCycle87(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
+/* TilemapPaletteCycle87 on carried registers, as abi_TilemapPaletteCycle87 leaves them. */
+void TilemapPaletteCycle87_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle87(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
 /*
  * @routine 07:C29F TilemapPaletteCycle107
  * WHAT IT DOES: TilemapPaletteCycle on 13 entries from entry offset $107.
@@ -936,6 +960,13 @@ void abi_TilemapPaletteCycle107(void)
 {
     cpu.p &= (uint8_t)~P_X;
     palette_cycle_exit_g(TilemapPaletteCycle107(cpu.db, &cpu.x, &cpu.y, &cpu.a));
+}
+
+/* TilemapPaletteCycle107 on carried registers, as abi_TilemapPaletteCycle107 leaves them. */
+void TilemapPaletteCycle107_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle107(cr->db, &cr->x, &cr->y, &cr->a));
 }
 
 /*
@@ -963,6 +994,13 @@ void abi_TilemapPaletteCycle187(void)
     palette_cycle_exit_g(TilemapPaletteCycle187(cpu.db, &cpu.x, &cpu.y, &cpu.a));
 }
 
+/* TilemapPaletteCycle187 on carried registers, as abi_TilemapPaletteCycle187 leaves them. */
+void TilemapPaletteCycle187_cr(Carried *cr)
+{
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
+    palette_cycle_exit(cr, TilemapPaletteCycle187(cr->db, &cr->x, &cr->y, &cr->a));
+}
+
 /* Fill a row with palette `bits`, then give the entry at `mark` (an
    attribute byte address) palette `mark_bits`. */
 static uint8_t row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits,
@@ -987,7 +1025,7 @@ static void abi_row_mark(Carried *cr, uint16_t x, uint16_t count, uint8_t bits, 
 {
     uint8_t v = row_mark(x, count, bits, mark, mark_bits, &cr->x, &cr->y, &cr->a);
 
-    cr->p = (uint8_t)(nz8(cr->p, v) & ~P_X);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) & ~P_X));
 }
 
 /*
@@ -1269,31 +1307,44 @@ void abi_TimesKeepAndAdvance(void)
  * (jump_routine: RaceRestart, RaceEndLeave); RaceRestart never returns.
  * Entry: any widths. Exit: M 8-bit; as the continuation leaves it.
  */
-void abi_WindowClosedDigitStep(void)
+void WindowClosedDigitStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(46);
-    op_lda8(b | 0x19D8);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x05)) & ~P_C) | ((uint8_t)cpu.a >= 0x05 ? P_C : (cyc(122), 0)));
-    if ((uint8_t)cpu.a != 0x05)
+    r_lda8(cr, b | 0x19D8);
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)((uint8_t)cr->a - 0x05)) & ~P_C) | ((uint8_t)cr->a >= 0x05 ? P_C : (cyc(122), 0))));
+    if ((uint8_t)cr->a != 0x05)
         return;
     cyc(56);
-    op_lda8(b | 0x0D4C);
-    if (!(uint8_t)cpu.a) {
+    r_lda8(cr, b | 0x0D4C);
+    if (!(uint8_t)cr->a) {
         cyc(46);
-        jump_routine(0x07EBDD);
+        w_RaceEndLeave(cr);
         return;
     }
     cyc(40);
     wr8(b | 0x0D4C, 0x00);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    cpu.p = nz8(cpu.p, 0x02);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+    set_p(cr, nz8(cr->p, 0x02));
     cyc(40);
     wr8(b | 0x0D48, 0x02);
     cyc(24);
-    jump_routine(0x07EC6B);
+    w_RaceRestart(cr);
+}
+
+void abi_WindowClosedDigitStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowClosedDigitStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_WindowSlideUpSound(void);
@@ -1313,19 +1364,6 @@ static void bg2_scroll_corner(Carried *cr, uint32_t b)
     wr16(b | 0x0D92, 0xFFE8);
 }
 
-static void bg2_scroll_corner_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    bg2_scroll_corner(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* INC $0D59 (8-bit). */
 static void stage_next(Carried *cr, uint32_t b)
 {
@@ -1334,20 +1372,7 @@ static void stage_next(Carried *cr, uint32_t b)
 
     cyc(6);
     wr8(b | 0x0D59, v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void stage_next_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    stage_next(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /*
@@ -1369,139 +1394,152 @@ static void stage_next_g(uint32_t b)
  * returns (unit_cpu).
  * Entry: M 8-bit, X 8-bit, D = $0000. Exit: as the stage leaves it.
  */
-void abi_ChampionshipScreenStep(void)
+void ChampionshipScreenStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t t;
     uint8_t v;
     int i;
 
     cyc(24);
-    op_lda8(b | 0x0D2B);
-    if (!(uint8_t)cpu.a) {
+    r_lda8(cr, b | 0x0D2B);
+    if (!(uint8_t)cr->a) {
         cyc(62);
-        abi_WindowClosedDigitStep();
+        WindowClosedDigitStep(cr);
         return;
     }
     cyc(46);
-    op_lda8(b | 0x0D59);
-    v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    r_lda8(cr, b | 0x0D59);
+    v = (uint8_t)cr->a;
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = v;
-    cpu.p = nz8(cpu.p, v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = v;
+    set_p(cr, nz8(cr->p, v));
     cyc(74);
     t = rd16(0x070000 | (uint16_t)(0xBA26 + v));
     switch (t) {
     case 0xBA71:
         cyc(24);
         wr8(b | 0x0E5F, 0x00);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
         cyc(40);
         wr8(b | 0x0D22, 0x06);
-        cpu.a = (uint16_t)(cpu.a & 0xFF00);
-        cpu.p = nz8(cpu.p, 0);
+        cr->a = (uint16_t)(cr->a & 0xFF00);
+        set_p(cr, nz8(cr->p, 0));
         cyc(40);
         wr8(b | 0x0D23, 0x00);
         cyc(24);
         wr8(b | 0x19DF, 0x00);
         cyc(24);
         wr8(b | 0x10A2, 0x00);
-        (cyc(62), abi_WindowSlideUpSound());
-        stage_next_g(b);
-        (cyc(46), abi_OamHide36And96());
+        (cyc(62), w_WindowSlideUpSound(cr));
+        stage_next(cr, b);
+        (cyc(46), w_OamHide36And96(cr));
         break;
     case 0xBA56:
-        op_sep(P_M);
+        r_sep(cr, P_M);
         cyc(46);
-        op_lda8(b | 0x19D8);
-        v = (uint8_t)cpu.a;
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? (cyc(32), P_C) : (cyc(38), 0)));
+        r_lda8(cr, b | 0x19D8);
+        v = (uint8_t)cr->a;
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? (cyc(32), P_C) : (cyc(38), 0))));
         if (v != 0x05)
             break;
-        stage_next_g(b);
-        bg2_scroll_corner_g(b);
+        stage_next(cr, b);
+        bg2_scroll_corner(cr, b);
         break;
     case 0xBA3A:
-        bg2_scroll_corner_g(b);
-        op_sep(P_M);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x5C);
-        cpu.p = nz8(cpu.p, 0x5C);
+        bg2_scroll_corner(cr, b);
+        r_sep(cr, P_M);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0x5C);
+        set_p(cr, nz8(cr->p, 0x5C));
         cyc(62);
         ppu_wr(b | 0x2108, 0x5C);
-        stage_next_g(b);
+        stage_next(cr, b);
         cyc(24);
         wr8(b | 0x19DF, 0x00);
         break;
     case 0xBA8F:
-        op_sep(P_M);
+        r_sep(cr, P_M);
         cyc(46);
-        op_lda8(b | 0x19D8);
-        if (!(uint8_t)cpu.a)
-            { cyc(16); stage_next_g(b); } else { cyc(22); }
+        r_lda8(cr, b | 0x19D8);
+        if (!(uint8_t)cr->a)
+            { cyc(16); stage_next(cr, b); } else { cyc(22); }
         break;
     case 0xBA9A: {
         uint8_t p1, db1;
 
-        op_sep(P_M);
-        cpu.a = (uint16_t)(cpu.a & 0xFF00);
-        cpu.p = nz8(cpu.p, 0);
+        r_sep(cr, P_M);
+        cr->a = (uint16_t)(cr->a & 0xFF00);
+        set_p(cr, nz8(cr->p, 0));
         cyc(62);
         wr8(b | 0x0DD4, 0x00);
         cyc(24);
         wr8(b | 0x0DD5, 0x00);
-        op_rep(P_M | P_X);
-        cpu.x = 0x001F;
-        op_lda16_imm(0xFB99);
-        (cyc(72), abi_GsuCF42To3000());
-        db1 = cpu.db;
-        p1 = cpu.p;
-        op_rep(P_M | P_X);
+        r_rep(cr, P_M | P_X);
+        cr->x = 0x001F;
+        r_lda16_imm(cr, 0xFB99);
+        (cyc(72), w_GsuCF42To3000(cr));
+        db1 = cr->db;
+        p1 = cr->p;
+        r_rep(cr, P_M | P_X);
         cyc(220);
         for (i = 0; i < 0x440; i++)
             { cyc(36); wr8(0x7F93D7 + (uint32_t)i, rd8(0x703000 + (uint32_t)i)); }
         cyc(72);
-        cpu.a = 0xFFFF;
-        cpu.x = 0x3440;
-        cpu.y = 0x9817;
-        op_plp(p1);
-        cpu.db = db1;
-        cpu.p = nz8(cpu.p, db1);
-        abi_DigitTiles1184();
-        op_sep(P_M);
+        cr->a = 0xFFFF;
+        cr->x = 0x3440;
+        cr->y = 0x9817;
+        r_plp(cr, p1);
+        cr->db = db1;
+        set_p(cr, nz8(cr->p, db1));
+        w_DigitTiles1184(cr);
+        r_sep(cr, P_M);
         cyc(22);
-        stage_next_g((uint32_t)cpu.db << 16);
-        b = (uint32_t)cpu.db << 16;
+        stage_next(cr, (uint32_t)cr->db << 16);
+        b = (uint32_t)cr->db << 16;
         cyc(24);
-        op_lda8(b | 0x0D45);
-        v = (uint8_t)((cpu.a | 0x02) & 0xF3);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cpu.p = nz8(cpu.p, v);
+        r_lda8(cr, b | 0x0D45);
+        v = (uint8_t)((cr->a | 0x02) & 0xF3);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+        set_p(cr, nz8(cr->p, v));
         cyc(56);
         wr8(b | 0x0D45, v);
-        op_rep(P_M | P_X);
-        cpu.x = 0x01FE;
+        r_rep(cr, P_M | P_X);
+        cr->x = 0x01FE;
         do {
             cyc(104);
-            op_lda16(0x1F8600 + (uint32_t)cpu.x);
-            wr16(0x7EFD65 + (uint32_t)cpu.x, cpu.a);
-            cpu.x = (uint16_t)(cpu.x - 2);
-            cpu.p = nz16(cpu.p, cpu.x);
-        } while (cyc_loop(26, !(cpu.x & 0x8000)));
+            r_lda16(cr, 0x1F8600 + (uint32_t)cr->x);
+            wr16(0x7EFD65 + (uint32_t)cr->x, cr->a);
+            cr->x = (uint16_t)(cr->x - 2);
+            set_p(cr, nz16(cr->p, cr->x));
+        } while (cyc_loop(26, !(cr->x & 0x8000)));
         cyc(44);
         break;
     }
     case 0xD029:
-        abi_TimesKeepAndAdvance();
+        w_TimesKeepAndAdvance(cr);
         return;
     default:
-        jump_routine(0x070000 | t);
+        carried_jump(cr, 0x070000 | t);
         if (t == 0xCC83 || t == 0xCC9B || t == 0xCF6F || t == 0xCCBF)
             return;
         break;
     }
     cyc(42);
+}
+
+void abi_ChampionshipScreenStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ChampionshipScreenStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_OverlaySpritesStep(void);
@@ -1529,8 +1567,8 @@ void ChampionshipScreenLoop(Carried *cr)
         while (cyc_loop(22, !(uint8_t)cr->a));
         cyc(40);
         wr8(b | 0x0D52, 0x00);
-        (cyc(46), w_ChampionshipScreenStep(cr));
-        (cyc(62), w_OverlaySpritesStep(cr));
+        (cyc(46), ChampionshipScreenStep(cr));
+        (cyc(62), OverlaySpritesStep_cr(cr));
         b = (uint32_t)cr->db << 16;
         r_rep(cr, P_M);
         cyc(24);
@@ -1561,9 +1599,9 @@ void abi_ChampionshipScreenLoop(void)
     cpu.db = r.db;
 }
 
-/* ChampionshipScreenStep, still in registers: its call with the registers loaded and taken
+/* RaceEndLeave, still in registers: its call with the registers loaded and taken
    back. */
-static void w_ChampionshipScreenStep(Carried *cr)
+static void w_RaceEndLeave(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -1571,7 +1609,7 @@ static void w_ChampionshipScreenStep(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_ChampionshipScreenStep();
+    abi_RaceEndLeave();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
@@ -1580,9 +1618,9 @@ static void w_ChampionshipScreenStep(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* OverlaySpritesStep, still in registers: its call with the registers loaded and taken
+/* RaceRestart, still in registers: its call with the registers loaded and taken
    back. */
-static void w_OverlaySpritesStep(Carried *cr)
+static void w_RaceRestart(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -1590,11 +1628,60 @@ static void w_OverlaySpritesStep(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_OverlaySpritesStep();
+    abi_RaceRestart();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
+}
+
+/* DigitTiles1184 as its adapter leaves the registers. */
+static void w_DigitTiles1184(Carried *cr)
+{
+    cr->a = DigitTiles1184();
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
+}
+
+/* GsuCF42To3000, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_GsuCF42To3000(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_GsuCF42To3000();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* OamHide36And96 as its adapter leaves the registers. */
+static void w_OamHide36And96(Carried *cr)
+{
+    OamHide36And96(cr->db);
+    cr->a &= 0xFF00;
+    cr->x = cr->p & P_X ? 0x00C0 : 0x01C0;  /* the final pull restores X's width */
+    cr->y = 0x0000;
+}
+
+/* TimesKeepAndAdvance as its adapter leaves the registers. */
+static void w_TimesKeepAndAdvance(Carried *cr)
+{
+    TimesKeepAndAdvance(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+/* WindowSlideUpSound as its adapter leaves the registers. */
+static void w_WindowSlideUpSound(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
 }

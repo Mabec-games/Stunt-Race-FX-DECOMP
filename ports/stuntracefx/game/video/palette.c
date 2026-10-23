@@ -770,9 +770,9 @@ void PaletteKeptColoursStep_cr(Carried *cr)
     if (kept_v)
         p |= P_V;
     if (stepped)
-        cr->p = (uint8_t)(nz16(p, a) & ~(P_C | P_M));
+        set_p(cr, (uint8_t)(nz16(p, a) & ~(P_C | P_M)));
     else
-        cr->p = (uint8_t)(nz8((uint8_t)(p | P_C), (uint8_t)a) | P_M);
+        set_p(cr, (uint8_t)(nz8((uint8_t)(p | P_C), (uint8_t)a) | P_M));
     cr->a = a;
     cr->x = x;
 }
@@ -1331,6 +1331,29 @@ void abi_PaletteFadeStep(void)
     cpu.x = x;
     cpu.y = y;
     cpu.p = p;
+}
+
+/* PaletteFadeStep on carried registers, as abi_PaletteFadeStep leaves them. */
+void PaletteFadeStep_cr(Carried *cr)
+{
+    uint16_t x, y;
+    uint8_t p;
+
+    if (!PaletteFadeStep(cr->db, &x, &y)) {
+        cr->a &= 0xFF00;
+        set_p(cr, (uint8_t)((cr->p | P_M | P_Z) & ~P_N));
+        return;
+    }
+    p = (uint8_t)(cr->p & ~(P_N | P_M | P_X | P_C | P_V));
+    p |= P_Z;
+    if (fade_c)
+        p |= P_C;
+    if (fade_v > 0 || (fade_v < 0 && (cr->p & P_V)))
+        p |= P_V;
+    cr->a = 0x0000;
+    cr->x = x;
+    cr->y = y;
+    set_p(cr, p);
 }
 
 /* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the

@@ -16,6 +16,7 @@
 #include "gsu_programs_calls.h"
 #include "carried.h"
 
+
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 void abi_GsuRun(void);
 void abi_GsuBytes200_BFB3BE(void);
@@ -49,14 +50,21 @@ static uint8_t cf42(uint16_t in68, uint16_t dest, uint16_t in6a)
     return GsuRun(0x01, 0xCF42);
 }
 
-static void abi_cf42(uint16_t dest)
-{
-    uint16_t x = cpu.x;
-    uint8_t mode = cf42(cpu.a, dest, x);
+void GsuCF42To3000_cr(Carried *cr);
+void GsuCF42To4000_cr(Carried *cr);
+void GsuCF42ToC000_cr(Carried *cr);
+void GsuDigitPair0E74_cr(Carried *cr);
+static void abi_cf42(Carried *cr, uint16_t dest);
+static void glyph_times_exit(Carried *cr);
 
-    cpu.a = (uint16_t)((x & 0xFF00) | mode);
-    cpu.x = 0xCF42;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) | P_M);
+static void abi_cf42(Carried *cr, uint16_t dest)
+{
+    uint16_t x = cr->x;
+    uint8_t mode = cf42(cr->a, dest, x);
+
+    cr->a = (uint16_t)((x & 0xFF00) | mode);
+    cr->x = 0xCF42;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) | P_M));
 }
 
 /*
@@ -73,9 +81,22 @@ uint8_t GsuCF42ToC000(uint16_t in68, uint16_t in6a)
     return cf42(in68, 0xC000, in6a);
 }
 
+void GsuCF42ToC000_cr(Carried *cr)
+{
+    abi_cf42(cr, 0xC000);
+}
+
 void abi_GsuCF42ToC000(void)
 {
-    abi_cf42(0xC000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuCF42ToC000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -89,10 +110,23 @@ uint8_t GsuCF42To4000(uint16_t in68, uint16_t in6a)
     return cf42(in68, 0x4000, in6a);
 }
 
+void GsuCF42To4000_cr(Carried *cr)
+{
+    abi_cf42(cr, 0x4000);
+    cyc(44);
+}
+
 void abi_GsuCF42To4000(void)
 {
-    abi_cf42(0x4000);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuCF42To4000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -107,9 +141,22 @@ uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a)
     return cyc_then(98, cf42(in68, 0x3000, in6a));
 }
 
+void GsuCF42To3000_cr(Carried *cr)
+{
+    abi_cf42(cr, 0x3000);
+}
+
 void abi_GsuCF42To3000(void)
 {
-    abi_cf42(0x3000);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuCF42To3000_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -720,11 +767,24 @@ uint16_t GsuDigitPair0E74A(uint8_t bank)
     return (uint16_t)(hi | mode);
 }
 
+void GsuDigitPair0E74_cr(Carried *cr)
+{
+    cr->a = GsuDigitPair0E74A(cr->db);
+    cr->x = 0xF15B;
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_C | P_M | P_X)));
+}
+
 void abi_GsuDigitPair0E74(void)
 {
-    cpu.a = GsuDigitPair0E74A(cpu.db);
-    cpu.x = 0xF15B;
-    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_C | P_M | P_X));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuDigitPair0E74_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -945,6 +1005,17 @@ void abi_ViewUpdateAndGsuAEF8(void)
     cpu.x = 0xAEF8;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) | P_M) & ~P_X);
+}
+
+/* ViewUpdateAndGsuAEF8 on carried registers, as abi_ViewUpdateAndGsuAEF8 leaves them. */
+void ViewUpdateAndGsuAEF8_cr(Carried *cr)
+{
+    uint8_t mode = ViewUpdateAndGsuAEF8(cr->db);
+
+    cr->a = (uint16_t)(aef8_high << 8 | mode);
+    cr->x = 0xAEF8;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) | P_M) & ~P_X));
 }
 
 /*
@@ -1875,6 +1946,13 @@ void abi_ObjectGsu80BCThen81E3(void)
     cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_X | P_C | P_V)) | object_cv), cpu.x);
 }
 
+/* ObjectGsu80BCThen81E3 on carried registers, as abi_ObjectGsu80BCThen81E3 leaves them. */
+void ObjectGsu80BCThen81E3_cr(Carried *cr)
+{
+    cr->a = ObjectGsu80BCThen81E3(cr->db, cr->x);
+    set_p(cr, nz16((uint8_t)((cr->p & ~(P_M | P_X | P_C | P_V)) | object_cv), cr->x));
+}
+
 /*
  * @routine 03:C9B4 ObjectGsu81E3
  * WHAT IT DOES: For object X, puts direct page $04 - its +$0C in $02 and
@@ -1909,6 +1987,13 @@ void abi_ObjectGsu81E3(void)
 {
     cpu.a = ObjectGsu81E3(cpu.db, cpu.x);
     cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_C | P_V)) | object_cv), cpu.x);
+}
+
+/* ObjectGsu81E3 on carried registers, as abi_ObjectGsu81E3 leaves them. */
+void ObjectGsu81E3_cr(Carried *cr)
+{
+    cr->a = ObjectGsu81E3(cr->db, cr->x);
+    set_p(cr, nz16((uint8_t)((cr->p & ~(P_M | P_C | P_V)) | object_cv), cr->x));
 }
 
 /* Program $07:FA5A with all four of $70:020E/0210/0212/0214 = $100. */
@@ -2335,10 +2420,10 @@ void BigSpritesRow6_cr(Carried *cr)
     cr->x = 0xFA88;
     if (rows_counted) {
         cr->a = (uint16_t)(count_high << 8 | v);
-        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags));
     } else {
         cr->a = (uint16_t)(0xAA00 | v);
-        cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
+        set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv));
     }
 }
 
@@ -2389,10 +2474,10 @@ void BigSpritesRow5_cr(Carried *cr)
     cr->x = 0xFA88;
     if (rows_counted) {
         cr->a = (uint16_t)(count_high << 8 | v);
-        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags));
     } else {
         cr->a = (uint16_t)(0xA500 | v);
-        cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X));
+        set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
     }
 }
 
@@ -3027,7 +3112,7 @@ void GlyphWordAt1C28_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x9000 | GlyphWordAt1C28());
     cr->x = 0xF15B;
-    cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
 }
 
 /* Three rows of three 8 x 8 glyphs (program $07:F280), each row 8 lower
@@ -3352,31 +3437,44 @@ void GlyphTimesSequence(uint8_t bank)
 }
 
 /* The registers GlyphTimesSequence leaves, from what it recorded. */
-static void glyph_times_exit(void)
+static void glyph_times_exit(Carried *cr)
 {
     switch (seq_exit) {
     case SEQ_OWN:
-        cpu.a = seq_a;
-        cpu.x = seq_x;
-        cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X | P_C)), seq_nz);
+        cr->a = seq_a;
+        cr->x = seq_x;
+        set_p(cr, nz16((uint8_t)(cr->p & ~(P_M | P_X | P_C)), seq_nz));
         break;
     case SEQ_MESSAGE:
-        cpu.a = 0x0068;
-        cpu.x = seq_end;
-        cpu.y = seq_y;
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V | P_X)) | P_M);
+        cr->a = 0x0068;
+        cr->x = seq_end;
+        cr->y = seq_y;
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_X)) | P_M));
         break;
     case SEQ_LIST:
-        cpu.a = list_a;
-        cpu.x = seq_end;
-        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M | P_X)) | list_flags);
+        cr->a = list_a;
+        cr->x = seq_end;
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_M | P_X)) | list_flags));
         break;
     default:
-        cpu.a = seq_a;
-        cpu.x = 0xF329;
-        cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
+        cr->a = seq_a;
+        cr->x = 0xF329;
+        set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C)));
         break;
     }
+}
+
+static void glyph_times_exit_g(void)
+{
+    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+    glyph_times_exit(&c);
+
+    cpu.a = c.a;
+    cpu.x = c.x;
+    cpu.y = c.y;
+    cpu.d = c.d;
+    cpu.p = c.p;
+    cpu.db = c.db;
 }
 
 void abi_GlyphTimesSequence(void)
@@ -3384,7 +3482,7 @@ void abi_GlyphTimesSequence(void)
     times_y_valid = 0;
     times_v = (uint8_t)(cpu.p & P_V);
     GlyphTimesSequence(cpu.db);
-    glyph_times_exit();
+    glyph_times_exit_g();
 }
 
 /* SEP #$20, REP #$10, LDX #prog, LDA #$07, JSL GsuRun, REP #$20, REP #$10. */
@@ -3508,7 +3606,7 @@ void abi_GlyphSpritesGrowAndTimes(void)
     GlyphSpritesGrowAndTimes();
     if (times_y_valid)
         cpu.y = times_y;
-    glyph_times_exit();
+    glyph_times_exit_g();
     cpu.p = p0;
     if (p0 & P_X) {
         cpu.x &= 0x00FF;
@@ -3723,7 +3821,7 @@ void GlyphSpritesDrawAll_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x1F00 | GlyphSpritesDrawAll(cr->db));
     cr->x = 0xF280;
-    cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
 }
 
 void TimeUnpackBcd(uint16_t packed, uint16_t *min, uint16_t *sec, uint16_t *hund, uint8_t *p);
@@ -4173,7 +4271,7 @@ void HudLeadWordDraw_cr(Carried *cr)
 {
     cr->a = (uint16_t)(0x9400 | HudLeadWordDraw());
     cr->x = 0xF329;
-    cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | lead_cv);
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | lead_cv));
 }
 
 /* LDA digit, AND #$00FF, JSR GsuParam216A, then Super FX program
@@ -4243,7 +4341,7 @@ void HudLapDigitsDraw_cr(Carried *cr)
 
     cr->a = (uint16_t)(lap_hi << 8 | mode);
     cr->x = 0xF6DF;
-    cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C));
+    set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X | P_C)));
 }
 
 /* REP #$30, LDA #x, STA.L $70:020A, then Super FX program $07:F5C9. */
@@ -4327,6 +4425,14 @@ void abi_HudBlankDraw(void)
     HudBlankDraw(cpu.db);
     cpu.a = blank_a;
     cpu.x = (uint16_t)(cpu.p & P_X ? 0x00C9 : 0xF5C9);
+}
+
+/* HudBlankDraw on carried registers, as abi_HudBlankDraw leaves them. */
+void HudBlankDraw_cr(Carried *cr)
+{
+    HudBlankDraw(cr->db);
+    cr->a = blank_a;
+    cr->x = (uint16_t)(cr->p & P_X ? 0x00C9 : 0xF5C9);
 }
 
 
@@ -4447,6 +4553,19 @@ void abi_GlyphSpritesSlideOut(void)
     }
 }
 
+/* GlyphSpritesSlideOut on carried registers, as abi_GlyphSpritesSlideOut leaves them. */
+void GlyphSpritesSlideOut_cr(Carried *cr)
+{
+    if (GlyphSpritesSlideOut(cr->db)) {
+        cr->a = 0x0006;
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_M | P_X | P_V)) | P_C | slide_v));
+    } else {
+        cr->a = (uint16_t)(0x9000 | slide_mode);
+        cr->x = 0xFAB0;
+        set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
+    }
+}
+
 /*
  * @routine 07:A492 GlyphSpritesSlideIn
  * WHAT IT DOES: Moves the two glyph sprites in by $16: the first left to
@@ -4527,6 +4646,14 @@ void abi_GlyphSpritesSlideIn(void)
     cpu.a = (uint16_t)(0x9000 | GlyphSpritesSlideIn(cpu.db));
     cpu.x = 0xFAB0;
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | pos_cv);
+}
+
+/* GlyphSpritesSlideIn on carried registers, as abi_GlyphSpritesSlideIn leaves them. */
+void GlyphSpritesSlideIn_cr(Carried *cr)
+{
+    cr->a = (uint16_t)(0x9000 | GlyphSpritesSlideIn(cr->db));
+    cr->x = 0xFAB0;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | pos_cv));
 }
 
 
@@ -4664,10 +4791,10 @@ void BigSpritesNine_cr(Carried *cr)
     cr->x = 0xFA88;
     if (rows_counted) {
         cr->a = (uint16_t)(count_high << 8 | v);
-        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags));
     } else {
         cr->a = (uint16_t)(0xA500 | v);
-        cr->p = (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
+        set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~(P_M | P_X | P_C | P_V)) | row_cv));
     }
 }
 
@@ -4721,10 +4848,10 @@ void BigSpritesRow6B_cr(Carried *cr)
     cr->x = 0xFA88;
     if (rows_counted) {
         cr->a = (uint16_t)(count_high << 8 | v);
-        cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+        set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags));
     } else {
         cr->a = (uint16_t)(0xA500 | v);
-        cr->p = (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X));
+        set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
     }
 }
 
@@ -4775,3 +4902,4 @@ void abi_GsuClear6000IfSet(void)
     cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
     op_plp(cpu.p);
 }
+

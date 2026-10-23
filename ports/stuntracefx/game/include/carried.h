@@ -21,6 +21,17 @@ typedef struct Carried {
 /* A routine on carried registers, passed as a value. */
 typedef void (*CarriedFn)(Carried *);
 
+/* P on the carried registers. Its I flag is also the CPU's interrupt mask,
+   which the machine reads at every access, so a change to I goes to the
+   machine as well (the carried P starts from the machine's, so the two
+   agree). */
+static inline void set_p(Carried *cr, uint8_t p)
+{
+    if ((p ^ cr->p) & P_I)
+        irq_mask_set(p & P_I);
+    cr->p = p;
+}
+
 /* The carried form of the routine that starts at addr (the runtime's
    table from the tags), or NULL when it has none yet. */
 CarriedFn carried_at(uint32_t addr);
@@ -157,7 +168,7 @@ static inline void r_txa16(Carried *cr)
 /* SEP and REP: 8-bit index registers clear the high bytes of X and Y. */
 static inline void r_sep(Carried *cr, uint8_t bits)
 {
-    cr->p |= bits;
+    set_p(cr, (uint8_t)(cr->p | bits));
     if (bits & P_X) {
         cyc(22);
         cr->x &= 0x00FF;
@@ -168,14 +179,14 @@ static inline void r_sep(Carried *cr, uint8_t bits)
 static inline void r_rep(Carried *cr, uint8_t bits)
 {
     cyc(22);
-    cr->p &= (uint8_t)~bits;
+    set_p(cr, (uint8_t)(cr->p & ~bits));
 }
 
 /* PLP: restoring 8-bit index registers clears the high bytes of X and Y. */
 static inline void r_plp(Carried *cr, uint8_t p)
 {
     cyc(42);
-    cr->p = p;
+    set_p(cr, p);
     if (p & P_X) {
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;

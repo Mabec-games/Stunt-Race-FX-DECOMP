@@ -8,7 +8,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-uint16_t ObjectStubZero(void);
+#include "object_calls.h"
 uint8_t RandomStepLong(void);
 
 void abi_ObjectChildFollow(void);
@@ -25,8 +25,15 @@ void CarControlsToRecord(Carried *cr);
 void GsuRecordFlags8AClear(Carried *cr);
 void GsuRecordFlags8ASet(Carried *cr);
 void GsuRecordListFlag80(Carried *cr);
+void GsuRecordNew422_cr(Carried *cr);
+void GsuRecordNew424_cr(Carried *cr);
+void GsuRecordNew424Alt_cr(Carried *cr);
 void GsuRecordNew424B(Carried *cr);
+void GsuRecordNew424Piece_cr(Carried *cr);
 void GsuRecordNew424Zero(Carried *cr);
+void GsuRecordNew426_cr(Carried *cr);
+void GsuRecordNew42D_cr(Carried *cr);
+void GsuRecordNewCamera_cr(Carried *cr);
 void GsuRecordPositionFromObject(Carried *cr);
 void ObjectRecordChildrenMark(Carried *cr);
 void ObjectRecordMarkSetup(Carried *cr);
@@ -50,19 +57,17 @@ static void flags8a(Carried *cr, int set);
 static void lda_m(Carried *cr, uint32_t addr, int back);
 static void or20(Carried *cr, uint32_t addr);
 static void set_handler08(Carried *cr, uint16_t h);
+static void w_GsuRecordFlag4(Carried *cr);
 static void w_GsuRecordMode2(Carried *cr);
-static void w_GsuRecordNew422(Carried *cr);
-static void w_GsuRecordNew424(Carried *cr);
+static void w_GsuRecordSet2AHigh(Carried *cr);
+static void w_ObjectRebucket(Carried *cr);
 static void w_ObjectStubZero(Carried *cr);
+static void w_ObjectSyncFromRecord(Carried *cr);
+static void w_ObjectSyncFromRecordFall(Carried *cr);
 static void w_RandomStepLong(Carried *cr);
-void GsuRecordFlag4_cr(Carried *cr);
-void GsuRecordSet2AHigh_cr(Carried *cr);
+static void w_RecordButtonSequence(Carried *cr);
 void ObjectChildFollow(Carried *cr);
 void ObjectLinkedHandlerByState_cr(Carried *cr);
-void ObjectRebucket_cr(Carried *cr);
-void ObjectSyncFromRecordFall_cr(Carried *cr);
-void ObjectSyncFromRecord_cr(Carried *cr);
-void RecordButtonSequence_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 
 /* Exit of the routines below: M 8-bit; no record: A = 0, Z set, N clear;
@@ -71,11 +76,11 @@ static void exit_record(Carried *cr, uint16_t rec, uint16_t a)
 {
     if (!rec) {
         cr->a = 0x0000;
-        cr->p = (uint8_t)((cr->p & ~P_N) | P_Z | P_M);
+        set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
         return;
     } else { cyc(102); }
     cr->a = a;
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->x) | P_M));
 }
 
 static void exit_record_g(uint16_t rec, uint16_t a)
@@ -111,6 +116,12 @@ uint16_t GsuRecordMode2(uint8_t bank, uint16_t obj)
 void abi_GsuRecordMode2(void)
 {
     exit_record_g(GsuRecordMode2(cpu.db, cpu.x), 0x0002);
+}
+
+/* GsuRecordMode2 on carried registers, as abi_GsuRecordMode2 leaves them. */
+void GsuRecordMode2_cr(Carried *cr)
+{
+    exit_record(cr, GsuRecordMode2(cr->db, cr->x), 0x0002);
 }
 
 /*
@@ -171,6 +182,14 @@ void abi_GsuRecordFlag10(void)
     exit_record_g(rec, a);
 }
 
+/* GsuRecordFlag10 on carried registers, as abi_GsuRecordFlag10 leaves them. */
+void GsuRecordFlag10_cr(Carried *cr)
+{
+    uint16_t a = 0, rec = GsuRecordFlag10(cr->db, cr->x, &a);
+
+    exit_record(cr, rec, a);
+}
+
 /*
  * @routine 08:CCD2 GsuRecordPosition
  * WHAT IT DOES: Copies the position in direct page $02, $08, $94 into object
@@ -204,6 +223,14 @@ void abi_GsuRecordPosition(void)
     exit_record_g(rec, a);
 }
 
+/* GsuRecordPosition on carried registers, as abi_GsuRecordPosition leaves them. */
+void GsuRecordPosition_cr(Carried *cr)
+{
+    uint16_t a = 0, rec = GsuRecordPosition(cr->db, cr->x, &a);
+
+    exit_record(cr, rec, a);
+}
+
 /*
  * @routine 08:E3EE GsuRecordWord88
  * WHAT IT DOES: Returns the word at +$88 of the Super FX record of the
@@ -224,13 +251,6 @@ void abi_GsuRecordWord88(void)
 {
     cpu.a = GsuRecordWord88(cpu.db, cpu.x, &cpu.y);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
-}
-
-/* GsuRecordWord88 on carried registers, as abi_GsuRecordWord88 leaves them. */
-void GsuRecordWord88_cr(Carried *cr)
-{
-    cr->a = GsuRecordWord88(cr->db, cr->x, &cr->y);
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
 }
 
 /*
@@ -262,16 +282,6 @@ void abi_GsuRecordWord58(void)
 
     cpu.a = GsuRecordWord58(cpu.db, cpu.x, &cpu.y, &clear);
     cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | (clear ? P_C : 0) | P_M);
-    cyc(114);
-}
-
-/* GsuRecordWord58 on carried registers, as abi_GsuRecordWord58 leaves them. */
-void GsuRecordWord58_cr(Carried *cr)
-{
-    int clear;
-
-    cr->a = GsuRecordWord58(cr->db, cr->x, &cr->y, &clear);
-    cr->p = (uint8_t)((nz16(cr->p, cr->x) & ~P_C) | (clear ? P_C : 0) | P_M);
     cyc(114);
 }
 
@@ -318,25 +328,6 @@ void abi_GsuRecordFlag4(void)
         cyc(8);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
         cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
-    }
-    cyc(88);
-}
-
-/* GsuRecordFlag4 on carried registers, as abi_GsuRecordFlag4 leaves them. */
-void GsuRecordFlag4_cr(Carried *cr)
-{
-    int has;
-    uint16_t a = GsuRecordFlag4(cr->db, cr->x, &has);
-
-    if (has) {
-        cyc(8);
-        cr->a = a;
-        cr->y = cr->x;
-        cr->p = (uint8_t)((cr->p & ~P_N) | P_Z | P_M);
-    } else {
-        cyc(8);
-        cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
-        cr->p = (uint8_t)((cr->p & ~P_Z) | P_N | P_M);
     }
     cyc(88);
 }
@@ -388,23 +379,6 @@ void abi_GsuRecordVelocity(void)
     cyc(96);
 }
 
-/* GsuRecordVelocity on carried registers, as abi_GsuRecordVelocity leaves them. */
-void GsuRecordVelocity_cr(Carried *cr)
-{
-    int has;
-    uint8_t p = cr->p;
-    uint16_t a = GsuRecordVelocity(cr->db, cr->x, &has, &p);
-
-    cr->a = a;
-    if (has) {
-        cr->y = cr->x;
-        cr->p = (uint8_t)((p & ~P_N) | P_Z | P_M);
-    } else {
-        cr->p = (uint8_t)((p & ~P_Z) | P_N | P_M);
-    }
-    cyc(96);
-}
-
 /*
  * @routine 08:B863 GsuRecordWords88
  * WHAT IT DOES: For each object in the list at $7E:FFAE (count = half the
@@ -446,13 +420,6 @@ void abi_GsuRecordWords88(void)
 {
     cpu.a = GsuRecordWords88();
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
-}
-
-/* GsuRecordWords88 on carried registers, as abi_GsuRecordWords88 leaves them. */
-void GsuRecordWords88_cr(Carried *cr)
-{
-    cr->a = GsuRecordWords88();
-    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x);
 }
 
 /*
@@ -512,22 +479,6 @@ void abi_GsuRecordStep6A(void)
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
 
-/* GsuRecordStep6A on carried registers, as abi_GsuRecordStep6A leaves them. */
-void GsuRecordStep6A_cr(Carried *cr)
-{
-    int ran;
-    uint8_t p = cr->p;
-    uint16_t a = GsuRecordStep6A(cr->db, cr->x, &ran, &p);
-
-    if (!ran) {
-        cr->a &= 0xFF00;
-        cr->p = (uint8_t)((cr->p & ~P_N) | P_Z);
-        return;
-    } else { cyc(100); }
-    cr->a = a;
-    cr->p = (uint8_t)(nz16(p, cr->x) | P_M);
-}
-
 /* An arithmetic shift right by three, as three CMP #$8000 / ROR A do it;
    C is the last bit shifted out. */
 static uint16_t asr3(uint16_t v, uint8_t *p)
@@ -571,15 +522,6 @@ void abi_ObjectVelocityFromRecordOf(void)
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
 
-/* ObjectVelocityFromRecordOf on carried registers, as abi_ObjectVelocityFromRecordOf leaves them. */
-void ObjectVelocityFromRecordOf_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectVelocityFromRecordOf(cr->db, cr->x, cr->y, &p);
-    cr->p = (uint8_t)(nz16(p, cr->x) | P_M);
-}
-
 /*
  * @routine 08:D86F GsuRecordFromObject
  * WHAT IT DOES: Copies object X's state into its Super FX record: +$53,
@@ -621,14 +563,6 @@ void abi_GsuRecordFromObject(void)
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
 }
 
-/* GsuRecordFromObject on carried registers, as abi_GsuRecordFromObject leaves them. */
-void GsuRecordFromObject_cr(Carried *cr)
-{
-    cr->a = GsuRecordFromObject(cr->db, cr->x);
-    cr->y = cr->x;
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
-}
-
 /*
  * @routine 08:D8C2 GsuRecordPositionFromObject
  * WHAT IT DOES: GsuRecordFromObject's position copy alone: object X's
@@ -656,7 +590,7 @@ void GsuRecordPositionFromObject(Carried *cr)
     cyc(72);
     cr->a = v;
     cr->y = cr->x;
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->x) | P_M));
 }
 
 void abi_GsuRecordPositionFromObject(void)
@@ -670,28 +604,6 @@ void abi_GsuRecordPositionFromObject(void)
     cpu.d = r.d;
     cpu.p = r.p;
     cpu.db = r.db;
-}
-
-/* GsuRecordPositionFromObject on carried registers, as abi_GsuRecordPositionFromObject leaves them. */
-void GsuRecordPositionFromObject_cr(Carried *cr)
-{
-    static const uint16_t from[3] = {0x200C, 0x200E, 0x2010};
-    uint32_t b = (uint32_t)cr->db << 16;
-    cyc(20);
-    uint16_t rec = record_of(cr->db, cr->x), v = 0;
-    unsigned i;
-
-    cyc(30);
-    for (i = 0; rec && (cyc(8), i < 3); i++) {
-        cyc(22);
-        v = rd16(b | (uint16_t)(from[i] + cr->x));
-        cyc(32);
-        wr16(0x70001E + 2 * i + rec, v);
-    }
-    cyc(72);
-    cr->a = v;
-    cr->y = cr->x;
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
 }
 
 uint16_t ScaleThreeQuarters(uint16_t v);
@@ -745,16 +657,6 @@ void abi_ObjectVelocityFromRecordScaled(void)
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
 
-/* ObjectVelocityFromRecordScaled on carried registers, as abi_ObjectVelocityFromRecordScaled leaves them. */
-void ObjectVelocityFromRecordScaled_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectVelocityFromRecordScaled(cr->db, cr->x, &p);
-    cr->y = cr->x;
-    cr->p = (uint8_t)(nz16(p, cr->x) | P_M);
-}
-
 /*
  * @routine 09:FBB2 GsuRecordBits60
  * WHAT IT DOES: Keeps bits 5-6 of the word at +$40 of the two records whose
@@ -781,12 +683,6 @@ uint16_t GsuRecordBits60(void)
 void abi_GsuRecordBits60(void)
 {
     cpu.a = GsuRecordBits60();
-}
-
-/* GsuRecordBits60 on carried registers, as abi_GsuRecordBits60 leaves them. */
-void GsuRecordBits60_cr(Carried *cr)
-{
-    cr->a = GsuRecordBits60();
 }
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
@@ -834,20 +730,7 @@ static void abi_record_new(Carried *cr, uint16_t program, uint16_t word0a, uint1
         { cyc(0); cr->y = cr->x; }
     cyc(60);
     cr->a = r;
-    cr->p = (uint8_t)(nz8(cr->p, r) | P_M);
-}
-
-static void abi_record_new_g(uint16_t program, uint16_t word0a, uint16_t join)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    abi_record_new(&c, program, word0a, join);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, (uint8_t)(nz8(cr->p, r) | P_M));
 }
 
 /*
@@ -868,10 +751,23 @@ uint8_t GsuRecordNew422(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8B64, 0x0000, 106);
 }
 
-void abi_GsuRecordNew422(void)
+void GsuRecordNew422_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8B64, 0x0000, 106);
+    abi_record_new(cr, 0x8B64, 0x0000, 106);
+}
+
+void abi_GsuRecordNew422(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNew422_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -887,11 +783,24 @@ uint8_t GsuRecordNew42D(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8C95, 0x90E8, 100);
 }
 
-void abi_GsuRecordNew42D(void)
+void GsuRecordNew42D_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8C95, 0x90E8, 100);
+    abi_record_new(cr, 0x8C95, 0x90E8, 100);
     cyc(62);
+}
+
+void abi_GsuRecordNew42D(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNew42D_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -906,10 +815,23 @@ uint8_t GsuRecordNew424Piece(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8C0A, 0x907A, 100);
 }
 
-void abi_GsuRecordNew424Piece(void)
+void GsuRecordNew424Piece_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8C0A, 0x907A, 100);
+    abi_record_new(cr, 0x8C0A, 0x907A, 100);
+}
+
+void abi_GsuRecordNew424Piece(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNew424Piece_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -925,10 +847,23 @@ uint8_t GsuRecordNew424(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8C0A, 0x910A, 98);
 }
 
-void abi_GsuRecordNew424(void)
+void GsuRecordNew424_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8C0A, 0x910A, 98);
+    abi_record_new(cr, 0x8C0A, 0x910A, 98);
+}
+
+void abi_GsuRecordNew424(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNew424_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -942,10 +877,23 @@ uint8_t GsuRecordNew424Alt(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8C0A, 0x90E8, 98);
 }
 
-void abi_GsuRecordNew424Alt(void)
+void GsuRecordNew424Alt_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8C0A, 0x90E8, 98);
+    abi_record_new(cr, 0x8C0A, 0x90E8, 98);
+}
+
+void abi_GsuRecordNew424Alt(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNew424Alt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -960,10 +908,23 @@ uint8_t GsuRecordNewCamera(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8C6C, 0x916D, 98);
 }
 
-void abi_GsuRecordNewCamera(void)
+void GsuRecordNewCamera_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8C6C, 0x916D, 98);
+    abi_record_new(cr, 0x8C6C, 0x916D, 98);
+}
+
+void abi_GsuRecordNewCamera(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNewCamera_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -980,10 +941,23 @@ uint8_t GsuRecordNew426(uint8_t bank, uint16_t obj)
     return record_new(bank, obj, 0x8B33, 0x910A, 98);
 }
 
-void abi_GsuRecordNew426(void)
+void GsuRecordNew426_cr(Carried *cr)
 {
     cyc(62);
-    abi_record_new_g(0x8B33, 0x910A, 98);
+    abi_record_new(cr, 0x8B33, 0x910A, 98);
+}
+
+void abi_GsuRecordNew426(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuRecordNew426_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p);
@@ -1037,15 +1011,6 @@ void abi_GsuRecordLower82(void)
     cpu.p = (uint8_t)((nz16(p, cpu.x) | P_M) & ~P_X);
 }
 
-/* GsuRecordLower82 on carried registers, as abi_GsuRecordLower82 leaves them. */
-void GsuRecordLower82_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordLower82(cr->db, cr->y, (uint8_t)cr->a, &p);
-    cr->p = (uint8_t)((nz16(p, cr->x) | P_M) & ~P_X);
-}
-
 /* PHX, PHY, TYX, REP #$20, AND #$00FF, then the record's +$8A word set or
    cleared by the bits in A, SEP #$20, PLY, PLX: A = the new word; N, Z
    from X. */
@@ -1054,7 +1019,7 @@ static void flags8a(Carried *cr, int set)
     uint32_t at = (0x70008A + cr->y) & 0xFFFFFF;
     uint16_t a = cr->a & 0x00FF;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     if (set) {
         cyc(210);
         a = (uint16_t)(a | rd16(at));
@@ -1066,8 +1031,8 @@ static void flags8a(Carried *cr, int set)
     cyc(32);
     wr16(at, a);
     cr->a = a;
-    cr->p |= P_M;
-    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : (cyc(160), nz16(cr->p, cr->x));
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : (cyc(160), nz16(cr->p, cr->x)));
 }
 
 /*
@@ -1155,15 +1120,6 @@ void abi_GsuRecordRaise6A(void)
 
     cpu.a = GsuRecordRaise6A(cpu.db, cpu.y, (uint8_t)cpu.a, &p);
     cpu.p = (uint8_t)((nz16(p, cpu.x) | P_M) & ~P_X);
-}
-
-/* GsuRecordRaise6A on carried registers, as abi_GsuRecordRaise6A leaves them. */
-void GsuRecordRaise6A_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordRaise6A(cr->db, cr->y, (uint8_t)cr->a, &p);
-    cr->p = (uint8_t)((nz16(p, cr->x) | P_M) & ~P_X);
 }
 
 uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p);
@@ -1255,16 +1211,6 @@ void abi_ObjectTurnFromRecord(void)
 
     cpu.a = ObjectTurnFromRecord(cpu.db, cpu.x, cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
-    cyc(24);
-}
-
-/* ObjectTurnFromRecord on carried registers, as abi_ObjectTurnFromRecord leaves them. */
-void ObjectTurnFromRecord_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectTurnFromRecord(cr->db, cr->x, cr->y, &p);
-    cr->p = (uint8_t)(p | P_M);
     cyc(24);
 }
 
@@ -1379,15 +1325,6 @@ void abi_ObjectSyncFromRecord(void)
     cpu.p = (uint8_t)(p | P_M);
 }
 
-/* ObjectSyncFromRecord on carried registers, as abi_ObjectSyncFromRecord leaves them. */
-void ObjectSyncFromRecord_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncFromRecord(cr->db, cr->x, &cr->y, &p);
-    cr->p = (uint8_t)(p | P_M);
-}
-
 /*
  * @routine 08:CEC3 ObjectSyncToRecord
  * WHAT IT DOES: As ObjectSyncFromRecord, the other way: after the heading
@@ -1435,15 +1372,6 @@ void abi_ObjectSyncToRecord(void)
     cpu.p = (uint8_t)(p | P_M);
 }
 
-/* ObjectSyncToRecord on carried registers, as abi_ObjectSyncToRecord leaves them. */
-void ObjectSyncToRecord_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncToRecord(cr->db, cr->x, &cr->y, &p);
-    cr->p = (uint8_t)(p | P_M);
-}
-
 /*
  * @routine 08:D01E RecordContactFlags
  * WHAT IT DOES: Adds to the flags in $1F38 what a record's contact word
@@ -1485,13 +1413,6 @@ void abi_RecordContactFlags(void)
 {
     cpu.a = RecordContactFlags(cpu.db);
     cpu.p = nz16(cpu.p, cpu.a);
-}
-
-/* RecordContactFlags on carried registers, as abi_RecordContactFlags leaves them. */
-void RecordContactFlags_cr(Carried *cr)
-{
-    cr->a = RecordContactFlags(cr->db);
-    cr->p = nz16(cr->p, cr->a);
 }
 
 /*
@@ -1551,16 +1472,6 @@ void abi_GsuRecordLand(void)
     cyc(100);
 }
 
-/* GsuRecordLand on carried registers, as abi_GsuRecordLand leaves them. */
-void GsuRecordLand_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordLand(cr->db, cr->x, &p);
-    cr->p = (uint8_t)(nz16(p, cr->x) | P_M);
-    cyc(100);
-}
-
 /*
  * @routine 08:CF0B ObjectSyncAngles
  * WHAT IT DOES: As ObjectSyncToRecord without the position: the object is
@@ -1601,15 +1512,6 @@ void abi_ObjectSyncAngles(void)
 
     cpu.a = ObjectSyncAngles(cpu.db, cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
-}
-
-/* ObjectSyncAngles on carried registers, as abi_ObjectSyncAngles leaves them. */
-void ObjectSyncAngles_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncAngles(cr->db, cr->x, &cr->y, &p);
-    cr->p = (uint8_t)(p | P_M);
 }
 
 /*
@@ -1674,15 +1576,6 @@ void abi_RecordNextContact(void)
 
     RecordNextContact(cpu.db, &cpu.a, &cpu.y, &p, cpu.x);
     cpu.p = (uint8_t)(p | P_M);
-}
-
-/* RecordNextContact on carried registers, as abi_RecordNextContact leaves them. */
-void RecordNextContact_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    RecordNextContact(cr->db, &cr->a, &cr->y, &p, cr->x);
-    cr->p = (uint8_t)(p | P_M);
 }
 
 /*
@@ -1760,14 +1653,6 @@ void abi_RecordContactSummary(void)
     cyc(66);
 }
 
-/* RecordContactSummary on carried registers, as abi_RecordContactSummary leaves them. */
-void RecordContactSummary_cr(Carried *cr)
-{
-    cr->a = RecordContactSummary(cr->db, cr->x, &cr->y);
-    cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_M);
-    cyc(66);
-}
-
 void SoundPort0QueuePush(uint8_t command);
 
 /* CMP of two 16-bit values: N, Z, C. */
@@ -1797,7 +1682,7 @@ static uint32_t ctl_field(uint32_t b, uint16_t obj, uint16_t off)
 /* BIT # (16-bit or 8-bit): Z from A AND m. */
 static void ctl_bit(Carried *cr, uint16_t m)
 {
-    cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & m) ? (cyc(38), 0) : (cyc(38), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & m) ? (cyc(38), 0) : (cyc(38), P_Z))));
 }
 
 /* LDA abs; BIT #m: is button m held (in $1AF0, or $1AF2 last frame)? */
@@ -1815,7 +1700,7 @@ static void ctl_rec_or(Carried *cr, uint32_t w, uint16_t m)
 {
     cyc(32);
     cr->a = (uint16_t)(rd16(w) | m);
-    cr->p = nz16(cr->p, cr->a);
+    set_p(cr, nz16(cr->p, cr->a));
     cyc(56);
     wr16(w, cr->a);
 }
@@ -1828,7 +1713,7 @@ static void ctl_flags_or(Carried *cr, uint32_t b, uint8_t m)
     uint8_t v = (uint8_t)(rd8(w) | m);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(46);
     wr8(w, v);
 }
@@ -1848,7 +1733,7 @@ static void ctl_linked_flags(Carried *cr, uint32_t b, uint8_t m1, uint8_t m2)
     cyc(28);
     r_rep(cr, P_M);
     cr->y = y;
-    cr->p = nz16(cr->p, y);
+    set_p(cr, nz16(cr->p, y));
 }
 
 /* The player's flag word: $1A60 for player 2 ($1A5D set), else $1A5E. */
@@ -1867,7 +1752,7 @@ static void ctl_player_store(Carried *cr, uint32_t b, uint16_t v)
     uint16_t at = ctl_player_word(cr, b);
 
     cr->a = v;
-    cr->p = nz16(cr->p, v);
+    set_p(cr, nz16(cr->p, v));
     cyc(98);
     wr16(b | at, v);
 }
@@ -1911,10 +1796,10 @@ void CarControlsToRecord(Carried *cr)
     wr16(b | 0x1F18, cr->x);
     f = (uint8_t)(rd8(cyc_then(30, ctl_field(b, obj, 0x2025))) & 0x04);
     cr->a = (uint16_t)((cr->a & 0xFF00) | f);
-    cr->p = nz8(cr->p, f);
+    set_p(cr, nz8(cr->p, f));
     r_rep(cr, P_M);
     cr->y = obj;
-    cr->p = nz16(cr->p, obj);
+    set_p(cr, nz16(cr->p, obj));
     r_lda16(cr, cyc_then(f ? 112 : 138, ctl_field(b, obj, 0x2022)));
     if (f) {
         if (cr->a) {
@@ -1943,7 +1828,7 @@ void CarControlsToRecord(Carried *cr)
         { cyc(68); goto out; } else { cyc(44); }
     if (ctl_held(cr, b, SEQ_INPUT, 0x2000)) {
         cyc(46);
-        RecordButtonSequence_cr(cr);
+        w_RecordButtonSequence(cr);
         if (!ctl_held(cr, b, SEQ_PREV, 0x2000)) {
             uint16_t y = cr->y;
 
@@ -1965,7 +1850,7 @@ void CarControlsToRecord(Carried *cr)
             cyc(10);
             r_rep(cr, P_M);
             cr->y = y;
-            cr->p = nz16(cr->p, y);
+            set_p(cr, nz16(cr->p, y));
         }
     }
     cyc(50);
@@ -1985,7 +1870,7 @@ void CarControlsToRecord(Carried *cr)
             if (cr->p & P_N) {
                 cyc(4);
                 cr->a++;
-                cr->p = nz16(cr->p, cr->a);
+                set_p(cr, nz16(cr->p, cr->a));
                 wr16(ctl_field(b, cr->y, 0x2029), cyc_then(56, cr->a));
                 r_cmp16(cr, 0x000A);
                 if (!(cr->p & P_N)) {
@@ -2005,7 +1890,7 @@ void CarControlsToRecord(Carried *cr)
                 ctl_bit(cr, 0x0008);
                 if (!(cr->a & 0x0008)) {
                     cr->a |= 0x0008;
-                    cr->p = nz16(cr->p, cr->a);
+                    set_p(cr, nz16(cr->p, cr->a));
                     cyc(58);
                     wr16(r + 0x64, cr->a);
                     ctl_linked_flags(cr, b, 0x01, 0x02);
@@ -2114,7 +1999,7 @@ void CarControlsToRecord(Carried *cr)
 out:
     cyc(102);
     cr->x = obj;
-    cr->p = nz16(cr->p, obj);
+    set_p(cr, nz16(cr->p, obj));
     r_sep(cr, P_M);
 }
 
@@ -2148,16 +2033,16 @@ static void ctl_player(Carried *cr, uint16_t held, uint16_t prev, uint8_t player
     if (player) {
         cyc(16);
         cr->a = (uint16_t)((cr->a & 0xFF00) | player);
-        cr->p = nz8(cr->p, player);
+        set_p(cr, nz8(cr->p, player));
     }
     cyc(46);
     wr8(0x7E0000u | CTL_PLAYER, player);
     cyc(24);
     cr->x = rd16(0x7E0000u | car);
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     (cyc(62), CarControlsToRecord(cr));
     cr->y = player;
-    cr->p = nz16(cr->p, cr->y);
+    set_p(cr, nz16(cr->p, cr->y));
     (cyc(86), ObjectLinkedHandlerByState_cr(cr));
 }
 
@@ -2205,7 +2090,7 @@ void PlayerControlsFrame(Carried *cr)
     wr16(0x7E030D, 0x0000);
     r_sep(cr, P_M);
     cr->db = db;
-    cr->p = nz8(cr->p, db);
+    set_p(cr, nz8(cr->p, db));
     cyc(94);
 }
 
@@ -2324,16 +2209,6 @@ void abi_RecordButtonSequence(void)
     cyc(42);
 }
 
-/* RecordButtonSequence on carried registers, as abi_RecordButtonSequence leaves them. */
-void RecordButtonSequence_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = RecordButtonSequence(cr->db, cr->x, &p);
-    cr->p = p;
-    cyc(42);
-}
-
 /*
  * @routine 08:C9A9 ObjectPoseFromRecord
  * WHAT IT DOES: Takes object X's pose back from its Super FX record:
@@ -2403,16 +2278,6 @@ void abi_ObjectPoseFromRecord(void)
     cpu.p = (uint8_t)(p | P_M);
 }
 
-/* ObjectPoseFromRecord on carried registers, as abi_ObjectPoseFromRecord leaves them. */
-void ObjectPoseFromRecord_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectPoseFromRecord(cr->db, cr->x, &p);
-    cr->y = cr->x;
-    cr->p = (uint8_t)(p | P_M);
-}
-
 /*
  * @routine 08:CD08 GsuRecordSet2AHigh
  * WHAT IT DOES: Sets the word at +$2A of object X's record to A's low byte
@@ -2448,15 +2313,6 @@ void abi_GsuRecordSet2AHigh(void)
     cpu.p = (uint8_t)(p | P_M);
 }
 
-/* GsuRecordSet2AHigh on carried registers, as abi_GsuRecordSet2AHigh leaves them. */
-void GsuRecordSet2AHigh_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = GsuRecordSet2AHigh(cr->db, cr->x, (uint8_t)cr->a, &p);
-    cr->p = (uint8_t)(p | P_M);
-}
-
 void abi_ObjectStubZero(void);
 void abi_ObjectRebucket(void);
 
@@ -2466,14 +2322,14 @@ static void set_handler08(Carried *cr, uint16_t h)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cr->a = h;
-    cr->p = nz16(cr->p, h);
+    set_p(cr, nz16(cr->p, h));
     cyc(76);
     wr16(b | (uint16_t)(0x201A + cr->x), h);
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
-    cr->p = nz8(cr->p, 0x08);
+    set_p(cr, nz8(cr->p, 0x08));
     cyc(68);
     wr8(b | (uint16_t)(0x201C + cr->x), 0x08);
 }
@@ -2487,8 +2343,8 @@ static void set_handler08(Carried *cr, uint16_t h)
  */
 void ObjectRecordMarkStep(Carried *cr)
 {
-    (cyc(62), ObjectRebucket_cr(cr));
-    (cyc(62), GsuRecordFlag4_cr(cr));
+    (cyc(62), w_ObjectRebucket(cr));
+    (cyc(62), w_GsuRecordFlag4(cr));
     cyc(44);
 }
 
@@ -2522,12 +2378,12 @@ void ObjectRecordMarkSetup(Carried *cr)
 
     set_handler08(cr, 0xCDA4);
     (cyc(62), w_ObjectStubZero(cr));
-    (cyc(62), w_GsuRecordNew422(cr));
+    (cyc(62), GsuRecordNew422_cr(cr));
     b = (uint32_t)cr->db << 16 | (uint16_t)(0x2009 + cr->x);
     cyc(30);
     v = (uint8_t)(rd8(b) | 0x01);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(46);
     wr8(b, v);
     cyc(44);
@@ -2612,15 +2468,6 @@ void abi_ObjectSyncFromRecordFall(void)
     cpu.p = (uint8_t)(p | P_M);
 }
 
-/* ObjectSyncFromRecordFall on carried registers, as abi_ObjectSyncFromRecordFall leaves them. */
-void ObjectSyncFromRecordFall_cr(Carried *cr)
-{
-    uint8_t p = cr->p;
-
-    cr->a = ObjectSyncFromRecordFall(cr->db, cr->x, &cr->y, &p);
-    cr->p = (uint8_t)(p | P_M);
-}
-
 /*
  * @routine 08:CDAD ObjectSyncFallStep
  * WHAT IT DOES: A handler: ObjectSyncFromRecordFall.
@@ -2629,7 +2476,7 @@ void ObjectSyncFromRecordFall_cr(Carried *cr)
  */
 void ObjectSyncFallStep(Carried *cr)
 {
-    (cyc(62), ObjectSyncFromRecordFall_cr(cr));
+    (cyc(62), w_ObjectSyncFromRecordFall(cr));
     cyc(44);
 }
 
@@ -2664,7 +2511,7 @@ void ObjectSpinStep(Carried *cr)
 
     cyc(30);
     h = rd8(b | (uint16_t)(0x2015 + obj));
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     h = alu_adc8(h, 0x01, &cr->p);
     cyc(60);
     wr8(b | (uint16_t)(0x2015 + obj), h);
@@ -2677,7 +2524,7 @@ void ObjectSpinStep(Carried *cr)
         wr16(0x700024 + rec, v & 0x00FF);
     } else { cyc(8); }
     cyc(98);
-    ObjectSyncFromRecord_cr(cr);
+    w_ObjectSyncFromRecord(cr);
     cyc(44);
 }
 
@@ -2705,11 +2552,11 @@ void abi_ObjectSpinStep(void)
  */
 void ObjectSpinRecord(Carried *cr)
 {
-    (cyc(62), w_GsuRecordNew424(cr));
+    (cyc(62), GsuRecordNew424_cr(cr));
     (cyc(62), w_GsuRecordMode2(cr));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x20);
-    cr->p = nz8(cr->p, 0x20);
-    (cyc(78), GsuRecordSet2AHigh_cr(cr));
+    set_p(cr, nz8(cr->p, 0x20));
+    (cyc(78), w_GsuRecordSet2AHigh(cr));
     (cyc(102), ObjectSpinStep(cr));
 }
 
@@ -2738,11 +2585,11 @@ void ObjectSpinSetup(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cr->a = 0xCDD0;
     cyc(76);
     wr16(b | (uint16_t)(0x201D + cr->x), 0xCDD0);
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     cyc(68);
     wr8(b | (uint16_t)(0x201F + cr->x), 0x08);
@@ -2831,7 +2678,7 @@ void GsuRecordListFlag80(Carried *cr)
     uint16_t x0 = cr->x, v;
     int first;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(82);
     r_lda16(cr, b | (uint16_t)(0x2022 + cr->x));
     r_tax16(cr);
@@ -2844,14 +2691,14 @@ void GsuRecordListFlag80(Carried *cr)
             { cyc(74); break; }
         v = (uint16_t)(rd16(0x700016 + cr->x) | 0x0080);
         cr->a = v;
-        cr->p = nz16(cr->p, v);
+        set_p(cr, nz16(cr->p, v));
         cyc(56);
         wr16(0x700016 + cr->x, v);
         cyc(32);
         r_lda16(cr, 0x700034 + cr->x);
     }
     cr->x = x0;
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->x) | P_M));
 }
 
 void abi_GsuRecordListFlag80(void)
@@ -2867,36 +2714,6 @@ void abi_GsuRecordListFlag80(void)
     cpu.db = r.db;
 }
 
-/* GsuRecordListFlag80 on carried registers, as abi_GsuRecordListFlag80 leaves them. */
-void GsuRecordListFlag80_cr(Carried *cr)
-{
-    uint32_t b = (uint32_t)cr->db << 16;
-    uint16_t x0 = cr->x, v;
-    int first;
-
-    cr->p &= (uint8_t)~P_M;
-    cyc(82);
-    r_lda16(cr, b | (uint16_t)(0x2022 + cr->x));
-    r_tax16(cr);
-    cyc(16);
-    r_lda16(cr, 0x70003E + cr->x);
-    for (first = 1;; first = 0) {
-        cyc(first ? 32 : 54);           /* later rounds: after the BRA */
-        r_tax16(cr);
-        if (!cr->x)
-            { cyc(74); break; }
-        v = (uint16_t)(rd16(0x700016 + cr->x) | 0x0080);
-        cr->a = v;
-        cr->p = nz16(cr->p, v);
-        cyc(56);
-        wr16(0x700016 + cr->x, v);
-        cyc(32);
-        r_lda16(cr, 0x700034 + cr->x);
-    }
-    cr->x = x0;
-    cr->p = (uint8_t)(nz16(cr->p, cr->x) | P_M);
-}
-
 /*
  * @routine 08:C096 ReturnLongC096
  * WHAT IT DOES: A lone RTL nothing reaches, between two routines; a direct
@@ -2905,12 +2722,6 @@ void GsuRecordListFlag80_cr(Carried *cr)
  * Entry: any. Exit: nothing changed.
  */
 void abi_ReturnLongC096(void)
-{
-    cyc(44);
-}
-
-/* ReturnLongC096 on carried registers, as abi_ReturnLongC096 leaves them. */
-void ReturnLongC096_cr(Carried *cr)
 {
     cyc(44);
 }
@@ -2924,7 +2735,7 @@ static void or20(Carried *cr, uint32_t addr)
     r_lda8(cr, addr);
     v = (uint8_t)(cr->a | 0x20);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(46);
     wr8(addr, v);
 }
@@ -2976,30 +2787,30 @@ void ObjectRecordChildrenMark(Carried *cr)
     r_lda8(cr, b | (uint16_t)(0x2024 + cr->x));
     f = (uint8_t)(cr->a & 0x08);
     cr->a = (uint16_t)((cr->a & 0xFF00) | f);
-    cr->p = nz8(cr->p, f);
+    set_p(cr, nz8(cr->p, f));
     if (f) {
         cyc(94);
         for (;;) {
             cyc(52);
             cr->y = rd16(b | (uint16_t)(0x2006 + cr->x));
-            cr->p = nz16(cr->p, cr->y);
+            set_p(cr, nz16(cr->p, cr->y));
             if (!cr->y)
                 { cyc(102); break; }
             cr->x = cr->y;
-            cr->p = nz16(cr->p, cr->x);
+            set_p(cr, nz16(cr->p, cr->x));
             or20(cr, b | (uint16_t)(0x2024 + cr->x));
         }
         cr->x = x0;
-        cr->p = nz16(cr->p, cr->x);
+        set_p(cr, nz16(cr->p, cr->x));
         return;
     }
     cr->y = cr->x;
-    cr->p = nz16(cr->p, cr->y);
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, nz16(cr->p, cr->y));
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(104);
     r_lda16(cr, b | (uint16_t)(0x2022 + cr->x));
     r_tax16(cr);
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(38);
     r_lda8(cr, 0x700027 + cr->x);
     cyc(24);
@@ -3008,7 +2819,7 @@ void ObjectRecordChildrenMark(Carried *cr)
     r_lda8(cr, 0x700029 + cr->x);
     cyc(24);
     wr8(b | 0x1F59, (uint8_t)cr->a);
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(84);
     r_lda16(cr, 0x700016 + cr->x);
     r_and16(cr, 0x0400);
@@ -3022,13 +2833,13 @@ void ObjectRecordChildrenMark(Carried *cr)
         if (!cr->y)
             { cyc(138); break; } else { cyc(22); }
         if (f) {
-            cr->p |= P_M;
+            set_p(cr, (uint8_t)(cr->p | (P_M)));
             or20(cr, b | (uint16_t)(0x2024 + cr->y));
-            cr->p &= (uint8_t)~P_M;
+            set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
             cyc(54);
             v = (uint16_t)(rd16(0x700016 + cr->x) | 0x0480);
             cr->a = v;
-            cr->p = nz16(cr->p, v);
+            set_p(cr, nz16(cr->p, v));
             cyc(56);
             wr16(0x700016 + cr->x, v);
         } else {
@@ -3042,9 +2853,9 @@ void ObjectRecordChildrenMark(Carried *cr)
             r_lda16(cr, 0x700034 + cr->x);
         r_tax16(cr);
     }
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->x = x0;
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
 }
 
 void abi_ObjectRecordChildrenMark(void)
@@ -3066,18 +2877,64 @@ static void w_RandomStepLong(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | (cyc(46), RandomStepLong()));
 }
 
-/* GsuRecordNew422 as its adapter leaves the registers. */
-static void w_GsuRecordNew422(Carried *cr)
+/* RecordButtonSequence as its adapter leaves the registers. */
+static void w_RecordButtonSequence(Carried *cr)
 {
-    cyc(62);
-    abi_record_new(cr, 0x8B64, 0x0000, 106);
+    uint8_t p = cr->p;
+
+    cr->a = RecordButtonSequence(cr->db, cr->x, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
+/* GsuRecordFlag4 as its adapter leaves the registers. */
+static void w_GsuRecordFlag4(Carried *cr)
+{
+    int has;
+    uint16_t a = GsuRecordFlag4(cr->db, cr->x, &has);
+
+    if (has) {
+        cyc(8);
+        cr->a = a;
+        cr->y = cr->x;
+        set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
+    } else {
+        cyc(8);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
+        set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
+    }
+    cyc(88);
+}
+
+/* ObjectRebucket as its adapter leaves the registers. */
+static void w_ObjectRebucket(Carried *cr)
+{
+    cr->a = ObjectRebucket(cr->x);
 }
 
 /* ObjectStubZero as its adapter leaves the registers. */
 static void w_ObjectStubZero(Carried *cr)
 {
     cr->a = (cyc(112), ObjectStubZero());
-    cr->p = (uint8_t)(nz16(cr->p, cr->a) | P_M);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M));
+}
+
+/* ObjectSyncFromRecordFall as its adapter leaves the registers. */
+static void w_ObjectSyncFromRecordFall(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectSyncFromRecordFall(cr->db, cr->x, &cr->y, &p);
+    set_p(cr, (uint8_t)(p | P_M));
+}
+
+/* ObjectSyncFromRecord as its adapter leaves the registers. */
+static void w_ObjectSyncFromRecord(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ObjectSyncFromRecord(cr->db, cr->x, &cr->y, &p);
+    set_p(cr, (uint8_t)(p | P_M));
 }
 
 /* GsuRecordMode2 as its adapter leaves the registers. */
@@ -3086,9 +2943,11 @@ static void w_GsuRecordMode2(Carried *cr)
     exit_record(cr, GsuRecordMode2(cr->db, cr->x), 0x0002);
 }
 
-/* GsuRecordNew424 as its adapter leaves the registers. */
-static void w_GsuRecordNew424(Carried *cr)
+/* GsuRecordSet2AHigh as its adapter leaves the registers. */
+static void w_GsuRecordSet2AHigh(Carried *cr)
 {
-    cyc(62);
-    abi_record_new(cr, 0x8C0A, 0x910A, 98);
+    uint8_t p = cr->p;
+
+    cr->a = GsuRecordSet2AHigh(cr->db, cr->x, (uint8_t)cr->a, &p);
+    set_p(cr, (uint8_t)(p | P_M));
 }

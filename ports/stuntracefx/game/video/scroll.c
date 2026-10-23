@@ -73,7 +73,7 @@ void Bg2ScrollFromTable_cr(Carried *cr)
     uint8_t v = wide ? Bg2ScrollFromTable(cr->x) : bg2_scroll((uint8_t)cr->x, 0);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(42);
 }
 

@@ -15,6 +15,7 @@
 uint16_t DigitTiles1184(void);
 void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap);
 uint16_t SelectionSave(uint8_t bank, uint16_t *x);
+#include "audio_calls.h"
 uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *set);
 void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a, uint8_t entry);
 #include "hud_calls.h"
@@ -59,7 +60,9 @@ void ResultsPanelFAB5(Carried *cr);
 void ResultsPanelFB99(Carried *cr);
 void ResultsPicture4000(Carried *cr);
 void ResultsRecordCompare(Carried *cr);
+void ResultsScreenStep(Carried *cr);
 void ResultsTotalLine(Carried *cr);
+void ResultsTotalLineWords(Carried *cr);
 void ResultsTotalTiles(Carried *cr);
 void ResultsUnpackNext(Carried *cr);
 void ResultsWaitWindow(Carried *cr);
@@ -85,6 +88,7 @@ static void cmp8_imm(Carried *cr, uint8_t m);
 static void count_digits(Carried *cr, uint32_t b, uint16_t at, uint32_t hi, uint32_t lo);
 static uint8_t high_digit_tile(Carried *cr, uint8_t v);
 static void inc8_mem(Carried *cr, uint32_t addr);
+static void lap_char(Carried *cr);
 static void lap_chars(Carried *cr, uint16_t y);
 static void lda8_imm(Carried *cr, uint8_t v);
 static uint8_t low_digit_tile(Carried *cr, uint8_t v);
@@ -102,44 +106,33 @@ static void rows_car(Carried *cr);
 static void rows_course(Carried *cr);
 static void rows_retry(Carried *cr);
 static void sound(Carried *cr, uint8_t s);
+static uint16_t step_dispatch(Carried *cr, uint32_t b, uint16_t t);
 static void total_line(Carried *cr, uint32_t b);
 static void total_line_end(Carried *cr, uint32_t b, uint16_t at);
 static void w_DigitTiles1184(Carried *cr);
-static void w_GsuCF42To3000(Carried *cr);
-static void w_GsuCF42To4000(Carried *cr);
 static void w_OamTextLine(Carried *cr);
-static void w_RecordsUnpackCourseRunning(Carried *cr);
 static void w_SelectionSave(Carried *cr);
-static void w_SoundPort0QueuePushX8(Carried *cr);
+static void w_SoundPort0QueuePushRaw(Carried *cr);
+static void w_SoundPort0QueuePushRawX8(Carried *cr);
 static void w_SpritePieces3(Carried *cr);
-static void w_TilemapPaletteCycle(Carried *cr);
 static void w_TilemapPaletteFill(Carried *cr);
-static void w_TilemapRow187Palette4(Carried *cr);
-static void w_TilemapRow207Palette4(Carried *cr);
-static void w_TilemapRow287Palette4(Carried *cr);
 static void w_TimeUnpackBcd(Carried *cr);
+void GsuCF42To3000_cr(Carried *cr);
+void GsuCF42To4000_cr(Carried *cr);
+void OamWordRow5_cr(Carried *cr);
+void RecordsUnpackCourseRunning(Carried *cr);
 void SoundPort0QueuePushRawWide_cr(Carried *cr);
-void SoundPort0QueuePushRawX8_cr(Carried *cr);
-void SoundPort0QueuePushRaw_cr(Carried *cr);
+void SoundPort0QueuePushX8(Carried *cr);
+void TilemapPaletteCycle_cr(Carried *cr);
+void TilemapRow187Palette4_cr(Carried *cr);
+void TilemapRow207Palette4_cr(Carried *cr);
+void TilemapRow287Palette4_cr(Carried *cr);
 
 /* LDA #v (8-bit). */
 static void lda8_imm(Carried *cr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void lda8_imm_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    lda8_imm(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* INC of a work-RAM byte; N, Z from it. */
@@ -150,20 +143,7 @@ static void inc8_mem(Carried *cr, uint32_t addr)
 
     cyc(6);
     wr8(addr, v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void inc8_mem_g(uint32_t addr)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    inc8_mem(&c, addr);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* CMP # (8-bit). */
@@ -171,20 +151,7 @@ static void cmp8_imm(Carried *cr, uint8_t m)
 {
     uint8_t a = (uint8_t)cr->a;
 
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
-}
-
-static void cmp8_imm_g(uint8_t m)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    cmp8_imm(&c, m);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0)));
 }
 
 /* ASL A (8-bit). */
@@ -192,23 +159,10 @@ static void asl8(Carried *cr)
 {
     uint8_t v = (uint8_t)cr->a;
 
-    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void asl8_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    asl8(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* LSR A four times (8-bit), CLC, ADC #$C0: a digit's tile from the high
@@ -220,25 +174,11 @@ static uint8_t high_digit_tile(Carried *cr, uint8_t v)
     cyc(2);
     for (i = 0; i < 4; i++) {
         cyc(13);
-        cr->p = (uint8_t)((cr->p & ~P_C) | (v & 1));
+        set_p(cr, (uint8_t)((cr->p & ~P_C) | (v & 1)));
         v >>= 1;
     }
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     return alu_adc8(v, 0xC0, &cr->p);
-}
-
-static uint8_t high_digit_tile_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint8_t ret_ = high_digit_tile(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* AND #$0F, CLC, ADC #$C0: a digit's tile from the low nibble. */
@@ -246,23 +186,9 @@ static uint8_t low_digit_tile(Carried *cr, uint8_t v)
 {
     cyc(2);
     v &= 0x0F;
-    cr->p = nz8(cr->p, v);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, nz8(cr->p, v));
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     return alu_adc8(v, 0xC0, &cr->p);
-}
-
-static uint8_t low_digit_tile_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint8_t ret_ = low_digit_tile(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* REP #$20, LDA presses, BIT #mask: Z from the test. */
@@ -271,7 +197,7 @@ static int pressed(Carried *cr, uint32_t b, uint16_t mask)
     r_rep(cr, P_M);
     cyc(2);
     r_lda16(cr, b | 0x0D1A);
-    cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(40), 0) : (cyc(40), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(40), 0) : (cyc(40), P_Z))));
     return (cr->a & mask) != 0;
 }
 
@@ -280,7 +206,7 @@ static void sound(Carried *cr, uint8_t s)
 {
     cyc(62);
     lda8_imm(cr, s);
-    w_SoundPort0QueuePushX8(cr);
+    SoundPort0QueuePushX8(cr);
 }
 
 /* TilemapPaletteCycle on y entries from offset x, X 16-bit. */
@@ -289,25 +215,25 @@ static void palette_cycle(Carried *cr, uint16_t x, uint16_t y)
     cyc(94);
     r_rep(cr, P_X);
     cr->x = x;
-    cr->p = nz16(cr->p, x);
+    set_p(cr, nz16(cr->p, x));
     cr->y = y;
-    cr->p = nz16(cr->p, y);
-    w_TilemapPaletteCycle(cr);
+    set_p(cr, nz16(cr->p, y));
+    TilemapPaletteCycle_cr(cr);
 }
 
 /* The step $0D59 by the table at t: JMP (t,X) with X = $0D59 * 2. */
-static uint16_t step_dispatch(uint32_t b, uint16_t t)
+static uint16_t step_dispatch(Carried *cr, uint32_t b, uint16_t t)
 {
     uint16_t target;
 
     cyc(98);
-    op_lda8(b | 0x0D59);
-    asl8_g();
-    cpu.x = (uint16_t)(cpu.a & 0x00FF);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    r_lda8(cr, b | 0x0D59);
+    asl8(cr);
+    cr->x = (uint16_t)(cr->a & 0x00FF);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(74);
-    target = rd16(0x070000 | (uint16_t)(t + cpu.x));
-    jump_routine(0x070000 | target);
+    target = rd16(0x070000 | (uint16_t)(t + cr->x));
+    carried_jump(cr, 0x070000 | target);
     return target;
 }
 
@@ -328,32 +254,45 @@ static unsigned step_rts(uint16_t target)
  * only by unit_results_screen.
  * Entry: M 8-bit, X 8-bit. Exit: as the step's handler leaves it.
  */
-void abi_ResultsScreenStep(void)
+void ResultsScreenStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
-    op_lda8(b | 0x0D2B);
-    asl8_g();
-    cpu.x = (uint16_t)(cpu.a & 0x00FF);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-    switch (cpu.x) {
+    r_lda8(cr, b | 0x0D2B);
+    asl8(cr);
+    cr->x = (uint16_t)(cr->a & 0x00FF);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
+    switch (cr->x) {
     case 0:
-        cyc(step_rts(step_dispatch(b, 0xC6C3)));
+        cyc(step_rts(step_dispatch(cr, b, 0xC6C3)));
         return;
     case 2:
-        cyc(step_rts(step_dispatch(b, 0xC715)));
+        cyc(step_rts(step_dispatch(cr, b, 0xC715)));
         return;
     case 4:
         cyc(116);
         return;
     case 6:
-        cyc(step_rts(step_dispatch(b, 0xC6EB)));
+        cyc(step_rts(step_dispatch(cr, b, 0xC6EB)));
         return;
     default:
-        jump_routine(0x070000 | rd16(0x070000 | (uint16_t)(0xC6B2 + cpu.x)));
+        carried_jump(cr, 0x070000 | rd16(0x070000 | (uint16_t)(0xC6B2 + cr->x)));
         return;
     }
+}
+
+void abi_ResultsScreenStep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ResultsScreenStep(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -437,7 +376,7 @@ static void record_cars(Carried *cr, uint32_t b, uint16_t empty)
         wr8(b | 0x10BF, ys[n]);
         r_rep(cr, P_M);
         cr->y = (uint16_t)(0x0130 + 0x10 * n);
-        cr->p = nz16(cr->p, cr->y);
+        set_p(cr, nz16(cr->p, cr->y));
         (cyc(86), w_SpritePieces3(cr));
         r_sep(cr, P_M);
         lda8_imm(cr, 0x60);
@@ -619,7 +558,7 @@ void abi_ResultsNext(void)
 void ResultsUnpackNext(Carried *cr)
 {
     cyc(62);
-    w_RecordsUnpackCourseRunning(cr);
+    RecordsUnpackCourseRunning(cr);
     (cyc(0), ResultsNext(cr));
 }
 
@@ -747,8 +686,8 @@ void TimeTiles(Carried *cr)
     r_sep(cr, P_M);
     cyc(150);
     v = rd8(0x0000F5);
-    cr->p = nz8(cr->p, v);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, nz8(cr->p, v));
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(78);
     wr8((uint32_t)(TILES + x), alu_adc8(v, 0xC0, &cr->p));
     cyc(16);
@@ -787,21 +726,21 @@ static void name_tiles(Carried *cr, uint16_t at)
 
     r_sep(cr, P_M);
     v = (uint16_t)(a & 0x001F);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(176);
     wr8((uint32_t)(TILES + at + x), alu_adc8((uint8_t)v, 0xCA, &cr->p));
     r_rep(cr, P_M);
     v = (uint16_t)(a << 3);
     v = (uint16_t)(v << 8 | v >> 8);
     r_sep(cr, P_M);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(228);
     wr8((uint32_t)(TILES + at + 2 + x), alu_adc8((uint8_t)(v & 0x1F), 0xCA, &cr->p));
     r_rep(cr, P_M);
     v = (uint16_t)(a >> 2);
     v = (uint16_t)(v << 8 | v >> 8);
     r_sep(cr, P_M);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     v = alu_adc8((uint8_t)(v & 0x1F), 0xCA, &cr->p);
     cr->a = (uint16_t)((uint16_t)(a >> 2) << 8 & 0xFF00) | v;
     cyc(184);
@@ -868,9 +807,9 @@ static void panel(Carried *cr, uint16_t x, uint16_t pic)
 
     r_rep(cr, P_M | P_X);
     cr->x = x;
-    cr->p = nz16(cr->p, x);
+    set_p(cr, nz16(cr->p, x));
     r_lda16_imm(cr, pic);
-    w_GsuCF42To3000(cr);
+    GsuCF42To3000_cr(cr);
     p = cr->p;
     r_rep(cr, P_M | P_X);
     cyc(220);
@@ -909,7 +848,7 @@ void StuntRecordsDraw(Carried *cr)
         if (!cr->a)
             { broke = 1; break; }
         cr->x = (uint16_t)(0x0190 + 0xC0 * n);
-        cr->p = nz16(cr->p, cr->x);
+        set_p(cr, nz16(cr->p, cr->x));
         ScoreTiles(cr);
         cyc(66);
         r_lda16(cr, b | (uint16_t)(0x0F43 + 2 * n));
@@ -995,7 +934,7 @@ void TimedRecordsDraw(Carried *cr)
         if (n)
             r_rep(cr, P_X);
         cr->x = (uint16_t)(0x0194 + 0xC0 * n);
-        cr->p = nz16(cr->p, cr->x);
+        set_p(cr, nz16(cr->p, cr->x));
         TimeTiles(cr);
         cyc(66);
         r_lda16(cr, b | (uint16_t)(0x0F43 + 2 * n));
@@ -1250,9 +1189,9 @@ void ResultsPicture4000(Carried *cr)
 
     r_rep(cr, P_M | P_X);
     cr->x = 0x0018;
-    cr->p = nz16(cr->p, 0x0018);
+    set_p(cr, nz16(cr->p, 0x0018));
     r_lda16_imm(cr, 0xC770);
-    w_GsuCF42To4000(cr);
+    GsuCF42To4000_cr(cr);
     r_sep(cr, P_M);
     cyc(94);
     inc8_mem(cr, b | 0x0D59);
@@ -1337,17 +1276,17 @@ static void menu_rows(Carried *cr, uint16_t x, uint16_t y, void (*a)(Carried *),
 
 static void rows_retry(Carried *cr)
 {
-    (cyc(6), menu_rows(cr, 0x0187, 0x0009, w_TilemapRow207Palette4, w_TilemapRow287Palette4));
+    (cyc(6), menu_rows(cr, 0x0187, 0x0009, TilemapRow207Palette4_cr, TilemapRow287Palette4_cr));
 }
 
 static void rows_course(Carried *cr)
 {
-    (cyc(6), menu_rows(cr, 0x0207, 0x000D, w_TilemapRow187Palette4, w_TilemapRow287Palette4));
+    (cyc(6), menu_rows(cr, 0x0207, 0x000D, TilemapRow187Palette4_cr, TilemapRow287Palette4_cr));
 }
 
 static void rows_car(Carried *cr)
 {
-    menu_rows(cr, 0x0287, 0x000A, w_TilemapRow187Palette4, w_TilemapRow207Palette4);
+    menu_rows(cr, 0x0287, 0x000A, TilemapRow187Palette4_cr, TilemapRow207Palette4_cr);
 }
 
 /* The car one on or back (right or left), skipping car 3 unless HUD mode
@@ -1370,11 +1309,11 @@ static void car_change(Carried *cr, uint32_t b, int right)
         if (v == 0x03) {
             cyc(76);
             cr->x = rd8(b | 0x0D2B);
-            cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(cr->x - 0x03)) & ~P_C) | ((uint8_t)cr->x >= 0x03 ? P_C : 0));
+            set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(cr->x - 0x03)) & ~P_C) | ((uint8_t)cr->x >= 0x03 ? P_C : 0)));
             if ((uint8_t)cr->x != 0x03) {
                 cyc(64);
                 r_lda8(cr, 0x70FC0B);
-                cr->p = (uint8_t)((cr->p & ~P_Z) | (((uint8_t)cr->a & 0x04) ? (cyc(32), 0) : (cyc(16), P_Z)));
+                set_p(cr, (uint8_t)((cr->p & ~P_Z) | (((uint8_t)cr->a & 0x04) ? (cyc(32), 0) : (cyc(16), P_Z))));
                 lda8_imm(cr, (uint8_t)cr->a & 0x04 ? 0x03 : 0x00);
             }
         } else if (v > 0x03) {
@@ -1394,11 +1333,11 @@ static void car_change(Carried *cr, uint32_t b, int right)
             lda8_imm(cr, 0x03);
             cyc(70);
             cr->x = rd8(b | 0x0D2B);
-            cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(cr->x - 0x03)) & ~P_C) | ((uint8_t)cr->x >= 0x03 ? P_C : 0));
+            set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(cr->x - 0x03)) & ~P_C) | ((uint8_t)cr->x >= 0x03 ? P_C : 0)));
             if ((uint8_t)cr->x != 0x03) {
                 cyc(64);
                 r_lda8(cr, 0x70FC0B);
-                cr->p = (uint8_t)((cr->p & ~P_Z) | (((uint8_t)cr->a & 0x04) ? (cyc(32), 0) : (cyc(16), P_Z)));
+                set_p(cr, (uint8_t)((cr->p & ~P_Z) | (((uint8_t)cr->a & 0x04) ? (cyc(32), 0) : (cyc(16), P_Z))));
                 lda8_imm(cr, (uint8_t)cr->a & 0x04 ? 0x03 : 0x02);
             }
             cyc(2);
@@ -1410,7 +1349,7 @@ static void car_change(Carried *cr, uint32_t b, int right)
     cyc(right ? 46 : 24);               /* BRA, or not; LDA abs */
     r_lda8(cr, b | 0x0D89);
     cr->x = (uint16_t)(cr->a & 0x00FF);
-    cr->p = nz8(cr->p, (uint8_t)cr->x);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(86);
     r_lda8(cr, 0x07CE93 + cr->x);
     wr8(0x0018CB, (uint8_t)cr->a);
@@ -1550,25 +1489,25 @@ void ResultsMenu(Carried *cr)
     cyc(64);
     r_lda8(cr, b | 0x0E3B);
     f = (uint8_t)cr->a;
-    cr->p = (uint8_t)((cr->p & ~P_Z) | ((f & 0x08) ? 0 : (cyc(54), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((f & 0x08) ? 0 : (cyc(54), P_Z))));
     if (!(f & 0x08)) {
         lda8_imm(cr, 0x55);
     } else {
         cyc(62);
         v = rd8(b | 0x10A4);
-        cr->p |= P_C;
+        set_p(cr, (uint8_t)(cr->p | (P_C)));
         v = alu_sbc8(v, 0x08, &cr->p);
         cyc(38);
         wr8(b | 0x0445, v);
         cyc(24);
         v = rd8(b | 0x10A4);
-        cr->p &= (uint8_t)~P_C;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         v = alu_adc8(v, 0x40, &cr->p);
         cyc(54);
         wr8(b | 0x0449, v);
         cyc(24);
         v = rd8(b | 0x10A6);
-        cr->p &= (uint8_t)~P_C;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         v = alu_adc8(v, 0x18, &cr->p);
         cyc(54);
         wr8(b | 0x0446, v);
@@ -1638,7 +1577,7 @@ void ResultsChampionScreen(Carried *cr)
         cyc(26);
     }
     cr->x = 0xFFFE;
-    cr->p = nz16(cr->p, 0xFFFE);
+    set_p(cr, nz16(cr->p, 0xFFFE));
     r_lda16_imm(cr, 0xFFE0);
     cyc(28);
     wr16(b | 0x0D8E, 0xFFE0);
@@ -1685,7 +1624,7 @@ void ResultsWaitWindow(Carried *cr)
         inc8_mem(cr, b | 0x0D59);
         cyc(24);
         lda8_imm(cr, 0x28);
-        SoundPort0QueuePushRaw_cr(cr);
+        w_SoundPort0QueuePushRaw(cr);
     } else { cyc(30); }
     lda8_imm(cr, 0x06);
     cyc(32);
@@ -1734,19 +1673,6 @@ static void total_line(Carried *cr, uint32_t b)
     (cyc(46), w_OamTextLine(cr));
 }
 
-static void total_line_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    total_line(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* $0D23 = 4, the next step, $0E43 = at (16-bit). */
 static void total_line_end(Carried *cr, uint32_t b, uint16_t at)
 {
@@ -1758,19 +1684,6 @@ static void total_line_end(Carried *cr, uint32_t b, uint16_t at)
     r_lda16_imm(cr, at);
     cyc(10);
     wr16(b | 0x0E43, at);
-}
-
-static void total_line_end_g(uint32_t b, uint16_t at)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    total_line_end(&c, b, at);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /*
@@ -1814,18 +1727,31 @@ void abi_ResultsTotalTiles(void);
  * reached in the traces so far.
  * Entry: any widths; D = $0000. Exit: M 8-bit.
  */
+void ResultsTotalLineWords(Carried *cr)
+{
+    uint32_t b = (uint32_t)cr->db << 16;
+
+    total_line(cr, b);
+    (cyc(46), OamWordRow5_cr(cr));
+    total_line_end(cr, b, 0x018E);
+    r_sep(cr, P_M);
+    cyc(46);
+    r_lda8(cr, b | 0x0EEC);
+    if ((uint8_t)cr->a)
+        { cyc(40); ResultsTotalTiles(cr); } else { cyc(22 + 42); }
+}
+
 void abi_ResultsTotalLineWords(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    total_line_g(b);
-    (cyc(46), abi_OamWordRow5());
-    total_line_end_g(b, 0x018E);
-    op_sep(P_M);
-    cyc(46);
-    op_lda8(b | 0x0EEC);
-    if ((uint8_t)cpu.a)
-        { cyc(40); jump_routine(0x07D3F6); } else { cyc(22 + 42); }
+    ResultsTotalLineWords(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A BCD count byte at `at` one more (SED, CLC, ADC #1, CLD) shown as two
@@ -1834,15 +1760,15 @@ static void count_digits(Carried *cr, uint32_t b, uint16_t at, uint32_t hi, uint
 {
     uint8_t v;
 
-    cr->p |= P_D;
+    set_p(cr, (uint8_t)(cr->p | (P_D)));
     cyc(54);
     r_lda8(cr, b | at);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     v = alu_adc8((uint8_t)cr->a, 0x01, &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(54);
     wr8(b | at, v);
-    cr->p &= (uint8_t)~P_D;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_D)));
     v = low_digit_tile(cr, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(90);
@@ -1893,7 +1819,7 @@ void StuntResultsCount(Carried *cr)
         cyc(56);
         uint8_t m = rd8(b | 0x0E80);
 
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0)));
         if (v != m) {
             count_digits(cr, b, 0x0E80, 0x7F956F, 0x7F9571);
             cyc(42);
@@ -1907,7 +1833,7 @@ void StuntResultsCount(Carried *cr)
         cyc(24);
         uint8_t m = rd8(b | 0x0E81);
 
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0)));
         if (v != m) {
             count_digits(cr, b, 0x0E81, 0x7F95EF, 0x7F95F1);
             cyc(42);
@@ -1939,143 +1865,126 @@ void abi_StuntResultsCount(void)
    minutes' digit, ':', the seconds' two, '.', the hundredths' two; the
    last moves the position to the next line ($74 on, $F4 after the fourth
    lap's) with sound $3F at the end ($0D59 = $B) and the step on. */
-static void lap_char(void)
+static void lap_char(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t y = cpu.y, at;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint16_t y = cr->y, at;
     uint8_t v;
     unsigned tail = 86;
 
     cyc(48);
-    cpu.x = rd8(b | 0x0E3F);
-    cpu.x |= (uint16_t)(rd8(b | 0x0E40) << 8);
-    cpu.p = nz16(cpu.p, cpu.x);
-    switch (cpu.x) {
+    cr->x = rd8(b | 0x0E3F);
+    cr->x |= (uint16_t)(rd8(b | 0x0E40) << 8);
+    set_p(cr, nz16(cr->p, cr->x));
+    switch (cr->x) {
     case 0x00:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         cyc(30);
-        op_lda8(b | (uint16_t)(0x0EE0 + y));
-        cpu.p &= (uint8_t)~P_C;
-        v = op_adc8((uint8_t)cpu.a, 0xC0, &cpu.p);
+        r_lda8(cr, b | (uint16_t)(0x0EE0 + y));
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
+        v = alu_adc8((uint8_t)cr->a, 0xC0, &cr->p);
         break;
     case 0x02:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         v = 0xE6;
-        cpu.p = nz8(cpu.p, v);
+        set_p(cr, nz8(cr->p, v));
         tail = 70;                      /* LDA #, BRA, STA long */
         break;
     case 0x04:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         cyc(30);
-        op_lda8(b | (uint16_t)(0x0EDF + y));
+        r_lda8(cr, b | (uint16_t)(0x0EDF + y));
         {
-            uint8_t t = (uint8_t)cpu.a;
+            uint8_t t = (uint8_t)cr->a;
             unsigned i;
 
             for (i = 0; i < 4; i++) {
                 cyc(17);
-                cpu.p = (uint8_t)((cpu.p & ~P_C) | (t & 1));
+                set_p(cr, (uint8_t)((cr->p & ~P_C) | (t & 1)));
                 t >>= 1;
             }
-            v = low_digit_tile_g(t);
+            v = low_digit_tile(cr, t);
         }
         break;
     case 0x06:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         cyc(30);
-        op_lda8(b | (uint16_t)(0x0EDF + y));
+        r_lda8(cr, b | (uint16_t)(0x0EDF + y));
         cyc(12);
-        v = low_digit_tile_g((uint8_t)cpu.a);
+        v = low_digit_tile(cr, (uint8_t)cr->a);
         break;
     case 0x08:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         v = 0xE7;
-        cpu.p = nz8(cpu.p, v);
+        set_p(cr, nz8(cr->p, v));
         tail = 70;
         break;
     case 0x0A:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         cyc(30);
-        op_lda8(b | (uint16_t)(0x0EDE + y));
-        v = high_digit_tile_g((uint8_t)cpu.a);
+        r_lda8(cr, b | (uint16_t)(0x0EDE + y));
+        v = high_digit_tile(cr, (uint8_t)cr->a);
         break;
     case 0x0C:
         cyc(70);
-        cpu.x = rd16(b | 0x0E43);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x0E43);
+        set_p(cr, nz16(cr->p, cr->x));
         cyc(30);
-        op_lda8(b | (uint16_t)(0x0EDE + y));
-        v = low_digit_tile_g((uint8_t)cpu.a);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        r_lda8(cr, b | (uint16_t)(0x0EDE + y));
+        v = low_digit_tile(cr, (uint8_t)cr->a);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(76);
-        wr8((uint32_t)(TILES + cpu.x), v);
+        wr8((uint32_t)(TILES + cr->x), v);
         cyc(24);
-        op_lda8(b | 0x0D59);
-        v = (uint8_t)(cpu.a + 1);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cpu.p = nz8(cpu.p, v);
+        r_lda8(cr, b | 0x0D59);
+        v = (uint8_t)(cr->a + 1);
+        cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+        set_p(cr, nz8(cr->p, v));
         cyc(38);
         wr8(b | 0x0D59, v);
         cyc(30);
-        cmp8_imm_g(0x0B);
+        cmp8_imm(cr, 0x0B);
         if (v == 0x0B) {
             cyc(34);
-            lda8_imm_g(0x3F);
-            (cyc(8), abi_SoundPort0QueuePushRaw());
+            lda8_imm(cr, 0x3F);
+            (cyc(8), w_SoundPort0QueuePushRaw(cr));
             at = 0x00F4;
         } else
             at = 0x0074;
-        op_rep(P_M);
+        r_rep(cr, P_M);
         cyc(32);
-        op_lda16(b | 0x0E43);
-        op_add16(at);
+        r_lda16(cr, b | 0x0E43);
+        r_add16(cr, at);
         cyc(at == 0x00F4 ? 84 : 62);    /* CLC, ADC #; the sound path: BRA */
-        wr16(b | 0x0E43, cpu.a);
+        wr16(b | 0x0E43, cr->a);
         cyc(24);
         wr16(b | 0x0E3F, 0x0000);
         cyc(42);
         return;
     default:
-        jump_routine(0x070000 | rd16(0x07D191 + cpu.x));
+        carried_jump(cr, 0x070000 | rd16(0x07D191 + cr->x));
         return;
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(tail);
-    wr8((uint32_t)(TILES + cpu.x), v);
-    inc8_mem_g(b | 0x0E3F);
-    inc8_mem_g(b | 0x0E3F);
-    inc8_mem_g(b | 0x0E43);
-    inc8_mem_g(b | 0x0E43);
+    wr8((uint32_t)(TILES + cr->x), v);
+    inc8_mem(cr, b | 0x0E3F);
+    inc8_mem(cr, b | 0x0E3F);
+    inc8_mem(cr, b | 0x0E43);
+    inc8_mem(cr, b | 0x0E43);
     cyc(42);
-}
-
-static void lap_char_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    lap_char();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* SEP #$20, REP #$10, Y = the lap's offset, lap_char. */
@@ -2084,8 +1993,8 @@ static void lap_chars(Carried *cr, uint16_t y)
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->y = y;
-    cr->p = nz16(cr->p, y);
-    (cyc(22), lap_char_c(cr));
+    set_p(cr, nz16(cr->p, y));
+    (cyc(22), lap_char(cr));
 }
 
 /*
@@ -2107,8 +2016,8 @@ void LapCharsLap1(Carried *cr)
     cyc(62);
     wr8(b | 0x0D23, 0x02);
     cr->y = 0x0000;
-    cr->p = nz16(cr->p, 0);
-    lap_char_c(cr);
+    set_p(cr, nz16(cr->p, 0));
+    lap_char(cr);
 }
 
 void abi_LapCharsLap1(void)
@@ -2228,12 +2137,12 @@ void RaceTimeTiles(Carried *cr)
     cyc(24);
     r_lda8(cr, b | 0x0D48);
     d = (uint8_t)cr->a;
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(52);
     d = alu_adc8((uint8_t)(d << 1), rd8(b | 0x0D48), &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | d);
     cr->x = d;
-    cr->p = nz8(cr->p, d);
+    set_p(cr, nz8(cr->p, d));
     cyc(38);
     r_lda8(cr, b | 0x0EE7);
     cyc(30);
@@ -2270,9 +2179,9 @@ static void palette_fill(Carried *cr, uint16_t x, uint16_t y, uint8_t f, unsigne
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->x = x;
-    cr->p = nz16(cr->p, x);
+    set_p(cr, nz16(cr->p, x));
     cr->y = y;
-    cr->p = nz16(cr->p, y);
+    set_p(cr, nz16(cr->p, y));
     lda8_imm(cr, f);
     cyc(t);
     wr8(0x0000F1, f);
@@ -2307,7 +2216,7 @@ void ResultsBlinkWait(Carried *cr)
     inc8_mem(cr, b | 0x0D59);
     cyc(24);
     lda8_imm(cr, 0x28);
-    SoundPort0QueuePushRaw_cr(cr);
+    w_SoundPort0QueuePushRaw(cr);
     palette_fill(cr, 0x038F, 0x0007, 0x00, 94);
     cyc(42);
 }
@@ -2420,7 +2329,7 @@ static uint8_t bcd_sub(Carried *cr, uint32_t b, uint16_t at, uint8_t m, int sec)
     cyc(24);
     r_lda8(cr, b | at);
     if (sec)
-        { cyc(14); cr->p |= P_C; }
+        { cyc(14); set_p(cr, (uint8_t)(cr->p | (P_C))); }
     v = alu_sbc8((uint8_t)cr->a, m, &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(24);
@@ -2436,7 +2345,7 @@ static uint8_t bcd_add(Carried *cr, uint32_t b, uint16_t at, uint8_t m, int clc)
     cyc(8);
     r_lda8(cr, b | at);
     if (clc)
-        { cyc(14); cr->p &= (uint8_t)~P_C; }
+        { cyc(14); set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C))); }
     v = alu_adc8((uint8_t)cr->a, m, &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(40);
@@ -2453,7 +2362,7 @@ static void bcd_add_mem(Carried *cr, uint32_t b, uint16_t at, uint16_t from, int
     cyc(24);
     r_lda8(cr, b | at);
     if (clc)
-        { cyc(14); cr->p &= (uint8_t)~P_C; }
+        { cyc(14); set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C))); }
     cyc(24);
     v = alu_adc8((uint8_t)cr->a, rd8(b | from), &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -2505,7 +2414,7 @@ void ResultsBonusCount(Carried *cr)
     if ((uint8_t)cr->a >= 0x12 && (cyc(22), pressed(cr, b, 0x9000))) {
         cyc(36);
         r_sep(cr, P_M);
-        cr->p |= P_D;
+        set_p(cr, (uint8_t)(cr->p | (P_D)));
         bcd_add_mem(cr, b, 0x0EED, 0x0EEA, 1);
         cyc(24);
         r_lda8(cr, b | 0x0EEE);
@@ -2513,7 +2422,7 @@ void ResultsBonusCount(Carried *cr)
         v = alu_adc8((uint8_t)cr->a, rd8(b | 0x0EEB), &cr->p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (cr->p & P_C) {
-            cr->p |= P_C;
+            set_p(cr, (uint8_t)(cr->p | (P_C)));
             v = alu_sbc8(v, 0x60, &cr->p);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             cyc(54);
@@ -2547,12 +2456,12 @@ void ResultsBonusCount(Carried *cr)
         wr8(b | 0x10A2, 0x02);
         cyc(24);
         lda8_imm(cr, 0x3F);
-        SoundPort0QueuePushRawX8_cr(cr);
+        w_SoundPort0QueuePushRawX8(cr);
         cyc(24);                        /* JMP */
         goto tiles;
     }
     r_sep(cr, P_M);
-    cr->p |= P_D;
+    set_p(cr, (uint8_t)(cr->p | (P_D)));
     cyc(66);
     r_lda8(cr, b | 0x0EEC);
     if ((uint8_t)cr->a) {
@@ -2560,7 +2469,7 @@ void ResultsBonusCount(Carried *cr)
         bcd_sub(cr, b, 0x0EEA, 0x17, 1);
         bcd_sub(cr, b, 0x0EEB, 0x02, 0);
         if (!(cr->p & P_C)) {
-            cr->p &= (uint8_t)~P_C;
+            set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
             v = alu_adc8((uint8_t)cr->a, 0x60, &cr->p);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             cyc(70);
@@ -2585,7 +2494,7 @@ void ResultsBonusCount(Carried *cr)
                 wr8(b | 0x10A2, 0x02);
                 cyc(24);
                 lda8_imm(cr, 0x3F);
-                SoundPort0QueuePushRaw_cr(cr);
+                w_SoundPort0QueuePushRaw(cr);
             } else { cyc(30); }
             cyc(8);
             bcd_add(cr, b, 0x0EED, 0x01, 1);
@@ -2610,11 +2519,11 @@ void ResultsBonusCount(Carried *cr)
         cyc(56);
         wr8(b | 0x0EEE, v);
         cyc(30);                        /* CLC, LDA */
-        cr->p &= (uint8_t)~P_C;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         bcd_add(cr, b, 0x0EEF, 0x01, 0);
     } else { cyc(38); }
 tiles:
-    cr->p &= (uint8_t)~P_D;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_D)));
     cyc(38);
     wr8(0x7F9765, cyc_then(76, low_digit_tile(cr, rd8(b | 0x0EEC))));
     bcd_tiles(cr, b | 0x0EEB, 0x7F9769, 0x7F976B);
@@ -2640,7 +2549,7 @@ static uint8_t car_times(Carried *cr, uint32_t b)
 {
     uint8_t c;
 
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
     r_lda8(cr, b | 0x0D48);
     cyc(24);
@@ -2649,7 +2558,7 @@ static uint8_t car_times(Carried *cr, uint32_t b)
     c = alu_adc8(c, rd8(b | 0x0D48), &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | c);
     cr->x = c;
-    cr->p = nz8(cr->p, c);
+    set_p(cr, nz8(cr->p, c));
     return c;
 }
 
@@ -2682,7 +2591,7 @@ void ResultsRecordCompare(Carried *cr)
         v = (uint8_t)cr->a;
         cyc(24);
         m = rd8(b | (uint16_t)(at[i] + x));
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(18), P_C) : 0));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(18), P_C) : 0)));
         if (v < m) {
             r = -1;
             break;
@@ -2807,44 +2716,6 @@ void abi_RecordTimeTiles(void)
     cpu.db = r.db;
 }
 
-/* SoundPort0QueuePushX8, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SoundPort0QueuePushX8(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SoundPort0QueuePushX8();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapPaletteCycle, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapPaletteCycle(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapPaletteCycle();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* SpritePieces3 as its adapter leaves the registers. */
 static void w_SpritePieces3(Carried *cr)
 {
@@ -2853,52 +2724,14 @@ static void w_SpritePieces3(Carried *cr)
 
     attr = SpritePieces3(cr->db, &cr->x, &cr->y, &p, &set);
     cr->a = (uint16_t)((set & 0xFF00) | attr);
-    cr->p = p;
-}
-
-/* RecordsUnpackCourseRunning, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsUnpackCourseRunning(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsUnpackCourseRunning();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, p);
 }
 
 /* DigitTiles1184 as its adapter leaves the registers. */
 static void w_DigitTiles1184(Carried *cr)
 {
     cr->a = DigitTiles1184();
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M);
-}
-
-/* GsuCF42To3000, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuCF42To3000(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuCF42To3000();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V)) | P_M));
 }
 
 /* TimeUnpackBcd as its adapter leaves the registers. */
@@ -2911,83 +2744,7 @@ static void w_TimeUnpackBcd(Carried *cr)
     cr->a = min;
     cr->x = sec;
     cr->y = hund;
-    cr->p = p;
-}
-
-/* GsuCF42To4000, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_GsuCF42To4000(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_GsuCF42To4000();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapRow207Palette4, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapRow207Palette4(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapRow207Palette4();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapRow287Palette4, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapRow287Palette4(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapRow287Palette4();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapRow187Palette4, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapRow187Palette4(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapRow187Palette4();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, p);
 }
 
 /* SelectionSave as its adapter leaves the registers. */
@@ -3001,6 +2758,14 @@ static void w_SelectionSave(Carried *cr)
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
     }
+}
+
+/* SoundPort0QueuePushRaw as its adapter leaves the registers. */
+static void w_SoundPort0QueuePushRaw(Carried *cr)
+{
+    SoundPort0QueuePushRaw((uint8_t)cr->a);
+    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
+    cyc(8);
 }
 
 /* OamTextLine as its adapter leaves the registers. */
@@ -3019,5 +2784,12 @@ static void w_OamTextLine(Carried *cr)
 static void w_TilemapPaletteFill(Carried *cr)
 {
     TilemapPaletteFill(&cr->x, &cr->y, &cr->a, 78);
-    cr->p = (uint8_t)((cr->p & ~P_N) | P_Z);
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
+/* SoundPort0QueuePushRawX8 as its adapter leaves the registers. */
+static void w_SoundPort0QueuePushRawX8(Carried *cr)
+{
+    SoundPort0QueuePushRawX8((uint8_t)cr->a);
+    set_p(cr, nz8(cr->p, cr->db));
 }

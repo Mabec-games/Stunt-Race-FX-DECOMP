@@ -7,6 +7,7 @@
 #include "video_calls.h"
 #include "carried.h"
 
+
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 
 /*
@@ -97,7 +98,7 @@ void FixedColourFromStep_cr(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = fixed_step;
     cr->y &= 0x00FF;
-    cr->p = (uint8_t)(nz8(cr->p, v) | P_M | P_X);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M | P_X));
 }
 
 void WindowsColourWindowOnly(void);
@@ -137,10 +138,28 @@ void ColourMathA3Long(void)
     ColourMathA3();
 }
 
+void ColourMathA3Long_cr(Carried *cr);
+void ColourMathOffLong_cr(Carried *cr);
+static void w_ColourMathA3(Carried *cr);
+static void w_ColourMathOff(Carried *cr);
+
+void ColourMathA3Long_cr(Carried *cr)
+{
+    (cyc(108), w_ColourMathA3(cr));
+    cyc(44);
+}
+
 void abi_ColourMathA3Long(void)
 {
-    (cyc(108), abi_ColourMathA3());
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColourMathA3Long_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -176,9 +195,38 @@ void ColourMathOffLong(uint8_t bank)
     ColourMathOff(bank);
 }
 
-void abi_ColourMathOffLong(void)
+void ColourMathOffLong_cr(Carried *cr)
 {
     cyc(46);
-    abi_ColourMathOff();
+    w_ColourMathOff(cr);
     cyc(44);
+}
+
+void abi_ColourMathOffLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ColourMathOffLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+
+/* ColourMathA3 as its adapter leaves the registers. */
+static void w_ColourMathA3(Carried *cr)
+{
+    ColourMathA3();
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xA3);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N | P_M));
+}
+
+/* ColourMathOff as its adapter leaves the registers. */
+static void w_ColourMathOff(Carried *cr)
+{
+    ColourMathOff(cr->db);
+    cr->a &= 0xFF00;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z | P_M));
 }

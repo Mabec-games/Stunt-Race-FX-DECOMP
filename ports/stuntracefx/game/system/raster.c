@@ -17,6 +17,7 @@ uint16_t JoypadRead(void);
 void OamDmaAll(void);
 #include "video_palette_calls.h"
 #include "race_calls.h"
+#include "audio_calls.h"
 uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram);
 
 /*
@@ -118,18 +119,16 @@ static void w_FrameCountAndPortsEnd(Carried *cr);
 static void w_FrameSoundAndJoypads(Carried *cr);
 static void w_GradientPointersToBank7F(Carried *cr);
 static void w_HudDrawTime(Carried *cr);
-static void w_HudPanelASlide(Carried *cr);
-static void w_HudPanelBSlide(Carried *cr);
 static void w_JoypadAccumulate(Carried *cr);
 static void w_JoypadRead(Carried *cr);
 static void w_NmiFrameUpload(Carried *cr);
-static void w_OamDirectStage(Carried *cr);
 static void w_OamDmaAll(Carried *cr);
 static void w_PalettesStep(Carried *cr);
 static void w_RaceClockStep(Carried *cr);
 static void w_RasterColours(Carried *cr);
 static void w_RasterColoursUnless0D22(Carried *cr);
 static void w_RasterPaletteUpload(Carried *cr);
+static void w_SoundPortsSend(Carried *cr);
 static void w_VblankUpdates(Carried *cr);
 static void w_VramDmaFromGsuRam(Carried *cr);
 static void w_WaitHBlank(Carried *cr);
@@ -139,17 +138,19 @@ static void w_WindowHdmaNormal(Carried *cr);
 static void w_WindowLayoutStepForScreen(Carried *cr);
 static void w_WindowSlideCheck(Carried *cr);
 static void w_WindowSplitAnimate(Carried *cr);
-static void w_WindowsSetupSelect(Carried *cr);
 void Bg2ScrollFromTable_cr(Carried *cr);
 void BobWindowsRun(Carried *cr);
 void FadeStepFixed_cr(Carried *cr);
 void FadeStep_cr(Carried *cr);
 void FrameInputAndCountEnd_cr(Carried *cr);
+void HudPanelASlide_cr(Carried *cr);
+void HudPanelBSlide_cr(Carried *cr);
 void HudPanelsStep_cr(Carried *cr);
+void OamDirectStage_cr(Carried *cr);
 void PaletteKeptColoursStep_cr(Carried *cr);
-void SoundPortsSend_cr(Carried *cr);
 void WindowSlideOrOscillate(Carried *cr);
 void WindowSweepIfOn(Carried *cr);
+void WindowsSetupSelect_cr(Carried *cr);
 
 void WindowTable7F(Carried *cr)
 {
@@ -160,13 +161,13 @@ void WindowTable7F(Carried *cr)
     a = rd8(0x7F3438);
     cyc(46);
     b2 = rd8(0x7F3434);
-    cr->p |= P_C;
+    set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc8(a, b2, &cr->p);
     cyc(4);
     put7f(0x7F3402, a);
-    cr->p = (uint8_t)((cr->p & ~P_C) | (a & 1));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (a & 1)));
     a = (uint8_t)(a >> 1);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(40);
     a = alu_adc8(a, rd8(0x7F3434), &cr->p);
     cyc(20);
@@ -215,13 +216,13 @@ void WindowTable7F(Carried *cr)
     put7f(0x7F342D, a);
     cyc(12);
     a = rd8(0x7F3439);
-    cr->p |= P_C;
+    set_p(cr, (uint8_t)(cr->p | (P_C)));
     cyc(46);
     a = alu_sbc8(a, rd8(0x7F3435), &cr->p);
     a = alu_sbc8(a, 0x06, &cr->p);
-    cr->p = (uint8_t)((cr->p & ~P_C) | (a & 1));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (a & 1)));
     a = (uint8_t)(a >> 1);
-    cr->p = nz8(cr->p, a);
+    set_p(cr, nz8(cr->p, a));
     cyc(18);
     put7f(0x7F341F, a);
     put7f(0x7F3422, a);
@@ -309,7 +310,7 @@ void abi_VramDmaFromGsuRam(void);
 static void put8(Carried *cr, uint32_t addr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(40);
     reg_wr(addr, v);
 }
@@ -321,7 +322,7 @@ static void copy8(Carried *cr, uint32_t to, uint32_t from)
     uint8_t v = rd8(from);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(24);
     reg_wr(to, v);
 }
@@ -341,14 +342,14 @@ static void inc8(Carried *cr, uint32_t addr)
 
     cyc(6);
     wr8(addr, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* LDX (8-bit index) of an immediate or a byte. */
 static void ldx8(Carried *cr, uint8_t v)
 {
     cr->x = v;
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* The vertical blank's wait done inline: until HVBJOY bit 6. */
@@ -360,7 +361,7 @@ static void hblank_inline(Carried *cr)
         { cyc(24); v = hw_rd(HVBJOY); }
     while (cyc_loop(38, !(v & 0x40)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = (uint8_t)(nz8(cr->p, v) & ~P_Z);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) & ~P_Z));
 }
 
 /* The frame's counters: $0E3B and $0306 up by one. */
@@ -444,7 +445,7 @@ void RasterStage(Carried *cr)
         put8(cr, HDMAEN, 0x02);
         (cyc(46), w_JoypadRead(cr));
         (cyc(132), w_OamDmaAll(cr));
-        (cyc(46), SoundPortsSend_cr(cr));
+        (cyc(46), w_SoundPortsSend(cr));
         break;
     case 0xA375:
         cyc(68);
@@ -458,7 +459,7 @@ void RasterStage(Carried *cr)
         frame_counts(cr, b);
         (cyc(46), w_JoypadRead(cr));
         (cyc(46), FadeStepFixed_cr(cr));
-        (cyc(46), SoundPortsSend_cr(cr));
+        (cyc(46), w_SoundPortsSend(cr));
         break;
     case 0xA3A8: cyc(68); {
         uint8_t c;
@@ -547,7 +548,7 @@ void RasterStage(Carried *cr)
         put8(cr, b | 0x0D52, 0xFF);
         (cyc(46), FadeStep_cr(cr));
         (cyc(46), w_JoypadAccumulate(cr));
-        (cyc(46), SoundPortsSend_cr(cr));
+        (cyc(46), w_SoundPortsSend(cr));
         (cyc(46), w_RaceClockStep(cr));
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x01D8);
@@ -577,7 +578,7 @@ void RasterStage(Carried *cr)
         cyc(56);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         (cyc(46), w_NmiFrameUpload(cr));
-        (cyc(46), w_OamDirectStage(cr));
+        (cyc(46), OamDirectStage_cr(cr));
         (cyc(46), w_RasterColoursUnless0D22(cr));
         r_sep(cr, P_M);
         b = (uint32_t)cr->db << 16;
@@ -589,7 +590,7 @@ void RasterStage(Carried *cr)
         copy8(cr, HDMAEN, b | 0x0D45);
         put8(cr, b | 0x0D3F, 0x04);
         window_colours(cr, b, 0x19AC);
-        (cyc(62), w_WindowsSetupSelect(cr));
+        (cyc(62), WindowsSetupSelect_cr(cr));
         break;
     case 0xA5B6:
         cyc(24);
@@ -616,9 +617,9 @@ void RasterStage(Carried *cr)
         cyc(10);
         wr16(b | 0x0E60, 0x0100);
         w_HudDrawTime(cr);
-        (cyc(46), w_HudPanelASlide(cr));
-        (cyc(46), w_HudPanelBSlide(cr));
-        (cyc(46), SoundPortsSend_cr(cr));
+        (cyc(46), HudPanelASlide_cr(cr));
+        (cyc(46), HudPanelBSlide_cr(cr));
+        (cyc(46), w_SoundPortsSend(cr));
         r_sep(cr, P_M | P_X);
         cr->y = 0x01;
         ldx8(cr, 0x02);
@@ -711,7 +712,7 @@ void RasterStage(Carried *cr)
         put8(cr, TM, 0x03);
         put8(cr, HDMAEN, 0x1C);
         window_colours(cr, b, 0x19AC);
-        (cyc(62), w_WindowsSetupSelect(cr));
+        (cyc(62), WindowsSetupSelect_cr(cr));
         put8(cr, VTIMEL, 0x0F);
         irq_ack(cr);
         put8(cr, b | 0x0D3F, 0x08);
@@ -790,28 +791,28 @@ void RasterIrq(Carried *cr)
         cyc(48);
         r_lda16(cr, 0x003030);
         cr->a = a0;
-        cr->p = nz16(cr->p, a0);
+        set_p(cr, nz16(cr->p, a0));
         cyc(80);
         return;
     } else { cyc(246); }
-    cr->p |= P_I;
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
     x0 = cr->x;
     y0 = cr->y;
     r_sep(cr, P_M | P_X);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     cr->db = 0x00;
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     RasterStage(cr);
     r_rep(cr, P_M | P_X);
     cr->y = y0;
-    cr->p = nz16(cr->p, y0);
+    set_p(cr, nz16(cr->p, y0));
     cr->x = x0;
-    cr->p = nz16(cr->p, x0);
+    set_p(cr, nz16(cr->p, x0));
     cr->db = db0;
-    cr->p = nz8(cr->p, db0);
+    set_p(cr, nz8(cr->p, db0));
     cr->a = a0;
-    cr->p = nz16(cr->p, a0);
+    set_p(cr, nz16(cr->p, a0));
     cyc(180);
 }
 
@@ -839,7 +840,7 @@ static uint16_t time_stamp(Carried *cr)
     uint16_t f, v, m;
     uint8_t lo, hi;
 
-    cr->p |= P_I;
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(68);
     f = rd16(0x000306);
     f = (uint16_t)(((f >> 8) | (f << 8)) & 0xFF00);
@@ -847,7 +848,7 @@ static uint16_t time_stamp(Carried *cr)
     wr16(0x001A37, f);
     cyc(54);
     hw_rd(0x002137);
-    cr->p &= (uint8_t)~P_I;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
     cyc(46);
     lo = hw_rd(0x00213D);
     cyc(52);
@@ -859,7 +860,7 @@ static uint16_t time_stamp(Carried *cr)
         v = (uint16_t)(v + 0x0100);
     cyc(236);
     m = rd16(0x001A37);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     return alu_adc16(v, m, &cr->p);
 }
 
@@ -876,7 +877,7 @@ void TimeMarkStart(Carried *cr)
 {
     uint16_t t;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     t = time_stamp(cr);
     cyc(32);
     wr16(0x001A39 + cr->x, t);
@@ -914,14 +915,14 @@ void TimeMarkEnd(Carried *cr)
 {
     uint16_t t, a, m;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     t = time_stamp(cr);
     cyc(32);
     wr16(0x001A37, t);
     cyc(32);
     a = rd16(0x001A39 + cr->x);
     a = (uint16_t)(a & 0x00FF);
-    cr->p = nz16(cr->p, a);
+    set_p(cr, nz16(cr->p, a));
     if ((uint16_t)(a - 0x00D1) & 0x8000) {
         cyc(96);
         a = rd16(0x001A39 + cr->x);
@@ -933,14 +934,14 @@ void TimeMarkEnd(Carried *cr)
         a = (uint16_t)(a & 0xFF00);
         cyc(62);
         m = rd16((uint32_t)cr->db << 16 | 0x1A39);
-        cr->p |= P_C;
+        set_p(cr, (uint8_t)(cr->p | (P_C)));
         a = alu_sbc16(a, m, &cr->p);
         a = (uint16_t)((a >> 8) | (a << 8));
         a = (uint16_t)(a << 6);
         a = (uint16_t)(~a + 1);
         cyc(182);
         m = rd16(0x001A37);
-        cr->p &= (uint8_t)~P_C;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         a = alu_adc16(a, m, &cr->p);
         cyc(32);
         wr16(0x001A37, a);
@@ -949,11 +950,11 @@ void TimeMarkEnd(Carried *cr)
     a = rd16(0x001A37);
     cyc(46);
     m = rd16(0x001A39 + cr->x);
-    cr->p |= P_C;
+    set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc16(a, m, &cr->p);
     cyc(40);
     m = rd16(0x001A37 + cr->x);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     a = alu_adc16(a, m, &cr->p);
     cyc(32);
     wr16(0x001A37 + cr->x, a);
@@ -996,7 +997,7 @@ static void w_FrameCountAndPortsEnd(Carried *cr)
         cr->y = 0x00FF;
     }
     cyc(44);
-    cr->p = (uint8_t)(nz8(cr->p, lum) | P_M);
+    set_p(cr, (uint8_t)(nz8(cr->p, lum) | P_M));
 }
 
 /* FrameSoundAndJoypads, still in registers: its call with the registers loaded and taken
@@ -1022,7 +1023,7 @@ static void w_FrameSoundAndJoypads(Carried *cr)
 static void w_GradientPointersToBank7F(Carried *cr)
 {
     cr->a = GradientPointersToBank7F();
-    cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~P_M);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
 }
 
 /* HudDrawTime as its adapter leaves the registers. */
@@ -1035,44 +1036,6 @@ static void w_HudDrawTime(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     if (x_set)
         cr->x = (cr->p & P_X) ? (uint8_t)x : x;
-}
-
-/* HudPanelASlide, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_HudPanelASlide(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_HudPanelASlide();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* HudPanelBSlide, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_HudPanelBSlide(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_HudPanelBSlide();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* JoypadAccumulate as its adapter leaves the registers. */
@@ -1108,25 +1071,6 @@ static void w_NmiFrameUpload(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* OamDirectStage, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamDirectStage(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamDirectStage();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* OamDmaAll as its adapter leaves the registers. */
 static void w_OamDmaAll(Carried *cr)
 {
@@ -1151,7 +1095,7 @@ static void w_PalettesStep(Carried *cr)
     } else {
         cr->a = (uint16_t)(a0 & 0xFF00);
     }
-    cr->p = p0;
+    set_p(cr, p0);
     if (p0 & P_X) {
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
@@ -1164,7 +1108,7 @@ static void w_RaceClockStep(Carried *cr)
     uint8_t p0 = cr->p;
 
     cr->a = RaceClockStep(cr->db, cr->a, p0);
-    cr->p = p0;
+    set_p(cr, p0);
     cr->x &= 0x00FF;
     cr->y &= 0x00FF;
 }
@@ -1177,7 +1121,7 @@ static void w_RasterColours(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x &= 0x00FF;
     cr->y &= 0x00FF;
-    cr->p = (uint8_t)(nz8(cr->p, v) | P_M | P_X);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M | P_X));
     cyc(18);
 }
 
@@ -1200,13 +1144,25 @@ static void w_RasterPaletteUpload(Carried *cr)
     uint8_t v = RasterPaletteUpload(&animating);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = (uint8_t)(nz8(cr->p, v) | P_M);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
     if (animating) {
         cr->x = 0xB0;
         cr->y = 0x20;
-        cr->p |= P_X;
+        set_p(cr, (uint8_t)(cr->p | (P_X)));
     }
     cyc(18);
+}
+
+/* SoundPortsSend as its adapter leaves the registers. */
+static void w_SoundPortsSend(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+    SoundPortsEnd end = SoundPortsSend(cr->db, (uint8_t)cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | end.a);
+    cr->x = end.x;
+    cr->y &= 0x00FF;
+    set_p(cr, p0);
 }
 
 /* VblankUpdates, still in registers: its call with the registers loaded and taken
@@ -1234,7 +1190,7 @@ static void w_VramDmaFromGsuRam(Carried *cr)
     uint8_t mode = VramDmaFromGsuRam(cr->a, cr->x, cr->y);
 
     cr->a = (uint16_t)(0x1800 | mode);
-    cr->p = (uint8_t)(nz8(cr->p, mode) | P_M);
+    set_p(cr, (uint8_t)(nz8(cr->p, mode) | P_M));
 }
 
 /* WaitHBlank as its adapter leaves the registers. */
@@ -1243,7 +1199,7 @@ static void w_WaitHBlank(Carried *cr)
     uint8_t v = WaitHBlank();
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = (uint8_t)(nz8(cr->p, v) & ~P_Z);
+    set_p(cr, (uint8_t)(nz8(cr->p, v) & ~P_Z));
 }
 
 /* WindowBandsAnimate as its adapter leaves the registers. */
@@ -1313,23 +1269,4 @@ static void w_WindowSplitAnimate(Carried *cr)
     cr->a = r.a;
     cr->x = r.x;
     cr->y = r.y;
-}
-
-/* WindowsSetupSelect, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_WindowsSetupSelect(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_WindowsSetupSelect();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }

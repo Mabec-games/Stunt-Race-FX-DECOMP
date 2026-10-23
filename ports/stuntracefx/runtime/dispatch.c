@@ -263,6 +263,14 @@ static void take_interrupt(int nmi)
 
 static int irq_masked(void) { return (cpu.p & P_I) != 0; }
 
+void irq_mask_set(int masked)
+{
+    if (masked)
+        cpu.p |= P_I;
+    else
+        cpu.p &= (uint8_t)~P_I;
+}
+
 /* ---- the Super FX and the SPC700 ---- */
 static void gsu_run(uint8_t bank, uint16_t addr)
 {

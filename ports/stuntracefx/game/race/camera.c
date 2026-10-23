@@ -371,9 +371,9 @@ void CameraFollowStep_cr(Carried *cr)
     cam_early = 0;
     cr->a = CameraFollowStep(cr->db, cr->x, cr->y);
     if (cam_early) {
-        cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~(P_M | P_X));
+        set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~(P_M | P_X)));
         return;
     }
     cr->y = cam_y;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M | P_X)) | cam_flags));
 }

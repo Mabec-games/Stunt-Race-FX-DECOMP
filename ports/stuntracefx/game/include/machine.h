@@ -57,6 +57,11 @@ enum {
     P_X = 0x10, P_M = 0x20, P_V = 0x40, P_N = 0x80,
 };
 
+/* The CPU's interrupt mask (P's I flag, which the machine reads at every
+   access to decide whether an IRQ is taken): set or cleared by code whose P
+   is carried (carried.h), as SEI, CLI or a PLP would. */
+void irq_mask_set(int masked);
+
 /* N and Z as a 16-bit load sets them. */
 static inline uint8_t nz16(uint8_t p, uint16_t v)
 {

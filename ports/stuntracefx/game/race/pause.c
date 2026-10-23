@@ -58,6 +58,7 @@ void PauseQuitMenu(Carried *cr);
 void PauseQuitMenuBack(Carried *cr);
 void PauseQuitMenuCursor0(Carried *cr);
 void PauseQuitMenuP2(Carried *cr);
+void PauseReplayStages(Carried *cr);
 void PauseStageChoice(Carried *cr);
 void PauseStageChoiceP1(Carried *cr);
 void PauseStageChoiceP2(Carried *cr);
@@ -83,6 +84,7 @@ static uint8_t dec8_mem(Carried *cr, uint32_t addr);
 static void lda8_imm(Carried *cr, uint8_t v);
 static void pause_resume(Carried *cr, uint32_t b);
 static int presses(Carried *cr, uint32_t b, uint16_t pad, uint16_t mask);
+static void quit_menu(Carried *cr, uint16_t pad, uint16_t which, uint8_t d, void (*park)(Carried *), void (*cars)(Carried *));
 static void quit_menu_open(Carried *cr, uint32_t b);
 static void quit_menu_take(Carried *cr, uint32_t b, uint16_t which, uint8_t d, void (*park)(Carried *));
 static void rows(Carried *cr, void (*r87)(Carried *), void (*r107)(Carried *), void (*r187)(Carried *));
@@ -90,7 +92,6 @@ static void slide_up(Carried *cr, uint32_t b, uint8_t v);
 static void stage(Carried *cr, uint32_t b, uint8_t s);
 static int timer_out(Carried *cr, uint32_t b);
 static int window_closed(Carried *cr, uint32_t b);
-static void w_ChampionshipScreenLoop(Carried *cr);
 static void w_Countdown0DF8(Carried *cr);
 static void w_Gauge6APlace(Carried *cr);
 static void w_Gauge6BPlace(Carried *cr);
@@ -106,39 +107,28 @@ static void w_OamPlaceRows75And112(Carried *cr);
 static void w_RaceEndToAttract(Carried *cr);
 static void w_RaceRestart(Carried *cr);
 static void w_SoftResetToBootWarm(Carried *cr);
-static void w_SoundPort1QueuePushX8(Carried *cr);
-static void w_SpritePiecesTwoCars(Carried *cr);
-static void w_SpritePiecesTwoCarsTop(Carried *cr);
-static void w_TilemapPaletteCycle107(Carried *cr);
-static void w_TilemapPaletteCycle187(Carried *cr);
-static void w_TilemapPaletteCycle87(Carried *cr);
-static void w_TilemapRow107Palette5(Carried *cr);
-static void w_TilemapRow187Palette5(Carried *cr);
-static void w_TilemapRow87Palette5(Carried *cr);
 static void w_WindowSlideUpSound(Carried *cr);
+void CarSelectTwoPlayers_cr(Carried *cr);
+void ChampionshipScreenLoop(Carried *cr);
 void RaceEndVideoReset(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
+void SoundPort1QueuePushX8(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
+void SpritePiecesTwoCarsTop_cr(Carried *cr);
+void SpritePiecesTwoCars_cr(Carried *cr);
+void TilemapPaletteCycle107_cr(Carried *cr);
+void TilemapPaletteCycle187_cr(Carried *cr);
+void TilemapPaletteCycle87_cr(Carried *cr);
+void TilemapRow107Palette5_cr(Carried *cr);
+void TilemapRow187Palette5_cr(Carried *cr);
+void TilemapRow87Palette5_cr(Carried *cr);
 
 /* LDA #v (8-bit). */
 static void lda8_imm(Carried *cr, uint8_t v)
 {
     cyc(24);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void lda8_imm_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    lda8_imm(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* DEC of a work-RAM byte; N, Z from it. */
@@ -149,7 +139,7 @@ static uint8_t dec8_mem(Carried *cr, uint32_t addr)
 
     cyc(6);
     wr8(addr, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     return v;
 }
 
@@ -158,7 +148,7 @@ static void cmp8_imm(Carried *cr, uint8_t m)
 {
     uint8_t a = (uint8_t)cr->a;
 
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(38), P_C) : (cyc(32), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(38), P_C) : (cyc(32), 0))));
 }
 
 /* REP #$20, LDA presses, BIT #mask: Z from the test. */
@@ -167,22 +157,8 @@ static int presses(Carried *cr, uint32_t b, uint16_t pad, uint16_t mask)
     r_rep(cr, P_M);
     cyc(2);
     r_lda16(cr, b | pad);
-    cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(80), 0) : (cyc(46), P_Z)));
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(80), 0) : (cyc(46), P_Z))));
     return (cr->a & mask) != 0;
-}
-
-static int presses_g(uint32_t b, uint16_t pad, uint16_t mask)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = presses(&c, b, pad, mask);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* SEP #$20, the timer $0D5F counted down; 1 at its end. */
@@ -471,7 +447,7 @@ void PauseStageLeave(Carried *cr)
     }
     cyc(46);
     wr8(b | 0x0D59, 0x00);
-    (cyc(46), w_ChampionshipScreenLoop(cr));
+    (cyc(46), ChampionshipScreenLoop(cr));
     r_sep(cr, P_M);
     cyc(46);
     r_lda8(cr, b | 0x0DD4);
@@ -558,7 +534,7 @@ static void choice_made(Carried *cr, uint32_t b, int quit_extra)
         w_Countdown0DF8(cr);
         cyc(54);
         lda8_imm(cr, 0x22);
-        w_SoundPort1QueuePushX8(cr);
+        SoundPort1QueuePushX8(cr);
         return;
     }
     r_sep(cr, P_M);
@@ -969,19 +945,6 @@ static void rows(Carried *cr, void (*r87)(Carried *), void (*r107)(Carried *), v
     cyc(42);
 }
 
-static void rows_g(void (*r87)(Carried *), void (*r107)(Carried *), void (*r187)(Carried *))
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    rows(&c, r87, r107, r187);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* Down (bit 10) or up (bit 11) on pad: sound $45 and the cursor $0D50 =
    to; returns 1 when taken. */
 static int cursor_move(Carried *cr, uint32_t b, uint16_t pad, uint16_t bit, uint8_t to)
@@ -997,20 +960,6 @@ static int cursor_move(Carried *cr, uint32_t b, uint16_t pad, uint16_t bit, uint
     lda8_imm(cr, to);
     wr8(b | 0x0D50, to);
     return 1;
-}
-
-static int cursor_move_g(uint32_t b, uint16_t pad, uint16_t bit, uint8_t to)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = cursor_move(&c, b, pad, bit, to);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* B or START in the quit menu: cursor 0 closes it (sound $46, stage $E,
@@ -1066,95 +1015,65 @@ static void quit_menu_take(Carried *cr, uint32_t b, uint16_t which, uint8_t d, v
     wr8(b | 0x19D8, 0x01);
 }
 
-static void quit_menu_take_g(uint32_t b, uint16_t which, uint8_t d, void (*park)(Carried *))
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    quit_menu_take(&c, b, which, d, park);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The quit menu for pad: B or START takes the cursor; else by the cursor
    $0D50: 0 down to 2; 2 down to 4 or up to 0; 4 up to 2; 6 the cars
    (CarSelectTwoPlayers, then cars()); each with its rows. */
-static void quit_menu(uint16_t pad, uint16_t which, uint8_t d, void (*park)(Carried *), void (*cars)(Carried *))
+static void quit_menu(Carried *cr, uint16_t pad, uint16_t which, uint8_t d, void (*park)(Carried *), void (*cars)(Carried *))
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
     cyc(22);
-    presses_g(b, pad, 0x9000);
-    op_sep(P_M);
-    if (cpu.a & 0x9000) {
-        quit_menu_take_g(b, which, d, park);
+    presses(cr, b, pad, 0x9000);
+    r_sep(cr, P_M);
+    if (cr->a & 0x9000) {
+        quit_menu_take(cr, b, which, d, park);
         cyc(42);
         return;
     }
     cyc(46);
-    cpu.x = rd8(b | 0x0D50);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-    switch (cpu.x) {
+    cr->x = rd8(b | 0x0D50);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
+    switch (cr->x) {
     case 0x00:
-        cursor_move_g(b, pad, 0x0400, 0x02);
+        cursor_move(cr, b, pad, 0x0400, 0x02);
         cyc(46);
-        op_sep(P_M);
-        rows_g(w_TilemapPaletteCycle87, w_TilemapRow107Palette5, w_TilemapRow187Palette5);
+        r_sep(cr, P_M);
+        rows(cr, TilemapPaletteCycle87_cr, TilemapRow107Palette5_cr, TilemapRow187Palette5_cr);
         return;
     case 0x02:
-        if (!cursor_move_g(b, pad, 0x0400, 0x04)) {
-            presses_g(b, pad, 0x0800);
-            if (cpu.a & 0x0800) {
+        if (!cursor_move(cr, b, pad, 0x0400, 0x04)) {
+            presses(cr, b, pad, 0x0800);
+            if (cr->a & 0x0800) {
                 cyc(20);
-                op_sep(P_M);
-                lda8_imm_g(0x45);
+                r_sep(cr, P_M);
+                lda8_imm(cr, 0x45);
                 cyc(16);
-                abi_SoundPort0QueuePush();
+                SoundPort0QueuePush_cr(cr);
                 cyc(16);
-                lda8_imm_g(0x00);
+                lda8_imm(cr, 0x00);
                 wr8(b | 0x0D50, 0x00);
             }
         } else { cyc(22); }
         cyc(46);
-        op_sep(P_M);
-        rows_g(w_TilemapRow87Palette5, w_TilemapPaletteCycle107, w_TilemapRow187Palette5);
+        r_sep(cr, P_M);
+        rows(cr, TilemapRow87Palette5_cr, TilemapPaletteCycle107_cr, TilemapRow187Palette5_cr);
         return;
     case 0x04:
-        cursor_move_g(b, pad, 0x0800, 0x02);
+        cursor_move(cr, b, pad, 0x0800, 0x02);
         cyc(46);
         break;
     case 0x06:
         cyc(92);
-        abi_CarSelectTwoPlayers();
-        (cyc(46), cr_call(cars));
+        CarSelectTwoPlayers_cr(cr);
+        (cyc(46), cars(cr));
         break;
     default:
-        jump_routine(0x070000 | rd16(0x070000 | (uint16_t)((pad == 0x0D1A ? 0xC02D : 0xBF39) + cpu.x)));
+        carried_jump(cr, 0x070000 | rd16(0x070000 | (uint16_t)((pad == 0x0D1A ? 0xC02D : 0xBF39) + cr->x)));
         return;
     }
-    op_sep(P_M);
-    rows_g(w_TilemapPaletteCycle187, w_TilemapRow107Palette5, w_TilemapRow87Palette5);
-}
-
-static void quit_menu_c(Carried *cr, uint16_t pad, uint16_t which, uint8_t d, void (*park)(Carried *), void (*cars)(Carried *))
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    quit_menu(pad, which, d, park, cars);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    r_sep(cr, P_M);
+    rows(cr, TilemapPaletteCycle187_cr, TilemapRow107Palette5_cr, TilemapRow87Palette5_cr);
 }
 
 /*
@@ -1167,7 +1086,7 @@ static void quit_menu_c(Carried *cr, uint16_t pad, uint16_t which, uint8_t d, vo
  */
 void PauseQuitMenuP2(Carried *cr)
 {
-    quit_menu_c(cr, 0x0D1C, 0x0D5C, 0x0C, w_OamHighBits18Park48, w_SpritePiecesTwoCarsTop);
+    quit_menu(cr, 0x0D1C, 0x0D5C, 0x0C, w_OamHighBits18Park48, SpritePiecesTwoCarsTop_cr);
 }
 
 void abi_PauseQuitMenuP2(void)
@@ -1198,7 +1117,7 @@ void abi_PauseQuitMenuP2(void)
  */
 void PauseQuitMenu(Carried *cr)
 {
-    quit_menu_c(cr, 0x0D1A, 0x0D5D, 0x0E, w_OamHighBits58Park112, w_SpritePiecesTwoCars);
+    quit_menu(cr, 0x0D1A, 0x0D5D, 0x0E, w_OamHighBits58Park112, SpritePiecesTwoCars_cr);
 }
 
 void abi_PauseQuitMenu(void)
@@ -1223,14 +1142,27 @@ void abi_PauseQuitMenu(void)
  * HOW: SEP #$30, JMP (table,X).
  * Entry: any widths. Exit: as the stage leaves it.
  */
+void PauseReplayStages(Carried *cr)
+{
+    r_sep(cr, P_M | P_X);
+    cyc(24);
+    cr->x = rd8(((uint32_t)cr->db << 16) | 0x0D2F);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
+    cyc(46);
+    carried_jump(cr, 0x070000 | rd16(0x07BC24 + cr->x));
+}
+
 void abi_PauseReplayStages(void)
 {
-    op_sep(P_M | P_X);
-    cyc(24);
-    cpu.x = rd8(((uint32_t)cpu.db << 16) | 0x0D2F);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-    cyc(46);
-    jump_routine(0x070000 | rd16(0x07BC24 + cpu.x));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PauseReplayStages(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1338,25 +1270,6 @@ static void w_WindowSlideUpSound(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | WindowSlideUpSound(cr->db, !(cr->p & P_X)));
 }
 
-/* ChampionshipScreenLoop, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ChampionshipScreenLoop(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ChampionshipScreenLoop();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* RaceRestart, still in registers: its call with the registers loaded and taken
    back. */
 static void w_RaceRestart(Carried *cr)
@@ -1402,25 +1315,6 @@ static void w_Countdown0DF8(Carried *cr)
     cyc(16);
 }
 
-/* SoundPort1QueuePushX8, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SoundPort1QueuePushX8(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SoundPort1QueuePushX8();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* OamBlock52Left as its adapter leaves the registers. */
 static void w_OamBlock52Left(Carried *cr)
 {
@@ -1428,7 +1322,7 @@ static void w_OamBlock52Left(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock52Left(cr->db, &p));
     cr->x = 0x0010;
-    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
 }
 
 /* OamBlock52Right as its adapter leaves the registers. */
@@ -1438,7 +1332,7 @@ static void w_OamBlock52Right(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock52Right(cr->db, &p));
     cr->x = 0x0010;
-    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
 }
 
 /* OamBlock59Left as its adapter leaves the registers. */
@@ -1448,7 +1342,7 @@ static void w_OamBlock59Left(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock59Left(cr->db, &p));
     cr->x = 0x002C;
-    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
 }
 
 /* OamBlock59Right as its adapter leaves the registers. */
@@ -1458,7 +1352,7 @@ static void w_OamBlock59Right(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock59Right(cr->db, &p));
     cr->x = 0x002C;
-    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
 }
 
 /* OamBlock123Left as its adapter leaves the registers. */
@@ -1468,7 +1362,7 @@ static void w_OamBlock123Left(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock123Left(cr->db, &p));
     cr->x = 0x012C;
-    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
 }
 
 /* OamBlock123Right as its adapter leaves the registers. */
@@ -1478,7 +1372,7 @@ static void w_OamBlock123Right(Carried *cr)
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | OamBlock123Right(cr->db, &p));
     cr->x = 0x012C;
-    cr->p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_N | P_Z | P_X)));
 }
 
 /* OamHighBits58Park112 as its adapter leaves the registers. */
@@ -1510,158 +1404,6 @@ static void w_RaceEndToAttract(Carried *cr)
     cpu.p = cr->p;
     cpu.db = cr->db;
     abi_RaceEndToAttract();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapPaletteCycle87, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapPaletteCycle87(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapPaletteCycle87();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapRow107Palette5, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapRow107Palette5(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapRow107Palette5();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapRow187Palette5, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapRow187Palette5(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapRow187Palette5();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapPaletteCycle107, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapPaletteCycle107(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapPaletteCycle107();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapRow87Palette5, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapRow87Palette5(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapRow87Palette5();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* TilemapPaletteCycle187, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_TilemapPaletteCycle187(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_TilemapPaletteCycle187();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesTwoCarsTop, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesTwoCarsTop(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesTwoCarsTop();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpritePiecesTwoCars, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_SpritePiecesTwoCars(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpritePiecesTwoCars();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;

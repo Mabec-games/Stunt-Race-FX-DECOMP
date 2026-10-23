@@ -11,26 +11,29 @@
 #include "audio_calls.h"
 uint16_t BackdropAnglesFromView(uint8_t bank);
 void CgramDmaAll(void);
+uint16_t DebugShowErrors(uint8_t bank);
 void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out);
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 uint16_t GsuScreenFlip(uint8_t bank);
 uint16_t GsuScreenFlipMenu(uint8_t bank);
+uint16_t GsuScreenToggle(uint8_t bank);
 uint16_t HandlerSoundIndex(uint16_t handler, uint8_t *p);
 void OamBufferClear(void);
 void RaceScreenSetup(uint8_t bank);
 #include "save_calls.h"
 void Set7EBC2BTrio(uint8_t v);
-#include "audio_calls.h"
 uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x);
-#include "menu_calls.h"
 #include "menu_calls.h"
 #include "video_calls.h"
 void VideoRegsReset(uint8_t bank, uint16_t x);
 uint16_t ViewDefaults(uint8_t bank);
 uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p);
+#include "gsu_programs_calls.h"
 uint16_t VramNoiseTiles(uint8_t bank);
 void WaitScanline(uint8_t bank);
 uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p);
+void abi_CourseScreenStep(void);
+void abi_RaceSoundsAndHud(void);
 
 void abi_ObjectsRunHandlers(void);
 void abi_CameraFollowStep(void);
@@ -50,6 +53,7 @@ void AttractViewStart(Carried *cr);
 void RaceFinishPhases0E(Carried *cr);
 void RaceFinishPhases10(Carried *cr);
 void RaceFinishSplit(Carried *cr);
+void RaceFrameRun(Carried *cr);
 void RaceFrameRunTwoPlayers(Carried *cr);
 void RaceFrameStep(Carried *cr);
 void RaceLoad(Carried *cr);
@@ -78,11 +82,9 @@ static void race_load_views(Carried *cr, uint16_t x);
 static void view_params(Carried *cr, const uint8_t *v);
 static void w_ApuUpload(Carried *cr);
 static void w_BackdropAnglesFromView(Carried *cr);
-static void w_CameraFollowStep(Carried *cr);
-static void w_CarFinishSound(Carried *cr);
-static void w_CarFinishSoundP2(Carried *cr);
 static void w_CgramDmaAll(Carried *cr);
 static void w_CourseScriptRun(Carried *cr);
+static void w_DebugShowErrors(Carried *cr);
 static void w_FrameRunGsu8FCA(Carried *cr);
 static void w_FrameRunGsuAB13A(Carried *cr);
 static void w_FrameRunGsuAB13B(Carried *cr);
@@ -91,38 +93,44 @@ static void w_GsuCF42ToVram(Carried *cr);
 static void w_GsuRun(Carried *cr);
 static void w_GsuScreenFlip(Carried *cr);
 static void w_GsuScreenFlipMenu(Carried *cr);
+static void w_GsuScreenToggle(Carried *cr);
 static void w_HandlerSoundIndex(Carried *cr);
 static void w_OamBufferClear(Carried *cr);
-static void w_ObjectFaceTied(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
-static void w_PaletteFadeStep(Carried *cr);
-static void w_RaceHudLoad(Carried *cr);
 static void w_RaceScreenSetup(Carried *cr);
-static void w_RaceSoundsPlayer1(Carried *cr);
-static void w_RaceSoundsPlayer2(Carried *cr);
-static void w_RecordsUnpackCourseRunning(Carried *cr);
 static void w_ReturnOnly(Carried *cr);
 static void w_SaveUnlocksCheck(Carried *cr);
 static void w_Set7EBC2BTrio(Carried *cr);
 static void w_SoundDataLoad(Carried *cr);
 static void w_SoundIndicesFromHandlers(Carried *cr);
+static void w_SoundPort0QueuePushRaw(Carried *cr);
+static void w_SoundReset(Carried *cr);
 static void w_SpeedGauge2Update(Carried *cr);
 static void w_SpeedGaugeUpdate(Carried *cr);
 static void w_SpriteSlotFirstLong(Carried *cr);
 static void w_VideoRegsReset(Carried *cr);
 static void w_ViewDefaults(Carried *cr);
 static void w_ViewFromRecord(Carried *cr);
-static void w_ViewUpdateAndGsuAEF8(Carried *cr);
 static void w_VramNoiseTiles(Carried *cr);
 static void w_WaitScanline(Carried *cr);
 static void w_WordCopyStep(Carried *cr);
+void CameraFollowStep_cr(Carried *cr);
+void CarFinishSound(Carried *cr);
+void CarFinishSoundP2(Carried *cr);
+void NearCarSoundUpdate_cr(Carried *cr);
+void ObjectFaceTied_cr(Carried *cr);
 void ObjectLinkBobStart(Carried *cr);
 void ObjectLinkSpeedSet(Carried *cr);
 void ObjectPoolInit_cr(Carried *cr);
+void PaletteFadeStep_cr(Carried *cr);
 void PlayerControlsFrame(Carried *cr);
-void SoundPort0QueuePushRaw_cr(Carried *cr);
+void RaceHudLoad(Carried *cr);
+void RaceSoundsAndHud(Carried *cr);
+void RaceSoundsPlayer1(Carried *cr);
+void RaceSoundsPlayer2(Carried *cr);
+void RecordsUnpackCourseRunning(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
-void SoundReset_cr(Carried *cr);
+void ViewUpdateAndGsuAEF8_cr(Carried *cr);
 
 /*
  * @routine 03:B7C5 RaceFrameStep
@@ -147,8 +155,8 @@ void RaceFrameStep(Carried *cr)
     uint16_t arg = cr->a, w;
     uint8_t v;
 
-    cr->p |= P_M;
-    cr->p &= (uint8_t)~P_X;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
     cr->db = 0x03;
     cyc(270);
     v = rd8(0x030306);
@@ -161,30 +169,30 @@ void RaceFrameStep(Carried *cr)
     cyc(78);
     wr16(0x70246C, 0xFFFF);
     (cyc(106), w_ObjectsRunHandlers(cr));
-    cr->p = (uint8_t)((cr->p | P_M) & ~P_X);
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cr->db = 0x7E;
     cr->x = 0x1A64;
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(200);
     w = rd16(0x000037 + 0x1A64);
     cyc(60);
     wr16(0x000037 + 0x1A64, (uint16_t)(w + 0x0400));
-    (cyc(62), w_CameraFollowStep(cr));
-    (cyc(62), w_ObjectFaceTied(cr));
+    (cyc(62), CameraFollowStep_cr(cr));
+    (cyc(62), ObjectFaceTied_cr(cr));
     cr->db = 0x03;
-    cr->p &= (uint8_t)~P_X;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
     cr->x = 0x1A64;
     (cyc(136), w_ViewFromRecord(cr));
     (cyc(62), w_FrameRunGsu8FCA(cr));
-    (cyc(62), w_ViewUpdateAndGsuAEF8(cr));
+    (cyc(62), ViewUpdateAndGsuAEF8_cr(cr));
     cr->a = arg;
     if (!arg) {
         cyc(74);
-        cr->p |= P_M;
+        set_p(cr, (uint8_t)(cr->p | (P_M)));
         while (!rd8(cyc_then(46, 0x030357)))
             ;
         cyc(100);
-        cr->p &= (uint8_t)~(P_M | P_X);
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         w_GsuAB13WithParams(cr);
         (cyc(46), w_GsuScreenFlip(cr));
         cyc(46);
@@ -192,7 +200,7 @@ void RaceFrameStep(Carried *cr)
     } else { cyc(80); }
     cyc(100);
     cr->db = db;
-    cr->p = p;
+    set_p(cr, p);
 }
 
 void abi_RaceFrameStep(void)
@@ -228,7 +236,7 @@ void RaceStart(Carried *cr)
     uint8_t p = cr->p;
     uint16_t x;
 
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(84);
     wr8(b | 0x0374, 0x03);
     cyc(40);
@@ -239,13 +247,13 @@ void RaceStart(Carried *cr)
     hw_wr(b | GSU_SCBR, 0x0B);
     cyc(24);
     wr8(b | 0x0D62, 0x00);
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->a = 0xA545;
     cyc(78);
     wr16(0x70004E, 0xA545);
     (cyc(62), ObjectPoolInit_cr(cr));
     w_ViewDefaults(cr);
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(78);
     wr16(0x70021A, 0x2C00);
     cyc(16);
@@ -254,14 +262,14 @@ void RaceStart(Carried *cr)
     wr16(0x7001C4, 0x0002);
     cyc(56);
     wr16(0x70108C, 0x0000);
-    cr->p = (uint8_t)((cr->p | P_M) & ~P_X);
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
     cr->x = 0x8800;
     (cyc(146), w_GsuRun(cr));
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
     wr16(b | 0x116A, 0x0000);
-    cr->p = (uint8_t)((cr->p | P_M) & ~P_X);
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x05);
     cr->x = 0x0000;
     (cyc(146), w_CourseScriptRun(cr));
@@ -269,20 +277,20 @@ void RaceStart(Carried *cr)
     RaceFrameStep(cr);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     RaceFrameStep(cr);
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(106);
     wr16(b | 0x1A66, cyc_then(54, rd16(0x00116C)));
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(62);
     wr8(b | 0x0357, 0x01);
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     for (x = 0; x != 0x3400; x = (uint16_t)(x + 2))
         { cyc(102); wr16(0x702C00 + x, 0x0000); cyc(4); }
     cyc(136);
     cr->a = 0x0000;
     cr->x = 0x3400;
     cr->y = 0x1A64;
-    cr->p = p;
+    set_p(cr, p);
 }
 
 void abi_RaceStart(void)
@@ -320,7 +328,7 @@ static void finish_tail(Carried *cr, uint32_t b, uint32_t pre, uint32_t post)
     cyc(24);
     wr8(b | 0x0E5F, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
-    (cyc(24), SoundPort0QueuePushRaw_cr(cr));
+    (cyc(24), w_SoundPort0QueuePushRaw(cr));
     cyc(post);                          /* RTS; 34 for RaceFinishSplit, which has X 8-bit */
 }
 
@@ -334,33 +342,33 @@ static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, uns
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x37);
     (cyc(78), SoundPort0QueuePush_cr(cr));
     cyc(16);
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)y) & ~P_C) | P_C);     /* CPY #0 */
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)y) & ~P_C) | P_C));     /* CPY #0 */
     if ((uint8_t)y != 0x00) {
-        cr->p |= P_M;
+        set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(62 + sep);                  /* BNE taken, SEP (RaceFinishPhases10 only), LDA #, STA */
         wr8(b | 0x0DD6, 0x12);
         cyc(40);
         wr8(b | 0x0DD7, p2);
     } else {
-        cr->p |= P_M;
+        set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(62);
         hi = rd8(b | 0x0DEF);
         cyc(44);
         lo = rd8(b | 0x0DED);
         cr->a = (uint16_t)(hi << 8 | lo);
-        cr->p &= (uint8_t)~P_M;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         if (lo & 0x01) {
             cyc(136);
-            cr->p |= P_M;
-            w_CarFinishSound(cr);
-            cr->p |= P_M;
+            set_p(cr, (uint8_t)(cr->p | (P_M)));
+            CarFinishSound(cr);
+            set_p(cr, (uint8_t)(cr->p | (P_M)));
             cyc(40);
             wr8(b | 0x0DD6, 0x14);
             cyc(24);
             wr8(b | 0x0DD7, 0x14);
             both = 1;
         } else {
-            cr->p |= P_M;
+            set_p(cr, (uint8_t)(cr->p | (P_M)));
             cyc(124);
             wr8(b | 0x0DD7, 0x12);
             cyc(40);
@@ -388,32 +396,32 @@ void RaceFinishSplit(Carried *cr)
     uint8_t v;
     int one;
 
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)cr->y) & ~P_C) | P_C);     /* CPY #0 */
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)cr->y) & ~P_C) | P_C));     /* CPY #0 */
     one = 0;
     if (!(uint8_t)cr->y) {
         cyc(56);
         v = rd8(b | 0x0DE9);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-        cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+        set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0)));
         one = 1;
         if (v == 0x03) {
             cyc(62);
             v = rd8(b | 0x0DF4);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-            cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(6), P_C) : 0));
+            set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(6), P_C) : 0)));
             one = v == 0x01;
         }
     } else { cyc(12); }
     cyc(72);
     if (one) {
         cyc(6);
-        w_CarFinishSound(cr);
+        CarFinishSound(cr);
         cyc(40);
         wr8(b | 0x0DD6, 0x12);
         cyc(40);
         wr8(b | 0x0DD7, 0x0A);
     } else {
-        w_CarFinishSoundP2(cr);
+        CarFinishSoundP2(cr);
         cyc(40);
         wr8(b | 0x0DD7, 0x12);
         cyc(40);
@@ -421,7 +429,7 @@ void RaceFinishSplit(Carried *cr)
     }
     cyc(78);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
-    cr->p = nz8(cr->p, 0x08);
+    set_p(cr, nz8(cr->p, 0x08));
     SoundPort0QueuePush_cr(cr);
     finish_tail(cr, b, one ? 24 : 22, 34);
 }
@@ -643,7 +651,7 @@ void RaceVarsReset(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
     unsigned i;
 
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
     cr->a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
     r_cmp16(cr, 0x000A);
@@ -662,7 +670,7 @@ void RaceVarsReset(Carried *cr)
     }
     cyc(44);
     cr->a = 0x0080;
-    cr->p = (uint8_t)(nz8(cr->p, 0x80) | P_M);
+    set_p(cr, (uint8_t)(nz8(cr->p, 0x80) | P_M));
 }
 
 void abi_RaceVarsReset(void)
@@ -686,7 +694,7 @@ void abi_RecordsUnpackCourseRunning(void);
    (HandlerSoundIndex), leaving M and X 8-bit. */
 static void pick_sound(Carried *cr, uint32_t b)
 {
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(32);
     cr->a = rd16(0x0018DB);
     cyc(24);
@@ -703,7 +711,7 @@ static void delay_4000(Carried *cr)
     cyc(94);
     delay_turns(0x4000);
     cr->a = 0x0000;
-    cr->p = nz16(cr->p, 0);
+    set_p(cr, nz16(cr->p, 0));
 }
 
 /*
@@ -733,7 +741,7 @@ void RaceModeSetup(Carried *cr)
                                      0x0D44, 0x0EED, 0x0EEE, 0x0EEF, 0x0D24, 0x0D25};
     unsigned i;
 
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(68);
     mode = rd8(b | 0x0D2B);
     cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
@@ -762,7 +770,7 @@ void RaceModeSetup(Carried *cr)
         { cyc(62); wr8(b | 0x0D4A, 0x00); }
     cyc(24);
     wr8(b | 0x10CD, 0x00);
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
     wr16(b | 0x0E37, 0x0000);
     pick_sound(cr, b);
@@ -775,18 +783,18 @@ void RaceModeSetup(Carried *cr)
         { cyc(66); wr8(b | (uint16_t)(0x0F05 + i), v); }
     cr->x = 0xFF;
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(76);
     wr16(b | 0x0E6C, 0x0000);
     cyc(24);
     wr16(b | 0x0E6E, 0x0000);
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     mode = rd8(b | 0x0D2B);
     cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
     if (mode == 0x00) {
         cyc(84);
-        w_RecordsUnpackCourseRunning(cr);
+        RecordsUnpackCourseRunning(cr);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
         cyc(40);
         wr8(b | 0x0DF8, 0x02);
@@ -797,18 +805,18 @@ void RaceModeSetup(Carried *cr)
     if (mode == 0x02) {
         uint8_t p1 = cr->p;
 
-        cr->p &= (uint8_t)~(P_M | P_X);
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cyc(148);
         hw_wr16(0x002141, 0x0005);
         (cyc(40), delay_4000(cr));
         cr->a = 0x001A;
         cr->y = 0xF091;
         w_ApuUpload(cr);
-        cr->p &= (uint8_t)~P_M;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         delay_4000(cr);
         r_plp(cr, p1);
     } else { cyc(116); }
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     wr8(b | 0x0DF8, 0xFF);
     r_plp(cr, p0);
@@ -841,7 +849,7 @@ static void view_params(Carried *cr, const uint8_t *v)
         { cyc(32); wr8((uint16_t)(cr->d + at[i]), v[i]); }
     cyc(42);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v[15]);
-    cr->p = nz8(cr->p, v[15]);
+    set_p(cr, nz8(cr->p, v[15]));
 }
 
 /*
@@ -862,7 +870,7 @@ void ViewParamsByPlayers(Carried *cr)
                                     0x48, 0x00, 0x28, 0x00, 0x66, 0x66, 0xC7, 0x71};
     uint8_t v;
 
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     v = rd8((uint32_t)cr->db << 16 | 0x0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -1010,17 +1018,17 @@ static void race_load_sound(Carried *cr, void (*load)(Carried *), uint16_t a, ui
 {
     uint8_t p = cr->p;
 
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->a = 0x0005;
     cyc(38);
     hw_wr16(0x002141, 0x0005);
     (cyc(40), delay_4000(cr));
     cr->a = a;
     cr->y = y;
-    cr->p = nz16(cr->p, y);
+    set_p(cr, nz16(cr->p, y));
     load(cr);
     if (delay_after) {
-        cr->p &= (uint8_t)~P_M;
+        set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         delay_4000(cr);
     } else { cyc(48); }
     r_plp(cr, p);
@@ -1029,10 +1037,10 @@ static void race_load_sound(Carried *cr, void (*load)(Carried *), uint16_t a, ui
 /* REP #$30, LDY, LDX, JSL GsuCF42ToVram. */
 static void race_load_gsu(Carried *cr, uint16_t y, uint16_t x)
 {
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->y = y;
     cr->x = x;
-    cr->p = nz16(cr->p, x);
+    set_p(cr, nz16(cr->p, x));
     (cyc(132), w_GsuCF42ToVram(cr));
 }
 
@@ -1043,7 +1051,7 @@ static void race_load_copy(Carried *cr, uint16_t dst)
     uint8_t p = cr->p;
     unsigned i;
 
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(126);
     for (i = 0; i < 0x1000; i++)
         { cyc(36); wr8(0x7F0000 | (uint16_t)(dst + i), rd8(0x703000 + i)); }
@@ -1067,13 +1075,13 @@ static void race_load_views(Carried *cr, uint16_t x)
 /* REP #$20, then $0E35, $0E37 (= scroll), $0E31 and $0E33 (word stores). */
 static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
 {
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
     wr16(b | 0x0E35, 0x0000);
     if (scroll) {
         cyc(24);
         cr->a = scroll;
-        cr->p = nz16(cr->p, scroll);
+        set_p(cr, nz16(cr->p, scroll));
     }
     cyc(24);
     wr16(b | 0x0E37, scroll);
@@ -1127,7 +1135,7 @@ void RaceLoad(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cr->db = 0x03;
-    cr->p = nz8(cr->p, 0x03);
+    set_p(cr, nz8(cr->p, 0x03));
     (cyc(156), w_VideoRegsReset(cr));
     (cyc(62), w_SaveUnlocksCheck(cr));
     (cyc(62), w_SoundIndicesFromHandlers(cr));
@@ -1135,17 +1143,17 @@ void RaceLoad(Carried *cr)
     race_load_sound(cr, w_SoundDataLoad, 0xE049, 0x001E, 0);
     race_load_sound(cr, w_ApuUpload, 0x001B, 0xB8A0, 1);
     race_load_sound(cr, w_ApuUpload, 0x001B, 0xD5FC, 1);
-    SoundReset_cr(cr);
+    w_SoundReset(cr);
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     cyc(62);
     hw_wr(b | 0x2140, 0x01);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
-    cr->p = nz8(cr->p, 0x03);
+    set_p(cr, nz8(cr->p, 0x03));
     cyc(40);
     wr8(b | 0x0374, 0x03);
     (cyc(46), w_VramNoiseTiles(cr));
-    cr->p &= (uint8_t)~(P_M | P_X);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     for (w = 0x01FE;; w = (uint16_t)(w - 2)) {
         cyc(126);
         cr->a = rd16(0x1F8200 + w);
@@ -1154,7 +1162,7 @@ void RaceLoad(Carried *cr)
             { cyc(106); break; } else { cyc(4); }
     }
     cr->x = 0xFFFE;
-    cr->p = nz16(cr->p, 0xFFFE);
+    set_p(cr, nz16(cr->p, 0xFFFE));
     w_CgramDmaAll(cr);
     (cyc(62), w_OamBufferClear(cr));
     (cyc(46), w_ReturnOnly(cr));
@@ -1166,11 +1174,11 @@ void RaceLoad(Carried *cr)
     r_sep(cr, P_M | P_X);
     cyc(24);
     v = rd8(b | 0x0D2B);
-    cr->p = (uint8_t)((cr->p & ~P_C) | (v >> 7));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = v;
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(74);
     w = rd16(b | (uint16_t)(0xF1B2 + v));
     switch (w) {
@@ -1214,7 +1222,7 @@ void RaceLoad(Carried *cr)
     w_RaceScreenSetup(cr);
     r_sep(cr, P_M);
     cr->db = db0;
-    cr->p = nz8(cr->p, db0);
+    set_p(cr, nz8(cr->p, db0));
     r_plp(cr, p0);
     cyc(80);
 }
@@ -1247,27 +1255,14 @@ static void frame_cmp8(Carried *cr, uint8_t m)
 {
     uint8_t a = (uint8_t)cr->a;
 
-    cr->p = (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : (cyc(38), 0)));
+    set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : (cyc(38), 0))));
 }
 
 /* LDA # (8-bit): the low byte of A. */
 static void frame_lda8_imm(Carried *cr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void frame_lda8_imm_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    frame_lda8_imm(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* The frame's start: data bank $02 (PHK, PLB), the frames counted since
@@ -1279,7 +1274,7 @@ static void frame_start(Carried *cr)
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->db = 0x02;
-    cr->p = nz8(cr->p, 0x02);
+    set_p(cr, nz8(cr->p, 0x02));
     cyc(140);
     r_lda8(cr, b | 0x0306);
     cyc(24);
@@ -1291,19 +1286,6 @@ static void frame_start(Carried *cr)
     wr8(cr->d, 0x02);
 }
 
-static void frame_start_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    frame_start(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* ViewFromRecord on the object two links (+$4F) on from the car at
    `slot`. */
 static void frame_view_from(Carried *cr, uint16_t slot)
@@ -1311,7 +1293,7 @@ static void frame_view_from(Carried *cr, uint16_t slot)
     r_rep(cr, P_M | P_X);
     cyc(24);
     cr->x = rd16((uint32_t)cr->db << 16 | slot);
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     cyc(32);
     r_lda16(cr, 0x7E204Fu + cr->x);
     r_tax16(cr);
@@ -1319,19 +1301,6 @@ static void frame_view_from(Carried *cr, uint16_t slot)
     r_lda16(cr, 0x7E204Fu + cr->x);
     r_tax16(cr);
     (cyc(46), w_ViewFromRecord(cr));
-}
-
-static void frame_view_from_g(uint16_t slot)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    frame_view_from(&c, slot);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* Side 0: $1F07 = 0, $70:246C-D = $FF, programs $8FCA and $01:BBC7. */
@@ -1351,21 +1320,8 @@ static void frame_side0(Carried *cr)
     cyc(146);
     frame_lda8_imm(cr, 0x01);
     cr->x = 0xBBC7;
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     w_GsuRun(cr);
-}
-
-static void frame_side0_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    frame_side0(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* The frame's end: the time counts, $0306 to $70:108E, then the data
@@ -1381,7 +1337,7 @@ static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
     wr8(b | 0x1F3E, (uint8_t)cr->a);
     cyc(24);
     r_lda8(cr, b | 0x06D5);
-    cr->p &= (uint8_t)~P_C;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
     v = alu_adc8((uint8_t)cr->a, rd8(b | 0x06D4), &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -1391,7 +1347,7 @@ static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
     v = (uint8_t)(rd8(b | 0x06D6) + 1);
     cyc(6);
     wr8(b | 0x06D6, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(24);
     r_lda8(cr, b | 0x06D5);
     frame_cmp8(cr, 0x3C);
@@ -1404,7 +1360,7 @@ static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
         wr8(b | 0x06D6, 0x00);
         cyc(24);
         r_lda8(cr, b | 0x06D5);
-        cr->p |= P_C;
+        set_p(cr, (uint8_t)(cr->p | (P_C)));
         v = alu_sbc8((uint8_t)cr->a, 0x3C, &cr->p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(38);
@@ -1419,21 +1375,8 @@ static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
     cyc(48);
     wr8(0x70108F, 0x00);
     cr->db = db;
-    cr->p = nz8(cr->p, db);
+    set_p(cr, nz8(cr->p, db));
     r_plp(cr, p0);
-}
-
-static void frame_time_g(uint8_t db, uint8_t p0)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    frame_time(&c, db, p0);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /*
@@ -1456,71 +1399,84 @@ static void frame_time_g(uint8_t db, uint8_t p0)
  * Entry: any widths; D = $0000. Exit: P and the data bank unchanged; A low
  * byte 0; X, Y as the last call left them.
  */
-void abi_RaceFrameRun(void)
+void RaceFrameRun(Carried *cr)
 {
-    uint8_t p0 = cpu.p, db = cpu.db;
+    uint8_t p0 = cr->p, db = cr->db;
     uint32_t b;
 
-    frame_start_g();
-    frame_view_from_g(0x0346);
-    (cyc(62), abi_PlayerControlsFrame());
-    frame_side0_g();
-    op_sep(P_M);
-    op_rep(P_X);
-    (cyc(128), abi_ObjectsRunHandlers());
-    (cyc(62), abi_ViewUpdateAndGsuAEF8());
-    (cyc(62), abi_PaletteFadeStep());
-    (cyc(62), abi_WordCopyStep());
-    (cyc(62), abi_BackdropAnglesFromView());
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
-    frame_lda8_imm_g(0x01);
+    frame_start(cr);
+    frame_view_from(cr, 0x0346);
+    (cyc(62), PlayerControlsFrame(cr));
+    frame_side0(cr);
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
+    (cyc(128), w_ObjectsRunHandlers(cr));
+    (cyc(62), ViewUpdateAndGsuAEF8_cr(cr));
+    (cyc(62), PaletteFadeStep_cr(cr));
+    (cyc(62), w_WordCopyStep(cr));
+    (cyc(62), w_BackdropAnglesFromView(cr));
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
+    frame_lda8_imm(cr, 0x01);
     cyc(62);
     wr8(b | 0x1F07, 0x01);
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(24);
     wr16(b | 0x1AE8, 0x0000);
-    op_sep(P_M);
-    (cyc(84), abi_FrameRunGsuAB13B());
-    op_sep(P_M);
-    (cyc(84), abi_DebugShowErrors());
-    op_rep(P_M | P_X);
-    cpu.x = 0x2143;
-    cpu.p = nz16(cpu.p, cpu.x);
+    r_sep(cr, P_M);
+    (cyc(84), w_FrameRunGsuAB13B(cr));
+    r_sep(cr, P_M);
+    (cyc(84), w_DebugShowErrors(cr));
+    r_rep(cr, P_M | P_X);
+    cr->x = 0x2143;
+    set_p(cr, nz16(cr->p, cr->x));
     cyc(56);
-    op_lda16(0x702476);
-    (cyc(62), abi_SpeedGaugeUpdate());
-    (cyc(62), abi_NearCarSoundUpdate());
-    op_rep(P_M);
-    b = (uint32_t)cpu.db << 16;
+    r_lda16(cr, 0x702476);
+    (cyc(62), w_SpeedGaugeUpdate(cr));
+    (cyc(62), NearCarSoundUpdate_cr(cr));
+    r_rep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
     cyc(24);
-    op_lda16(b | 0x1AE8);
+    r_lda16(cr, b | 0x1AE8);
     cyc(24);
-    wr16(b | 0x1AEA, cpu.a);
+    wr16(b | 0x1AEA, cr->a);
     cyc(32);
-    op_lda16(0x702732);
-    if (cpu.a) {
+    r_lda16(cr, 0x702732);
+    if (cr->a) {
         cyc(140);
-        op_sep(P_M);
-        frame_lda8_imm_g(0x01);
-        cpu.x = 0xD307;
-        cpu.p = nz16(cpu.p, cpu.x);
-        abi_GsuRun();
-        op_rep(P_M | P_X);
+        r_sep(cr, P_M);
+        frame_lda8_imm(cr, 0x01);
+        cr->x = 0xD307;
+        set_p(cr, nz16(cr->p, cr->x));
+        w_GsuRun(cr);
+        r_rep(cr, P_M | P_X);
         cyc(90);
     } else {
         cyc(106);
-        op_sep(P_M);
-        call_routine(0x07DAA7, 1);
+        r_sep(cr, P_M);
+        RaceSoundsAndHud(cr);
         cyc(46);
     }
-    abi_GsuScreenToggle();
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
+    w_GsuScreenToggle(cr);
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
     cyc(46);
     wr8(b | 0x0357, 0x00);
-    frame_time_g(db, p0);
+    frame_time(cr, db, p0);
     cyc(58);                            /* its return */
+}
+
+void abi_RaceFrameRun(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceFrameRun(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_GsuScreenFlipMenu(void);
@@ -1563,9 +1519,9 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     frame_side0(cr);
     r_sep(cr, P_M);
     r_rep(cr, P_X);
-    (cyc(84), w_ViewUpdateAndGsuAEF8(cr));
+    (cyc(84), ViewUpdateAndGsuAEF8_cr(cr));
     r_rep(cr, P_M);
-    (cyc(62), w_PaletteFadeStep(cr));
+    (cyc(62), PaletteFadeStep_cr(cr));
     (cyc(62), w_WordCopyStep(cr));
     (cyc(62), w_BackdropAnglesFromView(cr));
     frame_view_from(cr, 0x034A);
@@ -1581,17 +1537,17 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     (cyc(106), w_FrameRunGsuAB13B(cr));
     r_rep(cr, P_M | P_X);
     cr->x = 0x2143;
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     cyc(56);
     r_lda16(cr, 0x702476);
     (cyc(62), w_SpeedGaugeUpdate(cr));
     r_sep(cr, P_M);
-    (cyc(84), w_RaceSoundsPlayer1(cr));
+    (cyc(84), RaceSoundsPlayer1(cr));
     (cyc(46), w_GsuScreenFlipMenu(cr));
     r_sep(cr, P_M);
     cyc(46);
     wr8((uint32_t)cr->db << 16 | 0x0357, 0x00);
-    (cyc(62), w_ViewUpdateAndGsuAEF8(cr));
+    (cyc(62), ViewUpdateAndGsuAEF8_cr(cr));
     (cyc(62), w_BackdropAnglesFromView(cr));
     r_rep(cr, P_M);
     b = (uint32_t)cr->db << 16;
@@ -1604,11 +1560,11 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     (cyc(84), w_FrameRunGsuAB13A(cr));
     r_rep(cr, P_M | P_X);
     cr->x = 0x2142;
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     cyc(56);
     r_lda16(cr, 0x702478);
     (cyc(62), w_SpeedGauge2Update(cr));
-    (cyc(62), w_RaceSoundsPlayer2(cr));
+    (cyc(62), RaceSoundsPlayer2(cr));
     r_sep(cr, P_M);
     (cyc(68), w_GsuScreenFlipMenu(cr));
     r_sep(cr, P_M);
@@ -1800,7 +1756,7 @@ void abi_RaceLoop(void)
         if (cpu.unwound)
             return; else { cyc(46); }
         cpu.s = (uint16_t)(cpu.s + 2);
-        call_routine(0x02E356, 0);
+        abi_CourseScreenStep();
     }
 }
 
@@ -1809,7 +1765,6 @@ void abi_WaitScanline(void);
 void abi_SpriteSlotFirstLong(void);
 void abi_RaceHudLoad(void);
 void abi_ViewParamsByPlayers(void);
-uint16_t ViewSetupTail(uint8_t bank);
 
 /*
  * @routine 7E:F29F AttractViewStart
@@ -1840,11 +1795,11 @@ void AttractViewStart(Carried *cr)
     cyc(32);
     wr8(0x70108C, (uint8_t)cr->a);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
-    cr->p = nz8(cr->p, 0x80);
+    set_p(cr, nz8(cr->p, 0x80));
     cyc(32);
     wr8((uint16_t)(cr->d + 0xA0), 0x80);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
-    cr->p = nz8(cr->p, 0xFF);
+    set_p(cr, nz8(cr->p, 0xFF));
     cyc(40);
     wr8(b | 0x05EF, 0xFF);
     cyc(16);
@@ -1895,15 +1850,15 @@ void AttractCourseSetup(Carried *cr)
 
     r_sep(cr, P_M);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0x00);
+    set_p(cr, nz8(cr->p, 0x00));
     cr->db = 0x00;
-    cr->p = nz8(cr->p, 0x00);
-    cr->p |= P_I;
+    set_p(cr, nz8(cr->p, 0x00));
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
     r_sep(cr, P_M);
     cyc(192);
     hdmaen_wr(HDMAEN, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
-    cr->p = nz8(cr->p, 0x80);
+    set_p(cr, nz8(cr->p, 0x80));
     (cyc(78), w_Set7EBC2BTrio(cr));
     cyc(24);
     ppu_wr(INIDISP, (uint8_t)cr->a);
@@ -1912,14 +1867,14 @@ void AttractCourseSetup(Carried *cr)
     cyc(24);
     wr8(0x00084C, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x6E);
-    cr->p = nz8(cr->p, 0x6E);
+    set_p(cr, nz8(cr->p, 0x6E));
     cyc(40);
     wr8(0x0006E3, 0x6E);
     (cyc(62), w_WaitScanline(cr));
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x64);
-    cr->p = nz8(cr->p, 0x64);
+    set_p(cr, nz8(cr->p, 0x64));
     cyc(62);
     wr8(0x0006E3, 0x64);
     (cyc(62), w_WaitScanline(cr));
@@ -1935,20 +1890,20 @@ void AttractCourseSetup(Carried *cr)
         { cyc(24); wr8(clear8[i], 0x00); }
     AttractViewStart(cr);
     (cyc(20), w_SpriteSlotFirstLong(cr));
-    (cyc(62), w_RaceHudLoad(cr));
+    (cyc(62), RaceHudLoad(cr));
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->p = nz8(cr->p, 0x01);
+    set_p(cr, nz8(cr->p, 0x01));
     cr->x = 0xD1EB;
-    cr->p = nz16(cr->p, cr->x);
+    set_p(cr, nz16(cr->p, cr->x));
     (cyc(124), w_GsuRun(cr));
     cyc(94);                            /* SEP, REP, PLB, PLP, CLI, RTL */
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->db = db0;
-    cr->p = nz8(cr->p, db0);
+    set_p(cr, nz8(cr->p, db0));
     r_plp(cr, p0);
-    cr->p &= (uint8_t)~P_I;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
 }
 
 void abi_AttractCourseSetup(void)
@@ -1962,25 +1917,6 @@ void abi_AttractCourseSetup(void)
     cpu.d = r.d;
     cpu.p = r.p;
     cpu.db = r.db;
-}
-
-/* CameraFollowStep, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CameraFollowStep(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CameraFollowStep();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /* FrameRunGsu8FCA, still in registers: its call with the registers loaded and taken
@@ -2025,26 +1961,7 @@ static void w_GsuAB13WithParams(Carried *cr)
 static void w_GsuScreenFlip(Carried *cr)
 {
     cr->a = GsuScreenFlip(cr->db);
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M);
-}
-
-/* ObjectFaceTied, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ObjectFaceTied(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ObjectFaceTied();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
 }
 
 /* ObjectsRunHandlers, still in registers: its call with the registers loaded and taken
@@ -2072,26 +1989,7 @@ static void w_ViewFromRecord(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = ViewFromRecord(cr->db, cr->x, &p);
-    cr->p = p;
-}
-
-/* ViewUpdateAndGsuAEF8, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_ViewUpdateAndGsuAEF8(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ViewUpdateAndGsuAEF8();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, p);
 }
 
 /* CourseScriptRun, still in registers: its call with the registers loaded and taken
@@ -2119,7 +2017,7 @@ static void w_GsuRun(Carried *cr)
     uint8_t mode = GsuRun((uint8_t)cr->a, cr->x);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
-    cr->p = nz8(cr->p, cr->db);
+    set_p(cr, nz8(cr->p, cr->db));
     cyc(72);                            /* PLB, RTL */
 }
 
@@ -2131,42 +2029,12 @@ static void w_ViewDefaults(Carried *cr)
     cr->y = 0x0000;
 }
 
-/* CarFinishSound, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CarFinishSound(Carried *cr)
+/* SoundPort0QueuePushRaw as its adapter leaves the registers. */
+static void w_SoundPort0QueuePushRaw(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CarFinishSound();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* CarFinishSoundP2, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_CarFinishSoundP2(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_CarFinishSoundP2();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    SoundPort0QueuePushRaw((uint8_t)cr->a);
+    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
+    cyc(8);
 }
 
 /* HandlerSoundIndex as its adapter leaves the registers. */
@@ -2183,26 +2051,7 @@ static void w_ApuUpload(Carried *cr)
     cr->a = end.kick;
     cr->x = 0;
     cr->y = end.offset;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_V)) | P_Z | P_C | P_M);
-}
-
-/* RecordsUnpackCourseRunning, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsUnpackCourseRunning(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsUnpackCourseRunning();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V)) | P_Z | P_C | P_M));
 }
 
 /* GsuCF42ToVram as its adapter leaves the registers. */
@@ -2211,7 +2060,7 @@ static void w_GsuCF42ToVram(Carried *cr)
     GsuCF42ToVram(cr->db, cr->x, cr->y);
     cr->a = 0x0001;
     cr->x = cr->y;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_X)) | P_M));
 }
 
 /* CgramDmaAll as its adapter leaves the registers. */
@@ -2238,7 +2087,7 @@ static void w_RaceScreenSetup(Carried *cr)
     cr->a = 0x1001;
     cr->x &= 0x00FF;
     cr->y &= 0x00FF;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M | P_X);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M | P_X));
 }
 
 /* ReturnOnly, still in registers: its call with the registers loaded and taken
@@ -2278,6 +2127,15 @@ static void w_SoundIndicesFromHandlers(Carried *cr)
     cr->y &= 0x00FF;
 }
 
+/* SoundReset as its adapter leaves the registers. */
+static void w_SoundReset(Carried *cr)
+{
+    SoundReset();
+    cr->a &= 0xFF00;
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+}
+
 /* VideoRegsReset as its adapter leaves the registers. */
 static void w_VideoRegsReset(Carried *cr)
 {
@@ -2290,7 +2148,7 @@ static void w_VramNoiseTiles(Carried *cr)
 {
     cr->a = VramNoiseTiles(cr->db);
     cr->x = 0;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_M | P_X)) | P_Z);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_M | P_X)) | P_Z));
 }
 
 /* SoundDataLoad as its adapter leaves the registers. */
@@ -2299,33 +2157,21 @@ static void w_SoundDataLoad(Carried *cr)
     cr->y = SoundDataLoad(cr->a, cr->y);
     cr->a = 0x0000;
     cr->x = 0x0000;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_V | P_M | P_X)) | P_Z | P_C);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_M | P_X)) | P_Z | P_C));
 }
 
 /* BackdropAnglesFromView as its adapter leaves the registers. */
 static void w_BackdropAnglesFromView(Carried *cr)
 {
     cr->a = BackdropAnglesFromView(cr->db);
-    cr->p = (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : (cyc(130), nz16(cr->p, cr->y));
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->y) : (cyc(130), nz16(cr->p, cr->y)));
 }
 
-/* FrameRunGsuAB13A, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_FrameRunGsuAB13A(Carried *cr)
+/* DebugShowErrors as its adapter leaves the registers. */
+static void w_DebugShowErrors(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_FrameRunGsuAB13A();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    cr->a = DebugShowErrors(cr->db);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
 }
 
 /* FrameRunGsuAB13B, still in registers: its call with the registers loaded and taken
@@ -2347,75 +2193,11 @@ static void w_FrameRunGsuAB13B(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* GsuScreenFlipMenu as its adapter leaves the registers. */
-static void w_GsuScreenFlipMenu(Carried *cr)
+/* GsuScreenToggle as its adapter leaves the registers. */
+static void w_GsuScreenToggle(Carried *cr)
 {
-    cr->a = GsuScreenFlipMenu(cr->db);
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M);
-}
-
-/* PaletteFadeStep, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_PaletteFadeStep(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_PaletteFadeStep();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RaceSoundsPlayer1, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceSoundsPlayer1(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceSoundsPlayer1();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RaceSoundsPlayer2, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RaceSoundsPlayer2(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RaceSoundsPlayer2();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* SpeedGauge2Update as its adapter leaves the registers. */
-static void w_SpeedGauge2Update(Carried *cr)
-{
-    cr->a = SpeedGauge2Update(cr->db, cr->a);
-    cyc(72);
+    cr->a = GsuScreenToggle(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
 }
 
 /* SpeedGaugeUpdate as its adapter leaves the registers. */
@@ -2433,13 +2215,13 @@ static void w_WordCopyStep(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = WordCopyStep(cr->db, cr->a, &cr->x, &cr->y, &p);
-    cr->p = (uint8_t)(p & ~(P_M | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
     cyc(60);
 }
 
-/* RaceHudLoad, still in registers: its call with the registers loaded and taken
+/* FrameRunGsuAB13A, still in registers: its call with the registers loaded and taken
    back. */
-static void w_RaceHudLoad(Carried *cr)
+static void w_FrameRunGsuAB13A(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -2447,13 +2229,27 @@ static void w_RaceHudLoad(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_RaceHudLoad();
+    abi_FrameRunGsuAB13A();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
+}
+
+/* GsuScreenFlipMenu as its adapter leaves the registers. */
+static void w_GsuScreenFlipMenu(Carried *cr)
+{
+    cr->a = GsuScreenFlipMenu(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
+/* SpeedGauge2Update as its adapter leaves the registers. */
+static void w_SpeedGauge2Update(Carried *cr)
+{
+    cr->a = SpeedGauge2Update(cr->db, cr->a);
+    cyc(72);
 }
 
 /* Set7EBC2BTrio as its adapter leaves the registers. */

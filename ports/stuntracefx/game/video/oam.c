@@ -9,8 +9,8 @@
 #include "cpu_ops.h"
 #include "carried.h"
 
-void abi_OamStageDispatchBB3C(void);
-void abi_OamStageDispatchBBA2(void);
+void abi_PauseReplayStages(void);
+void abi_ResultsScreenStep(void);
 
 /*
  * @routine 07:C4D2 OamHideRange
@@ -354,24 +354,33 @@ void OamAttr38x7_cr(Carried *cr);
 void OamBufferHideLargeLong_cr(Carried *cr);
 void OamHide119To127(Carried *cr);
 void OamHide55To63(Carried *cr);
+void OamStageDispatchBB3C(Carried *cr);
+void OamStageDispatchBBA2(Carried *cr);
 void OamStagePause(Carried *cr);
 void OamStagePause2(Carried *cr);
 void OamStagePause2Loop(Carried *cr);
 void OamStagePauseLoop(Carried *cr);
+void OverlayFramesUntilFaded(Carried *cr);
+void PauseOnStart(Carried *cr);
 static void abi_oam_attr_fill(Carried *cr, uint16_t count, uint8_t attr);
 static void hide9(Carried *cr, uint16_t offset);
 static void oam_dec8(Carried *cr, uint32_t at);
 static void oam_lda8(Carried *cr, uint8_t v);
+static void oam_stage_dispatch(Carried *cr, uint32_t table);
 static void oam_wait_tick(Carried *cr, uint32_t b, uint32_t again);
 static void pieces_exit(Carried *cr, uint16_t a);
 static void pull_p(Carried *cr, uint8_t p);
 static void stage_loop(Carried *cr, uint32_t b, void (*dispatch)(Carried *));
 static void two_cars_exit(Carried *cr, uint16_t a);
 static void w_OamBufferHideLarge(Carried *cr);
+static void w_OamHide75Up(Carried *cr);
 static void w_OamHighBits18(Carried *cr);
 static void w_OamHighBits58(Carried *cr);
-static void w_OamStageDispatchBB3C(Carried *cr);
-static void w_OamStageDispatchBBA2(Carried *cr);
+static void w_OamLargeColumns(Carried *cr);
+static void w_OverlaySpritesStep(Carried *cr);
+static void w_PauseReplayStages(Carried *cr);
+static void w_PictureTurnStep(Carried *cr);
+static void w_ResultsScreenStep(Carried *cr);
 void SoundPort1QueuePush_cr(Carried *cr);
 
 /* The common exit of the three attribute fills. */
@@ -379,7 +388,7 @@ static void abi_oam_attr_fill(Carried *cr, uint16_t count, uint8_t attr)
 {
     uint16_t a4 = (uint16_t)(cr->a << 2);
 
-    cr->p = (uint8_t)((cr->p & ~(P_C | P_N | P_M)) | ((cr->a << 1) & 0x8000 ? P_C : 0) | P_Z);
+    set_p(cr, (uint8_t)((cr->p & ~(P_C | P_N | P_M)) | ((cr->a << 1) & 0x8000 ? P_C : 0) | P_Z));
     cr->x = oam_attr_fill(cr->db, cr->a, count, attr);
     cr->y = 0;
     cr->a = (uint16_t)((a4 & 0xFF00) | attr);
@@ -1392,7 +1401,7 @@ void MetaspriteDraw_cr(Carried *cr)
     cr->a = MetaspriteDraw(cr->db, cr->x, cr->y, &p);
     cr->x = md_x;
     cr->y = md_y;
-    cr->p = p;
+    set_p(cr, p);
 }
 
 /* The cycled palette (attribute bits 1-3) for phase 1 and for phase 2 or
@@ -1787,7 +1796,7 @@ static void pieces_exit(Carried *cr, uint16_t a)
     cr->a = a;
     cr->x = pc_x;
     cr->y = pc_y;
-    cr->p = (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M)) | P_Z | pc_cv);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_C | P_V | P_M)) | P_Z | pc_cv));
 }
 
 static void pieces_exit_g(uint16_t a)
@@ -2135,7 +2144,7 @@ static void two_cars_exit(Carried *cr, uint16_t a)
     cr->a = a;
     cr->x = pc_x;
     cr->y = pc_y;
-    cr->p = (uint8_t)(((cr->p & ~(P_N | P_Z | P_C | P_V | P_X)) | P_M) | pc_cv);
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_Z | P_C | P_V | P_X)) | P_M) | pc_cv));
 }
 
 static void two_cars_exit_g(uint16_t a)
@@ -2184,6 +2193,12 @@ void abi_SpritePiecesTwoCarsTop(void)
     two_cars_exit_g(SpritePiecesTwoCarsTop(cpu.db));
 }
 
+/* SpritePiecesTwoCarsTop on carried registers, as abi_SpritePiecesTwoCarsTop leaves them. */
+void SpritePiecesTwoCarsTop_cr(Carried *cr)
+{
+    two_cars_exit(cr, SpritePiecesTwoCarsTop(cr->db));
+}
+
 /*
  * @routine 07:C22B SpritePiecesTwoCars
  * WHAT IT DOES: Shows the two players' cars as three-piece sprites: every
@@ -2220,11 +2235,17 @@ void abi_SpritePiecesTwoCars(void)
     two_cars_exit_g(SpritePiecesTwoCars(cpu.db));
 }
 
+/* SpritePiecesTwoCars on carried registers, as abi_SpritePiecesTwoCars leaves them. */
+void SpritePiecesTwoCars_cr(Carried *cr)
+{
+    two_cars_exit(cr, SpritePiecesTwoCars(cr->db));
+}
+
 /* PLP's register effects (its clocks stated by the typed function):
    restoring 8-bit index registers clears the high bytes of X and Y. */
 static void pull_p(Carried *cr, uint8_t p)
 {
-    cr->p = p;
+    set_p(cr, p);
     if (p & P_X) {
         cr->x &= 0x00FF;
         cr->y &= 0x00FF;
@@ -2364,6 +2385,17 @@ void abi_OamDirectStage(void)
     pull_p_g(p0);
 }
 
+/* OamDirectStage on carried registers, as abi_OamDirectStage leaves them. */
+void OamDirectStage_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v = OamDirectStage(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = ods_x;
+    cr->y = 0;
+    pull_p(cr, p0);
+}
+
 /*
  * @routine 07:AC08 OamFillEvery4
  * WHAT IT DOES: Stores the byte A at $0376 + X and every fourth byte after
@@ -2395,14 +2427,14 @@ void abi_OamFillEvery4(void)
 
 /* JMP ($BB3C,X) / ($BBA2,X) with X = $0D2F after SEP #$30: the handler
    from the table (jump_routine). */
-static void oam_stage_dispatch(uint32_t table)
+static void oam_stage_dispatch(Carried *cr, uint32_t table)
 {
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
     cyc(24);
-    cpu.x = rd8((uint32_t)cpu.db << 16 | 0x0D2F);
-    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    cr->x = rd8((uint32_t)cr->db << 16 | 0x0D2F);
+    set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(46);
-    jump_routine((uint32_t)0x070000 | rd16(table + cpu.x));
+    carried_jump(cr, (uint32_t)0x070000 | rd16(table + cr->x));
 }
 
 /*
@@ -2413,9 +2445,22 @@ static void oam_stage_dispatch(uint32_t table)
  * or (the stage at $07:BEC6) through the caller's frame.
  * Entry: any widths. Exit: as the handler leaves it.
  */
+void OamStageDispatchBB3C(Carried *cr)
+{
+    oam_stage_dispatch(cr, 0x07BB3C);
+}
+
 void abi_OamStageDispatchBB3C(void)
 {
-    oam_stage_dispatch(0x07BB3C);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamStageDispatchBB3C(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2424,9 +2469,22 @@ void abi_OamStageDispatchBB3C(void)
  * HOW: SEP #$30, then JMP (table,X).
  * Entry: any widths. Exit: as the handler leaves it.
  */
+void OamStageDispatchBBA2(Carried *cr)
+{
+    oam_stage_dispatch(cr, 0x07BBA2);
+}
+
 void abi_OamStageDispatchBBA2(void)
 {
-    oam_stage_dispatch(0x07BBA2);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamStageDispatchBBA2(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -2519,6 +2577,18 @@ void abi_OamWordRow5(void)
     pull_p_g(p0);
 }
 
+/* OamWordRow5 on carried registers, as abi_OamWordRow5 leaves them. */
+void OamWordRow5_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    OamWordRow5(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x38);
+    cr->x = 0x0014;
+    cr->y = 0x0005;
+    pull_p(cr, p0);
+}
+
 void abi_SoundPort1QueuePush(void);
 void abi_OamHighBits18(void);
 
@@ -2601,21 +2671,21 @@ void OamStagePause(Carried *cr)
     r_lda16(cr, b | 0x0D1A);
     if (!(cr->a & 0x1000)) {
         cyc(68);
-        cr->p |= P_Z;
+        set_p(cr, (uint8_t)(cr->p | (P_Z)));
         r_plp(cr, p0);
         return;
     }
-    cr->p &= (uint8_t)~P_Z;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_Z)));
     r_sep(cr, P_M);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     cyc(108);
     wr8(b | 0x0D2E, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x15);
-    cr->p = nz8(cr->p, 0x15);
+    set_p(cr, nz8(cr->p, 0x15));
     (cyc(78), SoundPort1QueuePush_cr(cr));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->p = nz8(cr->p, 0x01);
+    set_p(cr, nz8(cr->p, 0x01));
     cyc(40);
     wr8(b | 0x19BD, 0x01);
     w_OamHighBits18(cr);
@@ -2623,16 +2693,16 @@ void OamStagePause(Carried *cr)
     v = (uint8_t)(rd8(b | 0x0D2D) - 1);
     cyc(6);
     wr8(b | 0x0D2D, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(24);
     wr8(b | 0x0E5B, 0x00);
     cyc(24);
     wr8(b | 0x0E5F, 0x00);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     cyc(40);
     wr8(b | 0x0D2F, 0x00);
-    stage_loop(cr, b, w_OamStageDispatchBB3C);
+    stage_loop(cr, b, OamStageDispatchBB3C);
     r_plp(cr, p0);
 }
 
@@ -2667,7 +2737,7 @@ void abi_OamStagePause(void)
  */
 void OamStagePauseLoop(Carried *cr)
 {
-    stage_loop(cr, (uint32_t)cr->db << 16, w_OamStageDispatchBB3C);
+    stage_loop(cr, (uint32_t)cr->db << 16, OamStageDispatchBB3C);
     plp_rts_c(cr);
 }
 
@@ -2845,6 +2915,17 @@ void abi_OamHideForHudMode(void)
     pull_p_g(p0);
 }
 
+/* OamHideForHudMode on carried registers, as abi_OamHideForHudMode leaves them. */
+void OamHideForHudMode_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p, v = OamHideForHudMode(cr->db);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->x = hud_x;
+    cr->y = 0;
+    pull_p(cr, p0);
+}
+
 /*
  * @routine 07:BB4C OamStagePause2
  * WHAT IT DOES: As OamStagePause for pad 2: when its Select was pressed
@@ -2867,21 +2948,21 @@ void OamStagePause2(Carried *cr)
     r_lda16(cr, b | 0x0D1C);
     if (!(cr->a & 0x1000)) {
         cyc(68);
-        cr->p |= P_Z;
+        set_p(cr, (uint8_t)(cr->p | (P_Z)));
         r_plp(cr, p0);
         return;
     }
-    cr->p &= (uint8_t)~P_Z;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_Z)));
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
-    cr->p = nz8(cr->p, 0xFF);
+    set_p(cr, nz8(cr->p, 0xFF));
     cyc(108);
     wr8(b | 0x0D2E, 0xFF);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x15);
-    cr->p = nz8(cr->p, 0x15);
+    set_p(cr, nz8(cr->p, 0x15));
     (cyc(78), SoundPort1QueuePush_cr(cr));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
-    cr->p = nz8(cr->p, 0x01);
+    set_p(cr, nz8(cr->p, 0x01));
     cyc(40);
     wr8(b | 0x19BD, 0x01);
     w_OamHighBits58(cr);
@@ -2889,16 +2970,16 @@ void OamStagePause2(Carried *cr)
     v = (uint8_t)(rd8(b | 0x0D2D) - 1);
     cyc(6);
     wr8(b | 0x0D2D, v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
     cyc(24);
     wr8(b | 0x0E5B, 0x00);
     cyc(24);
     wr8(b | 0x0E5F, 0x00);
     cr->a = (uint16_t)(cr->a & 0xFF00);
-    cr->p = nz8(cr->p, 0);
+    set_p(cr, nz8(cr->p, 0));
     cyc(40);
     wr8(b | 0x0D2F, 0x00);
-    stage_loop(cr, b, w_OamStageDispatchBBA2);
+    stage_loop(cr, b, OamStageDispatchBBA2);
     r_plp(cr, p0);
 }
 
@@ -2925,7 +3006,7 @@ void abi_OamStagePause2(void)
  */
 void OamStagePause2Loop(Carried *cr)
 {
-    stage_loop(cr, (uint32_t)cr->db << 16, w_OamStageDispatchBBA2);
+    stage_loop(cr, (uint32_t)cr->db << 16, OamStageDispatchBBA2);
     plp_rts_c(cr);
 }
 
@@ -3142,6 +3223,17 @@ void abi_OverlaySpritesStep(void)
     pull_p_g(p0);
 }
 
+/* OverlaySpritesStep on carried registers, as abi_OverlaySpritesStep leaves them. */
+void OverlaySpritesStep_cr(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    cr->a = OverlaySpritesStep();
+    cr->x = ov_x;
+    cr->y = 0x00C0;
+    pull_p(cr, p0);
+}
+
 /*
  * @routine 04:E06E OverlaySpritesState0
  * WHAT IT DOES: OverlaySpritesStep's state 0 entered from its jump table:
@@ -3181,19 +3273,6 @@ static void oam_wait_tick(Carried *cr, uint32_t b, uint32_t again)
     wr8(b | 0x0D52, 0x00);
 }
 
-static void oam_wait_tick_g(uint32_t b, uint32_t again)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    oam_wait_tick(&c, b, again);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 07:C683 OverlayFramesUntilFaded
  * WHAT IT DOES: Runs frames until the fade's high byte $0D61 is negative:
@@ -3204,18 +3283,18 @@ static void oam_wait_tick_g(uint32_t b, uint32_t again)
  * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte = $0D61 (negative);
  * N set; X, Y as the last call left them.
  */
-void abi_OverlayFramesUntilFaded(void)
+void OverlayFramesUntilFaded(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(0);
     do {
-        op_sep(P_M | P_X);
-        oam_wait_tick_g(b, 0);
+        r_sep(cr, P_M | P_X);
+        oam_wait_tick(cr, b, 0);
         cyc(46);
-        call_routine(0x07C6AA, 0);
-        (cyc(62), abi_OverlaySpritesStep());
-        op_rep(P_M);
+        w_ResultsScreenStep(cr);
+        (cyc(62), w_OverlaySpritesStep(cr));
+        r_rep(cr, P_M);
         cyc(24);
         wr16(b | 0x0D1A, 0x0000);
         cyc(24);
@@ -3224,11 +3303,24 @@ void abi_OverlayFramesUntilFaded(void)
         wr16(b | 0x0309, 0x0000);
         cyc(24);
         wr16(b | 0x030D, 0x0000);
-        op_sep(P_M);
+        r_sep(cr, P_M);
         cyc(46);
-        op_lda8(b | 0x0D61);
-    } while (cyc_loop(22, !(cpu.a & 0x80)));
+        r_lda8(cr, b | 0x0D61);
+    } while (cyc_loop(22, !(cr->a & 0x80)));
     cyc(58);
+}
+
+void abi_OverlayFramesUntilFaded(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OverlayFramesUntilFaded(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* DEC abs (8-bit). */
@@ -3239,40 +3331,14 @@ static void oam_dec8(Carried *cr, uint32_t at)
 
     cyc(6);
     wr8(at, v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void oam_dec8_g(uint32_t at)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    oam_dec8(&c, at);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* LDA # (8-bit). */
 static void oam_lda8(Carried *cr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void oam_lda8_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    oam_lda8(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /*
@@ -3289,33 +3355,33 @@ static void oam_lda8_g(uint8_t v)
  * Entry: any widths. Exit: P unchanged; A = the presses (no START), or A low
  * byte 0 ($0D2D).
  */
-void abi_PauseOnStart(void)
+void PauseOnStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p;
+    uint32_t b = (uint32_t)cr->db << 16;
+    uint8_t p0 = cr->p;
 
-    op_sep(P_M);
-    op_rep(P_M);
+    r_sep(cr, P_M);
+    r_rep(cr, P_M);
     cyc(68);
-    op_lda16(b | 0x0D1A);
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & 0x1000) ? 0 : (cyc(68), P_Z)));
-    if (!(cpu.a & 0x1000)) {
-        op_plp(p0);
+    r_lda16(cr, b | 0x0D1A);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & 0x1000) ? 0 : (cyc(68), P_Z))));
+    if (!(cr->a & 0x1000)) {
+        r_plp(cr, p0);
         return;
     }
-    op_sep(P_M);
-    oam_lda8_g(0x00);
+    r_sep(cr, P_M);
+    oam_lda8(cr, 0x00);
     cyc(108);
     wr8(b | 0x0D2E, 0x00);
     cyc(78);
-    oam_lda8_g(0x15);
-    abi_SoundPort1QueuePush();
-    oam_lda8_g(0x01);
+    oam_lda8(cr, 0x15);
+    SoundPort1QueuePush_cr(cr);
+    oam_lda8(cr, 0x01);
     cyc(40);
     wr8(b | 0x19BD, 0x01);
-    (cyc(46), abi_OamHide75Up());
-    (cyc(46), abi_OamLargeColumns());
-    oam_dec8_g(b | 0x0D2D);
+    (cyc(46), w_OamHide75Up(cr));
+    (cyc(46), w_OamLargeColumns(cr));
+    oam_dec8(cr, b | 0x0D2D);
     cyc(24);
     wr8(b | 0x0E5B, 0x00);
     cyc(24);
@@ -3328,30 +3394,43 @@ void abi_PauseOnStart(void)
     wr8(b | 0x0D34, 0x00);
     cyc(24);
     wr8(b | 0x0D31, 0x00);
-    oam_dec8_g(b | 0x0D22);
-    oam_lda8_g(0x00);
+    oam_dec8(cr, b | 0x0D22);
+    oam_lda8(cr, 0x00);
     cyc(40);
     wr8(b | 0x0D2F, 0x00);
-    oam_lda8_g(0x0A);
+    oam_lda8(cr, 0x0A);
     cyc(40);
     wr8(b | 0x0D23, 0x0A);
     do {
         cyc(22);
-        oam_wait_tick_g(b, 22);
+        oam_wait_tick(cr, b, 22);
         cyc(46);
-        call_routine(0x07BC1C, 0);
-        (cyc(46), abi_PictureTurnStep());
-        op_rep(P_M);
+        w_PauseReplayStages(cr);
+        (cyc(46), w_PictureTurnStep(cr));
+        r_rep(cr, P_M);
         cyc(24);
         wr16(b | 0x0D1A, 0x0000);
         cyc(24);
         wr16(b | 0x0D1C, 0x0000);
-        op_sep(P_M);
+        r_sep(cr, P_M);
         cyc(46);
-        op_lda8(b | 0x0D2D);
-    } while (cyc_loop(22, (uint8_t)cpu.a));
+        r_lda8(cr, b | 0x0D2D);
+    } while (cyc_loop(22, (uint8_t)cr->a));
     cyc(44);
-    op_plp(p0);
+    r_plp(cr, p0);
+}
+
+void abi_PauseOnStart(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PauseOnStart(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* PHP, SEP #$20, REP #$10, OamHideRange from `offset` for 9 sprites,
@@ -3435,25 +3514,6 @@ static void w_OamHighBits18(Carried *cr)
     cr->y &= 0x00FF;
 }
 
-/* OamStageDispatchBB3C, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OamStageDispatchBB3C(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OamStageDispatchBB3C();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* OamHighBits58 as its adapter leaves the registers. */
 static void w_OamHighBits58(Carried *cr)
 {
@@ -3462,9 +3522,20 @@ static void w_OamHighBits58(Carried *cr)
     cr->y &= 0x00FF;
 }
 
-/* OamStageDispatchBBA2, still in registers: its call with the registers loaded and taken
+/* OverlaySpritesStep as its adapter leaves the registers. */
+static void w_OverlaySpritesStep(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    cr->a = OverlaySpritesStep();
+    cr->x = ov_x;
+    cr->y = 0x00C0;
+    pull_p(cr, p0);
+}
+
+/* ResultsScreenStep, still in registers: its call with the registers loaded and taken
    back. */
-static void w_OamStageDispatchBBA2(Carried *cr)
+static void w_ResultsScreenStep(Carried *cr)
 {
     cpu.a = cr->a;
     cpu.x = cr->x;
@@ -3472,11 +3543,63 @@ static void w_OamStageDispatchBBA2(Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
-    abi_OamStageDispatchBBA2();
+    abi_ResultsScreenStep();
     cr->a = cpu.a;
     cr->x = cpu.x;
     cr->y = cpu.y;
     cr->d = cpu.d;
     cr->p = cpu.p;
     cr->db = cpu.db;
+}
+
+/* OamHide75Up as its adapter leaves the registers. */
+static void w_OamHide75Up(Carried *cr)
+{
+    OamHide75Up(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
+    cr->x = cr->p & P_X ? (cyc(0), 0x0000) : 0x0200;  /* the final pull restores X's width */
+    cr->y = 0x0000;
+}
+
+/* OamLargeColumns as its adapter leaves the registers. */
+static void w_OamLargeColumns(Carried *cr)
+{
+    OamLargeColumns(cr->db);
+    cr->a = 0x06AA;
+    cr->x = cr->p & P_X ? 0x00C0 : 0x01C0;  /* the final pull restores X's width */
+    cr->y = 0x0000;
+}
+
+/* PauseReplayStages, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_PauseReplayStages(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_PauseReplayStages();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* PictureTurnStep as its adapter leaves the registers. */
+static void w_PictureTurnStep(Carried *cr)
+{
+    uint8_t p0 = cr->p;
+
+    if (PictureTurnStep(cr->db)) {
+        cr->a = pt_a;
+        cr->x = pt_x;
+        cr->y = pt_y;
+    } else {
+        cr->a = (uint16_t)((cr->a & 0xFF00) | pt_a);
+    }
+    pull_p(cr, p0);
 }

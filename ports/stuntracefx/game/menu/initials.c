@@ -14,6 +14,7 @@ uint16_t MenuActorSpawn(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y, u
 uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p);
 uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 uint16_t MenuFixedColourDown(uint8_t bank, uint16_t x, uint8_t *p);
+#include "audio_calls.h"
 
 void SoundPort0QueuePush(uint8_t command);
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -258,9 +259,9 @@ static void w_MenuActorsSet10(Carried *cr);
 static void w_MenuChoicePressesP1(Carried *cr);
 static void w_MenuFixedColourDown(Carried *cr);
 static void w_MenuInitialsPresses(Carried *cr);
+static void w_SoundPort0QueuePushRaw(Carried *cr);
 void MenuActorFind_cr(Carried *cr);
 void RaceFrameStep(Carried *cr);
-void SoundPort0QueuePushRaw_cr(Carried *cr);
 void SoundPort0QueuePush_cr(Carried *cr);
 
 /* Direct page word off + X. */
@@ -272,11 +273,11 @@ static uint32_t dpx(Carried *cr, uint8_t off)
 /* Sound n on port 0 with 8-bit A (SEP, LDA, JSL, REP). */
 static void sound_port0(Carried *cr, uint8_t n)
 {
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | n);
-    cr->p = nz8(cr->p, n);
+    set_p(cr, nz8(cr->p, n));
     (cyc(100), SoundPort0QueuePush_cr(cr));
-    cr->p &= (uint8_t)~P_M;
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
 }
 
 /* MenuActorsSet10 for kind k with value v. */
@@ -284,7 +285,7 @@ static void set10(Carried *cr, uint16_t k, uint16_t v)
 {
     cr->a = k;
     cr->y = v;
-    cr->p = nz16(cr->p, v);
+    set_p(cr, nz16(cr->p, v));
     (cyc(94), w_MenuActorsSet10(cr));
 }
 
@@ -293,7 +294,7 @@ static void set10(Carried *cr, uint16_t k, uint16_t v)
 static void kind_anim(Carried *cr, uint16_t k, uint16_t n)
 {
     cr->a = k;
-    cr->p = nz16(cr->p, k);
+    set_p(cr, nz16(cr->p, k));
     (cyc(70), MenuActorFind_cr(cr));
     cr->a = rd16(cyc_then(22, dpx(cr, 0x14)));
     r_cmp16(cr, n);
@@ -332,7 +333,7 @@ void MenuInitialsFrame(Carried *cr)
 
     w_MenuFixedColourDown(cr);
     cr->a = 0x0000;
-    cr->p = nz16(cr->p, 0);
+    set_p(cr, nz16(cr->p, 0));
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
     cyc(56);
@@ -352,7 +353,7 @@ void MenuInitialsFrame(Carried *cr)
         sound_port0(cr, 0x46);
         cyc(46);
         cr->y = rd16(b | 0x11FB);
-        cr->p = nz16(cr->p, cr->y);
+        set_p(cr, nz16(cr->p, cr->y));
         (cyc(46), w_MenuActorFree(cr));
         cyc(42);
         return;
@@ -370,7 +371,7 @@ void MenuInitialsFrame(Carried *cr)
             kind_anim(cr, 0x0006, 0x00AE);
             kind_anim(cr, 0x0007, 0x00B8);
             cr->x = x;                           /* PLX */
-            cr->p = nz16(cr->p, x);
+            set_p(cr, nz16(cr->p, x));
         }
         cyc(36);
         set10(cr, 0x0008, 0xFFFF);
@@ -407,7 +408,7 @@ void MenuInitialsFrame(Carried *cr)
     cr->a = 0x0000;
     cyc(56);
     wr16(0x001191, 0x0000);
-    cr->p = nz16(cr->p, 0);
+    set_p(cr, nz16(cr->p, 0));
     cyc(42);
 }
 
@@ -469,10 +470,10 @@ void MenuSettingsFrame(Carried *cr)
     unsigned k;
 
     cr->a = rd16(cyc_then(22, dpx(cr, 0x0A)));
-    cr->p = nz16(cr->p, cr->a);
+    set_p(cr, nz16(cr->p, cr->a));
     if (cr->a) {
         cr->a = (uint16_t)(cr->a - 1);
-        cr->p = nz16(cr->p, cr->a);
+        set_p(cr, nz16(cr->p, cr->a));
         wr16(dpx(cr, 0x0A), cyc_then(52, cr->a));
         v = cr->a;
         r_cmp16(cr, 0x0013);
@@ -480,15 +481,15 @@ void MenuSettingsFrame(Carried *cr)
             cyc(82);
             if (v != 0x0013)
                 { cyc(4); r_cmp16(cr, v); } else { cyc(26); }
-            cr->p |= P_M;
+            set_p(cr, (uint8_t)(cr->p | (P_M)));
             cr->a = (uint16_t)((cr->a & 0xFF00) | 0x3F);
-            cr->p = nz8(cr->p, 0x3F);
-            SoundPort0QueuePushRaw_cr(cr);
-            cr->p &= (uint8_t)~P_M;
+            set_p(cr, nz8(cr->p, 0x3F));
+            w_SoundPort0QueuePushRaw(cr);
+            set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         } else
             r_cmp16(cr, 0x0004);
         cr->a = rd16(cyc_then(52, dpx(cr, 0x0A)));
-        cr->p = nz16(cr->p, cr->a);
+        set_p(cr, nz16(cr->p, cr->a));
         if (!cr->a)
             { cyc(16); kind_anim(cr, 0x0004, 0x008A); } else { cyc(22); }
     } else { cyc(22); }
@@ -497,10 +498,10 @@ void MenuSettingsFrame(Carried *cr)
     (cyc(46), w_MenuFixedColourDown(cr));
     (cyc(46), w_MenuFixedColourDown(cr));
     cr->a = 0x0000;
-    cr->p = nz16(cr->p, 0);
+    set_p(cr, nz16(cr->p, 0));
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
-    cr->p = nz16(cr->p, 1);
+    set_p(cr, nz16(cr->p, 1));
     cyc(56);
     wr16(0x0018FD, 0x0001);
     cyc(24);
@@ -524,7 +525,7 @@ void MenuSettingsFrame(Carried *cr)
         wr16(dpx(cr, 0x0A), cyc_then(46, 0x0080));
         sound_port0(cr, 0x47);
         cr->x = 0x027E;
-        cr->p = nz16(cr->p, 0x027E);
+        set_p(cr, nz16(cr->p, 0x027E));
         (cyc(92), w_MenuActorSpawn(cr));
         cyc(0);
         set10(cr, 0x0004, 0xFFFF);
@@ -532,7 +533,7 @@ void MenuSettingsFrame(Carried *cr)
         kinds67_anim(cr);
         cyc(60);
         cr->x = rd16(b | 0x11F9);
-        cr->p = nz16(cr->p, cr->x);
+        set_p(cr, nz16(cr->p, cr->x));
         cyc(42);
         return;
     }
@@ -566,18 +567,18 @@ void MenuSettingsFrame(Carried *cr)
                 cyc(56);
                 wr16(0x7EFD65, 0x464A);
                 cr->a = 0x0000;
-                cr->p = nz16(cr->p, 0);
+                set_p(cr, nz16(cr->p, 0));
                 cyc(56);
                 wr16(0x001193, 0x0000);
                 r_sep(cr, P_M);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0xE0);
-                cr->p = nz8(cr->p, 0xE0);
+                set_p(cr, nz8(cr->p, 0xE0));
                 {
                     cyc(198);
                     uint16_t x = cr->x;
 
                     cr->x = 0x420C;
-                    cr->p = nz16(cr->p, 0x420C);
+                    set_p(cr, nz16(cr->p, 0x420C));
                     w_FrameByteWritePush(cr);
                     cr->x = x;
                 }
@@ -587,7 +588,7 @@ void MenuSettingsFrame(Carried *cr)
             } else { cyc(40); }
             sound_port0(cr, 0x46);
             cr->a = 0x0000;
-            cr->p = nz16(cr->p, 0);
+            set_p(cr, nz16(cr->p, 0));
             cyc(78);
             wr16(0x00190B, 0x0000);
             cyc(32);
@@ -600,7 +601,7 @@ void MenuSettingsFrame(Carried *cr)
             cr->a = 0xC225;
             wr16(dpx(cr, 0x08), cyc_then(46, 0xC225));
             cr->a = 0x0000;
-            cr->p = nz16(cr->p, 0);
+            set_p(cr, nz16(cr->p, 0));
             cyc(56);
             wr16(0x001191, 0x0000);
             cyc(42);
@@ -650,7 +651,7 @@ static void w_MenuActorsSet10(Carried *cr)
 
     cr->a = MenuActorsSet10(cr->db, cr->a, cr->y, &p);
     cr->y = 0xFFFE;
-    cr->p = nz16(p, cr->x);
+    set_p(cr, nz16(p, cr->x));
 }
 
 /* MenuActorFree as its adapter leaves the registers. */
@@ -658,7 +659,7 @@ static void w_MenuActorFree(Carried *cr)
 {
     cr->a = MenuActorFree(cr->db, cr->x, cr->y);
     cr->x = 0xFFFF;
-    cr->p = (uint8_t)((cr->p & ~P_Z) | P_N);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
     cyc(42);
 }
 
@@ -668,7 +669,7 @@ static void w_MenuFixedColourDown(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = MenuFixedColourDown(cr->db, cr->x, &p);
-    cr->p = (uint8_t)(p & ~(P_M | P_X));
+    set_p(cr, (uint8_t)(p & ~(P_M | P_X)));
     cyc(64);
 }
 
@@ -678,7 +679,7 @@ static void w_MenuInitialsPresses(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = MenuInitialsPresses(cr->db, &cr->x, &cr->y, &p);
-    cr->p = p;
+    set_p(cr, p);
 }
 
 /* FrameByteWritePush as its adapter leaves the registers. */
@@ -693,7 +694,7 @@ static void w_MenuActorSpawn(Carried *cr)
     uint8_t p = cr->p;
 
     cr->x = MenuActorSpawn(cr->db, cr->x, &cr->a, &cr->y, &p);
-    cr->p = p;
+    set_p(cr, p);
 }
 
 /* MenuChoicePressesP1 as its adapter leaves the registers. */
@@ -702,5 +703,13 @@ static void w_MenuChoicePressesP1(Carried *cr)
     uint8_t p = cr->p;
 
     cr->a = MenuChoicePressesP1(cr->db, &cr->x, &cr->y, &p);
-    cr->p = p;
+    set_p(cr, p);
+}
+
+/* SoundPort0QueuePushRaw as its adapter leaves the registers. */
+static void w_SoundPort0QueuePushRaw(Carried *cr)
+{
+    SoundPort0QueuePushRaw((uint8_t)cr->a);
+    set_p(cr, nz8(cr->p, cr->db));  /* the last pull restores DB */
+    cyc(8);
 }

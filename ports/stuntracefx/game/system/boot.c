@@ -9,6 +9,8 @@
 #include "carried.h"
 
 void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count);
+void abi_AttractCourseSetup(void);
+void abi_KeepRegisters(void);
 
 void abi_ApuUploadBank19(void);
 void abi_SaveUnlocksCheck(void);
@@ -40,7 +42,7 @@ static void boot_lda8(Carried *cr, uint8_t v);
 static void boot_ldx(Carried *cr, uint16_t v);
 static void boot_ldy(Carried *cr, uint16_t v);
 static void w_WramFillZero(Carried *cr);
-void WramFillZeroLong(Carried *cr);
+static void w_WramFillZeroLong(Carried *cr);
 
 /*
  * @routine 03:89B4 HardwareRegsInit
@@ -155,7 +157,7 @@ void HardwareRegsInit(Carried *cr)
     cr->a = (uint16_t)(cr->a & 0xFF00);
     cr->x = 0x00FF;
     cr->y = 0x0030;
-    cr->p = (uint8_t)((cr->p & ~P_Z) | P_N);
+    set_p(cr, (uint8_t)((cr->p & ~P_Z) | P_N));
 }
 
 void abi_HardwareRegsInit(void)
@@ -176,7 +178,7 @@ static void boot_lda8(Carried *cr, uint8_t v)
 {
     cyc(40);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
+    set_p(cr, nz8(cr->p, v));
 }
 
 static void boot_lda8_g(uint8_t v)
@@ -197,7 +199,7 @@ static void boot_ldx(Carried *cr, uint16_t v)
 {
     cyc(22);
     cr->x = v;
-    cr->p = nz16(cr->p, v);
+    set_p(cr, nz16(cr->p, v));
 }
 
 static void boot_ldx_g(uint16_t v)
@@ -216,14 +218,14 @@ static void boot_ldx_g(uint16_t v)
 static void boot_ldy(Carried *cr, uint16_t v)
 {
     cr->y = v;
-    cr->p = nz16(cr->p, v);
+    set_p(cr, nz16(cr->p, v));
 }
 
 /* PHK, PLB: the data bank $03. */
 static void boot_bank03(Carried *cr)
 {
     cr->db = 0x03;
-    cr->p = nz8(cr->p, 0x03);
+    set_p(cr, nz8(cr->p, 0x03));
 }
 
 static void boot_bank03_g(void)
@@ -283,7 +285,7 @@ static void boot_clear(Carried *cr, void (*fill)(Carried *), uint32_t first, uin
     cr->db = 0x70;
     r_plp(cr, p);
     cr->db = db;
-    cr->p = nz8(cr->p, db);
+    set_p(cr, nz8(cr->p, db));
 }
 
 static void boot_clear_g(void (*fill)(Carried *), uint32_t first, uint32_t rest, uint32_t after)
@@ -307,7 +309,7 @@ static void boot_blank(Carried *cr, uint32_t b)
     hdmaen_wr(b | HDMAEN, 0x00);
     boot_lda8(cr, 0x80);
     ppu_wr(b | INIDISP, 0x80);
-    cr->p |= P_I;
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
 }
 
 static void boot_blank_g(uint32_t b)
@@ -494,7 +496,7 @@ attract:
     boot_blank_g(b);
     (cyc(78), boot_stack());
     op_sep(P_M | P_X);
-    call_routine(0x02CF3E, 1);
+    abi_KeepRegisters();
     abi_WindowsInit();
     op_sep(P_M);
     op_rep(P_X);
@@ -509,7 +511,7 @@ attract:
     op_sep(P_M);
     op_rep(P_X);
     cyc(98);
-    call_routine(0x02CF45, 1);
+    abi_AttractCourseSetup();
     (cyc(62), abi_CourseDataPointer());
     (cyc(62), abi_CourseScriptRun());
     (cyc(62), abi_ObjectPlaceAll());
@@ -580,7 +582,7 @@ soft_rest:
     hdmaen_wr(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear_g(WramFillZeroLong, 86, 64, 62);
+    boot_clear_g(w_WramFillZeroLong, 86, 64, 62);
     abi_SoftResetApuLong();
     b = (uint32_t)cpu.db << 16;
     cyc(24); /* JMP */
@@ -701,5 +703,24 @@ static void w_WramFillZero(Carried *cr)
     WramFillZero((uint8_t)cr->a, cr->x, cr->y);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     cr->x = 0x8008;
-    cr->p = (uint8_t)(cr->p & ~(P_N | P_Z));
+    set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z)));
+}
+
+/* WramFillZeroLong, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_WramFillZeroLong(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_WramFillZeroLong();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }

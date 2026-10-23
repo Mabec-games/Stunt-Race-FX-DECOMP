@@ -7,7 +7,15 @@
 #include "hw.h"
 #include "carried.h"
 
+uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p);
+uint8_t GsuRun(uint8_t bank, uint16_t start);
+uint16_t ObjectLinkedSet1A(uint16_t obj, uint16_t value);
+uint16_t ObjectPlaceAll(uint8_t bank);
 #include "hud_calls.h"
+void abi_AttractCourseSetup(void);
+void abi_DemoRun(void);
+void abi_DemoRunThirdRest(void);
+void abi_KeepRegisters(void);
 
 /*
  * @routine 7E:E18B DataBankTest
@@ -20,14 +28,15 @@ void DataBankTest(void)
 {
 }
 
-void abi_DataBankTest(void)
-{
-    cyc(144);
-    cpu.p = nz8(cpu.p, cpu.db);
-}
-
 void ChampionshipFinish(Carried *cr);
+void DataBankTest_cr(Carried *cr);
 void DelayLoop13(Carried *cr);
+void DemoRun(Carried *cr);
+void DemoRunFirst(Carried *cr);
+void DemoRunFourth(Carried *cr);
+void DemoRunSecond(Carried *cr);
+void DemoRunThird(Carried *cr);
+void DemoRunThirdRest(Carried *cr);
 void WramFillZeroLong(Carried *cr);
 static void demo_blank(Carried *cr, uint32_t b);
 static void demo_camera(Carried *cr, uint8_t db);
@@ -38,14 +47,46 @@ static void demo_next(Carried *cr, uint16_t n);
 static void demo_next_before(Carried *cr, uint16_t n);
 static uint32_t dp_addr(Carried *cr, uint8_t a);
 static void w_BootSoftRestart(Carried *cr);
-static void w_OverlayFramesUntilFaded(Carried *cr);
+static void w_CourseDataPointer(Carried *cr);
+static void w_CourseScriptRun(Carried *cr);
+static void w_GsuRun(Carried *cr);
+static void w_KeepRegisters(Carried *cr);
+static void w_ObjectLinkedSet1A(Carried *cr);
+static void w_ObjectPlaceAll(Carried *cr);
+static void w_ObjectsRunHandlers(Carried *cr);
+static void w_PlayerStatsAndPaletteAnimate(Carried *cr);
 static void w_RecordTimeInsert(Carried *cr);
-static void w_RecordsUnpackCourseRunning(Carried *cr);
+static void w_Set7EFFA6Sequence(Carried *cr);
 static void w_SoftResetToBootWarm(Carried *cr);
+static void w_WindowsInit(Carried *cr);
 static void w_WramFillZero(Carried *cr);
+void AttractCourseSetup(Carried *cr);
 void CameraFollowStep_cr(Carried *cr);
 void ChampionScreenRun(Carried *cr);
 void ObjectFaceTied_cr(Carried *cr);
+void OverlayFramesUntilFaded(Carried *cr);
+void RaceFrameRun(Carried *cr);
+void RaceVideoInit_cr(Carried *cr);
+void RecordsUnpackCourseRunning(Carried *cr);
+
+void DataBankTest_cr(Carried *cr)
+{
+    cyc(144);
+    set_p(cr, nz8(cr->p, cr->db));
+}
+
+void abi_DataBankTest(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DataBankTest_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
 
 /*
  * @routine 7E:D2BA DelayLoop13
@@ -244,23 +285,23 @@ void ChampionshipFinish(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     wr8(b | 0x0D59, 0x00);
-    (cyc(46), w_OverlayFramesUntilFaded(cr));
-    cr->p |= P_M;
+    (cyc(46), OverlayFramesUntilFaded(cr));
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     wr8(b | 0x0D48, 0x00);
     (cyc(46), w_RecordTimeInsert(cr));
-    (cyc(62), w_RecordsUnpackCourseRunning(cr));
-    cr->p &= (uint8_t)~P_M;
+    (cyc(62), RecordsUnpackCourseRunning(cr));
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     (cyc(0), ChampionScreenRun(cr));
-    cr->p |= P_M;
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
     v = rd8(b | 0x0D4A);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, (uint8_t)(v - 0x02));
-    cr->p = (uint8_t)(v >= 0x02 ? (cyc(64), cr->p | P_C) : (cyc(62), cr->p & ~P_C));
+    set_p(cr, nz8(cr->p, (uint8_t)(v - 0x02)));
+    set_p(cr, (uint8_t)(v >= 0x02 ? (cyc(64), cr->p | P_C) : (cyc(62), cr->p & ~P_C)));
     if (v == 0x02)
         w_BootSoftRestart(cr);
     else
@@ -392,15 +433,28 @@ void abi_WramFillZero(void)
  * jump_routine).
  * Entry: D = $0000. Exit: as the demo run leaves it.
  */
+void DemoRunFirst(Carried *cr)
+{
+    r_rep(cr, P_M | P_X);
+    cr->a = 0x0000;
+    set_p(cr, nz16(cr->p, 0));
+    cyc(48);
+    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x0000);
+    cyc(24);
+    DemoRun(cr);
+}
+
 void abi_DemoRunFirst(void)
 {
-    op_rep(P_M | P_X);
-    cpu.a = 0x0000;
-    cpu.p = nz16(cpu.p, 0);
-    cyc(48);
-    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0000);
-    cyc(24);
-    jump_routine(0x038683);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DemoRunFirst(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -436,15 +490,28 @@ void abi_WramFillZeroLong(void)
  * HOW: A tail JMP into the demo run (DemoRun, jump_routine).
  * Entry: D = $0000. Exit: as the demo run leaves it.
  */
+void DemoRunSecond(Carried *cr)
+{
+    r_rep(cr, P_M | P_X);
+    cr->a = 0x006B;
+    set_p(cr, nz16(cr->p, cr->a));
+    cyc(48);
+    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x006B);
+    cyc(24);
+    DemoRun(cr);
+}
+
 void abi_DemoRunSecond(void)
 {
-    op_rep(P_M | P_X);
-    cpu.a = 0x006B;
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(48);
-    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x006B);
-    cyc(24);
-    jump_routine(0x038683);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DemoRunSecond(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -454,16 +521,29 @@ void abi_DemoRunSecond(void)
  * HOW: A JSL to the demo run, then on into DemoRunThirdRest.
  * Entry: D = $0000. Exit: as the demo run leaves it.
  */
+void DemoRunThird(Carried *cr)
+{
+    r_rep(cr, P_M | P_X);
+    cr->a = 0x0159;
+    set_p(cr, nz16(cr->p, cr->a));
+    cyc(48);
+    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x0159);
+    cyc(62);
+    DemoRun(cr);
+    DemoRunThirdRest(cr);
+}
+
 void abi_DemoRunThird(void)
 {
-    op_rep(P_M | P_X);
-    cpu.a = 0x0159;
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(48);
-    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0159);
-    cyc(62);
-    call_routine(0x038683, 1);
-    jump_routine(0x03866A);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DemoRunThird(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -477,23 +557,36 @@ void abi_DemoRunThird(void)
  * frames, B pressed once the second demo waits for it).
  * Entry: D = $0000. Exit: as the second demo run leaves it.
  */
+void DemoRunThirdRest(Carried *cr)
+{
+    r_rep(cr, P_M | P_X);
+    cr->a = 0x01FA;
+    set_p(cr, nz16(cr->p, cr->a));
+    cyc(48);
+    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x01FA);
+    cyc(62);
+    DemoRun(cr);
+    r_rep(cr, P_M | P_X);
+    cr->a = 0x0287;
+    set_p(cr, nz16(cr->p, cr->a));
+    cyc(48);
+    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x0287);
+    cyc(62);
+    DemoRun(cr);
+    cyc(44);
+}
+
 void abi_DemoRunThirdRest(void)
 {
-    op_rep(P_M | P_X);
-    cpu.a = 0x01FA;
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(48);
-    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x01FA);
-    cyc(62);
-    call_routine(0x038683, 1);
-    op_rep(P_M | P_X);
-    cpu.a = 0x0287;
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(48);
-    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0287);
-    cyc(62);
-    call_routine(0x038683, 1);
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DemoRunThirdRest(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -503,13 +596,26 @@ void abi_DemoRunThirdRest(void)
  * HOW: A tail JMP into the demo run (DemoRun, jump_routine).
  * Entry: D = $0000. Exit: as the demo run leaves it.
  */
+void DemoRunFourth(Carried *cr)
+{
+    r_rep(cr, P_M | P_X);
+    cr->a = 0x00FC;
+    set_p(cr, nz16(cr->p, cr->a));
+    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x00FC);
+    DemoRun(cr);
+}
+
 void abi_DemoRunFourth(void)
 {
-    op_rep(P_M | P_X);
-    cpu.a = 0x00FC;
-    cpu.p = nz16(cpu.p, cpu.a);
-    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x00FC);
-    jump_routine(0x038683);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DemoRunFourth(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
@@ -533,39 +639,12 @@ static uint32_t dp_addr(Carried *cr, uint8_t a)
     return (uint16_t)(cr->d + a);
 }
 
-static uint32_t dp_addr_g(uint8_t a)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint32_t ret_ = dp_addr(&c, a);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 /* LDA #v with M 8-bit. */
 static void demo_lda8(Carried *cr, uint8_t v)
 {
     cyc(40);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
-    cr->p = nz8(cr->p, v);
-}
-
-static void demo_lda8_g(uint8_t v)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    demo_lda8(&c, v);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, nz8(cr->p, v));
 }
 
 /* SEP #$20, HDMA off, the screen blanked, SEI. */
@@ -576,20 +655,7 @@ static void demo_blank(Carried *cr, uint32_t b)
     hdmaen_wr(b | HDMAEN, 0x00);
     demo_lda8(cr, 0x80);
     ppu_wr(b | INIDISP, 0x80);
-    cr->p |= P_I;
-}
-
-static void demo_blank_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    demo_blank(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
 }
 
 /* LDA $0D61 (16-bit), its low byte sign-extended (BIT #$80, ORA #$FF00 or
@@ -603,22 +669,8 @@ static int demo_fade_done(Carried *cr, uint32_t b)
         cr->a |= 0xFF00;
     else
         { cyc(92); cr->a &= 0x00FF; }
-    cr->p = nz16(cr->p, cr->a);
+    set_p(cr, nz16(cr->p, cr->a));
     return (cr->a & 0x8000) != 0;
-}
-
-static int demo_fade_done_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = demo_fade_done(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
 }
 
 /* SEP #$20, $0E3A = 1 (the fade out started), REP #$20. */
@@ -631,19 +683,6 @@ static void demo_fade_out(Carried *cr, uint32_t b)
     r_rep(cr, P_M);
 }
 
-static void demo_fade_out_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    demo_fade_out(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The camera object $1A64 moved: CameraFollowStep and ObjectFaceTied with
    the data bank $7E (PHB, PLB around them), then REP #$30. */
 static void demo_camera(Carried *cr, uint8_t db)
@@ -653,25 +692,12 @@ static void demo_camera(Carried *cr, uint8_t db)
     demo_lda8(cr, 0x7E);
     cr->db = 0x7E;
     cr->x = 0x1A64;
-    cr->p = nz16(cr->p, 0x1A64);
+    set_p(cr, nz16(cr->p, 0x1A64));
     CameraFollowStep_cr(cr);
     (cyc(62), ObjectFaceTied_cr(cr));
     cr->db = db;
-    cr->p = nz8(cr->p, db);
+    set_p(cr, nz8(cr->p, db));
     r_rep(cr, P_M | P_X);
-}
-
-static void demo_camera_g(uint8_t db)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    demo_camera(&c, db);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* X += n (TXA, CLC, ADC #n, TAX). */
@@ -679,21 +705,8 @@ static void demo_next(Carried *cr, uint16_t n)
 {
     cyc(90);
     cr->a = (uint16_t)(cr->x + n);
-    cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~(P_C | P_V));
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~(P_C | P_V)));
     cr->x = cr->a;
-}
-
-static void demo_next_g(uint16_t n)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    demo_next(&c, n);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /* As demo_next without its closing JMP (24): for a command that stores
@@ -702,21 +715,8 @@ static void demo_next_before(Carried *cr, uint16_t n)
 {
     cyc(66);
     cr->a = (uint16_t)(cr->x + n);
-    cr->p = (uint8_t)(nz16(cr->p, cr->a) & ~(P_C | P_V));
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~(P_C | P_V)));
     cr->x = cr->a;
-}
-
-static void demo_next_before_g(uint16_t n)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    demo_next_before(&c, n);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
 }
 
 /*
@@ -749,254 +749,254 @@ static void demo_next_before_g(uint16_t n)
  * when a button ended the demo; A = $1A5B & $40, $1A5B cleared; M 16-bit,
  * X 16-bit.
  */
-void abi_DemoRun(void)
+void DemoRun(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x, v, w;
     uint8_t db, c;
     uint8_t p;
 
-    op_rep(P_M | P_X);
+    r_rep(cr, P_M | P_X);
     cyc(24);
-    cpu.x = rd16(b | 0x1A57);
+    cr->x = rd16(b | 0x1A57);
     cyc(72);
-    op_lda16(0x038006 + cpu.x);
-    wr16(b | 0x0E3D, cpu.a);
-    op_lda16_imm(0x0020);
+    r_lda16(cr, 0x038006 + cr->x);
+    wr16(b | 0x0E3D, cr->a);
+    r_lda16_imm(cr, 0x0020);
     cyc(10);
     wr16(b | 0x1A5B, 0x0020);
     cyc(24);
-    cpu.x = rd16(b | 0x1A57);
+    cr->x = rd16(b | 0x1A57);
     cyc(80);
-    op_lda16(0x038004 + cpu.x);
-    wr16(0x0018DB, cpu.a);
-    op_lda16_imm(0x0000);
+    r_lda16(cr, 0x038004 + cr->x);
+    wr16(0x0018DB, cr->a);
+    r_lda16_imm(cr, 0x0000);
     cyc(10);
     wr16(b | 0x0D2B, 0x0000);
-    op_sep(P_M);
-    demo_lda8_g(0x01);
+    r_sep(cr, P_M);
+    demo_lda8(cr, 0x01);
     cyc(22);
     wr8(b | 0x0374, 0x01);
-    demo_lda8_g(0x01);
+    demo_lda8(cr, 0x01);
     hw_wr(b | 0x3039, 0x01);
-    demo_lda8_g(0x20);
+    demo_lda8(cr, 0x20);
     hw_wr(b | 0x3037, 0x20);
-    demo_lda8_g(0x0B);
+    demo_lda8(cr, 0x0B);
     hw_wr(b | 0x3038, 0x0B);
-    (cyc(62), abi_Set7EFFA6Sequence());
-    b = (uint32_t)cpu.db << 16;
-    demo_blank_g(b);
-    (cyc(76), abi_RaceVideoInit());
-    cpu.db = 0x03;
-    cpu.p = nz8(cpu.p, 0x03);
+    (cyc(62), w_Set7EFFA6Sequence(cr));
+    b = (uint32_t)cr->db << 16;
+    demo_blank(cr, b);
+    (cyc(76), RaceVideoInit_cr(cr));
+    cr->db = 0x03;
+    set_p(cr, nz8(cr->p, 0x03));
     b = 0x030000;
     cyc(50);
-    demo_blank_g(b);
-    op_sep(P_M | P_X);
+    demo_blank(cr, b);
+    r_sep(cr, P_M | P_X);
     cyc(138);
-    call_routine(0x02CF3E, 1);
-    abi_WindowsInit();
-    op_sep(P_M);
-    op_rep(P_X);
-    b = (uint32_t)cpu.db << 16;
-    demo_lda8_g(0x01);
+    w_KeepRegisters(cr);
+    w_WindowsInit(cr);
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
+    b = (uint32_t)cr->db << 16;
+    demo_lda8(cr, 0x01);
     cyc(22);
     hw_wr(b | 0x3039, 0x01);
-    demo_lda8_g(0x01);
+    demo_lda8(cr, 0x01);
     cyc(8);
     wr8(0x7EFF65, 0x01);
-    cpu.p |= P_I;
+    set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(76);
-    call_routine(0x02CF45, 1);
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
-    demo_lda8_g(0x03);
+    AttractCourseSetup(cr);
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
+    demo_lda8(cr, 0x03);
     cyc(22);
     wr8(b | 0x0D2B, 0x03);
-    (cyc(62), abi_CourseDataPointer());
-    (cyc(62), abi_CourseScriptRun());
-    (cyc(62), abi_ObjectPlaceAll());
-    op_sep(P_M);
-    op_rep(P_X);
+    (cyc(62), w_CourseDataPointer(cr));
+    (cyc(62), w_CourseScriptRun(cr));
+    (cyc(62), w_ObjectPlaceAll(cr));
+    r_sep(cr, P_M);
+    r_rep(cr, P_X);
     cyc(84);
-    demo_lda8_g(0x04);
-    cpu.x = 0x8800;
-    cpu.p = nz16(cpu.p, 0x8800);
-    abi_GsuRun();
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
-    demo_lda8_g(0x01);
+    demo_lda8(cr, 0x04);
+    cr->x = 0x8800;
+    set_p(cr, nz16(cr->p, 0x8800));
+    w_GsuRun(cr);
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
+    demo_lda8(cr, 0x01);
     cyc(22);
     wr8(b | 0x0357, 0x01);
     cyc(24);
     wr8(b | 0x05E9, 0x00);
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(24);
     wr16(b | 0x1A59, 0x0000);
-    (cyc(62), abi_ObjectsRunHandlers());
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
+    (cyc(62), w_ObjectsRunHandlers(cr));
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
     cyc(54);
-    op_lda8(TIMEUP);
-    op_rep(P_M);
-    cpu.p &= (uint8_t)~P_I;
-    op_rep(P_M | P_X);
+    r_lda8(cr, TIMEUP);
+    r_rep(cr, P_M);
+    set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
+    r_rep(cr, P_M | P_X);
     cyc(46);
-    op_lda16(0x702476);
-    op_tax16();
+    r_lda16(cr, 0x702476);
+    r_tax16(cr);
     cyc(16);
-    op_lda16(0x700064 + cpu.x);
-    cpu.a |= 0x0008;
-    cpu.p = nz16(cpu.p, cpu.a);
+    r_lda16(cr, 0x700064 + cr->x);
+    cr->a |= 0x0008;
+    set_p(cr, nz16(cr->p, cr->a));
     cyc(56);
-    wr16(0x700064 + cpu.x, cpu.a);
-    op_lda16_imm(0x0000);
+    wr16(0x700064 + cr->x, cr->a);
+    r_lda16_imm(cr, 0x0000);
     cyc(18);
     wr16(0x702732, 0x0000);
     cyc(24);
-    op_lda16(b | 0x1A57);
-    op_add16(0x0003);
+    r_lda16(cr, b | 0x1A57);
+    r_add16(cr, 0x0003);
     cyc(62);
-    wr16(b | 0x1A57, cpu.a);
+    wr16(b | 0x1A57, cr->a);
     for (;;) {
         cyc(62);
-        abi_PlayerStatsAndPaletteAnimate();
-        op_rep(P_M | P_X);
-        b = (uint32_t)cpu.db << 16;
+        w_PlayerStatsAndPaletteAnimate(cr);
+        r_rep(cr, P_M | P_X);
+        b = (uint32_t)cr->db << 16;
         cyc(24);
-        cpu.x = rd16(b | 0x1A57);
-        cpu.p = nz16(cpu.p, cpu.x);
+        cr->x = rd16(b | 0x1A57);
+        set_p(cr, nz16(cr->p, cr->x));
         for (;;) {
             /* $8762: the next command, X kept in $1A57. */
             cyc(24);
-            wr16(b | 0x1A57, cpu.x);
+            wr16(b | 0x1A57, cr->x);
             cyc(242);
-            op_lda16(0x038004 + cpu.x);
-            op_and16(0x00FF);
-            c = (uint8_t)cpu.a;
-            op_cmp16(c);
+            r_lda16(cr, 0x038004 + cr->x);
+            r_and16(cr, 0x00FF);
+            c = (uint8_t)cr->a;
+            r_cmp16(cr, c);
             if (c == 0x01) {
-                x = cpu.x;
-                op_lda16(0x038005 + x);
-                cpu.x = rd16(b | 0x0346);
-                cpu.p = nz16(cpu.p, cpu.x);
-                (cyc(62), abi_ObjectLinkedSet1A());
-                cpu.x = x;
-                op_rep(P_M | P_X);
+                x = cr->x;
+                r_lda16(cr, 0x038005 + x);
+                cr->x = rd16(b | 0x0346);
+                set_p(cr, nz16(cr->p, cr->x));
+                (cyc(62), w_ObjectLinkedSet1A(cr));
+                cr->x = x;
+                r_rep(cr, P_M | P_X);
                 cyc(36);
-                demo_next_g(0x0003);
+                demo_next(cr, 0x0003);
                 continue;
             } else { cyc(16); }
             if (c == 0x03) {
-                op_lda16(0x038005 + cpu.x);
-                op_cmp16(rd16(b | 0x1A59));
-                if (!(cpu.p & P_Z))
+                r_lda16(cr, 0x038005 + cr->x);
+                r_cmp16(cr, rd16(b | 0x1A59));
+                if (!(cr->p & P_Z))
                     break; else { cyc(22); }
-                demo_next_g(0x0003);
+                demo_next(cr, 0x0003);
                 continue;
             } else { cyc(54); }
             if (c == 0x02) {
-                op_lda16(0x038005 + cpu.x);
-                wr16(0x702732, cpu.a);
+                r_lda16(cr, 0x038005 + cr->x);
+                wr16(0x702732, cr->a);
                 cyc(80);
-                op_lda16(0x038006 + cpu.x);
-                wr16(0x702733, cpu.a);
-                demo_next_g(0x0004);
+                r_lda16(cr, 0x038006 + cr->x);
+                wr16(0x702733, cr->a);
+                demo_next(cr, 0x0004);
                 continue;
             } else { cyc(80); }
             if (c == 0x05) {
-                demo_next_g(0x0001);
-                demo_fade_out_g(b);
+                demo_next(cr, 0x0001);
+                demo_fade_out(cr, b);
                 continue;
             }
             if (c == 0x06) {
-                if (!demo_fade_done_g(b))
+                if (!demo_fade_done(cr, b))
                     break;
-                demo_next_g(0x0001);
+                demo_next(cr, 0x0001);
                 continue;
             }
             if (c == 0x07) {
-                demo_next_before_g(0x0001);
-                op_sep(P_M);
-                demo_lda8_g(0x00);
+                demo_next_before(cr, 0x0001);
+                r_sep(cr, P_M);
+                demo_lda8(cr, 0x00);
                 wr8(b | 0x19DF, 0x00);
-                demo_lda8_g(0x01);
+                demo_lda8(cr, 0x01);
                 wr8(b | 0x19D8, 0x01);
-                op_rep(P_M);
+                r_rep(cr, P_M);
                 cyc(24);                        /* JMP */
                 continue;
             } else { cyc(48); }
             if (c == 0x08) {
-                op_lda16(b | 0x19D8);
-                op_and16(0x00FF);
-                op_cmp16(0x0005);
-                if (cpu.a != 0x0005)
+                r_lda16(cr, b | 0x19D8);
+                r_and16(cr, 0x00FF);
+                r_cmp16(cr, 0x0005);
+                if (cr->a != 0x0005)
                     { cyc(46); break; } else { cyc(68); }
-                demo_next_g(0x0001);
+                demo_next(cr, 0x0001);
                 continue;
             } else { cyc(34); }
             if (c == 0x09) {
                 cyc(52);
-                op_lda16(0x038005 + cpu.x);
-                wr16(dp_addr_g(0x02), cpu.a);
+                r_lda16(cr, 0x038005 + cr->x);
+                wr16(dp_addr(cr, 0x02), cr->a);
                 cyc(64);
-                op_lda16(0x038007 + cpu.x);
-                wr16(dp_addr_g(0x94), cpu.a);
-                x = cpu.x;
-                cpu.x = 0x1A64;
-                op_lda16(cyc_then(70, dp_addr_g(0x02)));
+                r_lda16(cr, 0x038007 + cr->x);
+                wr16(dp_addr(cr, 0x94), cr->a);
+                x = cr->x;
+                cr->x = 0x1A64;
+                r_lda16(cr, cyc_then(70, dp_addr(cr, 0x02)));
                 cyc(32);
-                wr16(0x000008 + cpu.x, cpu.a);
-                op_lda16(cyc_then(16, dp_addr_g(0x94)));
+                wr16(0x000008 + cr->x, cr->a);
+                r_lda16(cr, cyc_then(16, dp_addr(cr, 0x94)));
                 cyc(32);
-                wr16(0x00000C + cpu.x, cpu.a);
-                db = cpu.db;
-                demo_camera_g(db);
-                cpu.x = x;
+                wr16(0x00000C + cr->x, cr->a);
+                db = cr->db;
+                demo_camera(cr, db);
+                cr->x = x;
                 cyc(64);
-                demo_next_g(0x0005);
+                demo_next(cr, 0x0005);
                 continue;
             }
             if (c == 0x0A) {
                 cyc(98);
-                op_lda16(0x038005 + cpu.x);
-                wr16(dp_addr_g(0x08), cpu.a);
-                x = cpu.x;
-                cpu.x = 0x1A64;
+                r_lda16(cr, 0x038005 + cr->x);
+                wr16(dp_addr(cr, 0x08), cr->a);
+                x = cr->x;
+                cr->x = 0x1A64;
                 cyc(86);
-                v = rd16(0x00000A + cpu.x);
-                p = (uint8_t)(cpu.p & ~P_C);
-                w = op_adc16(v, rd16(cyc_then(30, dp_addr_g(0x08))), &p);
-                cpu.p = p;
-                cpu.a = w;
+                v = rd16(0x00000A + cr->x);
+                p = (uint8_t)(cr->p & ~P_C);
+                w = alu_adc16(v, rd16(cyc_then(30, dp_addr(cr, 0x08))), &p);
+                set_p(cr, p);
+                cr->a = w;
                 cyc(32);
-                wr16(0x00000A + cpu.x, w);
-                db = cpu.db;
-                demo_camera_g(db);
-                cpu.x = x;
+                wr16(0x00000A + cr->x, w);
+                db = cr->db;
+                demo_camera(cr, db);
+                cr->x = x;
                 cyc(64);
-                demo_next_g(0x0003);
+                demo_next(cr, 0x0003);
                 continue;
             }
             if (c == 0x0B) {
                 cyc(104);
-                op_lda16(b | 0x030A);
-                if (!cpu.a)
+                r_lda16(cr, b | 0x030A);
+                if (!cr->a)
                     goto next_pass;
-                demo_fade_out_g(b);
-                while (!demo_fade_done_g(b))
+                demo_fade_out(cr, b);
+                while (!demo_fade_done(cr, b))
                     ;
                 goto end;
             }
             if (c == 0x0C || (cyc(46), c == 0x0D)) {
                 cyc(150);
-                op_lda16(b | 0x1A5B);
+                r_lda16(cr, b | 0x1A5B);
                 cyc(72);
-                v = rd16(0x038005 + cpu.x);
-                cpu.a = c == 0x0C ? (uint16_t)(cpu.a | v) : (uint16_t)(cpu.a & v);
-                cpu.p = nz16(cpu.p, cpu.a);
-                wr16(b | 0x1A5B, cpu.a);
-                demo_next_g(0x0003);
+                v = rd16(0x038005 + cr->x);
+                cr->a = c == 0x0C ? (uint16_t)(cr->a | v) : (uint16_t)(cr->a & v);
+                set_p(cr, nz16(cr->p, cr->a));
+                wr16(b | 0x1A5B, cr->a);
+                demo_next(cr, 0x0003);
                 continue;
             }
             goto end;
@@ -1004,33 +1004,33 @@ void abi_DemoRun(void)
         /* $892E: a race frame, then the frame count and the end checks. */
         cyc(108);
         for (;;) {
-            abi_RaceFrameRun();
-            op_rep(P_M | P_X);
-            b = (uint32_t)cpu.db << 16;
+            RaceFrameRun(cr);
+            r_rep(cr, P_M | P_X);
+            b = (uint32_t)cr->db << 16;
             cyc(24);
             v = (uint16_t)(rd16(b | 0x1A59) + 1);
             cyc(14);
             wr16(b | 0x1A59, v);
-            cpu.p = nz16(cpu.p, v);
+            set_p(cr, nz16(cr->p, v));
             cyc(24);
-            op_lda16(b | 0x1A5B);
-            if (!(cpu.a & 0x0001)) {
-                cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & 0x0002) ? (cyc(64), 0) : P_Z));
-                if (cpu.a & 0x0002)
+            r_lda16(cr, b | 0x1A5B);
+            if (!(cr->a & 0x0001)) {
+                set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & 0x0002) ? (cyc(64), 0) : P_Z)));
+                if (cr->a & 0x0002)
                     goto next_pass;
                 cyc(110);
-                op_lda16(b | 0x030A);
-                if (!cpu.a)
+                r_lda16(cr, b | 0x030A);
+                if (!cr->a)
                     goto next_pass;
-                op_lda16(b | 0x1A5B);
-                cpu.a |= 0x0041;
-                cpu.p = nz16(cpu.p, cpu.a);
-                wr16(b | 0x1A5B, cpu.a);
-                demo_fade_out_g(b);
+                r_lda16(cr, b | 0x1A5B);
+                cr->a |= 0x0041;
+                set_p(cr, nz16(cr->p, cr->a));
+                wr16(b | 0x1A5B, cr->a);
+                demo_fade_out(cr, b);
             } else {
-                cpu.p &= (uint8_t)~P_Z;
+                set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_Z)));
             }
-            if (demo_fade_done_g(b))
+            if (demo_fade_done(cr, b))
                 goto end;
         }
 next_pass:
@@ -1038,9 +1038,9 @@ next_pass:
         ;
     }
 end:
-    op_sep(P_M);
-    b = (uint32_t)cpu.db << 16;
-    demo_lda8_g(0x80);
+    r_sep(cr, P_M);
+    b = (uint32_t)cr->db << 16;
+    demo_lda8(cr, 0x80);
     cyc(148);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
@@ -1049,14 +1049,27 @@ end:
     mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);
     hdmaen_wr(b | HDMAEN, 0x00);
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(24);
-    op_lda16(b | 0x1A5B);
-    op_and16(0x0040);
-    v = cpu.a;
+    r_lda16(cr, b | 0x1A5B);
+    r_and16(cr, 0x0040);
+    v = cr->a;
     cyc(62);
     wr16(b | 0x1A5B, 0x0000);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v ? P_C : (cyc(58), 0)));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (v ? P_C : (cyc(58), 0))));
+}
+
+void abi_DemoRun(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DemoRun(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* BootSoftRestart, still in registers: its call with the registers loaded and taken
@@ -1078,55 +1091,17 @@ static void w_BootSoftRestart(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* OverlayFramesUntilFaded, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_OverlayFramesUntilFaded(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_OverlayFramesUntilFaded();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
 /* RecordTimeInsert as its adapter leaves the registers. */
 static void w_RecordTimeInsert(Carried *cr)
 {
     uint8_t p0 = cr->p;
     uint16_t x = cr->x, y = cr->y;
 
-    cr->p = p0 | P_M | P_X;             /* what an interrupt pushes */
+    set_p(cr, p0 | P_M | P_X);             /* what an interrupt pushes */
     cr->a = RecordTimeInsert(cr->db, cr->a, &x, &y, p0);
     cr->x = x;
     cr->y = y;
-    cr->p = p0;
-}
-
-/* RecordsUnpackCourseRunning, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_RecordsUnpackCourseRunning(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_RecordsUnpackCourseRunning();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    set_p(cr, p0);
 }
 
 /* SoftResetToBootWarm, still in registers: its call with the registers loaded and taken
@@ -1154,5 +1129,130 @@ static void w_WramFillZero(Carried *cr)
     WramFillZero((uint8_t)cr->a, cr->x, cr->y);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     cr->x = 0x8008;
-    cr->p = (uint8_t)(cr->p & ~(P_N | P_Z));
+    set_p(cr, (uint8_t)(cr->p & ~(P_N | P_Z)));
+}
+
+/* CourseDataPointer as its adapter leaves the registers. */
+static void w_CourseDataPointer(Carried *cr)
+{
+    uint8_t bank, p = cr->p;
+    uint16_t x = CourseDataPointer(&bank, &p);
+
+    cr->x = x;
+    cr->y = x;
+    cr->a = (uint16_t)((x & 0xFF00) | bank);
+    set_p(cr, (uint8_t)((nz16(p, x) & ~P_X) | P_M));
+}
+
+/* CourseScriptRun, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_CourseScriptRun(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_CourseScriptRun();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* GsuRun as its adapter leaves the registers. */
+static void w_GsuRun(Carried *cr)
+{
+    uint8_t mode = GsuRun((uint8_t)cr->a, cr->x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | mode);
+    set_p(cr, nz8(cr->p, cr->db));
+    cyc(72);                            /* PLB, RTL */
+}
+
+/* KeepRegisters as its adapter leaves the registers. */
+static void w_KeepRegisters(Carried *cr)
+{
+    cyc(138);
+}
+
+/* ObjectLinkedSet1A as its adapter leaves the registers. */
+static void w_ObjectLinkedSet1A(Carried *cr)
+{
+    cr->x = ObjectLinkedSet1A(cr->x, cr->a);
+    set_p(cr, nz16(cr->p, cr->a));
+}
+
+/* ObjectPlaceAll as its adapter leaves the registers. */
+static void w_ObjectPlaceAll(Carried *cr)
+{
+    cr->a = ObjectPlaceAll(cr->db);
+    set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
+}
+
+/* ObjectsRunHandlers, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_ObjectsRunHandlers(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_ObjectsRunHandlers();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* PlayerStatsAndPaletteAnimate, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_PlayerStatsAndPaletteAnimate(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_PlayerStatsAndPaletteAnimate();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
+}
+
+/* Set7EFFA6Sequence as its adapter leaves the registers. */
+static void w_Set7EFFA6Sequence(Carried *cr)
+{
+    Set7EFFA6Sequence();
+    cr->a = 0x0004;
+}
+
+/* WindowsInit, still in registers: its call with the registers loaded and taken
+   back. */
+static void w_WindowsInit(Carried *cr)
+{
+    cpu.a = cr->a;
+    cpu.x = cr->x;
+    cpu.y = cr->y;
+    cpu.d = cr->d;
+    cpu.p = cr->p;
+    cpu.db = cr->db;
+    abi_WindowsInit();
+    cr->a = cpu.a;
+    cr->x = cpu.x;
+    cr->y = cpu.y;
+    cr->d = cpu.d;
+    cr->p = cpu.p;
+    cr->db = cpu.db;
 }

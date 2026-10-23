@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "wram.h"
+#include "carried.h"
 
 #define RACE_TIME_FRACTION 0x000E63u  /* BCD */
 #define RACE_TIME_SECONDS 0x000E64u   /* BCD, 00-59 */
@@ -427,6 +428,16 @@ void abi_HudCountMove19EE(void)
 
     cpu.a = hc_skipped ? (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a) : a;
     cpu.p = p;
+}
+
+/* HudCountMove19EE on carried registers, as abi_HudCountMove19EE leaves them. */
+void HudCountMove19EE_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    uint16_t a = HudCountMove19EE(cr->db, cr->y, cr->x, &p);
+
+    cr->a = hc_skipped ? (uint16_t)((cr->a & 0xFF00) | (uint8_t)a) : a;
+    set_p(cr, p);
 }
 
 /*

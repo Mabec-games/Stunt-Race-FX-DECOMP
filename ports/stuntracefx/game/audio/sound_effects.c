@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "wram.h"
 #include "cpu_ops.h"
+#include "carried.h"
 
 void SoundPort1QueuePush(uint8_t command);
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
@@ -848,6 +849,18 @@ void abi_NearCarSoundUpdate(void)
     if (nc_once) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
+    }
+}
+
+/* NearCarSoundUpdate on carried registers, as abi_NearCarSoundUpdate leaves them. */
+void NearCarSoundUpdate_cr(Carried *cr)
+{
+    uint16_t a = NearCarSoundUpdate(cr->db, cr->d, !(cr->p & P_M));
+
+    cr->a = nc_low ? (uint16_t)((cr->a & 0xFF00) | (uint8_t)a) : a;
+    if (nc_once) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
 }
 

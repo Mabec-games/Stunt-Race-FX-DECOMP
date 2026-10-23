@@ -99,7 +99,7 @@ void FadeStepFixed_cr(Carried *cr)
 {
     fade_p = cr->p;
     cr->a = FadeStepFixed();
-    cr->p = fade_p;
+    set_p(cr, fade_p);
 }
 
 /*
@@ -148,5 +148,5 @@ void FadeStep_cr(Carried *cr)
     cr->a = FadeStep();
     if (fade_x >= 0)
         cr->x = (uint16_t)fade_x;
-    cr->p = fade_p;
+    set_p(cr, fade_p);
 }
