@@ -68,17 +68,21 @@ set 7E1A33 0E,00
 set 7E1AF0 00,00
 call 08:C8FF x=7F00 p=00 db=00 d=0000
 wait 1
+# The test scripts sit in bank $7E's RAM at $FF00 (X = $7F00 from $8000)
+# and run on data bank $7E: the game runs its course scripts from ROM
+# banks, where $1ADE and the other low addresses are low work RAM, as
+# they are from $7E (from $7F they would be bank $7F's).
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7FFF00 10,00,00,00,00,00,00,00,00,00,00,00,80,00,00,00,00,00,00,00,00,00,00,00,04
-call 08:801C long a=007F x=7F00 p=20 db=00 d=0000
+set 7EFF00 10,00,00,00,00,00,00,00,00,00,00,00,80,00,00,00,00,00,00,00,00,00,00,00,04
+call 08:801C long a=007E x=7F00 p=20 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E032D 00,00
-set 7FFF00 16,04
-call 08:801C long noreturn frames=3 a=007F x=7F00 p=20 db=00 d=0000
+set 7EFF00 16,04
+call 08:801C long noreturn frames=3 a=007E x=7F00 p=20 db=00 d=0000
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E032D 00,00
-set 7FFF00 18,04
-call 08:801C long noreturn frames=3 a=007F x=7F00 p=20 db=00 d=0000
+set 7EFF00 18,04
+call 08:801C long noreturn frames=3 a=007E x=7F00 p=20 db=00 d=0000
 load build/stuntracefx/states/novice_coupe_race1.state
 wait 1
