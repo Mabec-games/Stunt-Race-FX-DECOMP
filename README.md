@@ -156,7 +156,7 @@ game's own code as plain C over native parts, with no console model, no
 processor registers and nothing drawn in software, at the original's
 pacing.
 
-Where it stands (2026-10-23, evening):
+Where it stands (2026-10-24):
 
 - **Plays the whole game** on macOS (a Windows target builds from the same
   tree), with the player's own ROM checked by SHA-1 and built into the
@@ -171,19 +171,21 @@ Where it stands (2026-10-23, evening):
   channel (open).
 - **Pacing** is the original's: race frames take as many video frames as
   they did on the console, from the time the C states.
-- **Now: the game's C as plain C.** The port's copy is being turned from
-  code that works on an emulated 65816 register file into C that carries
-  its own values. Each step is checked three ways: every routine of the
-  whole game against the previous commit's from random states (every
-  memory access, every clock, every exit register), every play byte for
-  byte against the reference port, and the decomp's full gate. References
-  to the register file left: 949, from 17,415 when the conversion began
-  (`python3 ports/stuntracefx/tools/plainc.py`). The boot, race and
-  attract loops and the restart paths are converted. What remains is code
-  that returns through its caller's frame (an RTS or RTL taken from the
-  stack), typed functions that still hand results back in registers, and
-  a handful of files and wrappers; it is converted by hand.
-- **Still to do:** the rest of that phase (typed work RAM, a frame loop
+- **Plain C, step 1 done: the game's C carries its own registers.** The
+  port's copy used to work on an emulated 65816 register file; every
+  S-CPU routine now works on a copy of the registers it carries, and no
+  game code outside the verification harness's adapters touches the
+  register file (`python3 ports/stuntracefx/tools/plainc.py`: 0 left,
+  from 17,415). Code that leaves through its caller's frame says where it
+  lands (`cpu_leave_to`), and the hand-off to the machine (computed calls,
+  the branch to itself, restarts) is the runtime's
+  (`ports/stuntracefx/runtime/carried_ends.c`); a computed call to an
+  address with no carried form is a fatal error in the port. Each step
+  was checked three ways: every routine of the whole game against the
+  previous commit's from random states (every memory access, every clock,
+  every exit register), every play byte for byte against the reference
+  port, and the decomp's full gate.
+- **Still to do:** the rest of the plain-C phase (typed work RAM, a frame loop
   with no interrupts, the Super FX programs and the sound drivers as
   native code); removing the console model (`ports/common/snes`) and every
   other stepping stone; widescreen and field of view; and last, as a
