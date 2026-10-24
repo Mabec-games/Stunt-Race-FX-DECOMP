@@ -36,8 +36,9 @@ static inline void set_p(Carried *cr, uint8_t p)
    table from the tags), or NULL when it has none yet. */
 CarriedFn carried_at(uint32_t addr);
 
-/* A computed call or jump from carried code (system/computed.c): the
-   routine at addr on the carried registers. */
+/* A computed call or jump from carried code: the routine at addr on the
+   carried registers (the machine's, runtime/carried_ends.c; the gate's,
+   hybrid/shim.c). */
 void carried_call(Carried *cr, uint32_t addr, int long_call);
 void carried_jump(Carried *cr, uint32_t addr);
 

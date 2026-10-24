@@ -60,7 +60,7 @@ REG = re.compile(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_(?!adc16|sbc16|adc8|sbc8)\w+\s*\
 # left-through-the-caller's-frame flag (cpu.unwound) are the machine's and
 # stay as they are in carried code until the work RAM step; the emulation
 # flag goes through cpu_mode; the ends no C follows, and the computed calls
-# and jumps, go through their carried forms (system/computed.c)
+# and jumps, go through their carried forms (runtime/carried_ends.c)
 GLUE = re.compile(r'\bcpu\.pc\b')
 # what keeps another file's adapter from being copied as carried code
 NOCOPY = re.compile(r'\bcpu\.(pc|e)\b|\b(call_routine|jump_routine|jump_routine_pushed|cpu_restart|cpu_loop_forever)\b')
@@ -165,7 +165,7 @@ if decl:
     inc = list(re.finditer(r'^#include .*\n', text, re.M))[-1]
     text = text[:inc.end()] + decl + text[inc.end():]
 # the rest go through an address computed at run time: carried code calls
-# them through carried_call and carried_jump (system/computed.c), code left
+# them through carried_call and carried_jump (runtime/carried_ends.c), code left
 # in registers keeps call_routine and jump_routine (put back at the end)
 text = re.sub(r'\bcall_routine\(', 'dispatch_call_(', text)
 text = re.sub(r'\bjump_routine\(', 'dispatch_jump_(', text)
