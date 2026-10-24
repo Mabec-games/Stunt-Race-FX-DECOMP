@@ -18,6 +18,7 @@
 #include "hud_calls.h"
 #include "object_calls.h"
 #include "system_calls.h"
+#include "wram_names.h"
 void abi_HudColourStep(void);
 
 /* Poll until the Super FX stops (status bit 5 clear), counting each poll:
@@ -181,20 +182,20 @@ static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
     cyc(108);
     hw_wr(b | 0x3034, 0x01);
     cyc(24);
-    hw_wr(b | 0x303A, cyc_then(40, (uint8_t)(rd8(b | 0x0374) | 0x18)));
+    hw_wr(b | 0x303A, cyc_then(40, (uint8_t)(rd8(b | W(gsu_scmr_shadow)) | 0x18)));
     cyc(24);
     hw_wr16(b | 0x301E, 0xAB13);
     do {
         cyc(46);
-        uint8_t n = (uint8_t)(rd8(b | 0x1F21) + 1);
+        uint8_t n = (uint8_t)(rd8(b | W(gsu_ab13_polls)) + 1);
 
         cyc(6);
-        wr8(b | 0x1F21, n);
+        wr8(b | W(gsu_ab13_polls), n);
         if (!n)
             { cyc(40); wr8(b | 0x1F22, cyc_then(6, (uint8_t)(rd8(b | 0x1F22) + 1))); } else { cyc(22); }
     } while (cyc_loop(16, hw_rd(cyc_then(24, b | 0x3030)) & 0x20));
     cyc(56);
-    mode = rd8(b | 0x0374);
+    mode = rd8(b | W(gsu_scmr_shadow));
     cyc(24);
     hw_wr(b | 0x303A, mode);
     return mode;
@@ -300,9 +301,9 @@ void FrameRunGsu8FCA(Carried *cr)
 
     set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cyc(60);
-    wr8(0x0000FE, 0x00);
+    wr8(W(gsu_wait_count), 0x00);
     cyc(16);
-    wr8(0x0000FF, 0x00);
+    wr8(W(gsu_wait_count_hi), 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
     cr->x = 0x8FCA;
     cyc(72);
@@ -316,9 +317,9 @@ void FrameRunGsu8FCA(Carried *cr)
     hw_wr16(GSU_R15, 0x8FCA);
     (cyc(46), FrameObjectsWhileGsuRuns(cr));
     cyc(80);
-    n = rd16(0x0000FE);
+    n = rd16(W(gsu_wait_count));
     cyc(24);
-    wr16(0x001F1F, n);
+    wr16(W(gsu_wait_polls), n);
     cr->a = n;
     cr->db = db;
     set_p(cr, (uint8_t)(nz8(cr->p | P_M, db) & ~P_X));
@@ -385,10 +386,10 @@ void HudFrameWhileGsuRuns(Carried *cr)
     r_sep(cr, P_M | P_X);
     b = (uint32_t)cr->db << 16;
     cyc(24);
-    r_lda8(cr, b | 0x0D62);
+    r_lda8(cr, b | W(wram_0D62));
     if ((uint8_t)cr->a) {
         cyc(72);
-        r_lda8(cr, 0x000D7F);
+        r_lda8(cr, W(gsu_buffer_select));
         cr->y = (uint8_t)cr->a;
         cyc(90);
         run_cmp8(cr, (uint8_t)cr->y, 0x01);
@@ -403,7 +404,7 @@ void HudFrameWhileGsuRuns(Carried *cr)
     }
     cr->x = 0x00;
     cyc(70);
-    r_lda8(cr, 0x000D2B);
+    r_lda8(cr, W(hud_mode));
     v = (uint8_t)cr->a;
     cyc(42);
     run_cmp8(cr, v, 0x01);
@@ -445,7 +446,7 @@ static void start_ab13(Carried *cr, uint32_t b)
     cyc(64);
     hw_wr(b | 0x3034, 0x01);
     cyc(24);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(b | 0x0374) | 0x18));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(b | W(gsu_scmr_shadow)) | 0x18));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     cyc(40);
     hw_wr(b | 0x303A, (uint8_t)cr->a);
@@ -475,9 +476,9 @@ void FrameRunGsuAB13B(Carried *cr)
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cyc(38);
-    wr8(0x0000FE, 0x00);
+    wr8(W(gsu_wait_count), 0x00);
     cyc(16);
-    wr8(0x0000FF, 0x00);
+    wr8(W(gsu_wait_count_hi), 0x00);
     GsuParamsUpdate_cr(cr);
     b = (uint32_t)cr->db << 16;
     start_ab13(cr, b);
@@ -486,7 +487,7 @@ void FrameRunGsuAB13B(Carried *cr)
     r_sep(cr, P_M);
     b = (uint32_t)cr->db << 16;
     cyc(46);
-    r_lda8(cr, b | 0x0D62);
+    r_lda8(cr, b | W(wram_0D62));
     if ((uint8_t)cr->a)
         { cyc(62); w_FrameObjectsWhileGsuRuns(cr); cyc(88); }
     else
@@ -495,9 +496,9 @@ void FrameRunGsuAB13B(Carried *cr)
     r_rep(cr, P_M);
     b = (uint32_t)cr->db << 16;
     cyc(16);
-    r_lda16(cr, 0x0000FE);
+    r_lda16(cr, W(gsu_wait_count));
     cyc(24);
-    wr16(b | 0x1F21, cr->a);
+    wr16(b | W(gsu_ab13_polls), cr->a);
     (cyc(46), w_MapMarkersPanelB(cr));
     cyc(44);                            /* RTL */
 }
@@ -534,7 +535,7 @@ void FrameRunGsuAB13A(Carried *cr)
     (cyc(22), GsuParamsUpdate_cr(cr));
     b = (uint32_t)cr->db << 16;
     cyc(24);
-    wr8(b | 0x1F21, 0x00);
+    wr8(b | W(gsu_ab13_polls), 0x00);
     cyc(24);
     wr8(b | 0x1F22, 0x00);
     start_ab13(cr, b);

@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 void abi_ObjectSpawnFromScript(void);
@@ -12,7 +13,7 @@ void abi_ObjectInit(void);
 void abi_ObjectPoolInit(void);
 void abi_CrashGreen(void);
 
-#define OBJ_FIELD(o, f) (0x7E2000u + (uint16_t)((f) + (o)))
+#define OBJ_FIELD(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
 
 void CourseScriptRun(Carried *cr);
 static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint16_t link);
@@ -133,9 +134,9 @@ void CourseScriptRun(Carried *cr)
             cyc(52);
             wr16(OBJ_FIELD(o, 0x27), cyc_then(32, rd16(b | (uint16_t)(0x8016 + y))));
             cyc(24);
-            a = (uint16_t)(rd16(b | 0x1ADE) + 1);
+            a = (uint16_t)(rd16(b | W(spawn_counter)) + 1);
             cyc(38);
-            wr16(b | 0x1ADE, a);
+            wr16(b | W(spawn_counter), a);
             cyc(32);
             wr16(OBJ_FIELD(o, 0x29), a);
             x = (uint16_t)(y + 0x18);
@@ -157,19 +158,19 @@ void CourseScriptRun(Carried *cr)
         case 0x80BA:                                   /* $06 */
             cyc(52);
             for (i = 0; i < 0x0800; i = (uint16_t)(i + 2))
-                { cyc(96); wr16(0x7F0000 + i, 0x0000); }
+                { cyc(96); wr16(W(object_buckets) + i, 0x0000); }
             cyc(128);
             wr8(0x001AF4, 0x00);
             cyc(46);
-            wr16(b | 0x1ADE, 0x0000);
+            wr16(b | W(spawn_counter), 0x0000);
             cyc(56);
-            wr16(0x7EFFB8, 0x0000);
+            wr16(W(object_list_b_len), 0x0000);
             cyc(32);
-            wr16(0x7EFFFD, 0x0000);
+            wr16(W(object_list_len), 0x0000);
             cyc(32);
             wr16(0x7026F2, 0x0000);
             cyc(32);
-            wr16(0x001AEC, 0x0000);
+            wr16(W(wram_1AEC), 0x0000);
             cyc(24);
             a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
             cyc(56);
@@ -177,11 +178,11 @@ void CourseScriptRun(Carried *cr)
             cyc(24);
             wr16(b | 0x0CEE, 0x0000);
             cyc(24);
-            wr16(b | 0x1AEE, 0x0000);
+            wr16(b | W(wram_1AEE), 0x0000);
             cyc(46);
-            wr8(b | 0x1F71, 0x00);
+            wr8(b | W(script_byte_1f71), 0x00);
             cyc(24);
-            wr8(b | 0x1F72, 0x00);
+            wr8(b | W(script_byte_1f72), 0x00);
             cr->x = 0x0800;
             cr->y = 0x0000;
             cr->a = a;
@@ -195,7 +196,7 @@ void CourseScriptRun(Carried *cr)
             x = (uint16_t)(y + 2);
             break;
         case 0x8126:                                   /* $0E */
-            if (rd16(b | 0x0D2B) == 0x0003 && (rd16(cyc_then(86, b | (uint16_t)(0x8018 + y))) & 0x001C)) {
+            if (rd16(b | W(hud_mode)) == 0x0003 && (rd16(cyc_then(86, b | (uint16_t)(0x8018 + y))) & 0x001C)) {
                 cyc(92);
                 x = (uint16_t)(y + 0x1A);
                 break;
@@ -203,10 +204,10 @@ void CourseScriptRun(Carried *cr)
             o = spawn(cr, y);
             cyc(98);
             if (rd8(b | (uint16_t)(0x8018 + y)) & 0x01)
-                { cyc(18); wr16(b | 0x0346, o); }
+                { cyc(18); wr16(b | W(wram_0346), o); }
             cyc(76);
             if (rd8(b | (uint16_t)(0x8018 + y)) & 0x02)
-                { cyc(18); wr16(b | 0x034A, o); }
+                { cyc(18); wr16(b | W(wram_034A), o); }
             cyc(48);
             wr8(OBJ_FIELD(o, 0x36), 0x04);
             cyc(70);
@@ -214,14 +215,14 @@ void CourseScriptRun(Carried *cr)
             cyc(100);
             wr16(OBJ_FIELD(o, 0x27), rd16(b | (uint16_t)(0x8016 + y)));
             cyc(106);
-            a = rd16(0x7EFFB8);
+            a = rd16(W(object_list_b_len));
             if (a != 0x0008) {
                 cyc(114);
-                wr16(0x7EFFB8, (uint16_t)(a + 2));
+                wr16(W(object_list_b_len), (uint16_t)(a + 2));
                 cyc(46);
-                wr16(0x7EFFAE + a, o);
+                wr16(W(object_list_b) + a, o);
                 cyc(84);
-                wr16(0x7EFFAE + (uint16_t)(a + 2), 0x0000);
+                wr16(W(object_list_b) + (uint16_t)(a + 2), 0x0000);
             }
             cyc(94);
             x = (uint16_t)(y + 0x1A);
@@ -229,7 +230,7 @@ void CourseScriptRun(Carried *cr)
         case 0x8196:                                   /* $12 */
             cyc(216);
             n = (uint16_t)((uint16_t)((rd16(b | (uint16_t)(0x8001 + y)) & 0x00FF) - 1) << 3);
-            wr16(0x7EFF66 + n, rd16(b | (uint16_t)(0x8002 + y)));
+            wr16(W(script_records) + n, rd16(b | (uint16_t)(0x8002 + y)));
             cyc(78);
             wr16(0x7EFF68 + n, rd16(b | (uint16_t)(0x8004 + y)));
             cyc(78);
@@ -241,17 +242,17 @@ void CourseScriptRun(Carried *cr)
             break;
         case 0x81CC:                                   /* $14 */
             cyc(30);
-            a = rd16(0x001AEC);
+            a = rd16(W(wram_1AEC));
             cyc(78);
             a |= rd16(b | (uint16_t)(0x8001 + y));
             wr16(0x7026F2, a);
             cyc(32);
-            wr16(0x001AEC, a);
+            wr16(W(wram_1AEC), a);
             x = (uint16_t)(y + 3);
             break;
         case 0x81E6:                                   /* $1A */
             cyc(76);
-            wr16(0x001AEE, rd16(b | (uint16_t)(0x8001 + y)));
+            wr16(W(wram_1AEE), rd16(b | (uint16_t)(0x8001 + y)));
             x = (uint16_t)(y + 3);
             break;
         case 0x81F8:                                   /* $16 */

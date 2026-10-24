@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "wram.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 #define RACE_TIME_FRACTION 0x000E63u  /* BCD */
@@ -50,19 +51,19 @@ static TimeEnd hud_draw_time(void)
     uint8_t v;
 
     cyc(136);
-    if (rd8(0x000D2B) != 0x01) {
+    if (rd8(W(hud_mode)) != 0x01) {
         cyc(56);
-        uint16_t hold = rd16(0x000E5D);
+        uint16_t hold = rd16(W(hud_hold));
         if (hold == 0)
             goto draw;
         hold--;
         cyc(54);
-        wr16(0x000E5D, hold);
+        wr16(W(hud_hold), hold);
         end.x = hold;
         end.x_set = 1;
     } else { cyc(38); }
     cyc(24);
-    end.a = rd8(0x000D4E);
+    end.a = rd8(W(hud_blank));
     if (end.a == 0)
         { cyc(16); return end; }
 draw:
@@ -149,17 +150,17 @@ void abi_HudDrawTime(void)
 static uint8_t hud_draw_digits_19ec(int *drew)
 {
     cyc(46);
-    uint8_t v, blank = rd8(0x000D4E);
+    uint8_t v, blank = rd8(W(hud_blank));
 
     *drew = 0;
     if (blank)
         return blank;
     cyc(48);
-    v = rd8(0x0019EC);
+    v = rd8(W(hud_digits_19ec));
     cyc(10);
     digit(OAM_BUFFER + 0x16A, v & 0x0F, 38);
     cyc(32);
-    v = rd8(0x0019EC);
+    v = rd8(W(hud_digits_19ec));
     cyc(50);
     digit(OAM_BUFFER + 0x162, v >> 4, 38);
     *drew = 1;
@@ -416,7 +417,7 @@ void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p)
     cyc(30);
     wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, (uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) | 0x01)));
     cyc(60);
-    wr8(b | 0x19EC, cyc_then(54, adc_bcd8(rd8(b | 0x19EC), 0x01, 0, p)));
+    wr8(b | W(hud_digits_19ec), cyc_then(54, adc_bcd8(rd8(b | W(hud_digits_19ec)), 0x01, 0, p)));
     cyc(92);
     SoundPort0QueuePush(0x3C);
     cyc(42);
@@ -457,7 +458,7 @@ static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(24);
-    uint8_t d = rd8(b | 0x0D4C) ? (cyc(54), 0x01) : rd8(cyc_then(46, b | 0x0DF4));
+    uint8_t d = rd8(b | W(digit62_override)) ? (cyc(54), 0x01) : rd8(cyc_then(46, b | 0x0DF4));
 
     *digit = d;
     cyc(38);
@@ -523,7 +524,7 @@ uint16_t HudCountMove19EE(uint8_t bank, uint16_t rec, uint16_t x, uint8_t *p)
     uint8_t v;
 
     cyc(46);
-    v = rd8(b | 0x0E59);
+    v = rd8(b | W(wram_0E59));
     *p = nz8((uint8_t)(*p | P_M), v);
     hc_skipped = v != 0;
     if (v)
@@ -576,13 +577,13 @@ uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p)
     uint16_t n;
 
     cyc(46);
-    n = rd16(b | 0x19EE);
+    n = rd16(b | W(wram_19EE));
     cyc(24);
-    wr16(b | 0x19F0, n);
+    wr16(b | W(wram_19F0), n);
     cyc(24);
-    wr16(b | 0x19EE, 0x0000);
+    wr16(b | W(wram_19EE), 0x0000);
     cyc(62);
-    wr8(b | 0x19F2, 0x01);
+    wr8(b | W(wram_19F2), 0x01);
     *p = (uint8_t)(nz8(*p, 0x01) | P_M);
     cyc(42);
     return (uint16_t)((n & 0xFF00) | 0x01);

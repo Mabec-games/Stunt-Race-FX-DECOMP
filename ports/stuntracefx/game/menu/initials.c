@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 
@@ -232,12 +233,12 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     wr16(dbw(bank, 0x118B), cyc_then(24, 0x0000));
     cyc(32);
-    i = (uint16_t)(rd16(0x001191) - 2);
+    i = (uint16_t)(rd16(W(word_list_a_size)) - 2);
     if (!(i & 0x8000)) {
         do {
             *x = i;
             cyc(90);
-            v = rd16(0x001195 + i);
+            v = rd16(W(word_list_a) + i);
             wr16(dbw(bank, PRESS), cyc_then(24, v));
             v |= rd16(cyc_then(24, dbw(bank, 0x118B)));
             wr16(dbw(bank, 0x118B), cyc_then(24, v));
@@ -246,7 +247,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             i = (uint16_t)(i - 2);
         } while (cyc_loop(42, !(i & 0x8000)));
         cyc(136);
-        wr16(0x001191, 0x0000);
+        wr16(W(word_list_a_size), 0x0000);
     }
     cyc(70);
     MenuActorFind(bank, 0x0009, x, y, p);
@@ -358,22 +359,22 @@ void MenuInitialsFrame(Carried *cr)
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
     cyc(56);
-    wr16(0x0018FD, 0x0001);
+    wr16(W(wram_18FD), 0x0001);
     (cyc(46), MenuInitialsPresses_cr(cr));
     cyc(24);
-    pad = rd16(b | 0x118B);
+    pad = rd16(b | W(menu_joy1_pressed));
     cr->y = pad;
     cyc(24);
-    wr16(b | 0x118B, 0x0000);
+    wr16(b | W(menu_joy1_pressed), 0x0000);
     cr->a = pad;
     r_and16(cr, 0x9000);
     if (!(cr->p & P_Z)) {
         cr->a = 0x0001;
         cyc(106);
-        wr16(b | 0x11EB, 0x0001);
+        wr16(b | W(menu_exit), 0x0001);
         sound_port0(cr, 0x46);
         cyc(46);
-        cr->y = rd16(b | 0x11FB);
+        cr->y = rd16(b | W(actor_current_slot));
         set_p(cr, nz16(cr->p, cr->y));
         (cyc(46), MenuActorFree_cr(cr));
         cyc(42);
@@ -383,7 +384,7 @@ void MenuInitialsFrame(Carried *cr)
     r_and16(cr, 0x4000);
     if (!(cr->p & P_Z)) {
         cyc(158);
-        cr->x = rd16(b | 0x11F9);
+        cr->x = rd16(b | W(actor_current));
         set10(cr, 0x0005, 0x0000);
         {
             cyc(30);
@@ -403,7 +404,7 @@ void MenuInitialsFrame(Carried *cr)
         kind_anim(cr, 0x0004, 0x008A);
         cr->a = 0x0000;
         cyc(56);
-        wr16(0x001191, 0x0000);
+        wr16(W(word_list_a_size), 0x0000);
         sound_port0(cr, 0x47);
         cyc(64);
         return;
@@ -413,7 +414,7 @@ void MenuInitialsFrame(Carried *cr)
     if (cr->p & P_Z)
         { cyc(204); return; }
     cyc(200);
-    cr->a = rd16(0x0018C3);
+    cr->a = rd16(W(wram_18C3));
     r_cmp16(cr, 0x0000);
     if (cr->a != 0)
         { cyc(88); return; } else { cyc(40); }
@@ -428,7 +429,7 @@ void MenuInitialsFrame(Carried *cr)
     wr16(dpx(cr, 0x08), cyc_then(46, 0xBFB8));
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     set_p(cr, nz16(cr->p, 0));
     cyc(42);
 }
@@ -515,7 +516,7 @@ void MenuSettingsFrame(Carried *cr)
             { cyc(16); kind_anim(cr, 0x0004, 0x008A); } else { cyc(22); }
     } else { cyc(22); }
     cyc(24);
-    cr->x = rd16(b | 0x11F9);
+    cr->x = rd16(b | W(actor_current));
     (cyc(46), MenuFixedColourDown_cr(cr));
     (cyc(46), MenuFixedColourDown_cr(cr));
     cr->a = 0x0000;
@@ -524,22 +525,22 @@ void MenuSettingsFrame(Carried *cr)
     cr->a = 0x0001;
     set_p(cr, nz16(cr->p, 1));
     cyc(56);
-    wr16(0x0018FD, 0x0001);
+    wr16(W(wram_18FD), 0x0001);
     cyc(24);
-    cr->x = rd16(b | 0x11F9);
+    cr->x = rd16(b | W(actor_current));
     (cyc(46), w_MenuChoicePressesP1(cr));
     cyc(24);
-    cr->x = rd16(b | 0x11F9);
+    cr->x = rd16(b | W(actor_current));
     cyc(24);
-    pad = rd16(b | 0x118B);
+    pad = rd16(b | W(menu_joy1_pressed));
     cr->y = pad;
     cyc(24);
-    wr16(b | 0x118B, 0x0000);
+    wr16(b | W(menu_joy1_pressed), 0x0000);
     cr->a = pad;
     r_and16(cr, 0x4000);
     if (cr->a) {
         cyc(106);
-        cr->x = rd16(b | 0x11F9);
+        cr->x = rd16(b | W(actor_current));
         cr->a = 0xC872;
         wr16(dpx(cr, 0x08), cyc_then(46, 0xC872));
         cr->a = 0x0080;
@@ -553,20 +554,20 @@ void MenuSettingsFrame(Carried *cr)
         set10(cr, 0x0005, 0xFFFF);
         kinds67_anim(cr);
         cyc(60);
-        cr->x = rd16(b | 0x11F9);
+        cr->x = rd16(b | W(actor_current));
         set_p(cr, nz16(cr->p, cr->x));
         cyc(42);
         return;
     }
     cyc(90);
-    r_lda16(cr, 0x0018F9);
+    r_lda16(cr, W(wram_18F9));
     if (!cr->a) {
         cyc(52);
         cr->a = pad;
         r_and16(cr, 0x9000);
         if (cr->a) {
             cyc(78);
-            r_lda16(cr, 0x0018C3);
+            r_lda16(cr, W(wram_18C3));
             r_cmp16(cr, 0x0002);
             if (cr->a == 0x0002) {
                 cyc(46);
@@ -575,22 +576,22 @@ void MenuSettingsFrame(Carried *cr)
                 set10(cr, 0x0005, 0xFFFF);
                 sound_port0(cr, 0x46);
                 cyc(46);
-                cr->x = rd16(b | 0x11F9);
+                cr->x = rd16(b | W(actor_current));
                 cr->a = 0xBC9A;
                 wr16(dpx(cr, 0x08), cyc_then(46, 0xBC9A));
                 cr->a = 0x0001;
                 cyc(56);
-                wr16(0x001905, 0x0001);
+                wr16(W(menu_1905), 0x0001);
                 cr->a = 0x0028;
                 cyc(56);
-                wr16(0x001907, 0x0028);
+                wr16(W(menu_1907), 0x0028);
                 cr->a = 0x464A;
                 cyc(56);
                 wr16(0x7EFD65, 0x464A);
                 cr->a = 0x0000;
                 set_p(cr, nz16(cr->p, 0));
                 cyc(56);
-                wr16(0x001193, 0x0000);
+                wr16(W(word_list_b_size), 0x0000);
                 r_sep(cr, P_M);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0xE0);
                 set_p(cr, nz8(cr->p, 0xE0));
@@ -624,7 +625,7 @@ void MenuSettingsFrame(Carried *cr)
             cr->a = 0x0000;
             set_p(cr, nz16(cr->p, 0));
             cyc(56);
-            wr16(0x001191, 0x0000);
+            wr16(W(word_list_a_size), 0x0000);
             cyc(42);
             return;
         }
@@ -635,7 +636,7 @@ void MenuSettingsFrame(Carried *cr)
     if (!cr->a)
         { cyc(42); return; }
     cyc(38);
-    r_lda16(cr, 0x0018C3);
+    r_lda16(cr, W(wram_18C3));
     r_cmp16(cr, 0x0000);
     if (cr->a)
         { cyc(112); return; } else { cyc(46); }

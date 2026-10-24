@@ -13,6 +13,7 @@
 
 #include "system_calls.h"
 #include "video_calls.h"
+#include "wram_names.h"
 
 void Set7EBC2BTrio(uint8_t v);
 void WaitScanline(uint8_t bank);
@@ -167,9 +168,9 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
     for (y = 0; y != 0x20; y = (uint16_t)(y + 2)) {
         cyc(180);
         w = rd16(PALETTES + o);
-        wr16(0x7EE997u + y, w);
+        wr16(W(palette_buffer_e997) + y, w);
         cyc(30);
-        wr16(0x7E0802u + y, w);
+        wr16(0x7E0000 | W(palette_buffer_0802) + y, w);
         o = (uint16_t)(o + 2);
     }
     *x = o;
@@ -239,7 +240,7 @@ void ColoursRedDouble(void)
         wr16(COLOURS + y, r);
     }
     cyc(142);
-    wr16(0x000800, 0x0000);
+    wr16(W(colour_list_end), 0x0000);
     cyc(172); /* PLB, PLX, PLY, PLP, RTL */
 }
 
@@ -879,14 +880,14 @@ void UnusedScreenSetup(Carried *cr)
     cyc(16);
     wr8(0x000000, 0x00);
     cyc(24);
-    wr8(b | 0x084C, 0x00);
+    wr8(b | W(wram_084C), 0x00);
     cyc(24);
     hw_rd(b | 0x4211);
     r_rep(cr, P_M);
     cyc(32);
     hw_rd16(0x003030);
     cyc(48);
-    wr16(b | 0x0374, 0x0021);
+    wr16(b | W(gsu_scmr_shadow), 0x0021);
     (cyc(62), ScreenBlankAndWait_cr(cr));
     cyc(24);
     ppu_wr16(b | 0x2121, 0x0000);
@@ -918,11 +919,11 @@ void UnusedScreenSetup(Carried *cr)
     cyc(62);
     wr16(0x00004E, 0x0000);
     cyc(40);
-    wr16(0x000050, 0x3000);
+    wr16(W(fxpart_50), 0x3000);
     cyc(40);
     wr16(0x000048, 0x2C00);
     cyc(40);
-    wr16(0x00004A, 0x2C00);
+    wr16(W(fxrec_speed), 0x2C00);
     cyc(16);
     v = rd8(0x000049);
     cyc(52);
@@ -1048,14 +1049,14 @@ void UnusedScreenSetup(Carried *cr)
     cyc(24);
     ppu_wr(b | 0x2100, 0x80);
     cyc(24);
-    wr8(b | 0x084C, 0x00);
+    wr8(b | W(wram_084C), 0x00);
     cyc(40);
     hdmaen_wr(b | 0x420C, 0x02);
     cyc(40);
-    wr8(b | 0x06E3, 0xBE);
+    wr8(b | W(scanline_wait), 0xBE);
     (cyc(62), WaitScanline_cr(cr));
     cyc(84);
-    wr8(b | 0x06E3, 0x64);
+    wr8(b | W(scanline_wait), 0x64);
     (cyc(62), WaitScanline_cr(cr));
     cyc(68);
     hw_rd(b | 0x4210);
@@ -1106,7 +1107,7 @@ void UnusedScreenStart(Carried *cr)
     cyc(48);
     wr8(0x000000, 0x02);
     cyc(24);
-    wr8(b | 0x0306, 0x00);
+    wr8(b | W(frames_since_tick), 0x00);
     while (!rd8(cyc_then(24, b | 0x0854)))
         ;
     cyc(78);

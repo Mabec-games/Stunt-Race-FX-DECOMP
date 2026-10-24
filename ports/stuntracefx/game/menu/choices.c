@@ -9,6 +9,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 void SoundPort0QueuePush(uint8_t command);
 void MenuSet1A66(uint8_t bank, uint16_t i);
@@ -131,7 +132,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     wr16(dbw(bank, 0x118B), cyc_then(24, 0x0000));
     cyc(32);
-    i = (uint16_t)(rd16(0x001191) - 2);
+    i = (uint16_t)(rd16(W(word_list_a_size)) - 2);
     if (i & 0x8000) {
         *p = nz16(*p, i);
         return i;
@@ -139,7 +140,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     do {
         *x = i;
         cyc(90);
-        v = rd16(0x001195 + i);
+        v = rd16(W(word_list_a) + i);
         wr16(dbw(bank, PRESS), cyc_then(24, v));
         v |= rd16(cyc_then(24, dbw(bank, 0x118B)));
         wr16(dbw(bank, 0x118B), cyc_then(24, v));
@@ -148,7 +149,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         i = (uint16_t)(i - 2);
     } while (cyc_loop(42, !(i & 0x8000)));
     cyc(136);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     *p = nz16(*p, 0);
     cyc(42);
     return 0;
@@ -262,7 +263,7 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     wr16(dbw(bank, 0x118D), cyc_then(24, 0x0000));
     cyc(32);
-    i = (uint16_t)(rd16(0x001193) - 2);
+    i = (uint16_t)(rd16(W(word_list_b_size)) - 2);
     if (i & 0x8000) {
         *p = nz16(*p, i);
         return i;
@@ -270,7 +271,7 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     do {
         *x = i;
         cyc(90);
-        v = rd16(0x0011B5 + i);
+        v = rd16(W(word_list_b) + i);
         wr16(dbw(bank, PRESS), cyc_then(24, v));
         v |= rd16(cyc_then(24, dbw(bank, 0x118D)));
         wr16(dbw(bank, 0x118D), cyc_then(24, v));
@@ -278,7 +279,7 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         i = (uint16_t)(i - 2);
     } while (cyc_loop(42, !(i & 0x8000)));
     cyc(136);
-    wr16(0x001193, 0x0000);
+    wr16(W(word_list_b_size), 0x0000);
     *p = nz16(*p, 0);
     cyc(42);
     return 0;
@@ -690,7 +691,7 @@ static uint16_t settings_leave(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
     uint16_t c;
 
     cyc(56);
-    wr16(0x0018D3, 0x0000);
+    wr16(W(selection_out), 0x0000);
     cyc(32);
     c = rd16(CHOICE_P1);
     return cyc_then(42, show_choice(bank, c, x, y, p));
@@ -718,7 +719,7 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t a, keep;
 
     cyc(56);
-    wr16(0x0018FD, 0x0000);
+    wr16(W(wram_18FD), 0x0000);
     MenuFixedColourUp(bank, *x, p);
     MenuSettingsInput(bank, x, y, p);
     *y = rd16(cyc_then(24, dbw(bank, 0x118B)));
@@ -747,7 +748,7 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     set10(bank, 0x000D, 0xFFFF, x, y, p);
     set10(bank, 0x000E, 0xFFFF, x, y, p);
     cyc(56);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     cyc(46);
     wr16((uint16_t)(*x + 0x08), 0xBA4E);
     cyc(22);
@@ -825,7 +826,7 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     cyc(46);
     wr16((uint16_t)(*x + 0x1E), 0x0001);
     cyc(56);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     return settings_leave(bank, x, y, p);
 }
 
@@ -912,7 +913,7 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(32);
     MenuChoicesFromSave(rd16(MENU_MODE), x);
     cyc(56);
-    wr16(0x0018D3, 0x0000);
+    wr16(W(selection_out), 0x0000);
     cyc(32);
     c = rd16(CHOICE_P1);
     a = show_choice(bank, c, x, y, p);

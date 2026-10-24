@@ -6,6 +6,7 @@
 #include "native.h"
 #include "video_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
@@ -19,7 +20,7 @@ void SoundPort1QueuePushW(uint8_t command, unsigned wide);
  */
 void ColourMathA3(void)
 {
-    wr8(0x000D47, 0xA3);
+    wr8(W(colour_math_mode), 0xA3);
     cyc(42);
 }
 
@@ -64,9 +65,9 @@ void ColourMathA7Start(void)
     cyc(100);
     SoundPort1QueuePushW(0x04, 0);      /* after SEP #$30 */
     cyc(40);
-    wr8(0x000D47, 0xA7);
+    wr8(W(colour_math_mode), 0xA7);
     cyc(78);
-    wr16(0x7F3408, 0x0000);
+    wr16(W(fixed_colour_step), 0x0000);
 }
 
 void ColourMathA7Start_cr(Carried *cr)
@@ -106,10 +107,10 @@ uint8_t FixedColourFromStep(void)
     uint8_t v;
 
     cyc(54);
-    fixed_step = rd8(0x7F3408);
+    fixed_step = rd8(W(fixed_colour_step));
     cyc(86);
     v = rd8(0x03FE7B + fixed_step);
-    wr8(0x7F340D, v);
+    wr8(W(fixed_colour), v);
     cyc(44);
     return v;
 }

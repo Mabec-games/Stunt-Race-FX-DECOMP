@@ -4,6 +4,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint8_t SaveChecksum(void);
 void abi_AllRecordsScreen(void);
@@ -228,7 +229,7 @@ void abi_RecordsLoadForCourse(void);
 static int cursor_pressed(Carried *cr, uint32_t b, uint16_t mask)
 {
     cyc(24);
-    r_lda16(cr, b | 0x0D1A);
+    r_lda16(cr, b | W(joy1_pressed_copy));
     set_p(cr, (cr->a & mask) ? (cyc(94), (uint8_t)(cr->p & ~P_Z)) : (cyc(40), (uint8_t)(cr->p | P_Z)));
     return (cr->a & mask) != 0;
 }
@@ -244,7 +245,7 @@ static void cursor_to(Carried *cr, uint32_t b, uint8_t to)
     cr->a = (uint16_t)((cr->a & 0xFF00) | to);
     set_p(cr, nz8(cr->p, to));
     cyc(40);
-    wr8(b | 0x0D48, to);
+    wr8(b | W(wram_0D48), to);
 }
 
 /* Up to the fourth course when it is open (the low four bits of $70:FC06
@@ -266,7 +267,7 @@ static int cursor_up_open(Carried *cr, uint32_t b)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     set_p(cr, nz8(cr->p, 0xFF));
     cyc(40);
-    wr8(b | 0x0D63, 0xFF);
+    wr8(b | W(wram_0D63), 0xFF);
     return 1;
 }
 
@@ -467,14 +468,14 @@ void CourseCursorStep(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     if (cr->p & P_M) {
-        uint8_t v = rd8(b | 0x0D48);
+        uint8_t v = rd8(b | W(wram_0D48));
 
         set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
         v = (uint8_t)(v << 1);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } else {
         cyc(24);
-        uint16_t v = rd16(b | 0x0D48);
+        uint16_t v = rd16(b | W(wram_0D48));
 
         set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 15)));
         cr->a = (uint16_t)(v << 1);
@@ -522,10 +523,10 @@ void CourseZoomInStep(Carried *cr)
     (cyc(62), BlendStepUp_cr(cr));
     (cyc(62), FixedColourFromStep_cr(cr));
     cyc(32);
-    r_lda8(cr, 0x7F3408);
+    r_lda8(cr, W(fixed_colour_step));
     a8 = (uint8_t)cr->a;
     cyc(32);
-    m8 = rd8(0x7F340A);
+    m8 = rd8(W(scale_divisor));
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : (cyc(64), 0))));
     if (a8 != m8)
         return;
@@ -542,7 +543,7 @@ void CourseZoomInStep(Carried *cr)
     cyc(40);
     wr8(b | 0x0D40, 0x06);
     cyc(24);
-    wr8(b | 0x10D8, 0x00);
+    wr8(b | W(wram_10D8), 0x00);
     cyc(42);
 }
 
@@ -620,21 +621,21 @@ void CourseWindowZoomSetup(Carried *cr)
     for (i = 0; i < 4; i++) {
         cyc(78);
         cr->a = rd16(b + 0xFB8E + cr->y + 2 * i);
-        wr16(0x7F343A + 2 * i, cr->a);
+        wr16(W(scaled_words_target) + 2 * i, cr->a);
     }
     for (i = 0; i < 4; i++) {
         cyc(78);
         cr->a = rd16(b + 0xFC11 + cr->x + 2 * i);
-        wr16(0x7F3432 + 2 * i, cr->a);
+        wr16(W(scaled_words) + 2 * i, cr->a);
         cyc(32);
-        wr16(0x7F3442 + 2 * i, cr->a);
+        wr16(W(scaled_words_base) + 2 * i, cr->a);
     }
     cyc(56);
-    wr16(0x7F340A, 0x000F);
+    wr16(W(scale_divisor), 0x000F);
     cr->a = 0x0000;
     set_p(cr, nz16(cr->p, 0x0000));
     cyc(56);
-    wr16(0x7F3408, 0x0000);
+    wr16(W(fixed_colour_step), 0x0000);
     (cyc(62), WindowTable7FLong(cr));
     cyc(150);   /* WindowTable7FLong states its RTL */
 }
@@ -713,14 +714,14 @@ static void course_choose(Carried *cr, uint16_t list, uint16_t y)
     uint16_t a;
 
     r_rep(cr, P_M | P_X);
-    cr->x = rd16(b | 0x0D48);
+    cr->x = rd16(b | W(wram_0D48));
     cyc(96);
     a = (uint16_t)(rd16(0x030000 + list + cr->x) & 0x00FF);
     cr->a = a;
     set_p(cr, nz16(cr->p, a));
     wr16(b | 0x0E3D, a);
     cyc(list == 0xFB86 ? 48 : 24);      /* the stunt list: AND #$00FF before the LDA */
-    a = asl3(cr, rd16(b | 0x0D48));
+    a = asl3(cr, rd16(b | W(wram_0D48)));
     /* TAX, LDY #, then the stunt list's BRA to the zoom (the battle list falls into it) */
     course_zoom(cr, box_offset_in(cr, a, 0x0080, list == 0xFB86 ? 280 : 258), y);
     cyc(94);
@@ -951,7 +952,7 @@ static int sel_pressed(Carried *cr, uint32_t b, uint16_t mask)
     uint16_t v;
 
     r_rep(cr, P_M);
-    v = rd16(b | 0x0D1A);
+    v = rd16(b | W(joy1_pressed_copy));
     cr->a = v;
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((v >> 8) & 0xC0) | ((v & mask) ? (cyc(84), 0) : (cyc(24), P_Z))));
     r_sep(cr, P_M);
@@ -962,7 +963,7 @@ static int sel_pressed(Carried *cr, uint32_t b, uint16_t mask)
 static int sel_pressed16(Carried *cr, uint32_t b, uint16_t mask)
 {
     r_rep(cr, P_M);
-    r_lda16(cr, b | 0x0D1A);
+    r_lda16(cr, b | W(joy1_pressed_copy));
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & mask) ? 0 : (cyc(46), P_Z))));
     return (cr->a & mask) != 0;
 }
@@ -982,7 +983,7 @@ static void sel_row(Carried *cr, uint32_t b, uint8_t v)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     cyc(24);
-    wr8(b | 0x0D4A, v);
+    wr8(b | W(wram_0D4A), v);
 }
 
 /* The scroll $0E37 moved 4 toward $50 (in) or 0 (out), then $0E92 = $F0
@@ -990,11 +991,11 @@ static void sel_row(Carried *cr, uint32_t b, uint8_t v)
 static void sel_scroll(Carried *cr, uint32_t b, uint8_t v)
 {
     cyc(118);
-    wr8(b | 0x0E37, v);
+    wr8(b | W(scroll_value), v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
     set_p(cr, nz8(cr->p, 0xF0));
     cyc(40);
-    wr8(b | 0x0E92, 0xF0);
+    wr8(b | W(wram_0E92), 0xF0);
     (cyc(62), OamBufferHideLargeLong_cr(cr));
 }
 
@@ -1004,7 +1005,7 @@ static void sel_cursor(Carried *cr, uint32_t b, uint8_t y)
     cr->a = (uint16_t)((cr->a & 0xFF00) | y);
     set_p(cr, nz8(cr->p, y));
     cyc(56);
-    wr8(b | 0x0D38, y);
+    wr8(b | W(flash_sprite_y), y);
     (cyc(46), MenuCursorFourWay_cr(cr));
 }
 
@@ -1013,7 +1014,7 @@ static void sel_cursor(Carried *cr, uint32_t b, uint8_t y)
    page's first row, $60 on the other. */
 static void sel_choose(Carried *cr, uint32_t b)
 {
-    uint8_t page = rd8(b | 0x0D63), v;
+    uint8_t page = rd8(b | W(wram_0D63)), v;
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | page);
     set_p(cr, nz8(cr->p, page));
@@ -1027,7 +1028,7 @@ static void sel_choose(Carried *cr, uint32_t b)
     }
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x0D4A);
+    r_lda8(cr, b | W(wram_0D4A));
     v = (uint8_t)cr->a;
     if (page) {
         cyc(16);
@@ -1060,17 +1061,17 @@ static void speed_select_body(Carried *cr)
     }
     (cyc(46), TilemapLevelColumns_cr(cr));
     cyc(24);                           /* its end is TilemapLevelColumns' now */
-    r_lda8(cr, b | 0x0D61);
+    r_lda8(cr, b | W(fade_level_hi));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(32), 0))));
     if (v != 0x0F)
         return;
     r_sep(cr, P_M);
     cyc(84);
-    r_lda8(cr, b | 0x0D63);
+    r_lda8(cr, b | W(wram_0D63));
     if (!(uint8_t)cr->a) {
         cyc(40);
-        r_lda8(cr, b | 0x0E37);
+        r_lda8(cr, b | W(scroll_value));
         v = (uint8_t)cr->a;
         if (v != 0x50) {
             cyc(32);
@@ -1083,7 +1084,7 @@ static void speed_select_body(Carried *cr)
         }
         (cyc(84), FlashingMetaspriteDrawByMode_cr(cr));
         cyc(24);
-        r_lda8(cr, b | 0x0D4A);
+        r_lda8(cr, b | W(wram_0D4A));
         if (!(uint8_t)cr->a) {
             cyc(38);
             r_sep(cr, P_M);
@@ -1101,9 +1102,9 @@ static void speed_select_body(Carried *cr)
         if (open && (cyc(2), sel_pressed(cr, b, 0x0800))) {
             sel_sound(cr);
             cyc(8);
-            v = (uint8_t)(rd8(b | 0x0D63) - 1);
+            v = (uint8_t)(rd8(b | W(wram_0D63)) - 1);
             cyc(6);
-            wr8(b | 0x0D63, v);
+            wr8(b | W(wram_0D63), v);
             cyc(16);
             sel_row(cr, b, 0x02);
             return;
@@ -1113,14 +1114,14 @@ static void speed_select_body(Carried *cr)
         if (open && (cyc(2), sel_pressed(cr, b, 0x0400))) {
             sel_sound(cr);
             cyc(8);
-            wr8(b | 0x0D4A, 0x00);
+            wr8(b | W(wram_0D4A), 0x00);
             return;
         } else { cyc(open ? 68 : 62); }
         sel_choose(cr, b);
         return;
     }
     cyc(46);
-    r_lda8(cr, b | 0x0E37);
+    r_lda8(cr, b | W(scroll_value));
     v = (uint8_t)cr->a;
     if (v) {
         cyc(6);
@@ -1132,7 +1133,7 @@ static void speed_select_body(Carried *cr)
     } else { cyc(92); }
     FlashingMetaspriteDrawByMode_cr(cr);
     cyc(24);
-    r_lda8(cr, b | 0x0D4A);
+    r_lda8(cr, b | W(wram_0D4A));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0)));
     cyc(56);
@@ -1142,9 +1143,9 @@ static void speed_select_body(Carried *cr)
             if (sel_open(cr, 0x01)) {
                 sel_sound(cr);
                 cyc(8);
-                wr8(b | 0x0D63, 0x00);
+                wr8(b | W(wram_0D63), 0x00);
                 cyc(24);
-                wr8(b | 0x0D4A, 0x00);
+                wr8(b | W(wram_0D4A), 0x00);
                 return;
             } else { cyc(62); }
         } else { cyc(68); }
@@ -1223,16 +1224,16 @@ void StuntCourseSelectStep(Carried *cr)
     uint8_t v;
 
     cyc(24);
-    r_lda8(cr, b | 0x0D61);
+    r_lda8(cr, b | W(fade_level_hi));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0)));
     if (v != 0x0F)
         { cyc(74); return; }
     cyc(62);
-    r_lda8(cr, b | 0x0D63);
+    r_lda8(cr, b | W(wram_0D63));
     if (!(uint8_t)cr->a) {
         cyc(40);
-        r_lda8(cr, b | 0x0E37);
+        r_lda8(cr, b | W(scroll_value));
         v = (uint8_t)cr->a;
         if (v != 0x50) {
             cyc(32);
@@ -1259,7 +1260,7 @@ void StuntCourseSelectStep(Carried *cr)
         return;
     }
     cyc(46);
-    r_lda8(cr, b | 0x0E37);
+    r_lda8(cr, b | W(scroll_value));
     v = (uint8_t)cr->a;
     if (v) {
         v = (uint8_t)(v - 4);
@@ -1275,7 +1276,7 @@ void StuntCourseSelectStep(Carried *cr)
     if (sel_pressed16(cr, b, 0x9000)) {
         r_sep(cr, P_M);
         cyc(86);                        /* BIT, BEQ, SEP, LDA abs */
-        r_lda8(cr, b | 0x0D4E);
+        r_lda8(cr, b | W(hud_blank));
         if ((uint8_t)cr->a)
             { cyc(84); CourseZoomTimeUpNext(cr); }  /* BNE taken, JSL: CourseZoomTimeUpNext */
         else
@@ -1317,7 +1318,7 @@ void BattleCourseSelectStep(Carried *cr)
     uint8_t v;
 
     cyc(24);
-    r_lda8(cr, b | 0x0D61);
+    r_lda8(cr, b | W(fade_level_hi));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0)));
     if (v != 0x0F)
@@ -1367,12 +1368,12 @@ void TimeUpSelectDraw(Carried *cr)
     r_sep(cr, P_X);
     r_rep(cr, P_M);
     cyc(46);
-    cr->x = rd8(b | 0x0D4E);
+    cr->x = rd8(b | W(hud_blank));
     if (cr->x) {
         v = 0x6080;
     } else {
         cyc(40);
-        cr->x = rd8(b | 0x0D48);
+        cr->x = rd8(b | W(wram_0D48));
         v = cr->x == 0x02 ? (cyc(38), 0xB048) : (cyc(32), 0xB0B8);
     }
     cr->a = v;
@@ -1451,57 +1452,57 @@ static void time_up_cursor_body(Carried *cr)
     uint8_t v;
 
     cyc(24);
-    r_lda8(cr, b | 0x0D4E);
+    r_lda8(cr, b | W(hud_blank));
     if ((uint8_t)cr->a) {
         cyc(40);
         if (sel_pressed16(cr, b, 0x0400)) {
             time_up_sound(cr);
             cyc(24);
-            wr8(b | 0x0D4E, 0x00);
-            time_up_set(cr, b | 0x0D48, 0x02);
+            wr8(b | W(hud_blank), 0x00);
+            time_up_set(cr, b | W(wram_0D48), 0x02);
         }
         return;
     } else { cyc(46); }
     if (sel_pressed16(cr, b, 0x0800)) {
         time_up_sound(cr);
-        time_up_set(cr, b | 0x0D4E, 0xFF);
+        time_up_set(cr, b | W(hud_blank), 0xFF);
         return;
     }
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x0D48);
+    r_lda8(cr, b | W(wram_0D48));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? (cyc(62), P_C) : (cyc(56), 0))));
     if (v != 0x02) {
         if (sel_pressed16(cr, b, 0x0400)) {
             time_up_sound(cr);
             cyc(24);
-            wr8(b | 0x0D63, 0x00);
-            time_up_set(cr, b | 0x0D48, 0x01);
+            wr8(b | W(wram_0D63), 0x00);
+            time_up_set(cr, b | W(wram_0D48), 0x01);
             return;
         }
         cyc(24);
-        r_lda16(cr, b | 0x0D1A);
+        r_lda16(cr, b | W(joy1_pressed_copy));
         set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0200) ? 0 : (cyc(46), P_Z))));
         if (cr->a & 0x0200) {
             time_up_sound(cr);
-            time_up_set(cr, b | 0x0D48, 0x02);
+            time_up_set(cr, b | W(wram_0D48), 0x02);
         }
         return;
     }
     if (sel_pressed16(cr, b, 0x0400)) {
         time_up_sound(cr);
         cyc(24);
-        wr8(b | 0x0D63, 0x00);
-        time_up_set(cr, b | 0x0D48, 0x00);
+        wr8(b | W(wram_0D63), 0x00);
+        time_up_set(cr, b | W(wram_0D48), 0x00);
         return;
     }
     cyc(24);
-    r_lda16(cr, b | 0x0D1A);
+    r_lda16(cr, b | W(joy1_pressed_copy));
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0100) ? 0 : (cyc(46), P_Z))));
     if (cr->a & 0x0100) {
         time_up_sound(cr);
-        time_up_set(cr, b | 0x0D48, 0x03);
+        time_up_set(cr, b | W(wram_0D48), 0x03);
     }
 }
 
@@ -1520,14 +1521,14 @@ void CourseZoomTimeUp(Carried *cr)
 
     r_rep(cr, P_M | P_X);
     cyc(24);
-    cr->x = rd16(b | 0x0D48);
+    cr->x = rd16(b | W(wram_0D48));
     cyc(96);
     a = (uint16_t)(rd16(0x03FB86 + cr->x) & 0x00FF);
     cr->a = a;
     set_p(cr, nz16(cr->p, a));
     wr16(b | 0x0E3D, a);
     cyc(48);
-    r_lda16(cr, b | 0x0D48);
+    r_lda16(cr, b | W(wram_0D48));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc16(cr->a, 0x0002, &cr->p);
     cyc(50);
@@ -1621,16 +1622,16 @@ static int records_key(Carried *cr, uint32_t b)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x30);
     set_p(cr, nz8(cr->p, 0x30));
     cyc(62);
-    wr8(b | 0x0E91, 0x30);
+    wr8(b | W(wram_0E91), 0x30);
     cyc(24);
-    r_lda8(cr, b | 0x0D44);
+    r_lda8(cr, b | W(wram_0D44));
     if (!(uint8_t)cr->a) {
         cyc(40);
         if (!sel_pressed(cr, b, 0x9000)) {
             cr->a = (uint16_t)(cr->a & 0xFF00);
             set_p(cr, nz8(cr->p, 0));
             cyc(84);
-            wr8(b | 0x0D35, 0x00);
+            wr8(b | W(metasprite_set_sel), 0x00);
             (cyc(46), FlashingMetaspriteDraw0_cr(cr));
             return 0;
         } else { cyc(56); }
@@ -1643,7 +1644,7 @@ static int records_key(Carried *cr, uint32_t b)
     RecordsUnpackCourseTotals(cr);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     cyc(40);
-    wr8(b | 0x0D44, 0x02);
+    wr8(b | W(wram_0D44), 0x02);
     cyc(24);
     wr8(b | 0x0D43, 0x02);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x1E);
@@ -1716,7 +1717,7 @@ static void records_sprite(Carried *cr, uint32_t b, uint8_t y)
     cr->a = (uint16_t)((cr->a & 0xFF00) | y);
     set_p(cr, nz8(cr->p, y));
     cyc(40);
-    wr8(b | 0x0D38, y);
+    wr8(b | W(flash_sprite_y), y);
 }
 
 /*
@@ -1741,10 +1742,10 @@ void CourseRecordsSelectStep(Carried *cr)
     r_rep(cr, P_M | P_X);
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D63);
+    r_lda8(cr, b | W(wram_0D63));
     if (!(uint8_t)cr->a) {
         cyc(40);
-        r_lda8(cr, b | 0x0E37);
+        r_lda8(cr, b | W(scroll_value));
         v = (uint8_t)cr->a;
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? (cyc(84), P_C) : 0)));
         if (v != 0x50) {
@@ -1756,14 +1757,14 @@ void CourseRecordsSelectStep(Carried *cr)
             }
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             cyc(150);
-            wr8(b | 0x0E37, v);
+            wr8(b | W(scroll_value), v);
             cyc(42);
             return;
         }
         if (records_key_inner(cr, b))
             return;
         cyc(24);
-        r_lda8(cr, b | 0x0D4A);
+        r_lda8(cr, b | W(wram_0D4A));
         if (!(uint8_t)cr->a) {
             records_sprite(cr, b, 0xB0);
             cyc(24);
@@ -1781,9 +1782,9 @@ void CourseRecordsSelectStep(Carried *cr)
         if (open && (cyc(2), sel_pressed(cr, b, 0x0800))) {
             sel_sound(cr);
             cyc(8);
-            v = (uint8_t)(rd8(b | 0x0D63) - 1);
+            v = (uint8_t)(rd8(b | W(wram_0D63)) - 1);
             cyc(6);
-            wr8(b | 0x0D63, v);
+            wr8(b | W(wram_0D63), v);
             cyc(16);
             sel_row(cr, b, 0x02);
             cyc(42);
@@ -1792,13 +1793,13 @@ void CourseRecordsSelectStep(Carried *cr)
         if (sel_pressed(cr, b, 0x0400)) {
             sel_sound(cr);
             cyc(8);
-            wr8(b | 0x0D4A, 0x00);
+            wr8(b | W(wram_0D4A), 0x00);
         } else { cyc(44); }
         cyc(42);
         return;
     }
     cyc(46);
-    r_lda8(cr, b | 0x0E37);
+    r_lda8(cr, b | W(scroll_value));
     v = (uint8_t)cr->a;
     if (v) {
         v = (uint8_t)(v - 4);
@@ -1810,14 +1811,14 @@ void CourseRecordsSelectStep(Carried *cr)
         }
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(124);
-        wr8(b | 0x0E37, v);
+        wr8(b | W(scroll_value), v);
         cyc(42);
         return;
     } else { cyc(86); }
     if (records_key_inner(cr, b))
         return;
     cyc(24);
-    r_lda8(cr, b | 0x0D4A);
+    r_lda8(cr, b | W(wram_0D4A));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(16), P_C) : (cyc(22), 0))));
     if (v == 0x01) {
@@ -1826,9 +1827,9 @@ void CourseRecordsSelectStep(Carried *cr)
         if (sel_pressed(cr, b, 0x0400)) {
             sel_sound(cr);
             cyc(8);
-            wr8(b | 0x0D63, 0x00);
+            wr8(b | W(wram_0D63), 0x00);
             cyc(24);
-            wr8(b | 0x0D4A, 0x00);
+            wr8(b | W(wram_0D4A), 0x00);
             cyc(42);
             return;
         } else { cyc(68); }
@@ -1888,7 +1889,7 @@ void CourseRecordsOpening(Carried *cr)
     cyc(40);
     wr8(b | 0x0D43, 0x04);
     cyc(24);
-    r_lda8(cr, b | 0x0D4C);
+    r_lda8(cr, b | W(digit62_override));
     if ((uint8_t)cr->a)
         { cyc(64); return; } else { cyc(94); }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x2D);
@@ -1953,7 +1954,7 @@ static void records_reopen_body(Carried *cr)
         return;
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     cyc(72);
-    wr8(b | 0x0D44, 0x02);
+    wr8(b | W(wram_0D44), 0x02);
     cr->a = (uint16_t)(cr->a & 0xFF00);
     set_p(cr, nz8(cr->p, 0));
     cyc(40);
@@ -1969,10 +1970,10 @@ static void records_pulse(Carried *cr, uint32_t b)
     uint16_t x;
 
     cyc(46);
-    r_lda8(cr, b | 0x0D4A);
+    r_lda8(cr, b | W(wram_0D4A));
     x = (uint16_t)(((uint8_t)cr->a << 2) & 0xFF);
     cyc(66);
-    x = (uint8_t)(x + rd8(b | 0x0D48));
+    x = (uint8_t)(x + rd8(b | W(wram_0D48)));
     cr->x = x;
     cyc(38);
     r_lda8(cr, b | 0x0D42);
@@ -1997,7 +1998,7 @@ static void records_pulse(Carried *cr, uint32_t b)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     cyc(86);
-    wr8(0x000F05 + (uint32_t)x, v);
+    wr8(W(level_columns) + (uint32_t)x, v);
     cyc(42);
 }
 
@@ -2030,7 +2031,7 @@ void CourseRecordsClosing(Carried *cr)
     cyc(72);
     wr8(b | 0x0D43, 0x00);
     cyc(24);
-    wr8(b | 0x0D44, 0x00);
+    wr8(b | W(wram_0D44), 0x00);
     cyc(42);
 }
 
@@ -2074,7 +2075,7 @@ void CourseRecordsShown(Carried *cr)
         cyc(56);
         wr8(b | 0x0D40, 0x02);
         cyc(24);
-        r_lda8(cr, b | 0x0D63);
+        r_lda8(cr, b | W(wram_0D63));
         if ((uint8_t)cr->a)
             { cyc(84); CourseZoomFromSelection4(cr); }
         else
@@ -2083,7 +2084,7 @@ void CourseRecordsShown(Carried *cr)
         return;
     }
     cyc(46);
-    r_lda8(cr, b | 0x0D4C);
+    r_lda8(cr, b | W(digit62_override));
     if ((uint8_t)cr->a)
         { cyc(58); return; }
     records_pulse(cr, b);
@@ -2181,7 +2182,7 @@ static void wipe_out_body(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
     set_p(cr, nz8(cr->p, 0x06));
     cyc(62);
-    wr8(b | 0x0D45, 0x06);
+    wr8(b | W(wram_0D45), 0x06);
     p = (uint8_t)(cr->p | P_C);
     cyc(24);
     v = alu_sbc8(rd8(b | 0x10AD), 0x04, &p);
@@ -2259,7 +2260,7 @@ static void wipe_in_body(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
     set_p(cr, nz8(cr->p, 0x06));
     cyc(62);
-    wr8(b | 0x0D45, 0x06);
+    wr8(b | W(wram_0D45), 0x06);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(24);
     v = alu_adc8(rd8(b | 0x10AD), 0x04, &p);
@@ -2295,7 +2296,7 @@ static void wipe_in_body(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     set_p(cr, nz8(cr->p, 0x02));
     cyc(40);
-    wr8(b | 0x0D45, 0x02);
+    wr8(b | W(wram_0D45), 0x02);
 }
 
 /* 02:E4BD / 02:E51E: a pressed button leaves for state $12 (sound $2F);
@@ -2310,7 +2311,7 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
 
     r_rep(cr, P_M | P_X);
     cyc(24);
-    r_lda16(cr, b | 0x0D1A);
+    r_lda16(cr, b | W(joy1_pressed_copy));
     if (cr->a) {
         r_sep(cr, P_M);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x12);
@@ -2322,12 +2323,12 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
         return;
     }
     cyc(40);
-    r_lda16(cr, b | 0x0FAA);
+    r_lda16(cr, b | W(records_place));
     r_cmp16(cr, 0x0003);
     if (cr->a >= 0x0003)
         { cyc(40); return; }
     cyc(70);
-    wr16(b | 0x0FA8, 0x0000);
+    wr16(b | W(records_row), 0x0000);
     for (first = 1;; first = 0) {
         cyc(first ? 62 : 84);               /* JSL; after the first, BRA back too */
         if (all)
@@ -2335,7 +2336,7 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
         else
             PreviewRowDrawStunt_cr(cr);
         cyc(24);   /* PreviewRowDraw* state their tail */
-        r_lda16(cr, b | 0x0FA8);
+        r_lda16(cr, b | W(records_row));
         v = (uint16_t)(cr->a + 1);
         cr->a = v;
         set_p(cr, nz16(cr->p, v));
@@ -2343,25 +2344,25 @@ static void preview_rows(Carried *cr, int all, uint16_t last)
         if (v >= 0x0004)
             break;
         cyc(78);
-        wr16(b | 0x0FA8, v);
+        wr16(b | W(records_row), v);
     }
     cyc(84);
-    r_lda16(cr, b | 0x0FA6);
+    r_lda16(cr, b | W(records_char));
     r_cmp16(cr, last);
     if (cr->a < last) {
         cyc(64);
-        v = (uint16_t)(rd16(b | 0x0FA6) + 1);
+        v = (uint16_t)(rd16(b | W(records_char)) + 1);
         cyc(14);
-        wr16(b | 0x0FA6, v);
+        wr16(b | W(records_char), v);
         set_p(cr, nz16(cr->p, v));
         return;
     }
     cyc(70);
-    wr16(b | 0x0FA6, 0x0000);
+    wr16(b | W(records_char), 0x0000);
     cyc(24);
-    v = (uint16_t)(rd16(b | 0x0FAA) + 1);
+    v = (uint16_t)(rd16(b | W(records_place)) + 1);
     cyc(14);
-    wr16(b | 0x0FAA, v);
+    wr16(b | W(records_place), v);
     set_p(cr, nz16(cr->p, v));
 }
 
@@ -2436,15 +2437,15 @@ void CoursePreviewReset(Carried *cr)
 
     r_rep(cr, P_M);
     cyc(24);
-    wr16(b | 0x0FAA, 0x0000);
+    wr16(b | W(records_place), 0x0000);
     cyc(24);
-    wr16(b | 0x0FA6, 0x0000);
+    wr16(b | W(records_char), 0x0000);
     db0 = cr->db;
     p0 = cr->p;
     r_rep(cr, P_M | P_X);
     cyc(104);
     for (i = 0; i < 0x0800; i++)
-        { cyc(36); wr8(0x7F9BD7 + i, rd8(0x7FC3D7 + i)); }
+        { cyc(36); wr8(W(tilemap_7f9bd7) + i, rd8(0x7FC3D7 + i)); }
     cyc(68);
     cr->a = 0xFFFF;
     cr->x = 0xCBD7;
@@ -2489,7 +2490,7 @@ void CourseScreenStartSpeed(Carried *cr)
 
     screen_state2(cr, b);
     cyc(24);
-    wr8(b | 0x10D8, 0x00);
+    wr8(b | W(wram_10D8), 0x00);
     cyc(42);
 }
 
@@ -2760,7 +2761,7 @@ void CourseRecordsDispatch(Carried *cr)
     TilemapLevelColumns_cr(cr);
     r_sep(cr, P_M);
     cyc(46);                           /* its end is TilemapLevelColumns' now */
-    r_lda8(cr, b | 0x0D61);
+    r_lda8(cr, b | W(fade_level_hi));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(74), 0))));
     if (v != 0x0F)
@@ -2851,7 +2852,7 @@ void CourseScreenStep(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D2B);
+    r_lda8(cr, b | W(hud_mode));
     v = (uint8_t)(cr->a << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cr->x = v;
@@ -2873,52 +2874,52 @@ void CourseScreenStep(Carried *cr)
     }
     r_sep(cr, P_M);
     cyc(84);
-    r_lda8(cr, b | 0x0D24);
+    r_lda8(cr, b | W(wram_0D24));
     if ((uint8_t)cr->a != 0x03) {
         r_rep(cr, P_M);
         cyc(56);
-        r_lda16(cr, b | 0x030D);
+        r_lda16(cr, b | W(joy2_held));
         r_and16(cr, 0xDFD0);
         if (cr->a) {
             r_sep(cr, P_M);
             cyc(90);
-            wr8(b | 0x0D24, 0x00);
+            wr8(b | W(wram_0D24), 0x00);
             cyc(24);
-            wr8(b | 0x0D25, 0x00);
+            wr8(b | W(wram_0D25), 0x00);
             cyc(22);                    /* BRA */
         } else {
             cyc(62);
-            r_lda16(cr, b | 0x0D1C);
+            r_lda16(cr, b | W(joy2_pressed_copy));
             set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x2000) ? 0 : (cyc(46), P_Z))));
             if (cr->a & 0x2000) {
                 cyc(64);
-                r_lda16(cr, b | 0x030D);
+                r_lda16(cr, b | W(joy2_held));
                 set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V | P_Z)) | ((cr->a >> 8) & 0xC0) | ((cr->a & 0x0020) ? 0 : P_Z)));
                 if (!(cr->a & 0x0020)) {
                     r_sep(cr, P_M);
                     cyc(92);
-                    wr8(b | 0x0D24, 0x00);
+                    wr8(b | W(wram_0D24), 0x00);
                     cyc(24);
-                    wr8(b | 0x0D25, 0x00);
+                    wr8(b | W(wram_0D25), 0x00);
                     cyc(22);            /* BRA */
                 } else {
                     r_sep(cr, P_M);
                     cyc(86);
-                    v = (uint8_t)(rd8(b | 0x0D25) + 1);
+                    v = (uint8_t)(rd8(b | W(wram_0D25)) + 1);
                     cyc(6);
-                    wr8(b | 0x0D25, v);
+                    wr8(b | W(wram_0D25), v);
                     cyc(24);
-                    r_lda8(cr, b | 0x0D25);
+                    r_lda8(cr, b | W(wram_0D25));
                     v = (uint8_t)cr->a;
                     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x07)) & ~P_C) | (v >= 0x07 ? P_C : (cyc(38), 0))));
                     if (v >= 0x07) {
                         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x03);
                         cyc(72);
-                        wr8(b | 0x0D24, 0x03);
+                        wr8(b | W(wram_0D24), 0x03);
                         cr->a = (uint16_t)(cr->a & 0xFF00);
                         cyc(18);
                         for (i = 0x0B; i >= 0; i--)
-                            { cyc(68); wr8(0x000F05 + (uint32_t)i, 0x00); }
+                            { cyc(68); wr8(W(level_columns) + (uint32_t)i, 0x00); }
                         cyc(108);
                         cr->x = 0xFF;
                         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x36);
@@ -2944,7 +2945,7 @@ void CourseScreenStep(Carried *cr)
     } else { cyc(38); }
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D24);
+    r_lda8(cr, b | W(wram_0D24));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? (cyc(18), P_C) : 0)));
     if (v == 0x03) {
@@ -3008,7 +3009,7 @@ static int fade_step(Carried *cr)
     (cyc(62), BlendStepDown_cr(cr));
     r_rep(cr, P_M);
     cyc(32);
-    r_lda16(cr, 0x7F3408);
+    r_lda16(cr, W(fixed_colour_step));
     return cr->a == 0;
 }
 
@@ -3097,11 +3098,11 @@ static void fade_back_body(Carried *cr)
         { cyc(16); return; }
     fade_done(cr, b, 0x06, 0x02);
     cyc(24);
-    r_lda8(cr, b | 0x0D2B);
+    r_lda8(cr, b | W(hud_mode));
     if ((uint8_t)cr->a)
         { cyc(22); return; }
     cyc(40);
-    r_lda8(cr, b | 0x0D24);
+    r_lda8(cr, b | W(wram_0D24));
     if ((uint8_t)cr->a == 0x03) {
         cyc(38);
         set_p(cr, (uint8_t)((nz8(cr->p, 0) | P_C)));
@@ -3109,7 +3110,7 @@ static void fade_back_body(Carried *cr)
     }
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)((uint8_t)cr->a - 0x03)) & ~P_C) | ((uint8_t)cr->a >= 0x03 ? P_C : 0)));
     cyc(56);
-    r_lda8(cr, b | 0x0D4C);
+    r_lda8(cr, b | W(digit62_override));
     if ((uint8_t)cr->a)
         { cyc(22); return; } else { cyc(94); }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x2D);

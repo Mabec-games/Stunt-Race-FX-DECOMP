@@ -6,6 +6,7 @@
 #include "cpu_ops.h"
 #include "hw.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p);
 uint8_t GsuRun(uint8_t bank, uint16_t start);
@@ -241,7 +242,7 @@ uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
     uint16_t v;
 
     cyc(68);
-    *x = (uint16_t)((rd16(b | 0x0D48) & 0x00FF) << 1);
+    *x = (uint16_t)((rd16(b | W(wram_0D48)) & 0x00FF) << 1);
     cyc(124);
     v = rd16(0x02FC58 + *x);
     wr16(b | 0x0D37, v);
@@ -278,11 +279,11 @@ void abi_Set0D37FromTable(void)
 void Set7EBC2BTrio(uint8_t v)
 {
     cyc(76);
-    wr8(0x7EBC2B, v);
+    wr8(W(wram_7EBC2B), v);
     cyc(32);
-    wr8(0x7EBC2D, v);
+    wr8(W(wram_7EBC2D), v);
     cyc(32);
-    wr8(0x7EBC2F, v);
+    wr8(W(wram_7EBC2F), v);
     cyc(72);
 }
 
@@ -315,18 +316,18 @@ uint8_t Countdown0DF8(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(52);
-    uint8_t v = rd8(b | 0x0DF8);
+    uint8_t v = rd8(b | W(wram_0DF8));
 
     if (v) {
         cyc(46);
-        wr8(b | 0x0DF8, cyc_then(6, (uint8_t)(rd8(b | 0x0DF8) - 1)));
+        wr8(b | W(wram_0DF8), cyc_then(6, (uint8_t)(rd8(b | W(wram_0DF8)) - 1)));
         cyc(54);
         return v;
     }
     cyc(40);
-    wr8(b | 0x0E5C, cyc_then(6, (uint8_t)(rd8(b | 0x0E5C) - 1)));
+    wr8(b | W(wram_0E5C), cyc_then(6, (uint8_t)(rd8(b | W(wram_0E5C)) - 1)));
     cyc(24);
-    wr8(b | 0x1160, 0x00);
+    wr8(b | W(wram_1160), 0x00);
     cyc(54);
     return v;
 }
@@ -375,18 +376,18 @@ void ChampionshipFinish(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    wr8(b | 0x0D59, 0x00);
+    wr8(b | W(wram_0D59), 0x00);
     (cyc(46), OverlayFramesUntilFaded(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    wr8(b | 0x0D48, 0x00);
+    wr8(b | W(wram_0D48), 0x00);
     (cyc(46), RecordTimeInsert_cr(cr));
     (cyc(62), RecordsUnpackCourseRunning(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     (cyc(0), ChampionScreenRun(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    v = rd8(b | 0x0D4A);
+    v = rd8(b | W(wram_0D4A));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, (uint8_t)(v - 0x02)));
     set_p(cr, (uint8_t)(v >= 0x02 ? (cyc(64), cr->p | P_C) : (cyc(62), cr->p & ~P_C)));
@@ -421,7 +422,7 @@ void Set7EFFA6Sequence(void)
 
     cyc(44);
     for (i = 0; i < 4; i++)
-        { cyc(56); wr16(0x7EFFA6 + 2 * i, (uint16_t)(i + 1)); }
+        { cyc(56); wr16(W(wram_7EFFA6) + 2 * i, (uint16_t)(i + 1)); }
     cyc(72);
 }
 
@@ -461,21 +462,21 @@ uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_
     uint16_t n;
 
     cyc(46);
-    *y = rd16(b | 0x0CF6);
+    *y = rd16(b | W(copy_count));
     if (!*y) {
         *p = nz16(*p, 0);
         return a;
     }
     cyc(46);
-    *x = rd16(b | 0x0CF2);
+    *x = rd16(b | W(copy_src_pos));
     cyc(118);
     a = rd16(0x02D65A + *x);
     wr16(b | (uint16_t)(0x07A2 + *y), a);
     cyc(54);
-    wr16(b | 0x0CF2, (uint16_t)(*x - 2));
+    wr16(b | W(copy_src_pos), (uint16_t)(*x - 2));
     n = (uint16_t)(*y - 2);
     cyc(116);
-    wr16(b | 0x0CF6, n);
+    wr16(b | W(copy_count), n);
     *p = nz16(*p, n);
     cyc(46);
     return a;
@@ -791,7 +792,7 @@ static void demo_blank(Carried *cr, uint32_t b)
 static int demo_fade_done(Carried *cr, uint32_t b)
 {
     cyc(24);
-    r_lda16(cr, b | 0x0D61);
+    r_lda16(cr, b | W(fade_level_hi));
     if (cr->a & 0x0080)
         cr->a |= 0xFF00;
     else
@@ -806,7 +807,7 @@ static void demo_fade_out(Carried *cr, uint32_t b)
     r_sep(cr, P_M);
     demo_lda8(cr, 0x01);
     cyc(44);
-    wr8(b | 0x0E3A, 0x01);
+    wr8(b | W(fade_out), 0x01);
     r_rep(cr, P_M);
 }
 
@@ -899,11 +900,11 @@ void DemoRun(Carried *cr)
     wr16(0x0018DB, cr->a);
     r_lda16_imm(cr, 0x0000);
     cyc(10);
-    wr16(b | 0x0D2B, 0x0000);
+    wr16(b | W(hud_mode), 0x0000);
     r_sep(cr, P_M);
     demo_lda8(cr, 0x01);
     cyc(22);
-    wr8(b | 0x0374, 0x01);
+    wr8(b | W(gsu_scmr_shadow), 0x01);
     demo_lda8(cr, 0x01);
     hw_wr(b | 0x3039, 0x01);
     demo_lda8(cr, 0x20);
@@ -931,7 +932,7 @@ void DemoRun(Carried *cr)
     hw_wr(b | 0x3039, 0x01);
     demo_lda8(cr, 0x01);
     cyc(8);
-    wr8(0x7EFF65, 0x01);
+    wr8(W(palette_saved), 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(76);
     AttractCourseSetup(cr);
@@ -939,7 +940,7 @@ void DemoRun(Carried *cr)
     b = (uint32_t)cr->db << 16;
     demo_lda8(cr, 0x03);
     cyc(22);
-    wr8(b | 0x0D2B, 0x03);
+    wr8(b | W(hud_mode), 0x03);
     (cyc(62), w_CourseDataPointer(cr));
     (cyc(62), CourseScriptRun(cr));
     (cyc(62), w_ObjectPlaceAll(cr));
@@ -954,9 +955,9 @@ void DemoRun(Carried *cr)
     b = (uint32_t)cr->db << 16;
     demo_lda8(cr, 0x01);
     cyc(22);
-    wr8(b | 0x0357, 0x01);
+    wr8(b | W(wram_0357), 0x01);
     cyc(24);
-    wr8(b | 0x05E9, 0x00);
+    wr8(b | W(wram_05E9), 0x00);
     r_rep(cr, P_M);
     cyc(24);
     wr16(b | 0x1A59, 0x0000);
@@ -1005,7 +1006,7 @@ void DemoRun(Carried *cr)
             if (c == 0x01) {
                 x = cr->x;
                 r_lda16(cr, 0x038005 + x);
-                cr->x = rd16(b | 0x0346);
+                cr->x = rd16(b | W(wram_0346));
                 set_p(cr, nz16(cr->p, cr->x));
                 (cyc(62), w_ObjectLinkedSet1A(cr));
                 cr->x = x;
@@ -1046,15 +1047,15 @@ void DemoRun(Carried *cr)
                 demo_next_before(cr, 0x0001);
                 r_sep(cr, P_M);
                 demo_lda8(cr, 0x00);
-                wr8(b | 0x19DF, 0x00);
+                wr8(b | W(wram_19DF), 0x00);
                 demo_lda8(cr, 0x01);
-                wr8(b | 0x19D8, 0x01);
+                wr8(b | W(window_hdma_off), 0x01);
                 r_rep(cr, P_M);
                 cyc(24);                        /* JMP */
                 continue;
             } else { cyc(48); }
             if (c == 0x08) {
-                r_lda16(cr, b | 0x19D8);
+                r_lda16(cr, b | W(window_hdma_off));
                 r_and16(cr, 0x00FF);
                 r_cmp16(cr, 0x0005);
                 if (cr->a != 0x0005)

@@ -7,6 +7,7 @@
 #include "hw.h"
 #include "math_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /*
@@ -73,12 +74,12 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
 
     cyc(16);
     t = rd8(xa);
-    r = smul(t, 0x000625);
+    r = smul(t, W(rot_cos));
     cyc(30);                                    /* TAX, STX */
     wr8(out, r);
     cyc(16);
     t = rd8(va);
-    r = smul(t, 0x000624);
+    r = smul(t, W(rot_sin));
     cyc(58);                                    /* TAX, TXA, CLC, ADC */
     t = rd8(out);
     r = (uint8_t)(r + t);
@@ -94,12 +95,12 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
         cyc(16);                                /* LDA */
     }
     t = rd8(xa);
-    r = smul(t, 0x000624);
+    r = smul(t, W(rot_sin));
     cyc(74 + w2);                               /* TAX, TXA, EOR, INC, STA */
     wr8(out2, (uint8_t)-r);
     cyc(16);
     t = rd8(va);
-    r = smul(t, 0x000625);
+    r = smul(t, W(rot_cos));
     cyc(58 + w2);                               /* TAX, TXA, CLC, ADC */
     t = rd8(out2);
     r = (uint8_t)(r + t);
@@ -121,9 +122,9 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
 static void sin_cos(uint8_t i)
 {
     cyc((0x3E + i) > 0xFF ? 6 : 0);
-    wr8(0x000625, rd8(0x00973E + i));
+    wr8(W(rot_cos), rd8(0x00973E + i));
     cyc(32 + ((0xFE + i) > 0xFF ? 6 : 0));
-    wr8(0x000624, cyc_then(24, rd8(0x0096FE + i)));
+    wr8(W(rot_sin), cyc_then(24, rd8(0x0096FE + i)));
 }
 
 /*
@@ -321,36 +322,36 @@ uint16_t MulWordByte(uint8_t bank, uint8_t *yout)
     cyc(16);
     wr8(0x00006B, 0x00);
     cyc(16);
-    a = rd8(0x000069);
+    a = rd8(W(mul_byte));
     if (a & 0x80)
         goto neg_s;
     a = (uint8_t)(a << 1);
     cyc(54);
     io_wr8(b | 0x4202, mpya = a);
     cyc(16);
-    a = rd8(0x000068);
+    a = rd8(W(fx_normal_x_w));
     if (a & 0x80)
         goto pos_s_neg_v;
     cyc(32);
-    a = rd8(0x000067);
+    a = rd8(W(mul_word));
     cyc(24);
     io_wr8(b | 0x4203, a);
     prod = cpu_mul(mpya, a);
     cyc(44);
-    a = rd8(0x000068);
+    a = rd8(W(fx_normal_x_w));
     pre = 48;                           /* JMP, LDY */
     st = 16;
     goto add;
 pos_s_neg_v:
     cyc(68);
-    m = rd8(0x000067);
+    m = rd8(W(mul_word));
     cy = 1;
     a = sub8(0x00, m, &cy);
     cyc(8);
     io_wr8(b | 0x4203, a);
     prod = cpu_mul(mpya, a);
     cyc(32);
-    m = rd8(0x000068);
+    m = rd8(W(fx_normal_x_w));
     a = sub8(0x00, m, &cy);         /* the low byte's borrow */
     pre = 32;                           /* what sub8 does not state: JMP, LDY */
     st = 34;
@@ -361,29 +362,29 @@ neg_s:
     cyc(90);
     io_wr8(b | 0x4202, mpya = a);
     cyc(16);
-    a = rd8(0x000068);
+    a = rd8(W(fx_normal_x_w));
     if (a & 0x80)
         goto neg_s_neg_v;
     cyc(32);
-    a = rd8(0x000067);
+    a = rd8(W(mul_word));
     cyc(24);
     io_wr8(b | 0x4203, a);
     prod = cpu_mul(mpya, a);
     cyc(58);
-    a = rd8(0x000068);
+    a = rd8(W(fx_normal_x_w));
     pre = 24;                           /* LDY */
     st = 34;
     goto sub;
 neg_s_neg_v:
     cyc(68);
-    m = rd8(0x000067);
+    m = rd8(W(mul_word));
     cy = 1;
     a = sub8(0x00, m, &cy);
     cyc(8);
     io_wr8(b | 0x4203, a);
     prod = cpu_mul(mpya, a);
     cyc(60);
-    m = rd8(0x000068);
+    m = rd8(W(fx_normal_x_w));
     a = sub8(0x00, m, &cy);         /* the low byte's borrow */
     pre = 8;                            /* LDY, less what sub8 states */
     st = 16;
@@ -505,15 +506,15 @@ static uint16_t mul_at(uint16_t v, uint16_t f)
     cyc(16);
     t = rd8(v);
     cyc(16);
-    wr8(0x000067, t);
+    wr8(W(mul_word), t);
     cyc(16);
     t = rd8((uint16_t)(v + 1));
     cyc(16);
-    wr8(0x000068, t);
+    wr8(W(fx_normal_x_w), t);
     cyc(24);
     t = rd8(f);
     cyc(16);
-    wr8(0x000069, t);
+    wr8(W(mul_byte), t);
     cyc(62);
     return MulWordByteLong(0x00, &y);
 }
@@ -530,10 +531,10 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
 
     cyc(186);
     t = rd8(0x0096FE + i);
-    wr8(0x0005F6, t);
+    wr8(W(rot_wide_sin), t);
     t = rd8(0x00973E + i);
     cyc(0x3E + i > 0xFF ? 62 : 56);     /* LDA abs,X (6 more over a page), STA */
-    wr8(0x0005F7, t);
+    wr8(W(rot_wide_cos), t);
     mul_at(xa, 0x05F6);
     cyc(16);
     t = rd8(0x00006A);
@@ -542,7 +543,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     cyc(16);
     t = rd8(0x00006B);
     cyc(24);
-    wr8(0x0005F3, t);
+    wr8(W(rot_z_high), t);
     mul_at(0x0094, 0x05F7);
     cyc(16);
     t = rd8(0x00006A);
@@ -555,10 +556,10 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     cyc(16);
     t = rd8(0x00006B);
     cyc(24);
-    v = rd8(0x0005F3);
+    v = rd8(W(rot_z_high));
     t = (uint8_t)(t + v + (c > 0xFF));
     cyc(24);
-    wr8(0x0005F3, t);
+    wr8(W(rot_z_high), t);
     mul_at(0x0094, 0x05F6);
     cyc(16);
     t = rd8(0x00006A);

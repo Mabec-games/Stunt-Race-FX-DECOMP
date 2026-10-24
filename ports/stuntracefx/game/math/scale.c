@@ -6,6 +6,7 @@
 #include "hw.h"
 #include "math_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* Direct page $3E and $40: scratch the routines below leave behind. */
@@ -344,7 +345,7 @@ uint16_t Mode7ScaleProduct(uint16_t value, int positive)
     cyc(40);
     io_wr16(WRDIVL, n = positive ? value : (cyc(44), (uint16_t)-value));
     cyc(54);
-    io_wr8(WRDIVB, d = cyc_then(24, rd8(0x7F340A)));
+    io_wr8(WRDIVB, d = cyc_then(24, rd8(W(scale_divisor))));
     cyc(144);
     q = io_rd16(RDDIVL, cpu_div(n, d));
     if (!positive)
@@ -355,7 +356,7 @@ uint16_t Mode7ScaleProduct(uint16_t value, int positive)
     io_wr8(M7A, (uint8_t)(q >> 8));
     ppu_mul_factor = (int16_t)q;
     cyc(32);
-    io_wr8(M7B, m = cyc_then(24, rd8(0x7F3408)));
+    io_wr8(M7B, m = cyc_then(24, rd8(W(fixed_colour_step))));
     cyc(46);
     return cyc_then(42, io_rd16(MPYL, (uint16_t)ppu_mul(m)));
 }
@@ -444,9 +445,9 @@ void abi_ScaleDp02Dp94(void)
 uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p)
 {
     cyc(32);
-    wr16(0x000002, cyc_then(16, rd16(0x7E200C + obj)));
+    wr16(0x000002, cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
     cyc(32);
-    wr16(0x000094, cyc_then(16, rd16(0x7E2010 + obj)));
+    wr16(0x000094, cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
     return ScaleDp02Dp94(p);
 }
 
@@ -562,18 +563,18 @@ static uint16_t blend_words(void)
 
     for (i = 0; i < 4; i++) {
         cyc(32);
-        target = rd16((uint32_t)(0x7F343A + i * 2));
+        target = rd16((uint32_t)(W(scaled_words_target) + i * 2));
         cyc(46);
-        base = rd16((uint32_t)(0x7F3442 + i * 2));
+        base = rd16((uint32_t)(W(scaled_words_base) + i * 2));
         cyc(6);                                 /* SEC, SBC */
         a = (uint16_t)(target - base);
         cyc(40);
         a = Mode7ScaleProduct(a, target >= base);
         p = 0;
         cyc(46);
-        a = adc16p(a, rd16((uint32_t)(0x7F3442 + i * 2)), &p);
+        a = adc16p(a, rd16((uint32_t)(W(scaled_words_base) + i * 2)), &p);
         cyc(32);
-        wr16((uint32_t)(0x7F3432 + i * 2), a);
+        wr16((uint32_t)(W(scaled_words) + i * 2), a);
     }
     cyc(44);
     blend_flags = (uint8_t)(p & (P_N | P_Z | P_C | P_V));
@@ -604,9 +605,9 @@ uint16_t BlendStepUp(void)
     uint16_t a, limit;
 
     cyc(54);
-    a = rd16(0x7F3408);
+    a = rd16(W(fixed_colour_step));
     cyc(32);
-    limit = rd16(0x7F340A);
+    limit = rd16(W(scale_divisor));
     if (a == limit) {
         blend_flags = P_Z | P_C;                /* CMP: equal */
         blend_mask = P_N | P_Z | P_C;
@@ -615,7 +616,7 @@ uint16_t BlendStepUp(void)
     }
     a = (uint16_t)(a + 1);
     cyc(68);
-    wr16(0x7F3408, a);
+    wr16(W(fixed_colour_step), a);
     cyc(22);
     return blend_words();
 }
@@ -653,7 +654,7 @@ uint16_t BlendStepDown(void)
     uint16_t a;
 
     cyc(54);
-    a = rd16(0x7F3408);
+    a = rd16(W(fixed_colour_step));
     if (a == 0) {
         blend_flags = P_Z;
         blend_mask = P_N | P_Z;
@@ -662,7 +663,7 @@ uint16_t BlendStepDown(void)
     }
     a = (uint16_t)(a - 1);
     cyc(68);
-    wr16(0x7F3408, a);
+    wr16(W(fixed_colour_step), a);
     return blend_words();
 }
 

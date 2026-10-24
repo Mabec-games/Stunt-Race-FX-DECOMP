@@ -12,6 +12,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y);
 
@@ -212,10 +213,10 @@ static void origin(Carried *cr, uint8_t x, uint8_t y)
     r_sep(cr, P_M | P_X);
     lda8(cr, x);
     cyc(34);
-    wr8(b | 0x0D3B, x);
+    wr8(b | W(metasprite_origin_x), x);
     lda8(cr, y);
     cyc(40);
-    wr8(b | 0x0D3C, y);
+    wr8(b | W(metasprite_origin_y), y);
     r_rep(cr, P_M | P_X);
 }
 
@@ -285,7 +286,7 @@ void RecordsMenuBack(Carried *cr)
     r_sep(cr, P_M);
     lda8(cr, 0xF0);
     cyc(70);
-    wr8(0x000E92, 0xF0);
+    wr8(W(wram_0E92), 0xF0);
     r_rep(cr, P_M);
     cyc(42);
 }
@@ -447,7 +448,7 @@ void RecordsMenuAllMiddle(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x0D24);
+    r_lda8(cr, b | W(wram_0D24));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : (cyc(32), 0))));
     if (v != 0x03) {
@@ -717,7 +718,7 @@ static void speed_alt_leave(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(36);
-    wr8(b | 0x0D4C, 0x00);
+    wr8(b | W(digit62_override), 0x00);
     r_rep(cr, P_M | P_X);
     cyc(10);
     sound16(cr, 0x002F);
@@ -726,14 +727,14 @@ static void speed_alt_leave(Carried *cr)
     cyc(62);
     wr8(b | 0x0D40, 0x0E);
     cyc(24);
-    v = (uint8_t)(rd8(b | 0x0D48) + 1);
+    v = (uint8_t)(rd8(b | W(wram_0D48)) + 1);
     cyc(6);
-    wr8(b | 0x0D48, v);
+    wr8(b | W(wram_0D48), v);
     set_p(cr, nz8(cr->p, v));
     (cyc(62), OamBufferHideLargeLong_cr(cr));
     lda8(cr, 0xF0);
     cyc(48);
-    wr8(0x000E92, 0xF0);
+    wr8(W(wram_0E92), 0xF0);
     cyc(42);                            /* RTS */
 }
 
@@ -1270,42 +1271,42 @@ void SpeedRecordsPage(Carried *cr)
     if (pressed(cr, 0x0100)) {
         r_sep(cr, P_M);
         cyc(42);
-        r_lda8(cr, b | 0x10D8);
+        r_lda8(cr, b | W(wram_10D8));
         v = (uint8_t)cr->a;
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x04)) & ~P_C) | (v >= 0x04 ? P_C : (cyc(58), 0))));
         if (v < 0x04) {
             sound8(cr, 0x45);
             cyc(24);
-            v = (uint8_t)(rd8(b | 0x10D8) + 1);
+            v = (uint8_t)(rd8(b | W(wram_10D8)) + 1);
             cyc(6);
-            wr8(b | 0x10D8, v);
+            wr8(b | W(wram_10D8), v);
             set_p(cr, nz8(cr->p, v));
         }
     } else { cyc(24); if (pressed(cr, 0x0200)) {
         r_sep(cr, P_M);
         cyc(36);
-        r_lda8(cr, b | 0x10D8);
+        r_lda8(cr, b | W(wram_10D8));
         if ((uint8_t)cr->a) {
             cyc(42);
             sound8(cr, 0x45);
             cyc(24);
-            v = (uint8_t)(rd8(b | 0x10D8) - 1);
+            v = (uint8_t)(rd8(b | W(wram_10D8)) - 1);
             cyc(6);
-            wr8(b | 0x10D8, v);
+            wr8(b | W(wram_10D8), v);
             set_p(cr, nz8(cr->p, v));
         }
     cyc(22);
         } else { cyc(30); } }
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x10D8);
+    r_lda8(cr, b | W(wram_10D8));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(38), 0))));
     if (v >= 0x05) {
         v = 0x00;
         lda8(cr, 0x00);
         cyc(72);
-        wr8(b | 0x10D8, 0x00);
+        wr8(b | W(wram_10D8), 0x00);
     }
     v = (uint8_t)(v << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -1346,12 +1347,12 @@ void SpeedRecordsPage(Carried *cr)
     r_lda8(cr, b | 0x0E3D);
     old = (uint8_t)cr->a;
     cyc(46);
-    r_lda8(cr, b | 0x10D8);
+    r_lda8(cr, b | W(wram_10D8));
     if ((uint8_t)cr->a) {
         v = (uint8_t)(cr->a - 1);
         wr8(dp(cr, 0xF1), cyc_then(46, v));
         cyc(24);
-        r_lda8(cr, b | 0x0D4A);
+        r_lda8(cr, b | W(wram_0D4A));
         p = (uint8_t)(cr->p & ~P_C);
         v = alu_adc8((uint8_t)(cr->a << 2), rd8(cyc_then(58, dp(cr, 0xF1))), &p);
         set_p(cr, p);
@@ -1408,7 +1409,7 @@ void SpeedRecordsScreen(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D4C);
+    r_lda8(cr, b | W(digit62_override));
     if ((uint8_t)cr->a) {
         origin(cr, 0x89, 0x89);
         md_first(cr, 0x001A, 0);
@@ -1417,7 +1418,7 @@ void SpeedRecordsScreen(Carried *cr)
         cyc(24);
         r_lda16(cr, b | 0x0D75);
         cyc(24);
-        wr16(b | 0x0D7B, cr->a);
+        wr16(b | W(wram_0D7B), cr->a);
         (cyc(46), w_OamClassName(cr));
         (cyc(46), w_SpriteTextAt895E(cr));
         (cyc(62), OamPaletteForD75_cr(cr));
@@ -1426,7 +1427,7 @@ void SpeedRecordsScreen(Carried *cr)
     } else { cyc(6); }
     origin(cr, 0x89, 0x89);
     cyc(24);
-    r_lda16(cr, b | 0x0D48);
+    r_lda16(cr, b | W(wram_0D48));
     r_and16(cr, 0x00FF);
     if (cr->a)
         { cyc(44); md_first(cr, 0x001B, 0); }
@@ -1441,7 +1442,7 @@ void SpeedRecordsScreen(Carried *cr)
     (cyc(62), OamPaletteFromTableE26A_cr(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D48);
+    r_lda8(cr, b | W(wram_0D48));
     if (!(uint8_t)cr->a) {
         cyc(40);
         RecordsMenuSpeed(cr);
@@ -1449,7 +1450,7 @@ void SpeedRecordsScreen(Carried *cr)
     }
     lda8(cr, 0xF0);
     cyc(62);
-    wr8(b | 0x0E92, 0xF0);
+    wr8(b | W(wram_0E92), 0xF0);
     r_rep(cr, P_M);
     if (!pressed(cr, 0x9000))
         { cyc(72); return; }
@@ -1460,7 +1461,7 @@ void SpeedRecordsScreen(Carried *cr)
     cyc(40);
     wr8(b | 0x0D40, 0x0A);
     cyc(24);
-    r_lda8(cr, b | 0x0D4C);
+    r_lda8(cr, b | W(digit62_override));
     if ((uint8_t)cr->a) {
         SpeedRecordsLeaveCar(cr);
         return;
@@ -1499,7 +1500,7 @@ void SpeedRecordsLeaveCar(Carried *cr)
 
     lda8(cr, 0x04);
     cyc(40);
-    wr8(b | 0x0D89, 0x04);
+    wr8(b | W(wram_0D89), 0x04);
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x8669);
     cyc(18);
@@ -1601,13 +1602,13 @@ static void special_row(Carried *cr, uint16_t slot, uint16_t k, int stunt, Carri
         else
             { cyc(24); RecordTimeDigitsSmall_cr(cr); }
         cyc(32);   /* the digits routines state their RTS */
-        r_lda16(cr, 0x000F43 + k);
+        r_lda16(cr, W(special_words) + k);
         if (stunt)
             { cyc(46); RecordNameLettersSmall_cr(cr); }
         else
             RecordNameLetters_cr(cr);
         cyc(32);
-        r_lda16(cr, 0x000F13 + k);
+        r_lda16(cr, W(special_tags) + k);
         cr->y = y;
         set_p(cr, nz16(cr->p, y));
         (cyc(128), RecordTagCarSet_cr(cr));
@@ -1641,7 +1642,7 @@ void StuntRecordsScreen(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D4E);
+    r_lda8(cr, b | W(hud_blank));
     if ((uint8_t)cr->a) {
         cyc(28);
         origin(cr, 0x81, 0x89);
@@ -1725,11 +1726,11 @@ void BattleRecordsScreen(Carried *cr)
     md_next(cr, 0x04EDFD, 0x0D73, 0x0D75, 0x000B);
     slot_to_y(cr, 0x0D73, 0);
     cyc(66);
-    r_lda16(cr, b | 0x0D89);
+    r_lda16(cr, b | W(wram_0D89));
     r_asl16(cr);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(52);
-    cr->a = alu_adc16(cr->a, rd16(b | 0x0D89), &p);
+    cr->a = alu_adc16(cr->a, rd16(b | W(wram_0D89)), &p);
     set_p(cr, p);
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtLeft_cr(cr));
@@ -1740,11 +1741,11 @@ void BattleRecordsScreen(Carried *cr)
     r_asl16(cr);
     r_tay16(cr);
     cyc(104);
-    r_lda16(cr, b | 0x0D8A);
+    r_lda16(cr, b | W(wram_0D8A));
     r_asl16(cr);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(52);
-    cr->a = alu_adc16(cr->a, rd16(b | 0x0D8A), &p);
+    cr->a = alu_adc16(cr->a, rd16(b | W(wram_0D8A)), &p);
     set_p(cr, p);
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtRight_cr(cr));
@@ -1787,7 +1788,7 @@ void AllRecordsScreen(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0D4C);
+    r_lda8(cr, b | W(digit62_override));
     if ((uint8_t)cr->a) {
         cyc(6);
         origin(cr, 0x89, 0x89);

@@ -11,6 +11,7 @@
 #include "hw.h"
 #include "video_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 /* The run expansion GradientExpandFirst and GradientExpandSecond share,
    from run table index x: each run byte n stores the colour word at the
@@ -30,7 +31,7 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
         out = rd16(0x0000F3);
         do {
             cyc(32);
-            wr16((0x7FEF57 + out) & 0xFFFFFF, colour);
+            wr16((W(gradient_colours) + out) & 0xFFFFFF, colour);
             out = (uint16_t)(out + 2);
             cyc(44);
             n = (uint16_t)(rd16(0x0000F1) - 1);
@@ -169,7 +170,7 @@ uint16_t GradientBuildColours(uint16_t x, int *carry)
     }
     cyc(52);
     for (i = 0xFE; i >= 0; i -= 2)
-        { cyc(50); wr16(0x7FF757 + (uint32_t)i, 0x0000); cyc(32); }
+        { cyc(50); wr16(W(gradient_colours_clear) + (uint32_t)i, 0x0000); cyc(32); }
     return y;
 }
 
@@ -204,7 +205,7 @@ static uint16_t fill_cgadd(uint16_t value, uint16_t x, uint16_t count)
     cyc(0);
     do {
         cyc(32);
-        wr16(0x7F3497 + x, value);
+        wr16(W(gradient_cgadd) + x, value);
         x = (uint16_t)(x + 2);
     } while (cyc_loop(64, --count));
     cyc(100);
@@ -290,11 +291,11 @@ uint16_t GradientPointersToBank7F(void)
     uint16_t v = rd16(0x000D96);
 
     cyc(32);
-    wr16(0x7F348D, v);
+    wr16(W(gradient_ptr_a), v);
     cyc(24);
-    v = rd16(0x000D98);
+    v = rd16(W(gradient_src_b));
     cyc(32);
-    wr16(0x7F3493, v);
+    wr16(W(gradient_ptr_b), v);
     cyc(42);
     return v;
 }
@@ -364,19 +365,19 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(70);
     dma_wr16(b | 0x4332, 0x3489);
     cyc(102);
-    wr16(0x7F3497, 0x0117);
+    wr16(W(gradient_cgadd), 0x0117);
     x = 2;
     cyc(94);
     (cyc(0), GradientFillCgaddB(0x0181, x, 0x0050));
     x = (uint16_t)(x + 0xA0);
     cyc(56);
-    wr16(0x7F3497 + x, 0x0118);
+    wr16(W(gradient_cgadd) + x, 0x0118);
     x = (uint16_t)(x + 2);
     cyc(122);
     (cyc(0), GradientFillCgaddB(0x0181, x, 0x0050));
     x = (uint16_t)(x + 0xA0);
     cyc(56);
-    wr16(0x7F3497 + x, 0x0000);
+    wr16(W(gradient_cgadd) + x, 0x0000);
     for (k = 0; k < 6; k++)
         { cyc(56); wr16(ptr[k].a, ptr[k].v); }
     cyc(22);

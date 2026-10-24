@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "hud_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
@@ -141,21 +142,21 @@ int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
     Gauge g;
 
     cyc(76);
-    v = rd8(0x000D55);
+    v = rd8(W(panel_b_shown));
     if (!v)
-        { cyc(48); v = rd8(0x000D62); }
+        { cyc(48); v = rd8(W(wram_0D62)); }
     cyc(46);
     if (!v) {
         cyc(12);
         return 0;
     }
-    split = rd8(b | 0x0D62) != 0;
+    split = rd8(b | W(wram_0D62)) != 0;
     if (split)
         cyc(50);                        /* LDY # and the BRA's other arm */
     g = gauge_of(b, 0x0E0E, 0x0E10, 0x0DF9);
     bar4(bank, g, split ? 0x0040 : 0x0100, split ? 86 : 108);
     cyc(40);
-    split = rd8(b | 0x0D62) != 0;
+    split = rd8(b | W(wram_0D62)) != 0;
     if (split)
         cyc(50);
     g = gauge_of(b, 0x0E12, 0x0E14, 0x0E05);

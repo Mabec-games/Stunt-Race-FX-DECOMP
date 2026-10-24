@@ -5,6 +5,7 @@
 #include "cpu_ops.h"
 #include "hud_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* The sliding panel's offset; $10 is fully shown. */
@@ -131,7 +132,7 @@ static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
     int i, c = 0;
 
     cyc(92);
-    v0 = rd8(b | 0x0D57);
+    v0 = rd8(b | W(hud_slide));
     cyc(30);
     v0 = adc8i(v0, rd8((uint16_t)(d + 0xF9)), &c);
     v = v0;
@@ -165,7 +166,7 @@ static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
 /* Panel B's Y ($0E0B - $0D) for its two sprite pairs, and + $10. */
 static uint8_t hud_panel_b_y(uint32_t b)
 {
-    uint8_t v = lda8(b | 0x0E0B);
+    uint8_t v = lda8(b | W(map_b_y_w));
     int c = 0;
 
     v = sbc8i(v, 0x0D);
@@ -188,7 +189,7 @@ static uint8_t hud_marker_y(uint32_t b)
     static const struct { uint8_t add; uint16_t at[2]; int n; } step[6] = {
         {0x08, {0x0545, 0}, 1}, {0x06, {0x055D, 0x0561}, 2}, {0x08, {0x0565, 0x0569}, 2},
         {0x08, {0x0549, 0}, 1}, {0x08, {0x054D, 0x0551}, 2}, {0x08, {0x0555, 0x0559}, 2}};
-    uint8_t v = lda8(b | 0x0E16);
+    uint8_t v = lda8(b | W(wram_0E16));
     int i, j, c;
 
     cyc(24);
@@ -218,7 +219,7 @@ static uint8_t hud_gauge_b_x(uint32_t b)
         {0x08, 0, 0, 0, {0x04B9, 0x04B1}, 2}, {0x08, 0, 0, 0, {0x04C1, 0}, 1},
         {0x04, 0, 0, 0, {0x04C5, 0}, 1}, {0x08, 0, 0, 0, {0x04C9, 0}, 1},
         {0x08, 0, 0, 0, {0x04CD, 0}, 1}};
-    uint8_t v = lda8(b | 0x0E12);
+    uint8_t v = lda8(b | W(gauge_b6_x));
     int i, j, c = 0;
 
     for (i = 0; i < 11; i++) {
@@ -253,7 +254,7 @@ static uint8_t out_cv, out_nz;          /* the adapter's: C and V, and the value
 uint8_t HudSlideOut(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint8_t v = lda8(b | 0x0D57), r;
+    uint8_t v = lda8(b | W(hud_slide)), r;
 
     r = sbc8i(v, 0x04);
     out_cv = (uint8_t)((v >= 0x04 ? P_C : 0) | (((v ^ 0x04) & (v ^ r) & 0x80) ? P_V : 0));
@@ -267,7 +268,7 @@ uint8_t HudSlideOut(uint8_t bank)
             out_nz = v = 0xD0;
     }
     cyc(54);
-    wr8(b | 0x0D57, v);
+    wr8(b | W(hud_slide), v);
     cyc(42);
     return v;
 }
@@ -304,7 +305,7 @@ static uint8_t hud_panel_slide(uint8_t bank, uint16_t d, uint8_t f9, uint16_t x,
 
     cyc(106);
     wr8(b | 0x00F9, f9);
-    v = lda8_after(b | 0x0D54, panel_a ? 24 : 48);   /* A: STA, LDA; B: STA, LDX #, LDA */
+    v = lda8_after(b | W(wram_0D54), panel_a ? 24 : 48);   /* A: STA, LDA; B: STA, LDX #, LDA */
     cmp8(v, 0x08);
     if (v < 0x08) {
         cyc(42);                        /* PLP */
@@ -314,10 +315,10 @@ static uint8_t hud_panel_slide(uint8_t bank, uint16_t d, uint8_t f9, uint16_t x,
         if (v == 0x08)
             hud_slide_in(&p);
         else {
-            v = lda8(b | 0x0D57);
+            v = lda8(b | W(hud_slide));
             cmp8(v, 0xD0);
             if (v == 0xD0)
-                wr8(b | 0x0D54, 0x00);
+                wr8(b | W(wram_0D54), 0x00);
             HudSlideOut(bank);
         }
     }
@@ -421,24 +422,24 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
 
     cyc(22);                            /* SEP #$30 */
     cyc(46);
-    step_x = rd8(b | 0x0D54);
+    step_x = rd8(b | W(wram_0D54));
     step_a_set = 1;
     switch (step_x) {
     case 0x02:
         cyc(22);
-        v = lda8(b | 0x0E16);
+        v = lda8(b | W(wram_0E16));
         v = sbc8i(v, 0x04);
         /* CMP #$AC, BCS taken (38) or not, LDA #$AC (48) */
         cyc(v >= 0xAC ? 38 : 48);
         if (v < 0xAC)
             v = 0xAC;
         cyc(38);
-        wr8(b | 0x0E16, v);
+        wr8(b | W(wram_0E16), v);
         step_a = hud_marker_y(b);
         break;
     case 0x04:
         cyc(22);
-        v = lda8(b | 0x0E12);
+        v = lda8(b | W(gauge_b6_x));
         v = (uint8_t)(v + 0x04);
         if (v & 0x80) {
             cyc(76);
@@ -447,12 +448,12 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
             if (v >= 0x1F)
                 v = 0x1F;
         }
-        wr8(b | 0x0E12, v);
+        wr8(b | W(gauge_b6_x), v);
         step_a = hud_gauge_b_x(b);
         break;
     case 0x06:
         cyc(22);
-        v = lda8(b | 0x0E0B);
+        v = lda8(b | W(map_b_y_w));
         v = (uint8_t)(v + 0x04);
         if (v & 0x80) {
             cyc(76);
@@ -464,7 +465,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
                 cyc(40);
             } else { cyc(108); }
         }
-        wr8(b | 0x0E0B, v);
+        wr8(b | W(map_b_y_w), v);
         step_a = hud_panel_b_y(b);
         break;
     case 0x08:

@@ -6,6 +6,7 @@
 #include "hw.h"
 #include "video_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* BG2 scroll pairs in work RAM, indexed by the screen band: horizontal at
@@ -94,7 +95,7 @@ void abi_Bg2ScrollFromTable(void)
 void ScrollHdmaSet(void)
 {
     cyc(76);
-    uint16_t v = rd16(0x000E37);
+    uint16_t v = rd16(W(scroll_value));
 
     cyc(32);
     wr16(0x0010AE, v);

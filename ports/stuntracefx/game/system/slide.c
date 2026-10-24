@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "system_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 /*
  * @routine 7E:E0E8 SlideStep
@@ -23,34 +24,34 @@ uint16_t SlideStep(uint16_t a)
     uint16_t v;
 
     cyc(148);
-    if (!(rd8(0x000DA5) & 0x80))
+    if (!(rd8(W(slide_flags)) & 0x80))
         { cyc(38); return (uint16_t)(a & 0xFF00); }
     cyc(78);
-    if (!(rd16(0x0019FC) & 0x8000))
-        { cyc(40); v = (uint16_t)(rd16(0x0019F6) + rd16(cyc_then(38, 0x0019F8))); }
+    if (!(rd16(W(slide_direction)) & 0x8000))
+        { cyc(40); v = (uint16_t)(rd16(W(slide_value)) + rd16(cyc_then(38, W(slide_step)))); }
     else
-        { cyc(68); v = (uint16_t)(rd16(0x0019F6) - rd16(cyc_then(38, 0x0019F8))); }
+        { cyc(68); v = (uint16_t)(rd16(W(slide_value)) - rd16(cyc_then(38, W(slide_step)))); }
     cyc(24);
-    if (v == rd16(0x0019FA)) {
+    if (v == rd16(W(slide_target))) {
         cyc(46);
-        uint16_t dir = rd16(0x0019FC);
+        uint16_t dir = rd16(W(slide_direction));
         if (!(dir & 0x8000))
             { cyc(22); return dir; }
         cyc(70);
-        wr8(0x000DA5, cyc_then(48, rd8(0x000DA5) & 0x7F));
+        wr8(W(slide_flags), cyc_then(48, rd8(W(slide_flags)) & 0x7F));
         cyc(78);
-        wr16(0x7F3470, 0xFFFF);
+        wr16(W(slide_done), 0xFFFF);
         a = 0xFFFF;
     } else {
         cyc(40);
-        wr16(0x0019F6, v);
+        wr16(W(slide_value), v);
         a = v;
         cyc(24);                        /* JMP */
     }
     {
         uint8_t hi = (cyc(46), rd8(0x0019F7));      /* SEP, LDA */
         cyc(32);
-        wr8(0x7F3468, hi);
+        wr8(W(slide_out), hi);
         return (uint16_t)((a & 0xFF00) | hi);
     }
 }
@@ -119,21 +120,21 @@ uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
         cyc(38);
     if (a == 0x0F) {
         cyc(56);
-        a = wobble_add(rd8(b | 0x1A05), 0x01);
+        a = wobble_add(rd8(b | W(slide_wobble_count)), 0x01);
         cyc(54);
-        wr8(b | 0x1A05, a);
+        wr8(b | W(slide_wobble_count), a);
         wobble_c = a >= 0x02;
         if (!wobble_c)
             cyc(38);
         if (a == 0x02) {
             cyc(56);
-            wr8(b | 0x1A05, 0x00);
+            wr8(b | W(slide_wobble_count), 0x00);
             cyc(32);
-            a = rd8(0x7F3468);
+            a = rd8(W(slide_out));
             cyc(38);
             a = wobble_add(a, rd8(b | 0x1A04));
             cyc(32);
-            wr8(0x7F3468, a);
+            wr8(W(slide_out), a);
             m = a == 0x0F ? 0x0F : (cyc(32), 0x0B);
             wobble_c = a >= m;
             if (wobble_c)

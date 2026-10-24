@@ -12,6 +12,7 @@
 
 #include "alu.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p);
 uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p);
@@ -481,7 +482,7 @@ void ResultsCarIndex(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     uint16_t v;
 
-    byte_of(a, p, 0x000D4A);
+    byte_of(a, p, W(wram_0D4A));
     wr16(abs_db(bank, 0x11DF), cyc_then(42, *a));
     asl(a, p);
     asl(a, p);
@@ -592,17 +593,17 @@ void ResultsGroupPalette(uint8_t bank, uint16_t x, uint16_t *a, uint16_t *y, uin
     lda(a, p, rd16(cyc_then(52, fld(x, 0x12))));
     tax(*a, &x, p);
     cyc(16);
-    lda(a, p, rd16(0x7F1356 + (uint32_t)x));
+    lda(a, p, rd16(W(menu_sprite_groups) + (uint32_t)x));
     *y = *a;
     *p = nz16(*p, *y);
     x = (uint16_t)(x + 2);
     do {
         cyc(74);
-        lda(a, p, rd16(0x7F135A + (uint32_t)x));
+        lda(a, p, rd16(W(menu_sprite_attr) + (uint32_t)x));
         and_imm(a, p, 0xF1FF);
         lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, abs_db(bank, 0x11DF)))));
         cyc(32);
-        wr16(0x7F135A + (uint32_t)x, *a);
+        wr16(W(menu_sprite_attr) + (uint32_t)x, *a);
         txa(x, a, p);
         add(a, p, 0x0008);
         tax(*a, &x, p);
@@ -1074,11 +1075,11 @@ static void tile_at(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t
     *x = rd16(cyc_then(24, abs_db(bank, at)));
     *p = nz16(*p, *x);
     cyc(32);
-    lda(a, p, rd16(0x7F135A + (uint32_t)*x));
+    lda(a, p, rd16(W(menu_sprite_attr) + (uint32_t)*x));
     and_imm(a, p, 0xFE00);
     lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, abs_db(bank, 0x11E3)))));
     cyc(32);
-    wr16(0x7F135A + (uint32_t)*x, *a);
+    wr16(W(menu_sprite_attr) + (uint32_t)*x, *a);
     lda(a, p, rd16(cyc_then(24, abs_db(bank, at))));
     add(a, p, 0x0008);
     wr16(abs_db(bank, at), cyc_then(62, *a));
@@ -1255,13 +1256,13 @@ void ResultsTimeDigits(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint
         lda(a, p, (uint16_t)(*a + 2));
         wr16(abs_db(bank, 0x11E1), cyc_then(52, *a));
         cyc(32);
-        lda(a, p, rd16(0x000EEF));
+        lda(a, p, rd16(W(wram_0EEF)));
         (cyc(46), ResultsBcdPair(bank, *x, a, p));
         cyc(32);
-        lda(a, p, rd16(0x000EEE));
+        lda(a, p, rd16(W(wram_0EEE)));
         (cyc(46), ResultsBcdPair(bank, *x, a, p));
         cyc(32);
-        lda(a, p, rd16(0x000EED));
+        lda(a, p, rd16(W(wram_0EED)));
         (cyc(46), ResultsBcdPair(bank, *x, a, p));
         *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
         *p = nz16(*p, *x);
@@ -1539,7 +1540,7 @@ void ResultsLapTimes(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint16
     lda(a, p, rd16(0x000F77 + (uint32_t)*x));
     (cyc(46), ResultsBcdPair(bank, *x, a, p));
     cyc(32);
-    lda(a, p, rd16(0x000F76 + (uint32_t)*x));
+    lda(a, p, rd16(W(record_times) + (uint32_t)*x));
     (cyc(46), ResultsBcdPair(bank, *x, a, p));
     leader_or_stop(bank, x, a, p, 0x20);
 }
@@ -1792,7 +1793,7 @@ static void place_points(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, ui
     cmp(*a, p, 0x0008);
     if (!(*p & P_Z)) {
         cyc(58);
-        byte_of(a, p, 0x000D48);
+        byte_of(a, p, W(wram_0D48));
         cmp(*a, p, n);
         if (*p & P_Z) {
             cyc(110);

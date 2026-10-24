@@ -8,6 +8,7 @@
 #include "cpu_ops.h"
 #include "video_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 #define SLOT_MASK 0x05D5u
 #define SLOTS 0x0595u
@@ -183,7 +184,7 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
     wr8((uint16_t)(r + 0), cyc_then(38, (uint8_t)(rd8((uint16_t)(r + 7)) | 0xE0)));
     if (!rd8(cyc_then(24, dbw(bank, 0x08FB)))) {
         cyc(48);
-        a = rd8(0x7EFF65);
+        a = rd8(W(palette_saved));
         if (a) {
             cyc(38);
             a = rd8((uint16_t)(r + 7));
@@ -196,7 +197,7 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
             return a;
         }
         cyc(68);
-        wr8(0x7EFF65, (uint8_t)(a + 1));
+        wr8(W(palette_saved), (uint8_t)(a + 1));
         t = 82;
     }
     cyc(t);

@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 void abi_SoundPort0QueuePush(void);
@@ -161,7 +162,7 @@ static int timer_out(Carried *cr, uint32_t b)
 static void stage(Carried *cr, uint32_t b, uint8_t s)
 {
     lda8_imm(cr, s);
-    wr8(b | 0x0D2F, s);
+    wr8(b | W(wram_0D2F), s);
 }
 
 /* 07:BC88: the race resumes: sound $16 on port 1, the presses' low bytes
@@ -172,14 +173,14 @@ static void pause_resume(Carried *cr, uint32_t b)
     lda8_imm(cr, 0x16);
     SoundPort1QueuePush_cr(cr);
     cyc(24);
-    wr8(b | 0x0D1A, 0x00);
+    wr8(b | W(joy1_pressed_copy), 0x00);
     cyc(24);
-    wr8(b | 0x0D1C, 0x00);
+    wr8(b | W(joy2_pressed_copy), 0x00);
     r_sep(cr, P_M);
     cyc(46);
-    wr8(b | 0x0D2D, 0x00);
-    dec8_mem(cr, b | 0x0E5B);
-    dec8_mem(cr, b | 0x0E5F);
+    wr8(b | W(wram_0D2D), 0x00);
+    dec8_mem(cr, b | W(wram_0E5B));
+    dec8_mem(cr, b | W(palette_animate));
     cyc(42);
 }
 
@@ -336,7 +337,7 @@ void PauseStageReplayEnd(Carried *cr)
     cyc(16);
     wr8(b | 0x0E18, 0x8C);
     cyc(24);
-    wr8(b | 0x0D22, 0x00);
+    wr8(b | W(wram_0D22), 0x00);
     pause_resume(cr, b);
 }
 
@@ -359,7 +360,7 @@ static void slide_up(Carried *cr, uint32_t b, uint8_t v)
     (cyc(62), WindowSlideUpSound_cr(cr));
     lda8_imm(cr, v);
     cyc(16);
-    wr8(b | 0x19DF, v);
+    wr8(b | W(wram_19DF), v);
 }
 
 /*
@@ -377,7 +378,7 @@ void PauseStageQuit(Carried *cr)
     if (!timer_out(cr, b))
         { cyc(58); return; }
     cyc(46);
-    r_lda8(cr, b | 0x0D2B);
+    r_lda8(cr, b | W(hud_mode));
     if (!(uint8_t)cr->a) {
         cyc(32);
         stage(cr, b, 0x0A);
@@ -422,19 +423,19 @@ void PauseStageLeave(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x10CD);
+    r_lda8(cr, b | W(wram_10CD));
     if ((uint8_t)cr->a) {
         lda8_imm(cr, 0x01);
         cyc(32);
-        wr8(b | 0x0E3A, 0x01);
+        wr8(b | W(fade_out), 0x01);
         cyc(24);
-        r_lda8(cr, b | 0x0D61);
+        r_lda8(cr, b | W(fade_level_hi));
         if ((uint8_t)cr->a & 0x80)
             { cyc(40); SoftResetToBootWarm(cr); } else { cyc(64); }
         return;
     }
     cyc(46);
-    wr8(b | 0x0D59, 0x00);
+    wr8(b | W(wram_0D59), 0x00);
     (cyc(46), ChampionshipScreenLoop(cr));
     r_sep(cr, P_M);
     cyc(46);
@@ -472,7 +473,7 @@ void PauseStageQuitWait(Carried *cr)
     if (!timer_out(cr, b))
         { cyc(64); return; }
     cyc(40);
-    r_lda8(cr, b | 0x0D24);
+    r_lda8(cr, b | W(wram_0D24));
     if ((uint8_t)cr->a)
         { cyc(40); RaceRestart(cr); }
     else
@@ -499,7 +500,7 @@ static void choice_made(Carried *cr, uint32_t b, int quit_extra)
 {
     r_sep(cr, P_M);
     cyc(12);
-    r_lda8(cr, b | 0x0D3D);
+    r_lda8(cr, b | W(wram_0D3D));
     if ((uint8_t)cr->a) {
         lda8_imm(cr, 0xFF);
         cyc(32);
@@ -512,11 +513,11 @@ static void choice_made(Carried *cr, uint32_t b, int quit_extra)
         if (!quit_extra)
             return;
         cyc(24);
-        r_lda8(cr, b | 0x0D2B);
+        r_lda8(cr, b | W(hud_mode));
         if ((uint8_t)cr->a)
             { cyc(22); return; }
         cyc(40);
-        r_lda8(cr, b | 0x0D4C);
+        r_lda8(cr, b | W(digit62_override));
         if ((uint8_t)cr->a)
             { cyc(22); return; } else { cyc(78); }
         Countdown0DF8_cr(cr);
@@ -545,13 +546,13 @@ static void choice_move(Carried *cr, uint32_t b, uint16_t pad, int wide, void (*
 
     if (wide) {
         cyc(18);
-        r_lda16(cr, b | 0x0D3D);
+        r_lda16(cr, b | W(wram_0D3D));
         r_and16(cr, 0x00FF);
         c = (uint8_t)cr->a;
     } else {
         r_sep(cr, P_M);
         cyc(46);
-        r_lda8(cr, b | 0x0D3D);
+        r_lda8(cr, b | W(wram_0D3D));
         c = (uint8_t)cr->a;
     }
     cyc(38);
@@ -564,7 +565,7 @@ static void choice_move(Carried *cr, uint32_t b, uint16_t pad, int wide, void (*
         cyc(8);
         r_sep(cr, P_M);
         cyc(14);
-        dec8_mem(cr, b | 0x0D3D);
+        dec8_mem(cr, b | W(wram_0D3D));
         (cyc(46), left(cr));
         return;
     } else { cyc(6); }
@@ -584,7 +585,7 @@ static void choice_move(Carried *cr, uint32_t b, uint16_t pad, int wide, void (*
     SoundPort0QueuePush_cr(cr);
     r_sep(cr, P_M);
     cyc(46);
-    wr8(b | 0x0D3D, 0x00);
+    wr8(b | W(wram_0D3D), 0x00);
     (cyc(46), right(cr));
 }
 
@@ -712,12 +713,12 @@ static void continue_wait(Carried *cr, uint8_t owner)
     }
     lda8_imm(cr, owner);
     cyc(38);
-    wr8(b | 0x0D2E, owner);
+    wr8(b | W(wram_0D2E), owner);
     if (owner == 0xFF)
         cyc(22);   /* BRA */
     lda8_imm(cr, 0x00);
     cyc(16);
-    wr8(b | 0x19DF, 0x00);
+    wr8(b | W(wram_19DF), 0x00);
     (cyc(62), WindowSlideUpSound_cr(cr));
     cyc(16);
     stage(cr, b, 0x0A);
@@ -780,10 +781,10 @@ static void quit_menu_open(Carried *cr, uint32_t b)
 {
     lda8_imm(cr, 0x00);
     cyc(16);
-    wr8(b | 0x19DF, 0x00);
+    wr8(b | W(wram_19DF), 0x00);
     lda8_imm(cr, 0x02);
     cyc(16);
-    wr8(b | 0x19D8, 0x02);
+    wr8(b | W(window_hdma_off), 0x02);
     cyc(16);
     stage(cr, b, 0x0A);
     cyc(24);
@@ -791,7 +792,7 @@ static void quit_menu_open(Carried *cr, uint32_t b)
     cyc(16);
     stage(cr, b, 0x0C);
     cyc(24);
-    wr8(b | 0x0D22, 0x0C);
+    wr8(b | W(wram_0D22), 0x0C);
     cyc(42);
 }
 
@@ -799,7 +800,7 @@ static void quit_menu_open(Carried *cr, uint32_t b)
 static int window_closed(Carried *cr, uint32_t b)
 {
     cyc(24);
-    r_lda8(cr, b | 0x19D8);
+    r_lda8(cr, b | W(window_hdma_off));
     cmp8_imm(cr, 0x05);
     return (uint8_t)cr->a == 0x05;
 }
@@ -822,13 +823,13 @@ void PauseStageQuitMenuP2(Carried *cr)
     r_sep(cr, P_M);
     lda8_imm(cr, 0xFF);
     cyc(32);
-    wr8(b | 0x0D2E, 0xFF);
+    wr8(b | W(wram_0D2E), 0xFF);
     lda8_imm(cr, 0x01);
     cyc(16);
-    wr8(b | 0x0D5D, 0x01);
+    wr8(b | W(wram_0D5D), 0x01);
     lda8_imm(cr, 0x0E);
     cyc(16);
-    wr8(b | 0x0D23, 0x0E);
+    wr8(b | W(wram_0D23), 0x0E);
     OamHighBits58Park112_cr(cr);
     cyc(22);
     quit_menu_open(cr, b);
@@ -863,13 +864,13 @@ void PauseStageQuitMenu(Carried *cr)
     r_sep(cr, P_M);
     lda8_imm(cr, 0x00);
     cyc(38);
-    wr8(b | 0x0D2E, 0x00);
+    wr8(b | W(wram_0D2E), 0x00);
     lda8_imm(cr, 0x01);
     cyc(16);
-    wr8(b | 0x0D5C, 0x01);
+    wr8(b | W(wram_0D5C), 0x01);
     lda8_imm(cr, 0x0C);
     cyc(16);
-    wr8(b | 0x0D23, 0x0C);
+    wr8(b | W(wram_0D23), 0x0C);
     OamHighBits18Park48_cr(cr);
     quit_menu_open(cr, b);
 }
@@ -961,17 +962,17 @@ static void quit_menu_take(Carried *cr, uint32_t b, uint16_t which, uint8_t d, v
     cmp8_imm(cr, 0x04);
     if ((uint8_t)cr->a == 0x04) {
         cyc(24);
-        r_lda8(cr, b | 0x10BA);
+        r_lda8(cr, b | W(wram_10BA));
         if (!(uint8_t)cr->a) {
             lda8_imm(cr, 0xFF);
             cyc(32);
-            wr8(b | 0x10BA, 0xFF);
+            wr8(b | W(wram_10BA), 0xFF);
             lda8_imm(cr, 0xFF);
             cyc(16);
             wr8(b | which, 0xFF);
             lda8_imm(cr, d);
             cyc(16);
-            wr8(b | 0x0D23, d);
+            wr8(b | W(wram_0D23), d);
             park(cr);
         } else { cyc(22); }                /* BNE taken */
         cyc(38);
@@ -998,9 +999,9 @@ static void quit_menu_take(Carried *cr, uint32_t b, uint16_t which, uint8_t d, v
     stage(cr, b, 0x0E);
     lda8_imm(cr, 0x01);
     cyc(16);
-    wr8(b | 0x19DF, 0x01);
+    wr8(b | W(wram_19DF), 0x01);
     cyc(24);
-    wr8(b | 0x19D8, 0x01);
+    wr8(b | W(window_hdma_off), 0x01);
 }
 
 /* The quit menu for pad: B or START takes the cursor; else by the cursor

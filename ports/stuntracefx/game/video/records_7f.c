@@ -7,6 +7,7 @@
 #include "native.h"
 #include "hw.h"
 #include "carried.h"
+#include "wram_names.h"
 
 /*
  * @routine 09:EFFB Records7FFromF634
@@ -33,9 +34,9 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         cyc(62);
         wr8(0x7F4800 + *x, (uint8_t)(d + 0x50));
         cyc(48);
-        wr8(0x7F43D7 + *x, 0x10);
+        wr8(W(records_7f_a) + *x, 0x10);
         cyc(48);
-        wr8(0x7F47FF + *x, 0x60);
+        wr8(W(records_7f_b) + *x, 0x60);
         cyc(100);
         d = (uint8_t)(rd8(b | (uint16_t)(*y + 1)) - 0x28);
         wr8(0x7F43D9 + *x, d);
@@ -91,7 +92,7 @@ void abi_Records7FFromF634(void)
 uint16_t Records7FFromF170(uint8_t bank)
 {
     static const uint32_t from[8] = {0x09F88B, 0x09F8AB, 0x09F8CB, 0x09F8EB, 0x09F90B, 0x09F92B, 0x09F94B, 0x09F96B};
-    static const uint32_t to[8] = {0x7F43D7, 0x7F45B7, 0x7F45D7, 0x7F47B7, 0x7F47D7, 0x7F49B7, 0x7F49D7, 0x7F4BB7};
+    static const uint32_t to[8] = {0x7F43D7, W(records_7f_45b7), W(records_7f_45d7), W(records_7f_47b7), W(records_7f_47d7), W(records_7f_49b7), W(records_7f_49d7), W(records_7f_4bb7)};
     uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0, y = 0xF170;
     uint8_t v;
@@ -102,7 +103,7 @@ uint16_t Records7FFromF170(uint8_t bank)
         cyc(40);
         wr8(0x7F43D8 + x, v);
         cyc(48);
-        wr8(0x7F43D7 + x, 0x18);
+        wr8(W(records_7f_a) + x, 0x18);
         cyc(70);
         wr8(0x7F43D9 + x, rd8(b | (uint16_t)(y + 1)));
         cyc(48);

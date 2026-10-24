@@ -8,6 +8,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 #define TEXT_HALF 0x000307u
 #define TEXT_HIGH 0x000308u
@@ -158,7 +159,7 @@ void DebugPrint(uint8_t bank)
     wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
     for (top = 150;; top = 90) { /* later rounds follow a draw: its tail is stated */
         cyc(top);
-        s = rd24(0x000054);
+        s = rd24(W(dp_54));
         cyc(168);
         c = rd8((s + y) & 0xFFFFFF);
         if (!c)
@@ -226,7 +227,7 @@ uint16_t DebugShowErrors(uint8_t bank)
         cyc(54);
         wr8(0x000056, 0x08);
         cyc(62);
-        wr16(0x000054, errors[i].text);
+        wr16(W(dp_54), errors[i].text);
         DebugPrint(bank);
         a = errors[i].text;
     }

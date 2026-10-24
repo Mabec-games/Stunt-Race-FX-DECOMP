@@ -8,6 +8,7 @@
 #include "hw.h"
 #include "audio_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 void abi_BootColdStart(void);
 void abi_BootStart(void);
@@ -111,12 +112,12 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
     cyc(68);
     if (!rd8(b | RESET_STATE)) {
         cyc(22 + 40);
-        *a = rd16(b | 0x0309) & 0x3030;
+        *a = rd16(b | W(joy1_held)) & 0x3030;
         cyc(2);
         if (*a != 0x3030)
             { cyc(120 + 42); return 0; }
         cyc(92);
-        *a = rd16(b | 0x0309) & 0xCFCF;
+        *a = rd16(b | W(joy1_held)) & 0xCFCF;
         cyc(2);
         if (*a)
             { cyc(96 + 42); return 0; }
@@ -127,7 +128,7 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
         cyc(38 + 40);
         SoundPort1QueuePushW(0x04, x16 ? 16 : 0);
         cyc(40);
-        wr8(b | 0x0E3A, 0x01);
+        wr8(b | W(fade_out), 0x01);
         cyc(40);
         wr8(b | RESET_FRAMES, 0x70);
         fresh = 1;
@@ -156,9 +157,9 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
     wr8(b | RESET_STATE, 0x00);
     SoftResetApu();
     cyc(22 + 24);                       /* SEP */
-    wr8(b | 0x0D2B, 0x00);
+    wr8(b | W(hud_mode), 0x00);
     cyc(24);
-    wr8(b | 0x0D62, 0x00);
+    wr8(b | W(wram_0D62), 0x00);
     cyc(22);                            /* REP #$10 */
     reset_fill(0x00, 0x0300, 0x2100, 108);
     reset_fill(0x7E, 0x2000, 0xE000, 86);

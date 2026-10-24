@@ -18,6 +18,7 @@
 #include "carried.h"
 
 #include "video_calls.h"
+#include "wram_names.h"
 uint16_t MenuCourseScreenSetup(uint8_t bank);
 
 void abi_SoundFromTableD89(void);
@@ -343,7 +344,7 @@ static void slide_word(Carried *cr, uint16_t v)
 {
     r_rep(cr, P_M);
     r_lda16_imm(cr, v);
-    wr16(0x7F3470, v);
+    wr16(W(slide_done), v);
 }
 
 /* HUD mode 3 (all courses): with $10CD set as mode 0. Otherwise the HUD's
@@ -355,21 +356,21 @@ static void slide_word(Carried *cr, uint16_t v)
 static int mode_all(Carried *cr, uint32_t b)
 {
     cyc(24);
-    r_lda8(cr, b | 0x10CD);
+    r_lda8(cr, b | W(wram_10CD));
     if ((uint8_t)cr->a)
         { cyc(46); return 1; }
     lda8(cr, 0xEC);
     cyc(62);
-    wr8(b | 0x0E16, 0xEC);
+    wr8(b | W(wram_0E16), 0xEC);
     lda8(cr, 0xE8);
     cyc(40);
     wr8(b | 0x0E18, 0xE8);
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x7FFF);
     cyc(18);
-    wr16(0x7F3470, 0x7FFF);
+    wr16(W(slide_done), 0x7FFF);
     cyc(24);
-    r_lda16(cr, b | 0x0D4C);
+    r_lda16(cr, b | W(digit62_override));
     r_and16(cr, 0x00FF);
     if (cr->a) {
         cyc(38);
@@ -442,13 +443,13 @@ static void mode_stunt(Carried *cr, uint32_t b)
     uint8_t p;
 
     cyc(24);
-    r_lda8(cr, b | 0x0D4E);
+    r_lda8(cr, b | W(hud_blank));
     if ((uint8_t)cr->a) {
         cyc(40);
         slide_word(cr, 0x7FFF);
         r_lda16_imm(cr, 0x00AC);
         cyc(10);
-        wr16(b | 0x0E16, 0x00AC);
+        wr16(b | W(wram_0E16), 0x00AC);
         r_lda16_imm(cr, 0x008C);
         cyc(10);
         wr16(b | 0x0E18, 0x008C);
@@ -528,10 +529,10 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
         wr8(b | 0x0E18, 0x8C);
         lda8(cr, 0xEC);
         cyc(40);
-        wr8(b | 0x0E16, 0xEC);
+        wr8(b | W(wram_0E16), 0xEC);
     }
     cyc(24);
-    r_lda8(cr, b | 0x10CD);
+    r_lda8(cr, b | W(wram_10CD));
     if ((uint8_t)cr->a) {
         lda8(cr, 0x3F);
         cyc(56);
@@ -550,7 +551,7 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
         hud_bytes(cr, battle_p2_sprites, 6, 1);
         r_sep(cr, P_M);
         cyc(28);
-        r_lda8(cr, b | 0x0D4C);
+        r_lda8(cr, b | W(digit62_override));
         if ((uint8_t)cr->a) {
             cyc(34);
             slide_word(cr, 0x3947);
@@ -562,7 +563,7 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
     slide_word(cr, 0x7FFF);
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x10CD);
+    r_lda8(cr, b | W(wram_10CD));
     if (!(uint8_t)cr->a)
         cyc(6);                         /* BEQ taken */
 }
@@ -604,7 +605,7 @@ static void race_hud_setup(Carried *cr)
     r_sep(cr, P_M | P_X);
     b = (uint32_t)cr->db << 16;
     cyc(24);
-    r_lda8(cr, b | 0x0D2B);
+    r_lda8(cr, b | W(hud_mode));
     cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(cr->a << 1));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     cr->x = (uint8_t)cr->a;
@@ -649,41 +650,41 @@ static void race_hud_setup(Carried *cr)
     ppu_wr(b | BG2VOFS, 0x00);
     lda8(cr, 0x04);
     cyc(40);
-    wr8(b | 0x0D3F, 0x04);
+    wr8(b | W(wram_0D3F), 0x04);
     lda8(cr, 0xFF);
     cyc(40);
     wr8(b | 0x0E46, 0xFF);
     cyc(24);
     wr8(b | 0x0E45, 0xFF);
     cyc(24);
-    wr8(b | 0x0D7D, 0x00);
+    wr8(b | W(gsu_buffer_offset), 0x00);
     lda8(cr, 0xC4);
     cyc(40);
-    wr8(b | 0x0E12, 0xC4);
+    wr8(b | W(gauge_b6_x), 0xC4);
     lda8(cr, 0x93);
     cyc(40);
     wr8(b | 0x0E14, 0x93);
     lda8(cr, 0x2A);
     cyc(40);
-    wr8(b | 0x0E09, 0x2A);
+    wr8(b | W(map_b_x), 0x2A);
     lda8(cr, 0x7A);
     cyc(56);
     wr8(b | 0x0E0C, 0x7A);
     lda8(cr, 0x00);
     cyc(40);
-    wr8(b | 0x0E0B, 0x00);
+    wr8(b | W(map_b_y_w), 0x00);
     lda8(cr, 0xE0);
     cyc(40);
-    wr8(b | 0x0D57, 0xE0);
+    wr8(b | W(hud_slide), 0xE0);
     lda8(cr, 0x20);
     cyc(40);
     wr8(b | 0x0D58, 0x20);
     lda8(cr, 0x50);
     cyc(40);
-    wr8(b | 0x0E0E, 0x50);
+    wr8(b | W(gauge_b4_x), 0x50);
     lda8(cr, 0xB8);
     cyc(40);
-    wr8(b | 0x0E10, 0xB8);
+    wr8(b | W(gauge_b4_y), 0xB8);
     lda8(cr, 0x00);
     cyc(62);
     dma_wr(b | DMAP1, 0x00);
@@ -732,21 +733,21 @@ static void race_hud_setup(Carried *cr)
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x0120);
     cyc(18);
-    wr16(0x7F3497, 0x0120);
+    wr16(W(gradient_cgadd), 0x0120);
     cr->y = 0x0080;
     cr->x = 0x0002;
     r_lda16_imm(cr, 0x0181);
     (cyc(80), w_GradientFillCgadd(cr));
     r_lda16_imm(cr, 0x0000);
     cyc(18);
-    wr16(0x7F3497 + cr->x, 0x0000);
+    wr16(W(gradient_cgadd) + cr->x, 0x0000);
     r_lda16_imm(cr, 0xEC57);
     cyc(18);
     wr16(0x7F348A, 0xEC57);
     r_sep(cr, P_M);
     lda8(cr, 0x20);
     cyc(70);
-    wr8(0x7F3489, 0x20);
+    wr8(W(gradient_cgdata), 0x20);
     lda8(cr, 0xFF);
     cyc(48);
     wr8(0x7F348C, 0xFF);
@@ -758,7 +759,7 @@ static void race_hud_setup(Carried *cr)
     dma_wr(b | DASB3, 0x7F);
     lda8(cr, 0x03);
     cyc(40);
-    wr8(b | 0x0374, 0x03);
+    wr8(b | W(gsu_scmr_shadow), 0x03);
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x0001);
     cyc(18);
@@ -787,7 +788,7 @@ static void race_hud_setup_two(Carried *cr)
     r_sep(cr, P_M);
     lda8(cr, 0x01);
     cyc(62);
-    wr8(b | 0x0374, 0x01);
+    wr8(b | W(gsu_scmr_shadow), 0x01);
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x0002);
     cyc(18);
@@ -800,7 +801,7 @@ static void race_hud_setup_two(Carried *cr)
     for (cr->y = 0x0000; cr->y < 0x0020; ) {
         cyc(164);
         v = (uint16_t)(rd16(b | (uint16_t)(0xE7EA + cr->y)) - 0x0800);
-        wr16(0x000375 + cr->x, v);
+        wr16(W(oam_buffer) + cr->x, v);
         v = (uint16_t)(v + 0x6850);
         cyc(70);
         wr16(0x000475 + cr->x, v);
@@ -828,13 +829,13 @@ static void race_hud_setup_two(Carried *cr)
     wr16(b | 0x052D, 0x0000);
     r_lda16_imm(cr, 0x26A0);
     cyc(10);
-    wr16(b | 0x0427, 0x26A0);
+    wr16(b | W(results_split_tile), 0x26A0);
     cyc(24);
     wr16(b | 0x042B, 0x26A0);
     cyc(24);
     wr16(b | 0x042F, 0x26A0);
     cyc(24);
-    wr16(b | 0x0527, 0x26A0);
+    wr16(b | W(results_split2_tile), 0x26A0);
     cyc(24);
     wr16(b | 0x052B, 0x26A0);
     cyc(24);

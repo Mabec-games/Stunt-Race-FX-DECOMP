@@ -3,6 +3,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 /* SBC with borrow in: a - m - (1 - C), C out = no borrow. */
 static uint8_t sbc8(uint8_t a, uint8_t m, int *c)
@@ -26,24 +27,24 @@ uint8_t RandomStep(void)
 {
     int c = 0;
     cyc(60);
-    uint8_t a = rd8(0x0000E6);
+    uint8_t a = rd8(W(random_e6));
 
     cyc(30);
-    a = sbc8(a, rd8(0x0000E7), &c);
+    a = sbc8(a, rd8(W(random_e7)), &c);
     cyc(16);
-    wr8(0x0000E7, a);
+    wr8(W(random_e7), a);
     cyc(16);
-    a = sbc8(a, rd8(0x0000E8), &c);
+    a = sbc8(a, rd8(W(random_e8)), &c);
     cyc(16);
-    wr8(0x0000E8, a);
+    wr8(W(random_e8), a);
     cyc(16);
-    a = sbc8(a, rd8(0x0000E9), &c);
+    a = sbc8(a, rd8(W(random_e9)), &c);
     cyc(16);
-    wr8(0x0000E9, a);
+    wr8(W(random_e9), a);
     cyc(16);
-    a = sbc8(a, rd8(0x0000E6), &c);
+    a = sbc8(a, rd8(W(random_e6)), &c);
     cyc(16);
-    wr8(0x0000E6, a);
+    wr8(W(random_e6), a);
     cyc(70);
     return a;
 }

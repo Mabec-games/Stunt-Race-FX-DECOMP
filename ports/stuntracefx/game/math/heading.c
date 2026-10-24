@@ -19,6 +19,7 @@
 #include "hw.h"
 #include "math_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 #define H_X 0x000002u
@@ -382,9 +383,9 @@ static uint8_t pitched_1f7c(uint16_t x, uint16_t y)
     wr8(H_Z + 1, 0x00);
     save_xy(x, y);
     cyc(112);
-    h = rd8(0x001F7D);
+    h = rd8(W(heading_turn));
     cyc(68);
-    pitch = rd8(0x001F7C);
+    pitch = rd8(W(heading_pitch));
     v = pitched((uint8_t)(~h + 1), pitch);
     finish();
     return v;
@@ -407,9 +408,9 @@ uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
     cyc(30);
     wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(30);
-    wr8(b | 0x1F7D, cyc_then(24, rd8(b | (uint16_t)(0x2015 + x))));
+    wr8(b | W(heading_turn), cyc_then(24, rd8(b | (uint16_t)(0x2015 + x))));
     cyc(30);
-    wr8(b | 0x1F7C, cyc_then(24, rd8(b | (uint16_t)(0x2014 + x))));
+    wr8(b | W(heading_pitch), cyc_then(24, rd8(b | (uint16_t)(0x2014 + x))));
     return pitched_1f7c(x, y);
 }
 
@@ -911,11 +912,11 @@ uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
     uint16_t v;
 
     cyc(16);
-    wr8(b | 0x1F7C, cyc_then(24, rd8(H_X)));
+    wr8(b | W(heading_pitch), cyc_then(24, rd8(H_X)));
     cyc(16);
     wr8(H_SPEED, cyc_then(16, rd8(H_Z)));
     cyc(40);
-    wr8(b | 0x1F7D, 0x40);
+    wr8(b | W(heading_turn), 0x40);
     cyc(62);
     HeadingPitchedFrom1F7C(x, y);
     cyc(38);

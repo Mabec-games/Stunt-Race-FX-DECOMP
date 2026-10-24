@@ -13,6 +13,7 @@
 #include "wram.h"
 #include "audio_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* Append a byte to a ring, unless sound is muted or the ring is full. The
@@ -391,22 +392,22 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
 
     cyc(22);                            /* SEP #$30 */
     cyc(46);
-    a = v = rd8(b | 0x10E2);
+    a = v = rd8(b | W(sound_direct0));
     if (v) {
         cyc(40);
         hw_wr(b | 0x2140, v);
         cyc(24);
-        wr8(b | 0x10E2, 0x00);
+        wr8(b | W(sound_direct0), 0x00);
         cyc(28);                        /* PLP; the plp's 42 states the RTS */
         goto done;
     }
     cyc(46);
-    a = v = rd8(b | 0x10E3);
+    a = v = rd8(b | W(sound_direct1));
     if (v) {
         cyc(40);
         hw_wr(b | 0x2141, v);
         cyc(24);
-        wr8(b | 0x10E3, 0x00);
+        wr8(b | W(sound_direct1), 0x00);
         cyc(28);
         goto done;
     } else { cyc(6); }
@@ -424,16 +425,16 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
         }
     }
     cyc(40);
-    a = v = rd8(b | 0x0E3B);
+    a = v = rd8(b | W(frame_count));
     if (!(v & 0x01)) {
         cyc(60);
         goto done;
     } else { cyc(38); }
     ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8, &a, &x);
     if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8, &a, &x))
-        { cyc(24); wr8(b | 0x0DD2, a); }
+        { cyc(24); wr8(b | W(sound_port1_last), a); }
     cyc(24);
-    a = v = rd8(b | 0x0E4B);
+    a = v = rd8(b | W(wram_0E4B));
     if (v) {
         a = 0x00;
         cyc(62);
@@ -442,11 +443,11 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
         hw_wr(b | 0x2143, 0x00);
     } else {
         cyc(40);
-        v = rd8(b | 0x0E47);
+        v = rd8(b | W(near_car_pos));
         cyc(24);
         hw_wr(b | 0x2142, v);
         cyc(24);
-        v = rd8(b | 0x0E49);
+        v = rd8(b | W(wram_0E49));
         cyc(24);
         hw_wr(b | 0x2143, v);
         a = v;

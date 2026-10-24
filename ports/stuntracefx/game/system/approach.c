@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 /*
  * @routine 7F:0FDC HalfRateApproach
@@ -16,23 +17,23 @@
 uint8_t HalfRateApproach(void)
 {
     cyc(68);
-    uint8_t t = (uint8_t)((rd8(0x0011DC) + 1) & 0x01), v, target;
+    uint8_t t = (uint8_t)((rd8(W(wram_11DC)) + 1) & 0x01), v, target;
 
     cyc(54);
-    wr8(0x0011DC, t);
+    wr8(W(wram_11DC), t);
     if (t)
         { cyc(22); return t; }
     cyc(40);
-    v = rd8(0x0011DA);
+    v = rd8(W(wram_11DA));
     cyc(24);
-    target = rd8(0x0011DB);
+    target = rd8(W(wram_11DB));
     if (v == target)
         { cyc(22); return v; }
     cyc(62);
-    v = rd8(0x0011DA);
+    v = rd8(W(wram_11DA));
     v = (uint8_t)(v < target ? v + 1 : v - 1);
     cyc(38);
-    wr8(0x0011DA, v);
+    wr8(W(wram_11DA), v);
     return v;
 }
 

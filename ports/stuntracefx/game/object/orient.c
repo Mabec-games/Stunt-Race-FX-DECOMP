@@ -10,6 +10,7 @@
 #include "gsu_programs_calls.h"
 #include "object_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* An absolute indexed address: the data bank, plus the offset and index
@@ -178,22 +179,22 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
 
     *p &= (uint8_t)~(P_M | P_X);
     cyc(44);
-    wr16(0x0000C5, cyc_then(16, rd16((uint16_t)(rec + 0x08))));
+    wr16(W(dp_c5), cyc_then(16, rd16((uint16_t)(rec + 0x08))));
     cyc(22);
-    wr16(0x0000C7, cyc_then(16, rd16((uint16_t)(rec + 0x0A))));
+    wr16(W(dp_c7), cyc_then(16, rd16((uint16_t)(rec + 0x0A))));
     cyc(22);
-    wr16(0x0000C9, cyc_then(16, rd16((uint16_t)(rec + 0x0C))));
+    wr16(W(dp_c9), cyc_then(16, rd16((uint16_t)(rec + 0x0C))));
     wr16(dbw(bank, 0x0664), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x0E)))));
     wr16(dbw(bank, 0x0666), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x10)))));
     wr16(dbw(bank, 0x0668), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x12)))));
     cyc(52);
     obj = rd16((uint16_t)(rec + 0x02));
     cyc(46);
-    wr16(0x70247A, cyc_then(32, rd16(0x7E2022 + obj)));
+    wr16(0x70247A, cyc_then(32, rd16(W(obj_22_long) + obj)));
     cyc(82);
-    wr16(0x000002, cyc_then(16, rd16(0x0000C5)));
+    wr16(0x000002, cyc_then(16, rd16(W(dp_c5))));
     cyc(16);
-    wr16(0x000094, cyc_then(16, rd16(0x0000C9)));
+    wr16(0x000094, cyc_then(16, rd16(W(dp_c9))));
     area_origin(bank, 0x1EF5, p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
@@ -210,9 +211,9 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     cyc(98);
     obj = rd16((uint16_t)(rec + 0x02));
     cyc(46);
-    wr16(0x000002, cyc_then(16, rd16(0x7E200C + obj)));
+    wr16(0x000002, cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
     cyc(32);
-    wr16(0x000094, cyc_then(16, rd16(0x7E2010 + obj)));
+    wr16(0x000094, cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
     v = area_origin(bank, 0x1EFB, p);
     *p = nz16(*p, rec);
     cyc(80);

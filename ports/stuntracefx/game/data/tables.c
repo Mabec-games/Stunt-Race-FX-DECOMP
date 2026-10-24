@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 static uint16_t word_lookup(uint32_t table, uint16_t i)
 {
@@ -200,58 +201,58 @@ uint16_t SelectionTables18CB(uint8_t bank)
     uint16_t base, s1, i3, x, v = 0, w, u;
 
     cyc(76);
-    base = rd16(cyc_then(100, 0x0BB00C + (uint16_t)(rd16(0x0018CB) << 1)));
-    wr16(b | 0x11DF, base);
+    base = rd16(cyc_then(100, 0x0BB00C + (uint16_t)(rd16(W(selection)) << 1)));
+    wr16(b | W(scratch_11df), base);
     cyc(32);
-    v = rd16(0x0018CD);
+    v = rd16(W(selection_1));
     cyc(60);
-    w = rd16(0x0018CD);
+    w = rd16(W(selection_1));
     s1 = (uint16_t)((uint16_t)(v << 1) + w);
     cyc(24);
-    wr16(b | 0x11E1, s1);
+    wr16(b | W(scratch_11e1), s1);
     cyc(32);
-    v = rd16(0x0018CF);
+    v = rd16(W(selection_2));
     cyc(88);
-    w = rd16(0x0018CF);
+    w = rd16(W(selection_2));
     cyc(38);
-    u = rd16(b | 0x11E1);
+    u = rd16(b | W(scratch_11e1));
     s1 = (uint16_t)((uint16_t)(v << 3) + w + u);
     cyc(24);
-    wr16(b | 0x11E1, s1);
+    wr16(b | W(scratch_11e1), s1);
     cyc(32);
-    v = rd16(0x0018D1);
+    v = rd16(W(selection_3));
     cyc(60);
-    w = rd16(0x0018D1);
+    w = rd16(W(selection_3));
     i3 = (uint16_t)((uint16_t)(v << 1) + w);
     cyc(24);
-    wr16(b | 0x11E3, i3);
+    wr16(b | W(scratch_11e3), i3);
     cyc(80);
-    u = rd16(b | 0x11E3);
+    u = rd16(b | W(scratch_11e3));
     x = (uint16_t)((uint16_t)(i3 << 3) + u);
     cyc(38);
-    u = rd16(b | 0x11E1);
+    u = rd16(b | W(scratch_11e1));
     x = (uint16_t)(x + u);
     cyc(38);
-    u = rd16(b | 0x11DF);
+    u = rd16(b | W(scratch_11df));
     x = (uint16_t)(x + u);
     cyc(118);
-    wr16(0x0018E5, rd16(0x0BB014 + x) & 3);
+    wr16(W(wram_18E5), rd16(0x0BB014 + x) & 3);
     cyc(104);
-    wr16(0x0018E7, rd16(0x0BB015 + x) & 3);
+    wr16(W(wram_18E7), rd16(0x0BB015 + x) & 3);
     cyc(104);
-    wr16(0x0018E9, rd16(0x0BB016 + x) & 3);
+    wr16(W(wram_18E9), rd16(0x0BB016 + x) & 3);
     cyc(32);
-    wr16(0x0018E3, rd16(cyc_then(118, 0x03B7B1 + rd16(0x0018CB))) & 3);
+    wr16(W(selection_derived), rd16(cyc_then(118, 0x03B7B1 + rd16(W(selection)))) & 3);
     for (x = 0; x < 8; x += 2) {
         cyc(86);
-        uint16_t idx = (uint16_t)(rd16(0x0018CB + x) << 2);
+        uint16_t idx = (uint16_t)(rd16(W(selection) + x) << 2);
 
         cyc(74);
-        u = rd16(0x0018E3 + x);
+        u = rd16(W(selection_derived) + x);
         idx = (uint16_t)(idx + u);
         cyc(154);
         v = rd16(0x03B7B5 + idx) & 3;
-        wr16(0x0018D3 + x, v);
+        wr16(W(selection_out) + x, v);
         cyc(50);
     }
     cyc(88);

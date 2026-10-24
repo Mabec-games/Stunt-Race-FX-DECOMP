@@ -14,6 +14,7 @@
 #include "wram.h"
 #include "system_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 #define FRAME_UPDATE_FLAGS 0x0011D7u
@@ -274,23 +275,23 @@ static int queue_added;     /* whether the last add appended (the adapter's) */
 static int vram_dma_queue_add(uint16_t *size_out)
 {
     cyc(98);
-    uint16_t x = rd16(0x0016AF);
+    uint16_t x = rd16(W(vram_queue_size));
 
     queue_added = 0;
     if (x == 0x0200)
         return 0;
     queue_added = 1;
     cyc(64);
-    wr16(0x0016B9 + x, cyc_then(32, rd16(0x0016B3)));
+    wr16(W(vram_queue) + x, cyc_then(32, rd16(0x0016B3)));
     cyc(46);
     wr8(0x0016BB + x, cyc_then(32, rd8(0x0016B5)));
     cyc(46);
     wr16(0x0016BC + x, cyc_then(32, rd16(0x0016B7)));
     cyc(24);
-    wr16(0x0016BE + x, cyc_then(32, rd16(0x0016B1)));
+    wr16(0x0016BE + x, cyc_then(32, rd16(W(vram_queue_staged))));
     *size_out = (uint16_t)(x + 8);
     cyc(76);
-    wr16(0x0016AF, *size_out);
+    wr16(W(vram_queue_size), *size_out);
     return 1;
 }
 
@@ -365,7 +366,7 @@ static uint16_t word_list_append(uint32_t size_addr, uint32_t list, uint16_t val
  */
 uint16_t WordListAAppend(uint16_t value)
 {
-    return word_list_append(0x001191, 0x001195, value);
+    return word_list_append(W(word_list_a_size), W(word_list_a), value);
 }
 
 void WordListAAppend_cr(Carried *cr)
@@ -396,7 +397,7 @@ void abi_WordListAAppend(void)
  */
 uint16_t WordListBAppend(uint16_t value)
 {
-    return word_list_append(0x001193, 0x0011B5, value);
+    return word_list_append(W(word_list_b_size), W(word_list_b), value);
 }
 
 void WordListBAppend_cr(Carried *cr)
@@ -450,12 +451,12 @@ static FlushEnd vram_dma_queue_flush(void)
     cyc(40);
     dma_wr(DMAP0 + 1, 0x18);
     cyc(46);
-    x = (uint16_t)(rd16(0x0016AF) - 8);
+    x = (uint16_t)(rd16(W(vram_queue_size)) - 8);
     end.a = x;
     if (!(x & 0x8000)) {
         do {
             cyc(122);
-            dma_wr16(A1T0L, cyc_then(24, rd16(0x0016B9 + x)));
+            dma_wr16(A1T0L, cyc_then(24, rd16(W(vram_queue) + x)));
             cyc(32);
             ppu_wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
             cyc(32);
@@ -474,7 +475,7 @@ static FlushEnd vram_dma_queue_flush(void)
         end.looped = 1;
     }
     cyc(106);
-    wr16(0x0016AF, 0);
+    wr16(W(vram_queue_size), 0);
     cyc(46);
     end.flags = rd8(FRAME_UPDATE_FLAGS) & 0xFD;
     cyc(40);
@@ -572,28 +573,28 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     uint8_t v;
 
     cyc(54);
-    w = rd16(0x0018BF);
+    w = rd16(W(menu_sine_y));
     cyc(32);
-    wr16(0x0018BB, w);
+    wr16(W(menu_pos_18bb), w);
     cyc(32);
-    w = rd16(0x0018C1);
+    w = rd16(W(menu_sine_y_min));
     cyc(32);
-    wr16(0x0018BD, w);
+    wr16(W(menu_pos_18bd), w);
     cyc(24);
-    w = rd16(b | 0x0311);
-    word_list_append(0x001191, 0x001195, w);
+    w = rd16(b | W(joy1_pressed));
+    word_list_append(W(word_list_a_size), W(word_list_a), w);
     cyc(94);
-    w = rd16(b | 0x0313);
+    w = rd16(b | W(joy2_pressed));
     *hi = (uint16_t)(w & 0xFF00);
-    *x = word_list_append(0x001193, 0x0011B5, w);
+    *x = word_list_append(W(word_list_b_size), W(word_list_b), w);
     cyc(116);
-    wr8(b | 0x0E3B, cyc_then(6, (uint8_t)(rd8(b | 0x0E3B) + 1)));
+    wr8(b | W(frame_count), cyc_then(6, (uint8_t)(rd8(b | W(frame_count)) + 1)));
     cyc(24);
-    wr8(b | 0x0306, cyc_then(6, (uint8_t)(rd8(b | 0x0306) + 1)));
+    wr8(b | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(b | W(frames_since_tick)) + 1)));
     cyc(16);
     wr8(0x000006, cyc_then(6, (uint8_t)(rd8(0x000006) + 1)));
     cyc(24);
-    v = rd8(b | 0x11DA);
+    v = rd8(b | W(wram_11DA));
     cyc(24);
     ppu_wr(b | 0x2100, v);
     return v;
@@ -666,13 +667,13 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     cyc(38);
     wr8(0x000006, cyc_then(6, (uint8_t)(rd8(0x000006) + 1)));
     cyc(24);
-    wr8(b | 0x0E3B, cyc_then(6, (uint8_t)(rd8(b | 0x0E3B) + 1)));
+    wr8(b | W(frame_count), cyc_then(6, (uint8_t)(rd8(b | W(frame_count)) + 1)));
     cyc(24);
-    wr8(b | 0x0306, cyc_then(6, (uint8_t)(rd8(b | 0x0306) + 1)));
+    wr8(b | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(b | W(frames_since_tick)) + 1)));
     cyc(78);
-    wr16(0x0018FB, 0x0000);
+    wr16(W(wram_18FB), 0x0000);
     cyc(32);
-    v = rd16(0x001903);
+    v = rd16(W(wram_1903));
     *high = (uint16_t)(v & 0xFF00);
     *checked = 0;
     if (v) {
@@ -685,7 +686,7 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
         *checked = 1;
     }
     cyc(68);
-    lum = rd8(b | 0x11DA);
+    lum = rd8(b | W(wram_11DA));
     cyc(24);
     ppu_wr(b | INIDISP, lum);
     return lum;

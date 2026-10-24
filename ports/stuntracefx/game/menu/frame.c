@@ -9,6 +9,7 @@
 #include "cpu_ops.h"
 #include "menu_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 void abi_MenuActorsRun(void);
 
@@ -91,7 +92,7 @@ uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
     cyc(24);
     a = alu_adc16(a, rd16(b | 0x1189), &p);
     cyc(24);
-    a ^= rd16(b | 0x11DD);
+    a ^= rd16(b | W(menu_blink_counter));
     cyc(24);
     wr16(b | 0x1189, a);
     cyc(70);                            /* PLP, RTS */
@@ -240,10 +241,10 @@ uint16_t MenuRunFrames(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16
         cyc(62);
         a = MenuOamBuild(x, y);
         cyc(46);
-        wr8(b | 0x11D7, cyc_then(40, (uint8_t)(rd8(b | 0x11D7) | 0x1F)));
+        wr8(b | W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(b | W(frame_update_flags)) | 0x1F)));
         cyc(24);
-        m = rd8(b | 0x11DA);
-    } while (m != rd8(cyc_then(24, b | 0x11DB)));
+        m = rd8(b | W(wram_11DA));
+    } while (m != rd8(cyc_then(24, b | W(wram_11DB))));
     cyc(86);
     return (uint16_t)((a & 0xFF00) | m);
 }
@@ -282,13 +283,13 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
     uint16_t i;
 
     cyc(86);
-    wr8(0x0011E1, kind);
+    wr8(W(scratch_11e1), kind);
     cyc(24);
-    for (i = (uint16_t)(rd16(0x0011F7) - 2); !(i & 0x8000); i = (uint16_t)(i - 2)) {
+    for (i = (uint16_t)(rd16(W(actor_list_len)) - 2); !(i & 0x8000); i = (uint16_t)(i - 2)) {
         cyc(74);
-        x = rd16(0x001239 + i);
+        x = rd16(W(actor_list) + i);
         cyc(22);
-        if (rd8((uint16_t)(x + 0x1A)) == rd8(cyc_then(24, 0x0011E1)))
+        if (rd8((uint16_t)(x + 0x1A)) == rd8(cyc_then(24, W(scratch_11e1))))
             break; else { cyc(28); }
     }
     return x;
@@ -308,9 +309,9 @@ static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16
     cyc(62);
     MenuOamBuild(x, y);
     cyc(46);
-    f = (uint8_t)(rd8(b | 0x11D7) | 0x0F);
+    f = (uint8_t)(rd8(b | W(frame_update_flags)) | 0x0F);
     cyc(40);
-    wr8(b | 0x11D7, f);
+    wr8(b | W(frame_update_flags), f);
 }
 
 /*
@@ -353,7 +354,7 @@ void MenuRegionPal(Carried *cr, uint16_t a, uint16_t x)
     cr->x = x;
     cr->y = y;
     cyc(46);
-    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0F)));
     carried_loop_forever(cr, 0x0BAE8A);
 }
 
@@ -426,7 +427,7 @@ void abi_MenuRegionCheck(void)
 static int held_or_18fb(uint32_t b)
 {
     cyc(46);
-    return (rd16(b | 0x0309) & 0x000F) || (rd16(cyc_then(64, b | 0x030D)) & 0x000F) || rd16(cyc_then(72, 0x0018FB));
+    return (rd16(b | W(joy1_held)) & 0x000F) || (rd16(cyc_then(64, b | W(joy2_held))) & 0x000F) || rd16(cyc_then(72, W(wram_18FB)));
 }
 
 /*
@@ -535,7 +536,7 @@ uint16_t MenuScreen0Run(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint
             *p &= (uint8_t)~(P_M | P_X);
             b = (uint32_t)bank << 16;
             cyc(46);
-            a = rd16(b | 0x11EB);
+            a = rd16(b | W(menu_exit));
         } while (!a);
         cyc(62);
         MenuRegionCheck(cr, a, *x);

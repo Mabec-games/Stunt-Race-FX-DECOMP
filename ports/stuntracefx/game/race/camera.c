@@ -6,6 +6,7 @@
 
 #include "math_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 uint16_t Gsu8325(uint8_t bank);
@@ -118,7 +119,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     cyc(92);
     if (rd16(b | CAM_FLAGS) & 0x0004) {
         cyc(100);
-        g = rd16(cyc_then(32, 0x7E2022 + rd16(b | CAM_TARGET)));
+        g = rd16(cyc_then(32, W(obj_22_long) + rd16(b | CAM_TARGET)));
         cyc(46);
         a = rd16(0x70004A + g);
         if (a & 0x8000)
@@ -158,9 +159,9 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(64);
         wr16(b | 0x065E, 0x0000);
         cyc(24);
-        wr16(b | 0x0660, 0x0000);
+        wr16(b | W(view_turn), 0x0000);
         cyc(24);
-        wr16(b | 0x0662, 0x0000);
+        wr16(b | W(view_roll), 0x0000);
         cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
     } else if (!(f & 0x1C00)) {
         cyc(110);
@@ -170,14 +171,14 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(104);
         wr16(CAM(r, 0x16), a);
         cyc(24);
-        wr16(b | 0x0660, a);
+        wr16(b | W(view_turn), a);
         a = asr_n(angle_hi(b, y, 0x2014), 2);
         cyc(78);
         wr16(CAM(r, 0x14), a);
         cyc(24);
         wr16(b | 0x065E, a);
         cyc(24);
-        wr16(b | 0x0662, 0x0000);
+        wr16(b | W(view_roll), 0x0000);
         cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
     } else {
         cyc(116);
@@ -253,7 +254,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(22);
         wr16(CAM(r, 0x16), a);
         cyc(24);
-        wr16(b | 0x0660, a);
+        wr16(b | W(view_turn), a);
         cyc(jmp);
         a = asr_round(angle_hi(b, y, 0x2014), 2);
         cyc(66);
@@ -261,7 +262,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(24);
         wr16(b | 0x065E, a);
         cyc(24);
-        wr16(b | 0x0662, 0x0000);
+        wr16(b | W(view_roll), 0x0000);
         cyc(54);                        /* falls into .to_super_fx: PHX, LDA */
     }
     a = rd16(b | 0x065E);
@@ -270,13 +271,13 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     cyc(62);
     wr16(b | 0x065E, (uint16_t)(~a + 1));
     cyc(24);
-    a = rd16(b | 0x0660);
+    a = rd16(b | W(view_turn));
     cyc(36);
-    wr16(b | 0x0660, cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x37)))));
+    wr16(b | W(view_turn), cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x37)))));
     cyc(24);
-    a = rd16(b | 0x0662);
+    a = rd16(b | W(view_roll));
     cyc(36);
-    wr16(b | 0x0662, cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x39)))));
+    wr16(b | W(view_roll), cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x39)))));
     (cyc(84), Gsu8325(bank));
     cy &= 0x00FF;                       /* Gsu8325's 8-bit index registers */
     cyc(22);

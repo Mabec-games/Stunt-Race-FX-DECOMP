@@ -8,6 +8,7 @@
 #include "cpu_ops.h"
 #include "wram.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
@@ -549,7 +550,7 @@ uint16_t TimeDigitBytes(uint8_t bank, uint16_t a, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(24);
-    uint16_t v = rd16(b | 0x0D4C);
+    uint16_t v = rd16(b | W(digit62_override));
 
     if (v) {
         cyc(78);
@@ -559,7 +560,7 @@ uint16_t TimeDigitBytes(uint8_t bank, uint16_t a, uint8_t *p)
         return a;
     }
     cyc(46);
-    v = rd16(b | 0x0E76);
+    v = rd16(b | W(time_taken_copy));
     if (v >= 0x0020) {
         cyc(102);
         *p = (uint8_t)(nz16(*p, (uint16_t)(v - 0x0020)) | P_C);
@@ -860,7 +861,7 @@ static void bonus_x_from_table(uint8_t bank, TbRegs *r, uint32_t b, uint16_t ste
     r->x = step;
     cyc(124);
     r->a = (uint16_t)(0x008F - rd16(0x079806 + step));
-    wr16(b | 0x0D6D, r->a);
+    wr16(b | W(wram_0D6D), r->a);
 }
 
 /* The frame drawn while $0E6C is nonzero, mirrored ($07:90DC). */
@@ -880,7 +881,7 @@ static void draw_bonus_then_time(uint8_t bank, TbRegs *r, uint32_t b)
 {
     (cyc(46), tb_TimeDigitBytes(bank, r));
     cyc(24);
-    r->x = rd16(b | 0x0D6B);
+    r->x = rd16(b | W(wram_0D6B));
     cyc(80);
     r->a = rd16(SIZE_GROW + r->x);
     wr16(GSU_SIZE, r->a);
@@ -900,7 +901,7 @@ static void draw_bonus_then_time(uint8_t bank, TbRegs *r, uint32_t b)
 static void draw_frame(uint8_t bank, TbRegs *r, uint32_t b)
 {
     cyc(24);
-    r->a = rd16(b | 0x0E6C);
+    r->a = rd16(b | W(wram_0E6C));
     if (r->a) {
         cyc(78);
         tb_GsuBytes200_BFB7B6(bank, r);
@@ -919,15 +920,15 @@ static void draw_time(uint8_t bank, TbRegs *r, uint32_t b, int entry)
 {
     r->a = 0x0030;
     cyc(entry + 48);
-    wr16(b | 0x0D6D, r->a);
+    wr16(b | W(wram_0D6D), r->a);
     (cyc(46), tb_GsuTimeDigitsGrow(bank, r));
     cyc(24);
-    r->a = rd16(b | 0x0E6C);
+    r->a = rd16(b | W(wram_0E6C));
     if (r->a)
         { cyc(62); tb_GsuBonusDigitsGrow(bank, r); } else { cyc(22); }
     r->a = 0x0037;
     cyc(48);
-    wr16(b | 0x0D6D, r->a);
+    wr16(b | W(wram_0D6D), r->a);
     draw_frame(bank, r, b);
 }
 
@@ -936,7 +937,7 @@ static void draw_pieces(uint8_t bank, TbRegs *r, uint32_t b)
 {
     r->a = 0x0030;
     cyc(48);
-    wr16(b | 0x0D6D, r->a);
+    wr16(b | W(wram_0D6D), r->a);
     (cyc(46), tb_GsuFA5AThree(bank, r));
     (cyc(46), tb_GsuFA5AFromTables(bank, r));
     tb_GsuFA5ASix(bank, r);
@@ -948,7 +949,7 @@ static void draw_pieces(uint8_t bank, TbRegs *r, uint32_t b)
 static void count_bonus(uint8_t bank, TbRegs *r, uint32_t b)
 {
     cyc(108);
-    uint16_t v = rd16(b | 0x0E74);
+    uint16_t v = rd16(b | W(wram_0E74));
     int c;
 
     r->a = v;
@@ -956,22 +957,22 @@ static void count_bonus(uint8_t bank, TbRegs *r, uint32_t b)
         { cyc(28); return; }
     c = 1;
     cyc(54);
-    v = sbc_decimal16(v, rd16(b | 0x0E7C), &c);
+    v = sbc_decimal16(v, rd16(b | W(time_bonus_step)), &c);
     if (!c) {
         c = 0;
         v = rd16(b | TIME_BCD);                 /* LDA, then ADC */
-        v = adc_decimal16(v, rd16(b | 0x0E74), &c);
+        v = adc_decimal16(v, rd16(b | W(wram_0E74)), &c);
         wr16(b | TIME_BCD, v);
         r->a = 0x0000;
-        wr16(b | 0x0E74, 0x0000);
+        wr16(b | W(wram_0E74), 0x0000);
     } else {
         cyc(46);
-        wr16(b | 0x0E74, v);
+        wr16(b | W(wram_0E74), v);
         c = 0;
         cyc(24);
         r->a = rd16(b | TIME_BCD);             /* LDA, then ADC */
         cyc(38);
-        r->a = adc_decimal16(r->a, rd16(b | 0x0E7C), &c);
+        r->a = adc_decimal16(r->a, rd16(b | W(time_bonus_step)), &c);
         cyc(10);
         wr16(b | TIME_BCD, r->a);
     }
@@ -994,7 +995,7 @@ static void take_from_time(uint8_t bank, TbRegs *r, uint32_t b)
         wr16(b | TIME_BCD, v);
         c = 0;
         cyc(24);
-        v = adc_decimal16(rd16(b | 0x0E74), 0x0003, &c);
+        v = adc_decimal16(rd16(b | W(wram_0E74)), 0x0003, &c);
     } else {
         c = 1;
         v = sbc_decimal16(v, 0x0001, &c);
@@ -1007,7 +1008,7 @@ static void take_from_time(uint8_t bank, TbRegs *r, uint32_t b)
         }
         c = 0;
         cyc(70);
-        v = adc_decimal16(rd16(b | 0x0E74), 0x0001, &c);
+        v = adc_decimal16(rd16(b | W(wram_0E74)), 0x0001, &c);
         cyc(22);                                       /* BRA */
     }
     if (v >= 0x0099) {
@@ -1018,7 +1019,7 @@ static void take_from_time(uint8_t bank, TbRegs *r, uint32_t b)
     }
     r->a = v;
     cyc(94);
-    wr16(b | 0x0E74, v);
+    wr16(b | W(wram_0E74), v);
 }
 
 /*
@@ -1058,9 +1059,9 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
     r->p &= (uint8_t)~(P_M | P_X);
     r->a = 0x0006;
     cyc(92);
-    wr16(b | 0x0D6F, r->a);
+    wr16(b | W(wram_0D6F), r->a);
     cyc(24);
-    state = rd16(b | 0x0D65);
+    state = rd16(b | W(time_bonus_state));
     r->x = state;
     cyc(46);
     switch (rd16(0x078E9F + state)) {
@@ -1069,32 +1070,32 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
     case 0x8EB9:                        /* 2: start */
         r->a = 0x0006;
         cyc(48);
-        wr16(b | 0x0D6F, r->a);
-        inc16(b | 0x0D65);
-        inc16(b | 0x0D65);
+        wr16(b | W(wram_0D6F), r->a);
+        inc16(b | W(time_bonus_state));
+        inc16(b | W(time_bonus_state));
         r->a = 0xFFFE;
         cyc(48);
-        wr16(b | 0x0D6B, r->a);
+        wr16(b | W(wram_0D6B), r->a);
         cyc(24);
-        r->a = rd16(b | 0x0E6C);
+        r->a = rd16(b | W(wram_0E6C));
         cyc(24);
-        wr16(b | 0x0E74, r->a);
+        wr16(b | W(wram_0E74), r->a);
         return;
     case 0x8ED3:                        /* 4: grow the time */
         cyc(24);
-        a = rd16(b | 0x0D6B);
+        a = rd16(b | W(wram_0D6B));
         if (a != 0x0008) {
             r->a = (uint16_t)(a + 2);
             cyc(98);
-            wr16(b | 0x0D6B, r->a);
+            wr16(b | W(wram_0D6B), r->a);
             entry = 22;                 /* BRA */
         } else {
             entry = 24;                 /* JMP */
             cyc(40);
-            inc16(b | 0x0D65);
-            inc16(b | 0x0D65);
+            inc16(b | W(time_bonus_state));
+            inc16(b | W(time_bonus_state));
             cyc(24);
-            a = rd16(b | 0x0E74);
+            a = rd16(b | W(wram_0E74));
             r->a = a;
             if (a) {
                 cyc(46);
@@ -1102,29 +1103,29 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
                 r->a = a < 0x0032 ? 1 : (cyc(230), a < 0x0048 ? 2 : a < 0x0064 ? 3 : 4);
             }
             cyc(46);
-            wr16(b | 0x0E7C, r->a);
+            wr16(b | W(time_bonus_step), r->a);
         }
         draw_time(bank, r, b, entry);
         return;
     case 0x8F27:                        /* 6: count the bonus into the time */
         cyc(24);
-        if ((rd16(b | 0x0D5A) & 0x00FF) >= 0x0008) {
+        if ((rd16(b | W(wram_0D5A)) & 0x00FF) >= 0x0008) {
             int c = 0;
 
             cyc(102);
             r->a = rd16(b | TIME_BCD);         /* LDA, then ADC */
             cyc(38);
-            r->a = adc_decimal16(r->a, rd16(b | 0x0E74), &c);
+            r->a = adc_decimal16(r->a, rd16(b | W(wram_0E74)), &c);
             cyc(10);
             wr16(b | TIME_BCD, r->a);
             cyc(24);
-            wr16(b | 0x0E74, 0x0000);
+            wr16(b | W(wram_0E74), 0x0000);
             cyc(38);
-            wr16(b | 0x0D5B, cyc_then(14, (uint16_t)(rd16(b | 0x0D5B) - 1)));
-            inc16(b | 0x0D65);
-            inc16(b | 0x0D65);
+            wr16(b | W(wram_0D5B), cyc_then(14, (uint16_t)(rd16(b | W(wram_0D5B)) - 1)));
+            inc16(b | W(time_bonus_state));
+            inc16(b | W(time_bonus_state));
             cyc(24);
-            r->a = rd16(b | 0x0E6C);
+            r->a = rd16(b | W(wram_0E6C));
             if (r->a)
                 { cyc(16); sound(bank, r, 0x0027); } else { cyc(14); }
         } else {
@@ -1134,15 +1135,15 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         return;
     case 0x8F86:                        /* 8: shrink the bonus digits */
         cyc(24);
-        r->a = rd16(b | 0x0D6B);
+        r->a = rd16(b | W(wram_0D6B));
         if (!r->a) {
             cyc(46);
-            wr16(b | 0x0D65, 0x0000);
+            wr16(b | W(time_bonus_state), 0x0000);
             return;
         }
         a = (uint16_t)(r->a - 2);
         cyc(68);
-        wr16(b | 0x0D6B, a);
+        wr16(b | W(wram_0D6B), a);
         bonus_x_from_table(bank, r, b, a);
         (cyc(46), tb_GsuBonusDigitsGrow(bank, r));
         cyc(22);
@@ -1151,38 +1152,38 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
     case 0x8FD9:                        /* 10: start taking time back */
         r->a = 0x0006;
         cyc(48);
-        wr16(b | 0x0D6F, r->a);
-        inc16(b | 0x0D65);
-        inc16(b | 0x0D65);
+        wr16(b | W(wram_0D6F), r->a);
+        inc16(b | W(time_bonus_state));
+        inc16(b | W(time_bonus_state));
         r->a = 0xFFFE;
         cyc(48);
-        wr16(b | 0x0D6B, r->a);
+        wr16(b | W(wram_0D6B), r->a);
         r->a = 0x0000;
         cyc(48);
-        wr16(b | 0x0E74, r->a);
+        wr16(b | W(wram_0E74), r->a);
         cyc(24);
         r->a = rd16(b | TIME_BCD);
         if (r->a)
-            { cyc(40); wr16(b | 0x0E76, r->a); }
+            { cyc(40); wr16(b | W(time_taken_copy), r->a); }
         else
-            wr16(b | 0x0D65, 0x0000);
+            wr16(b | W(time_bonus_state), 0x0000);
         r->a &= 0xFF00;
         cyc(62);
-        wr8(b | 0x0D5B, 0x00);
+        wr8(b | W(wram_0D5B), 0x00);
         return;
     case 0x900E:                        /* 12: grow the bonus digits */
         cyc(24);
-        a = rd16(b | 0x0D6B);
+        a = rd16(b | W(wram_0D6B));
         if (a == 0x0008) {
             cyc(40);
-            inc16(b | 0x0D65);
-            inc16(b | 0x0D65);
+            inc16(b | W(time_bonus_state));
+            inc16(b | W(time_bonus_state));
             sound(bank, r, 0x0040);
             cyc(30);                    /* BRA, and 8 the callee lacks */
         } else {
             a = (uint16_t)(a + 2);
             cyc(98);
-            wr16(b | 0x0D6B, a);
+            wr16(b | W(wram_0D6B), a);
             bonus_x_from_table(bank, r, b, a);
         }
         draw_bonus_then_time(bank, r, b);
@@ -1192,7 +1193,7 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         r->a = rd16(b | TIME_BCD);
         if (r->a) {
             cyc(46);
-            r->a = rd16(b | 0x0E74);
+            r->a = rd16(b | W(wram_0E74));
             if (r->a < 0x0099)
                 take_from_time(bank, r, b); else { cyc(10); }
         } else { cyc(2); }
@@ -1201,22 +1202,22 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         return;
     case 0x90A1:                        /* 16: shrink the bonus digits */
         cyc(24);
-        a = rd16(b | 0x0D6B);
+        a = rd16(b | W(wram_0D6B));
         r->a = a;
         if (!a) {
             cyc(46);
-            wr16(b | 0x0D65, r->x);
+            wr16(b | W(time_bonus_state), r->x);
             return;
         }
         a = (uint16_t)(a - 2);
         cyc(68);
-        wr16(b | 0x0D6B, a);
+        wr16(b | W(wram_0D6B), a);
         r->a = 0x0037;
         cyc(48);
-        wr16(b | 0x0D6D, r->a);
+        wr16(b | W(wram_0D6D), r->a);
         (cyc(46), tb_TimeDigitBytes(bank, r));
         cyc(24);
-        r->x = rd16(b | 0x0D6B);
+        r->x = rd16(b | W(wram_0D6B));
         cyc(80);
         r->a = rd16(SIZE_GROW + r->x);
         wr16(GSU_SIZE, r->a);
@@ -1226,34 +1227,34 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         return;
     case 0x9116:                        /* 18: start the second animation */
         cyc(24);
-        r->a = rd16(b | 0x19F0);
+        r->a = rd16(b | W(wram_19F0));
         if (!r->a) {
             cyc(40);
-            wr16(b | 0x0D65, 0x0000);
+            wr16(b | W(time_bonus_state), 0x0000);
             return;
         }
         r->a = 0x0030;
         cyc(70);
-        wr16(b | 0x0D6F, r->a);
-        inc16(b | 0x0D65);
-        inc16(b | 0x0D65);
+        wr16(b | W(wram_0D6F), r->a);
+        inc16(b | W(time_bonus_state));
+        inc16(b | W(time_bonus_state));
         sound(bank, r, 0x000B);
         cyc(32);
-        wr16(b | 0x0D6B, 0x0000);
+        wr16(b | W(wram_0D6B), 0x0000);
         r->a = 0x0028;
         cyc(48);
-        wr16(b | 0x0E74, r->a);
+        wr16(b | W(wram_0E74), r->a);
         return;
     case 0x913E:                        /* 20: grow it */
         cyc(24);
-        a = rd16(b | 0x0D6B);
+        a = rd16(b | W(wram_0D6B));
         cyc(40);
         if (a == 0x0008) {
-            inc16(b | 0x0D65);
-            inc16(b | 0x0D65);
+            inc16(b | W(time_bonus_state));
+            inc16(b | W(time_bonus_state));
         } else { cyc(6); }
         cyc(52);
-        wr16(b | 0x0D6B, (uint16_t)(a + 2));
+        wr16(b | W(wram_0D6B), (uint16_t)(a + 2));
         draw_pieces(bank, r, b);
         return;
     case 0x9151:                        /* 22: hold it */
@@ -1261,15 +1262,15 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         return;
     case 0x9165:                        /* 24: shrink it */
         cyc(24);
-        a = rd16(b | 0x0D6B);
+        a = rd16(b | W(wram_0D6B));
         r->a = a;
         if (!a) {
             cyc(40);
-            wr16(b | 0x0D65, 0x0000);
+            wr16(b | W(time_bonus_state), 0x0000);
             return;
         }
         cyc(74);
-        wr16(b | 0x0D6B, (uint16_t)(a - 2));
+        wr16(b | W(wram_0D6B), (uint16_t)(a - 2));
         sound(bank, r, 0x0027);
         cyc(30);
         draw_pieces(bank, r, b);
@@ -1397,7 +1398,7 @@ static int bonus_flag(uint8_t bank, TbRegs *r, uint32_t b)
 
     r->p |= P_M;
     cyc(46);
-    v = rd8(b | 0x0D5B);
+    v = rd8(b | W(wram_0D5B));
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
     return v;
@@ -1409,7 +1410,7 @@ static void transfer_digits(uint8_t bank, TbRegs *r, uint32_t b)
     cyc(62);
     tb_GsuBytes200_BFBAB9(bank, r);
     cyc(72);
-    lda16(bank, r, b | 0x0D69);
+    lda16(bank, r, b | W(bonus_digit_size));
     cyc(32);
     wr16(GSU_SIZE, r->a);
     (cyc(46), tb_GsuDigitPair0E74(bank, r));
@@ -1442,26 +1443,26 @@ void TimeBonusTransfer(uint8_t bank, TbRegs *r)
     if (!bonus_flag(bank, r, b))
         { cyc(16); return; } else { cyc(58); }
     r->p = (uint8_t)((r->p & ~(P_M | P_X)) | P_D);
-    lda16(bank, r, b | 0x19F0);
+    lda16(bank, r, b | W(wram_19F0));
     if (!r->a) {
         cyc(40);
-        wr16(b | 0x0E7C, 0x0000);
-        lda16(bank, r, b | 0x0D65);
+        wr16(b | W(time_bonus_step), 0x0000);
+        lda16(bank, r, b | W(time_bonus_state));
         if (r->a) {
             lda16_imm(bank, r, 0x0018);
             cyc(64);
-            wr16(b | 0x0D65, r->a);
+            wr16(b | W(time_bonus_state), r->a);
         } else { cyc(6); }
         cyc(16);
-        lda16(bank, r, b | 0x19EE);
+        lda16(bank, r, b | W(wram_19EE));
         cyc(24);
-        cmp16(bank, r, rd16(b | 0x0E74));
+        cmp16(bank, r, rd16(b | W(wram_0E74)));
         if (!(r->p & P_Z)) {
             cyc(16);
-            lda16(bank, r, b | 0x0E74);
+            lda16(bank, r, b | W(wram_0E74));
             add16(bank, r, 0x0001);
             cyc(48);
-            wr16(b | 0x0E74, r->a);
+            wr16(b | W(wram_0E74), r->a);
         }
     cyc(22);
         } else {
@@ -1474,41 +1475,41 @@ void TimeBonusTransfer(uint8_t bank, TbRegs *r)
         }
         sub16(bank, r, step);
         cyc(124);
-        wr16(b | 0x19F0, r->a);
+        wr16(b | W(wram_19F0), r->a);
         cyc(24);
-        wr16(b | 0x0E74, r->a);
+        wr16(b | W(wram_0E74), r->a);
         lda16(bank, r, b | TIME_BCD);
         add16(bank, r, step);
         cyc(48);
         wr16(b | TIME_BCD, r->a);
         if (step != 0x0003)
             cyc(22);                    /* BRA */
-        lda16(bank, r, b | 0x0D65);
+        lda16(bank, r, b | W(time_bonus_state));
         if (!r->a) {
             lda16_imm(bank, r, 0x0012);
             cyc(64);
-            wr16(b | 0x0D65, r->a);
+            wr16(b | W(time_bonus_state), r->a);
         } else { cyc(22); }
     }
     r->p &= (uint8_t)~P_D;
     cyc(38);
-    r->x = rd16(b | 0x0D67);
+    r->x = rd16(b | W(bonus_digit_state));
     r->p = nz16(r->p, r->x);
     cyc(46);
     switch (rd16(0x078C43 + r->x)) {
     case 0x8C4B:                        /* grow */
-        lda16(bank, r, b | 0x0D69);
+        lda16(bank, r, b | W(bonus_digit_size));
         cyc(23);
         cmp16(bank, r, 0x0020);
         if (r->p & P_C) {
             cyc(17);
-            inc16_nz(bank, r, b | 0x0D67);
-            inc16_nz(bank, r, b | 0x0D67);
+            inc16_nz(bank, r, b | W(bonus_digit_state));
+            inc16_nz(bank, r, b | W(bonus_digit_state));
         } else {
-            lda16(bank, r, b | 0x0D69);
+            lda16(bank, r, b | W(bonus_digit_size));
             add16(bank, r, 0x0004);
             cyc(48);
-            wr16(b | 0x0D69, r->a);
+            wr16(b | W(bonus_digit_size), r->a);
         }
         cyc(22);
         transfer_digits(bank, r, b);
@@ -1517,12 +1518,12 @@ void TimeBonusTransfer(uint8_t bank, TbRegs *r)
         transfer_digits(bank, r, b);
         return;
     case 0x8C67:                        /* shrink */
-        lda16(bank, r, b | 0x0D69);
+        lda16(bank, r, b | W(bonus_digit_size));
         if (!r->a) {
-            wr16(b | 0x0D67, 0x0000);
+            wr16(b | W(bonus_digit_state), 0x0000);
             return;
         }
-        inc16_nz(bank, r, b | 0x0D69);
+        inc16_nz(bank, r, b | W(bonus_digit_size));
         transfer_digits(bank, r, b);
         return;
     }
@@ -1591,10 +1592,10 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
     lda16(bank, r, b | TIME_BCD);
     if (!r->a) {
         cyc(22);
-        lda16(bank, r, b | 0x0E78);
+        lda16(bank, r, b | W(time_left_shown));
         if (r->a) {
             cyc(40);
-            wr16(b | 0x0E78, 0x0000);
+            wr16(b | W(time_left_shown), 0x0000);
             return 42;
         }
         return 64;
@@ -1602,7 +1603,7 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
     cmp16(bank, r, 0x0100);
     if (r->p & P_C) {                  /* three digits */
         cyc(104);
-        wr16(b | 0x0E78, r->a);
+        wr16(b | W(time_left_shown), r->a);
         r->a = (uint16_t)(r->a << 8 | r->a >> 8);
         r->p = nz8(r->p, (uint8_t)r->a);
         cyc(20);
@@ -1619,13 +1620,13 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
         lda16_imm(bank, r, 0x00AC);
         cyc(122);
         wr16(GSU_X, r->a);
-        lda16(bank, r, b | 0x0E78);
+        lda16(bank, r, b | W(time_left_shown));
         and16(bank, r, 0x00FF);
         lsr16(bank, r); lsr16(bank, r); lsr16(bank, r); lsr16(bank, r);
         param_digit(bank, r);
         gsu_run(bank, r, 0xF6DF);
         cyc(66);
-        lda16(bank, r, b | 0x0E78);
+        lda16(bank, r, b | W(time_left_shown));
         and16(bank, r, 0x000F);
         param_digit(bank, r);
         gsu_run(bank, r, 0xF6DF);
@@ -1635,10 +1636,10 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
     cmp16(bank, r, 0x0010);
     if (r->p & P_C) {                  /* two digits */
         cyc(109);
-        wr16(b | 0x0E78, r->a);
+        wr16(b | W(time_left_shown), r->a);
         lsr16(bank, r); lsr16(bank, r); lsr16(bank, r); lsr16(bank, r);
         param_digit(bank, r);
-        lda16(bank, r, b | 0x0E78);
+        lda16(bank, r, b | W(time_left_shown));
         cyc(79);
         cmp16(bank, r, 0x0020);
         if (r->p & P_C)
@@ -1661,10 +1662,10 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
         return 58;
     }
     cyc(104);
-    cmp16(bank, r, rd16(b | 0x0E78));            /* one large digit */
+    cmp16(bank, r, rd16(b | W(time_left_shown)));            /* one large digit */
     if (!(r->p & P_Z)) {
         cyc(17);
-        wr16(b | 0x0E78, r->a);
+        wr16(b | W(time_left_shown), r->a);
         cyc(86);
         lda16_imm(bank, r, 0x0042);
         tb_SoundPort0QueuePush(bank, r);
@@ -1672,7 +1673,7 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
     lda16(bank, r, b | TIME_BCD);
     param_digit(bank, r);
     cyc(22);
-    lda16(bank, r, b | 0x0E69);
+    lda16(bank, r, b | W(wram_0E69));
     and16(bank, r, 0x00FF);
     lsr16(bank, r); lsr16(bank, r); lsr16(bank, r); lsr16(bank, r);
     asl16(bank, r); asl16(bank, r); asl16(bank, r);
@@ -1763,7 +1764,7 @@ void GsuDigitPair0E74At(uint8_t bank, TbRegs *r)
     cyc(4);
     wr16(0x70020C, 0x0008);
     cyc(24);
-    tb_lda(r, b | 0x0E74);
+    tb_lda(r, b | W(wram_0E74));
     tb_lsr(r);
     tb_lsr(r);
     tb_lsr(r);
@@ -1773,7 +1774,7 @@ void GsuDigitPair0E74At(uint8_t bank, TbRegs *r)
     run_f15b(bank, r);
     tb_rep(r, P_M | P_X);
     cyc(46);
-    tb_lda(r, b | 0x0E74);
+    tb_lda(r, b | W(wram_0E74));
     tb_and(r, 0x000F);
     (cyc(68), tb_GsuParam216A(bank, r));
     run_f15b(bank, r);

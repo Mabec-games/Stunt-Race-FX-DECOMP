@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "object_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 #define DRAW_COUNT 0x7E0CEEu      /* records written (at most $31) */
 #define TRIGGER_POS 0x7E1F2Bu     /* offset into the trigger list */
@@ -13,8 +14,8 @@
 #define DRAW_NEXT 0x00003Eu       /* direct page: the next record's address */
 #define DRAW_LIST 0xF77Fu         /* the records, 30 bytes each, bank $7E */
 #define DRAW_SIDE 0x7E1F07u       /* nonzero: the view is on the far side */
-#define OBJ(o, f) (0x7E2000u + (uint16_t)((f) + (o)))
-#define REC(r, f) (0x7E0000u + (uint16_t)((f) + (r)))
+#define OBJ(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
+#define REC(r, f) (W(wram_bank_7e) + (uint16_t)((f) + (r)))
 
 /* Object `o`'s draw record at `r`: position (relative to the view at
    $C5/$C7/$C9 unless bit 7 of +$24 says absolute) and its depth key at
@@ -40,7 +41,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(76);
         a = rd16(OBJ(o, 0x0E));
         cyc(30);
-        a = (uint16_t)(a - rd16(0x0000C7));
+        a = (uint16_t)(a - rd16(W(dp_c7)));
         cyc(30);
         wr16(REC(r, 0x10), a);
         if (a & 0x8000)
@@ -54,11 +55,11 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(30);
         a = rd16(OBJ(o, 0x0C));
         cyc(30);
-        wr16(REC(r, 0x12), cyc_then(30, (uint16_t)(a - rd16(0x0000C5))));
+        wr16(REC(r, 0x12), cyc_then(30, (uint16_t)(a - rd16(W(dp_c5)))));
         cyc(30);
         a = rd16(OBJ(o, 0x10));
         cyc(30);
-        wr16(REC(r, 0x14), cyc_then(30, (uint16_t)(a - rd16(0x0000C9))));
+        wr16(REC(r, 0x14), cyc_then(30, (uint16_t)(a - rd16(W(dp_c9)))));
     }
     cyc(30);
     wr16(REC(r, 0x08), cyc_then(30, rd16(OBJ(o, 0x04))));
@@ -92,7 +93,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(30);
     v = rd8(OBJ(o, 0x5A));
     if (!(v & 0x80))
-        { cyc(40); v = rd8(0x7E05E9); } else { cyc(22); }
+        { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
     cyc(46);
     wr8(REC(r, 0x19), (uint8_t)(v & 0x7F));
     cyc(24);
@@ -100,13 +101,13 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(46);
         v = rd8(OBJ(o, 0x19));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E05E9); }
+            { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); }
         cyc(22);
     } else {
         cyc(52);
         v = rd8(OBJ(o, 0x18));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E05E9); } else { cyc(22); }
+            { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
     }
     cyc(46);
     wr8(REC(r, 0x1A), (uint8_t)(v & 0x7F));
@@ -216,7 +217,7 @@ static void draw_triggers(unsigned end, ObjectDrawListEnd *e)
         cyc(80);
         wr16(TRIGGER_POS, pos);
         cyc(70);
-        a = rd16(0x7F0000 + (a & 0x07FE));
+        a = rd16(W(object_buckets) + (a & 0x07FE));
         if (!a)
             { cyc(22); continue; }
         cyc(46);

@@ -7,6 +7,7 @@
 #include "cpu_ops.h"
 #include "hud_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* The 65816 instructions these routines run, on a value and the flags in
@@ -598,12 +599,12 @@ static uint8_t course_times_9(uint8_t bank, uint8_t *p)
     int i;
 
     cyc(24);
-    a = rd8(b | 0x0D4A);
+    a = rd8(b | W(wram_0D4A));
     for (i = 0; i < 3; i++)
         a = asl8(a, p);
     *p &= (uint8_t)~P_C;
     cyc(80);
-    return alu_adc8(a, rd8(b | 0x0D4A), p);
+    return alu_adc8(a, rd8(b | W(wram_0D4A)), p);
 }
 
 /* TAX, LDY #3, then three bytes from $70:FC6D + X to $70:FC70 + X. Returns
@@ -716,11 +717,11 @@ static uint8_t course_times_24(uint8_t bank, uint8_t *p)
     int i;
 
     cyc(24);
-    a = rd8(b | 0x0D4A);
+    a = rd8(b | W(wram_0D4A));
     a = asl8(a, p);
     *p &= (uint8_t)~P_C;
     cyc(52);
-    a = alu_adc8(a, rd8(b | 0x0D4A), p);
+    a = alu_adc8(a, rd8(b | W(wram_0D4A)), p);
     cyc(2);
     for (i = 0; cyc_loop(12, i < 3); i++)
         a = asl8(a, p);
@@ -849,12 +850,12 @@ static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
     cyc(32);
     wr8(0x0000F5, slot);
     cyc(24);
-    a = rd8(b | 0x0D4A);
+    a = rd8(b | W(wram_0D4A));
     for (i = 0; i < 3; i++)
         a = asl8(a, p);
     *p &= (uint8_t)~P_C;
     cyc(80);
-    a = alu_adc8(a, rd8(b | 0x0D4A), p);
+    a = alu_adc8(a, rd8(b | W(wram_0D4A)), p);
     cyc(16);
     a = alu_adc8(a, rd8(0x0000F5), p);
     x = a;
@@ -870,7 +871,7 @@ static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
     cyc(32);
     wr8(0x70FC6E + (uint32_t)x, v);
     cyc(24);
-    v = rd8(b | 0x0D89);
+    v = rd8(b | W(wram_0D89));
     *p = nz8(*p, v);
     cyc(32);
     wr8(0x70FC6F + (uint32_t)x, v);
@@ -1238,7 +1239,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     *x &= 0x00FF;
     *y &= 0x00FF;
     cyc(46);
-    v = rd8(b | 0x0D24);
+    v = rd8(b | W(wram_0D24));
     p = nz8(p, v);
     a = (uint16_t)((a & 0xFF00) | v);
     if (v == 0x03) {
@@ -1269,7 +1270,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
             cyc(84);
             if (!TimeBelowRecord(bank, 0x18, &p)) {
                 cyc(56);
-                wr8(b | 0x10C7, 0xFF);
+                wr8(b | W(player_tag), 0xFF);
                 cyc(40);
                 wr8(b | 0x0FAC, 0x00);
                 cyc(42);                /* PLP */
@@ -1289,10 +1290,10 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     cyc(place == 0x03 ? 56 : 78);       /* the third place has no BRA */
     wr16(0x0000F7, page);
     cyc(24);
-    w = asl16(rd16(b | 0x0D4A), &p);
+    w = asl16(rd16(b | W(wram_0D4A)), &p);
     p &= (uint8_t)~P_C;
     cyc(52);
-    w = (uint16_t)(alu_adc16(w, rd16(b | 0x0D4A), &p) & 0x00FF);
+    w = (uint16_t)(alu_adc16(w, rd16(b | W(wram_0D4A)), &p) & 0x00FF);
     for (i = 0; i < 3; i++)
         w = asl16(w, &p);
     cyc(82);
@@ -1325,7 +1326,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     v = course_times_9(bank, &p);
     sum = sum_into_f1(0x70FC6D, v, 9, &p);
     cyc(68);
-    xx = rd8(b | 0x0D4A);
+    xx = rd8(b | W(wram_0D4A));
     cyc(16);
     v = rd8(0x0000F1);
     cyc(32);

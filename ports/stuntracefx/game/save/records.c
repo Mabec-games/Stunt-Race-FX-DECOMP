@@ -9,6 +9,7 @@
 #include "carried.h"
 
 #include "audio_calls.h"
+#include "wram_names.h"
 
 /* Sum five bytes from `base` + X with 8-bit adds; X steps past them. */
 static uint8_t sum5(uint32_t base, uint8_t *x, uint8_t *p)
@@ -510,7 +511,7 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
     cyc(238);
     wr8(0x0000F4, 0x00);
     cyc(16);
-    wr8(0x0000F6, 0x00);
+    wr8(W(glyph_time_mid), 0x00);
     for (k = 2; k >= 0; k--) {
         cyc(86);
         wr8(0x0000F3, first[k]);
@@ -937,9 +938,9 @@ uint8_t RecordsUnpackCourse(uint8_t bank)
     unsigned i;
 
     cyc(68);
-    a = rd16(b | 0x0D4A);
+    a = rd16(b | W(wram_0D4A));
     cyc(52);
-    a = (uint16_t)((uint16_t)(a << 1) + rd16(b | 0x0D4A));
+    a = (uint16_t)((uint16_t)(a << 1) + rd16(b | W(wram_0D4A)));
     x = (uint16_t)((a & 0x00FF) << 3);
     cyc(96);
     wr16(0x0000F5, x);
@@ -958,9 +959,9 @@ uint8_t RecordsUnpackCourse(uint8_t bank)
         wr8(b | (uint16_t)(0x0F78 + 3 * i), (uint8_t)min);
     }
     cyc(46);
-    c = rd8(b | 0x0D4A);
+    c = rd8(b | W(wram_0D4A));
     cyc(80);
-    c = (uint8_t)((uint8_t)(c << 3) + rd8(b | 0x0D4A));
+    c = (uint8_t)((uint8_t)(c << 3) + rd8(b | W(wram_0D4A)));
     cyc(14);
     for (i = 0; i < 9; i++) {
         cyc(32);
@@ -1670,11 +1671,11 @@ uint16_t RecordRowDraw(uint8_t bank, uint16_t d, uint16_t sprite)
     cyc(44);
     w = (uint16_t)((w << 1) + rd16(dp(d, 0xF5)));
     cyc(48);
-    wr16(b | 0x10C3, (uint16_t)(w & 0x000F));
+    wr16(b | W(sprite_piece_frame), (uint16_t)(w & 0x000F));
     cyc(48);
-    wr16(b | 0x10BD, 0x0057);
+    wr16(b | W(sprite_piece_x), 0x0057);
     cyc(24);
-    wr16(b | 0x10C5, 0x0000);
+    wr16(b | W(sprite_piece_palette), 0x0000);
     cyc(92);
     SpritePieces3(bank, &row_x, &y, &p, &set);
     row_y = (uint16_t)((sprite << 2) + 4);
@@ -1721,7 +1722,7 @@ static uint16_t record_row(uint8_t bank, uint16_t d, unsigned n)
         wr8(dp(d, (uint8_t)(0xF3 + i)), cyc_then(16, rd8(b | (uint16_t)(0x10CF + n * 3 + i))));
     }
     cyc(40);
-    wr8(b | 0x10BF, (uint8_t)(0x7C + n * 0x11));
+    wr8(b | W(sprite_piece_y), (uint8_t)(0x7C + n * 0x11));
     cyc(24);
     a = rd16(b | (uint16_t)(0x0D75 + n * 2));
     a = (cyc(46), RecordRowDraw(bank, d, a));
@@ -2014,9 +2015,9 @@ static void compare_result(uint32_t b, uint8_t r)
     uint8_t v;
 
     cyc(62);                            /* SEP, LDA #imm, STA.W */
-    wr8(b | 0x0FA3, r);
+    wr8(b | W(p1_lead), r);
     cyc(24);
-    v = rd8(b | 0x0E57);
+    v = rd8(b | W(wram_0E57));
     cmp_low = v;
     cmp_sound = 0;
     if (v)
@@ -2074,7 +2075,7 @@ void RecordTimeCompare(uint8_t bank, uint16_t x)
     cyc(30);
     v = rd8(b | (uint16_t)(0x0F5D + x));
     cyc(40);
-    wr8(b | 0x0F64, (uint8_t)(v & 0x0F));
+    wr8(b | W(lap_record_a), (uint8_t)(v & 0x0F));
     for (i = 0; i < 5; i++) {
         cyc(i == 0 ? 54 : 90);          /* LDX #imm16 / INX, CPX.W, BCC taken; LDA.W,X */
         v = rd8(b | (uint16_t)(0x0F64 + i));
@@ -2135,7 +2136,7 @@ static void record_compare_by_mode(Carried *cr, uint8_t bank, uint16_t x)
     uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
-    mode_seen = rd16(b | 0x0D2B);
+    mode_seen = rd16(b | W(hud_mode));
     if (mode_seen == 0x0000) {
         cyc(108);
         SoundPort0QueuePushW(0x35, 24);
@@ -2317,7 +2318,7 @@ static uint16_t records_player_place(uint32_t b)
 {
     static const uint16_t tag_at[3] = {0x0F13, 0x0F15, 0x0F17};
     cyc(126);
-    uint16_t a = rd16(b | 0x10C7), v = 0, t;
+    uint16_t a = rd16(b | W(player_tag)), v = 0, t;
     uint8_t c = 0;
     int i;
 
@@ -2332,7 +2333,7 @@ static uint16_t records_player_place(uint32_t b)
     }
     ld_flags = (uint8_t)(nz16(0, v) | c);
     cyc(v == 2 || v == 3 ? 92 : 70);    /* the places 2 and 3 BRA to the store */
-    wr16(b | 0x10C9, v);
+    wr16(b | W(player_place), v);
     return v;
 }
 
@@ -2805,9 +2806,9 @@ void SpecialRecordInsert(uint8_t bank, uint16_t d, uint16_t t)
 
     ins_x_set = ins_y_set = ins_v_set = 0;
     cyc(54);
-    if (!rd16(b | 0x0D2B)) {
+    if (!rd16(b | W(hud_mode))) {
         cyc(40);
-        a = (uint16_t)((rd16(b | 0x0D48) << 1) & 0x00FF);
+        a = (uint16_t)((rd16(b | W(wram_0D48)) << 1) & 0x00FF);
         cyc(2);
         cyc(30);                        /* TAX */
         ins_x = a;
@@ -2830,7 +2831,7 @@ void SpecialRecordInsert(uint8_t bank, uint16_t d, uint16_t t)
     ins_y = y;
     ins_y_set = 1;
     cyc(38);
-    a = (uint16_t)(rd16(b | 0x0D89) & 0x00FF);
+    a = (uint16_t)(rd16(b | W(wram_0D89)) & 0x00FF);
     cyc(2);
     if (a >= 0x0004)
         { cyc(6); goto none; }
@@ -2903,7 +2904,7 @@ void SpecialRecordInsert(uint8_t bank, uint16_t d, uint16_t t)
         cyc(22);
         cyc(38);
         cyc(28);
-        wr16(b | 0x10C7, 0xFFFF);
+        wr16(b | W(player_tag), 0xFFFF);
         ins_kind = INS_NO_PLACE;
         return;
     }
@@ -2977,9 +2978,9 @@ uint16_t RecordCarTimes12(uint8_t bank)
     uint16_t a, m, r;
 
     cyc(24);
-    a = (uint16_t)(rd16(b | 0x0D89) << 1);
+    a = (uint16_t)(rd16(b | W(wram_0D89)) << 1);
     cyc(52);
-    m = rd16(b | 0x0D89);
+    m = rd16(b | W(wram_0D89));
     r = (uint16_t)(a + m);
     car12_flags = (uint8_t)(((r >> 14) & 1)                        /* the last ASL */
                             | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
@@ -3178,7 +3179,7 @@ void abi_SaveRecordSumsTimeUp(void)
 static void time_up_lead(uint8_t v)
 {
     cyc(48);
-    wr8(0x000FA3, v);
+    wr8(W(p1_lead), v);
 }
 
 /*
@@ -3206,32 +3207,32 @@ uint8_t TimeUpRecordUpdate(uint8_t bank)
     uint8_t v, p = 0;
 
     cyc(46);
-    v = rd8(b | 0x0E66);
+    v = rd8(b | W(race_time_minutes));
     cyc(40);
-    wr8(b | 0x0F69, (uint8_t)(v & 0x0F));
+    wr8(b | W(lap_digits), (uint8_t)(v & 0x0F));
     cyc(24);
-    v = rd8(b | 0x0E64);
+    v = rd8(b | W(race_time_seconds));
     cyc(80);
     wr8(b | 0x0F6A, (uint8_t)(v >> 4));
     cyc(24);
-    v = rd8(b | 0x0E64);
+    v = rd8(b | W(race_time_seconds));
     cyc(40);
     wr8(b | 0x0F6B, (uint8_t)(v & 0x0F));
     cyc(24);
-    v = rd8(b | 0x0E63);
+    v = rd8(b | W(race_time_fraction));
     cyc(80);
     wr8(b | 0x0F6C, (uint8_t)(v >> 4));
     cyc(24);
-    v = (uint8_t)(rd8(b | 0x0E63) & 0x0F);
+    v = (uint8_t)(rd8(b | W(race_time_fraction)) & 0x0F);
     cyc(40);
     wr8(b | 0x0F6D, v);
     cyc(22);                            /* REP #$30 */
     cyc(24);
-    a = rd16(b | 0x0E63);
+    a = rd16(b | W(race_time_fraction));
     cyc(24);
-    sec = rd16(b | 0x0E64);
+    sec = rd16(b | W(race_time_seconds));
     cyc(24);
-    min = rd16(b | 0x0E66);
+    min = rd16(b | W(race_time_minutes));
     up_y = min;
     up_t = (cyc(46), TimePackBcd(a, sec, min, &p));   /* 16-bit, binary */
     cyc(54);
@@ -3269,7 +3270,7 @@ uint8_t TimeUpRecordUpdate(uint8_t bank)
     cyc(32);
     wr16(0x70FC4C + (uint32_t)x, w);
     cyc(46);
-    v = rd8(b | 0x0D89);
+    v = rd8(b | W(wram_0D89));
     cyc(32);
     wr8(0x70FC4E + (uint32_t)x, v);
     time_up_lead(up_lead = 0xFF);
@@ -3352,11 +3353,11 @@ uint8_t StuntRecordTime(Carried *cr, uint8_t bank, uint16_t d)
     uint8_t h, lo, sum = 0, f;
 
     cyc(46);
-    h = rd8(b | 0x19EC);
+    h = rd8(b | W(hud_digits_19ec));
     cyc(58);
-    lo = rd8(b | 0x0E70);
+    lo = rd8(b | W(race_time_bcd));
     cyc(38);
-    lo = bcd_add8(lo, rd8(b | 0x19F0), &f);
+    lo = bcd_add8(lo, rd8(b | W(wram_19F0)), &f);
     stunt_v = (uint8_t)(f & P_V);
     cyc(22);                            /* REP #$30 */
     t = (uint16_t)(h << 8 | lo);
@@ -3395,7 +3396,7 @@ uint8_t StuntRecordTime(Carried *cr, uint8_t bank, uint16_t d)
     wr16(b | 0x0D14, a);
     y = a;
     cyc(38);
-    a = (uint16_t)(rd16(b | 0x0D89) & 0x00FF);
+    a = (uint16_t)(rd16(b | W(wram_0D89)) & 0x00FF);
     cyc(2);
     wr16((uint16_t)(d + 0xF3), cyc_then(38, a));
     a = (uint16_t)(a << 1);
@@ -3556,13 +3557,13 @@ static uint16_t records_char_offset(uint8_t bank, uint32_t row_table, uint32_t c
     uint16_t a, x;
 
     cyc(232);
-    x = (uint16_t)(rd16(b | 0x0FA8) << 1);
+    x = (uint16_t)(rd16(b | W(records_row)) << 1);
     cyc(30);                            /* TAX */
     cyc(62);
     a = rd16(row_table + x);
     wr16(0x0000F3, a);
     cyc(24);
-    a = (uint16_t)(rd16(b | 0x0FAA) & 0x00FF);
+    a = (uint16_t)(rd16(b | W(records_place)) & 0x00FF);
     cyc(2);
     a = (uint16_t)(a << 6);
     cyc(136);
@@ -3570,7 +3571,7 @@ static uint16_t records_char_offset(uint8_t bank, uint32_t row_table, uint32_t c
     cyc(16);
     wr16(0x0000F3, a);
     cyc(24);
-    rc_x = rd16(b | 0x0FA6);
+    rc_x = rd16(b | W(records_char));
     cyc(100);
     a = (uint16_t)(rd16(char_table + rc_x) & 0x00FF);
     cyc(2);
@@ -3674,18 +3675,18 @@ uint16_t RecordsEntryLoad(uint8_t bank)
     cyc(94);
     wr16(0x0000F1, a);
     cyc(24);
-    a = (uint16_t)(rd16(b | 0x0FA8) & 0x00FF);
+    a = (uint16_t)(rd16(b | W(records_row)) & 0x00FF);
     cyc(2);
     a = (uint16_t)(a << 1);
     cyc(74);
-    a = rc_add(a, rd16(b | 0x0FA8));
+    a = rc_add(a, rd16(b | W(records_row)));
     a = (uint16_t)(a << 2);
     cyc(58);
     a = rc_add(a, rd16(0x0000F1));
     cyc(16);
     wr16(0x0000F1, a);
     cyc(24);
-    a = (uint16_t)(rd16(b | 0x0FAA) << 2);
+    a = (uint16_t)(rd16(b | W(records_place)) << 2);
     cyc(58);
     a = rc_add(a, rd16(0x0000F1));
     cyc(16);
@@ -4008,7 +4009,7 @@ void abi_RecordsCharTileAll(void)
 static void records_char_store(uint16_t y, uint16_t t)
 {
     cyc(132);
-    wr8(0x7F93D7 + (uint32_t)y, (uint8_t)t);
+    wr8(W(tilemap_7f93d7) + (uint32_t)y, (uint8_t)t);
     cyc(22);
     cyc(42);                            /* RTS */
 }

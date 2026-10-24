@@ -9,6 +9,7 @@
 #include "carried.h"
 
 #include "video_calls.h"
+#include "wram_names.h"
 uint8_t HudDrawTime(uint16_t *x, int *x_set);
 
 /*
@@ -121,7 +122,7 @@ void WaitScanline(uint8_t bank)
     uint8_t lo;
 
     cyc(150);
-    wr8(b | 0x06E4, 0x00);
+    wr8(b | W(scanline_wait_high), 0x00);
     do {
         cyc(46);
         hw_rd(SLHV);
@@ -129,7 +130,7 @@ void WaitScanline(uint8_t bank)
         lo = hw_rd(OPVCT);
         cyc(44);
         hw_rd(OPVCT);
-    } while (cyc_loop(22, lo != rd8(cyc_then(44, b | 0x06E3))));
+    } while (cyc_loop(22, lo != rd8(cyc_then(44, b | W(scanline_wait)))));
     cyc(182);
 }
 
@@ -182,19 +183,19 @@ void WindowTable7F(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc8(a, b2, &cr->p);
     cyc(4);
-    put7f(0x7F3402, a);
+    put7f(W(window_width_7f), a);
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (a & 1)));
     a = (uint8_t)(a >> 1);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(40);
     a = alu_adc8(a, rd8(0x7F3434), &cr->p);
     cyc(20);
-    put7f(0x7F3406, a);
+    put7f(W(window_middle_7f), a);
     cyc(12);
     a = rd8(0x7F3435);
     a = (uint8_t)(a >> 1);
     cyc(34);
-    put7f(0x7F3410, a);
+    put7f(W(window_table_7f), a);
     a++;
     cyc(14);
     put7f(0x7F3413, a);
@@ -385,8 +386,8 @@ static void hblank_inline(Carried *cr)
 /* The frame's counters: $0E3B and $0306 up by one. */
 static void frame_counts(Carried *cr, uint32_t b)
 {
-    inc8(cr, b | 0x0E3B);
-    inc8(cr, b | 0x0306);
+    inc8(cr, b | W(frame_count));
+    inc8(cr, b | W(frames_since_tick));
 }
 
 /* BG2's scroll for the split screen's lower half: y by the sign of v
@@ -439,16 +440,16 @@ void RasterStage(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    ldx8(cr, rd8(b | 0x0D3F));
+    ldx8(cr, rd8(b | W(wram_0D3F)));
     cyc(30);
-    switch (rd16(0x7E0000 | (uint16_t)(0xA30D + cr->x))) {
+    switch (rd16(W(wram_bank_7e) | (uint16_t)(0xA30D + cr->x))) {
     case 0xA330:
         cyc(46);
         WaitHBlank_cr(cr);
-        copy8(cr, INIDISP, b | 0x0D61);
+        copy8(cr, INIDISP, b | W(fade_level_hi));
         put8(cr, VTIMEL, 0xC8);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x02);
+        put8(cr, b | W(wram_0D3F), 0x02);
         frame_counts(cr, b);
         break;
     case 0xA34D:
@@ -458,7 +459,7 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x17);
         irq_ack(cr);
         cyc(24);
-        wr8(b | 0x0D3F, 0x00);
+        wr8(b | W(wram_0D3F), 0x00);
         put8(cr, b | 0x0D52, 0xFF);
         put8(cr, HDMAEN, 0x02);
         (cyc(46), JoypadRead_cr(cr));
@@ -469,11 +470,11 @@ void RasterStage(Carried *cr)
         cyc(68);
         WaitHBlank_cr(cr);
         put8(cr, TM, 0x13);
-        copy8(cr, BG2VOFS, b | 0x0E37);
+        copy8(cr, BG2VOFS, b | W(scroll_value));
         copy8(cr, BG2VOFS, b | 0x0E34);
         put8(cr, VTIMEL, 0xD8);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x12);
+        put8(cr, b | W(wram_0D3F), 0x12);
         frame_counts(cr, b);
         (cyc(46), JoypadRead_cr(cr));
         (cyc(46), FadeStepFixed_cr(cr));
@@ -487,15 +488,15 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x37);
         irq_ack(cr);
         put8(cr, VTIMEH, 0x00);
-        copy8(cr, HDMAEN, b | 0x0D45);
-        copy8(cr, CGADSUB, b | 0x0D47);
-        put8(cr, b | 0x0D3F, 0x10);
+        copy8(cr, HDMAEN, b | W(wram_0D45));
+        copy8(cr, CGADSUB, b | W(colour_math_mode));
+        put8(cr, b | W(wram_0D3F), 0x10);
         put8(cr, b | 0x0D52, 0xFF);
         (cyc(62), OamDmaAll_cr(cr));
-        copy8(cr, BG2VOFS, b | 0x0E33);
+        copy8(cr, BG2VOFS, b | W(wram_0E33));
         copy8(cr, BG2VOFS, b | 0x0E34);
         cyc(32);
-        c = (uint8_t)(rd8(0x7F340D) | 0x80);
+        c = (uint8_t)(rd8(W(fixed_colour)) | 0x80);
         put8(cr, COLDATA, c);
         c = (uint8_t)((c & 0x7F) | 0x40);
         cyc(16);
@@ -522,18 +523,18 @@ void RasterStage(Carried *cr)
         put8(cr, A1B0, 0x7F);
         put8(cr, VMAIN, 0x80);
         cyc(24);
-        c = (uint8_t)(rd8(b | 0x0374) & 0xF7);
+        c = (uint8_t)(rd8(b | W(gsu_scmr_shadow)) & 0xF7);
         put8(cr, GSU_SCMR, c);
         put8(cr, MDMAEN, 0x01);
         cyc(24);
-        c = (uint8_t)(rd8(b | 0x0374) | 0x18);
+        c = (uint8_t)(rd8(b | W(gsu_scmr_shadow)) | 0x18);
         put8(cr, GSU_SCMR, c);
         r_rep(cr, P_M | P_X);
         cyc(24);
-        r_lda16(cr, b | 0x0D7F);
+        r_lda16(cr, b | W(gsu_buffer_select));
         if (cr->a) {
             cyc(40);
-            wr16(b | 0x0D7F, 0x0000);
+            wr16(b | W(gsu_buffer_select), 0x0000);
             cr->x = 0x2C00;
             cr->y = 0x0400;
             r_lda16_imm(cr, 0x0800);
@@ -543,25 +544,25 @@ void RasterStage(Carried *cr)
             r_rep(cr, P_M);
             r_lda16_imm(cr, 0xFFFF);
             cyc(18);
-            wr16(0x000D81, 0xFFFF);
+            wr16(W(wram_0D81), 0xFFFF);
         } else { cyc(22); }
         cyc(46);
         WindowTable7F(cr);
         r_sep(cr, P_M);
         cyc(22);
-        copy8(cr, INIDISP, b | 0x0D61);
+        copy8(cr, INIDISP, b | W(fade_level_hi));
         break;
     }
     case 0xA4F5:
         cyc(24);
-        ldx8(cr, rd8(b | 0x0D61));
+        ldx8(cr, rd8(b | W(fade_level_hi)));
         hblank_inline(cr);
         cyc(56);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, HTIMEL, 0x30);
         put8(cr, VTIMEL, 0xC0);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x14);
+        put8(cr, b | W(wram_0D3F), 0x14);
         frame_counts(cr, b);
         put8(cr, b | 0x0D52, 0xFF);
         (cyc(46), FadeStep_cr(cr));
@@ -571,7 +572,7 @@ void RasterStage(Carried *cr)
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x01D8);
         cyc(10);
-        wr16(b | 0x0E60, 0x01D8);
+        wr16(b | W(hud_time_sprite), 0x01D8);
         w_HudDrawTime(cr);
         (cyc(46), HudPanelsStep_cr(cr));
         (cyc(46), PalettesStep_cr(cr));
@@ -579,7 +580,7 @@ void RasterStage(Carried *cr)
     case 0xA53D:
         put8(cr, VTIMEL, 0xD0);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x06);
+        put8(cr, b | W(wram_0D3F), 0x06);
         (cyc(62), WindowHdmaNormal_cr(cr));
         (cyc(62), WindowLayoutStepForScreen_cr(cr));
         (cyc(62), WindowSlideOrOscillate(cr));
@@ -605,14 +606,14 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x10);
         irq_ack(cr);
         put8(cr, TM, 0x13);
-        copy8(cr, HDMAEN, b | 0x0D45);
-        put8(cr, b | 0x0D3F, 0x04);
+        copy8(cr, HDMAEN, b | W(wram_0D45));
+        put8(cr, b | W(wram_0D3F), 0x04);
         window_colours(cr, b, 0x19AC);
         (cyc(62), WindowsSetupSelect_cr(cr));
         break;
     case 0xA5B6:
         cyc(24);
-        ldx8(cr, cyc_then(46, rd8(b | 0x0D61)));
+        ldx8(cr, cyc_then(46, rd8(b | W(fade_level_hi))));
         WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
@@ -622,7 +623,7 @@ void RasterStage(Carried *cr)
         hw_wr(VTIMEH, 0x00);
         put8(cr, HTIMEL, 0x10);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x0A);
+        put8(cr, b | W(wram_0D3F), 0x0A);
         frame_counts(cr, b);
         put8(cr, b | 0x0D52, 0xFF);
         (cyc(46), FadeStep_cr(cr));
@@ -633,7 +634,7 @@ void RasterStage(Carried *cr)
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x0100);
         cyc(10);
-        wr16(b | 0x0E60, 0x0100);
+        wr16(b | W(hud_time_sprite), 0x0100);
         w_HudDrawTime(cr);
         (cyc(46), HudPanelASlide_cr(cr));
         (cyc(46), HudPanelBSlide_cr(cr));
@@ -651,10 +652,10 @@ void RasterStage(Carried *cr)
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0x77);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x0C);
+        put8(cr, b | W(wram_0D3F), 0x0C);
         window_colours(cr, b, 0x19AF);
         cyc(24);
-        r_lda8(cr, b | 0x0D5D);
+        r_lda8(cr, b | W(wram_0D5D));
         v = (uint8_t)cr->a;
         if (v) {
             cyc(32);
@@ -662,7 +663,7 @@ void RasterStage(Carried *cr)
             break;
         }
         cyc(46);
-        r_lda8(cr, b | 0x0D5C);
+        r_lda8(cr, b | W(wram_0D5C));
         if ((uint8_t)cr->a)
             { cyc(16); put8(cr, BG12NBA, 0x40); } else { cyc(22); }
         put8(cr, BG2SC, 0x3F);
@@ -673,17 +674,17 @@ void RasterStage(Carried *cr)
         break;
     case 0xA681:
         cyc(24);
-        ldx8(cr, cyc_then(46, rd8(b | 0x0D61)));
+        ldx8(cr, cyc_then(46, rd8(b | W(fade_level_hi))));
         WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0xD7);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x0E);
+        put8(cr, b | W(wram_0D3F), 0x0E);
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x0000);
         cyc(10);
-        wr16(b | 0x0E60, 0x0000);
+        wr16(b | W(hud_time_sprite), 0x0000);
         w_HudDrawTime(cr);
         r_sep(cr, P_M | P_X);
         cr->y = 0x00;
@@ -709,7 +710,7 @@ void RasterStage(Carried *cr)
         r_sep(cr, P_M | P_X);
         b = (uint32_t)cr->db << 16;
         cyc(24);
-        r_lda8(cr, b | 0x0D5C);
+        r_lda8(cr, b | W(wram_0D5C));
         v = (uint8_t)cr->a;
         if (v) {
             cyc(32);
@@ -717,7 +718,7 @@ void RasterStage(Carried *cr)
             cyc(22);                                   /* BRA */
         } else {
             cyc(46);
-            r_lda8(cr, b | 0x0D5D);
+            r_lda8(cr, b | W(wram_0D5D));
             if ((uint8_t)cr->a)
                 put8(cr, BG12NBA, 0x40); else { cyc(84); }
             ldx8(cr, 0x00);
@@ -733,7 +734,7 @@ void RasterStage(Carried *cr)
         (cyc(62), WindowsSetupSelect_cr(cr));
         put8(cr, VTIMEL, 0x0F);
         irq_ack(cr);
-        put8(cr, b | 0x0D3F, 0x08);
+        put8(cr, b | W(wram_0D3F), 0x08);
         (cyc(46), w_GradientPointersToBank7F(cr));
         break;
     case 0xA75D:
@@ -860,10 +861,10 @@ static uint16_t time_stamp(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(68);
-    f = rd16(0x000306);
+    f = rd16(W(frames_since_tick));
     f = (uint16_t)(((f >> 8) | (f << 8)) & 0xFF00);
     cyc(76);
-    wr16(0x001A37, f);
+    wr16(W(time_now), f);
     cyc(54);
     hw_rd(0x002137);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
@@ -877,7 +878,7 @@ static uint16_t time_stamp(Carried *cr)
     if ((uint16_t)(v - 0x0011) & 0x8000)
         v = (uint16_t)(v + 0x0100);
     cyc(236);
-    m = rd16(0x001A37);
+    m = rd16(W(time_now));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     return alu_adc16(v, m, &cr->p);
 }
@@ -898,7 +899,7 @@ void TimeMarkStart(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     t = time_stamp(cr);
     cyc(32);
-    wr16(0x001A39 + cr->x, t);
+    wr16(W(time_marks) + cr->x, t);
     cyc(44);
     cr->a = t;
 }
@@ -936,19 +937,19 @@ void TimeMarkEnd(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     t = time_stamp(cr);
     cyc(32);
-    wr16(0x001A37, t);
+    wr16(W(time_now), t);
     cyc(32);
-    a = rd16(0x001A39 + cr->x);
+    a = rd16(W(time_marks) + cr->x);
     a = (uint16_t)(a & 0x00FF);
     set_p(cr, nz16(cr->p, a));
     if ((uint16_t)(a - 0x00D1) & 0x8000) {
         cyc(96);
-        a = rd16(0x001A39 + cr->x);
+        a = rd16(W(time_marks) + cr->x);
         a = (uint16_t)(a & 0xFF00);
         cyc(56);
-        wr16(0x001A39, a);
+        wr16(W(time_marks), a);
         cyc(32);
-        a = rd16(0x001A37);
+        a = rd16(W(time_now));
         a = (uint16_t)(a & 0xFF00);
         cyc(62);
         m = rd16((uint32_t)cr->db << 16 | 0x1A39);
@@ -958,24 +959,24 @@ void TimeMarkEnd(Carried *cr)
         a = (uint16_t)(a << 6);
         a = (uint16_t)(~a + 1);
         cyc(182);
-        m = rd16(0x001A37);
+        m = rd16(W(time_now));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         a = alu_adc16(a, m, &cr->p);
         cyc(32);
-        wr16(0x001A37, a);
+        wr16(W(time_now), a);
     } else { cyc(70); }
     cyc(32);
-    a = rd16(0x001A37);
+    a = rd16(W(time_now));
     cyc(46);
-    m = rd16(0x001A39 + cr->x);
+    m = rd16(W(time_marks) + cr->x);
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc16(a, m, &cr->p);
     cyc(40);
-    m = rd16(0x001A37 + cr->x);
+    m = rd16(W(time_now) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     a = alu_adc16(a, m, &cr->p);
     cyc(32);
-    wr16(0x001A37 + cr->x, a);
+    wr16(W(time_now) + cr->x, a);
     cyc(44);
     cr->a = a;
 }

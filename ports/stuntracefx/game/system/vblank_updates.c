@@ -9,6 +9,7 @@
 #include "native.h"
 #include "hw.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram, uint16_t *next);
@@ -144,18 +145,18 @@ static void window_table(void)
     uint16_t s = rd16(WINDOW_SIZE);
     uint8_t c = (uint8_t)(0x2C - s), d;
 
-    wr8(0x7F134A, c);
-    wr8(0x7F134E, c);
+    wr8(W(window_table_7f_134a), c);
+    wr8(W(window_table_7f_134e), c);
     s = rd16(WINDOW_SIZE);
     d = (uint8_t)(s << 1);
     if (d) {
-        wr8(0x7F134C, d);
-        wr8(0x7F134D, 0x00);
+        wr8(W(window_table_7f_134c), d);
+        wr8(W(window_table_7f_134d), 0x00);
         return;
     }
-    wr8(0x7F134C, 0x02);
-    wr8(0x7F134D, 0x03);
-    wr8(0x7F134E, (uint8_t)(rd8(0x7F134E) - 2));
+    wr8(W(window_table_7f_134c), 0x02);
+    wr8(W(window_table_7f_134d), 0x03);
+    wr8(W(window_table_7f_134e), (uint8_t)(rd8(W(window_table_7f_134e)) - 2));
 }
 
 /*
@@ -193,13 +194,13 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
         uint8_t n = (uint8_t)(rd8(0x001921) + 1);
 
         cyc(46);
-        wr8(0x7F12DB, n);
+        wr8(W(window_lines_12db), n);
         cyc(32);
-        wr8(0x7F12E8, n);
+        wr8(W(window_lines_12e8), n);
         cyc(32);
-        wr8(0x7F12F6, n);
+        wr8(W(window_lines_12f6), n);
         cyc(32);
-        wr8(0x7F1301, n);
+        wr8(W(window_lines_1301), n);
         cyc(92);
         t = (uint16_t)(0x0016 - rd16(0x001921));
         cyc(46);
@@ -283,18 +284,18 @@ void abi_WindowOpenCloseStep(void);
 static uint16_t blink_colour(uint8_t bank, uint8_t *last)
 {
     cyc(48);
-    uint16_t c = (uint16_t)(rd16(0x001901) + 1), x;
+    uint16_t c = (uint16_t)(rd16(W(wram_1901)) + 1), x;
 
     cyc(46);
-    wr16(0x001901, c);
+    wr16(W(wram_1901), c);
     if (c == 0x0005) {
         cyc(96);
-        wr16(0x001901, 0x0000);
+        wr16(W(wram_1901), 0x0000);
         cyc(32);
-        wr16(0x0018FF, cyc_then(70, (uint16_t)((rd16(0x0018FF) + 1) & 0x0001)));
+        wr16(W(wram_18FF), cyc_then(70, (uint16_t)((rd16(W(wram_18FF)) + 1) & 0x0001)));
     } else { cyc(46); }
     cyc(32);
-    x = (uint16_t)(rd16(0x0018FF) << 1);
+    x = (uint16_t)(rd16(W(wram_18FF)) << 1);
     ppu_wr(dbw(bank, CGADD), cyc_then(90, 0xD9));
     ppu_wr(dbw(bank, CGDATA), cyc_then(24, rd8(cyc_then(32, BLINK_COLOURS + x))));
     cyc(32);
@@ -348,7 +349,7 @@ void VblankUpdates(uint8_t bank)
         OamDmaIfPending();
     }
     ByteWritesIfPending(bank);
-    if (rd16(0x0018B9)) {
+    if (rd16(W(menu_18b9))) {
         uint8_t last;
 
         blink_colour(bank, &last);
@@ -380,7 +381,7 @@ void VblankUpdates_cr(Carried *cr)
     ByteWritesIfPending_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(54);
-    v = rd16(0x0018B9);
+    v = rd16(W(menu_18b9));
     cr->a = v;
     set_p(cr, nz16(cr->p, v));
     if (v) {

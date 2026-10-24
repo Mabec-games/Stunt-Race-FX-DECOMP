@@ -6,6 +6,7 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 void ApproachTargetFull(uint8_t bank);
 void ApproachTargetZero(uint8_t bank);
@@ -104,9 +105,9 @@ static uint16_t preview_frame(Carried *cr, unsigned n)
     RaceFrameStep(cr);
     cr->a = 0x0001;
     cyc(56);
-    wr16(0x0018FD, 0x0001);
+    wr16(W(wram_18FD), 0x0001);
     cyc(32);
-    cr->a = rd16(0x001905);
+    cr->a = rd16(W(menu_1905));
     set_p(cr, nz16(cr->p, cr->a));
     return cr->a;
 }
@@ -177,14 +178,14 @@ void MenuPreviewIdle(Carried *cr)
     if (preview_frame(cr, 2))
         { cyc(58); return; }
     cyc(46);
-    x = rd16(0x0011F9);
+    x = rd16(W(actor_current));
     cr->x = x;
     cr->a = 0xBCD2;
     cyc(46);
     wr16(ACTOR(x, 0x08), 0xBCD2);
     (cyc(46), MenuChoiceRepeat_cr(cr));
     cyc(74);                            /* RTS, the LDA long's fetch */
-    cr->a = rd16(0x0018C9);
+    cr->a = rd16(W(selection_prev));
     (cyc(46), MenuSet1A66_cr(cr));
     MenuSetPairAnimations_cr(cr);
     cr->a = 0x0000;
@@ -224,7 +225,7 @@ void MenuPreviewStart(Carried *cr)
     if (preview_frame(cr, 2))
         { cyc(58); return; }
     cyc(46);
-    x = rd16(0x0011F9);
+    x = rd16(W(actor_current));
     cr->x = x;
     cyc(46);
     wr16(ACTOR(x, 0x08), 0xBD55);
@@ -291,18 +292,18 @@ void MenuPreviewCountdown(Carried *cr)
             { cyc(16); kind4_animation(cr, 0x0090); } else { cyc(22); }
     } else { cyc(22); }
     cyc(24);
-    cr->x = rd16(0x0011F9);
+    cr->x = rd16(W(actor_current));
     (cyc(46), MenuFixedColourDown_cr(cr));
     cr->a = 0x0000;
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
     cyc(56);
-    wr16(0x0018FD, 0x0001);
+    wr16(W(wram_18FD), 0x0001);
     cyc(24);
-    cr->x = rd16(0x0011F9);
+    cr->x = rd16(W(actor_current));
     (cyc(46), w_MenuChoicePressesP2(cr));
     cyc(24);
-    keys = rd16(0x00118D);
+    keys = rd16(W(menu_joy2_pressed));
     cr->y = keys;
     cr->a = (uint16_t)(keys & 0x4000);
     if (cr->a) {
@@ -313,14 +314,14 @@ void MenuPreviewCountdown(Carried *cr)
         (cyc(100), SoundPort0QueuePush_cr(cr));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(46);
-        x = rd16(0x0011F9);
+        x = rd16(W(actor_current));
         cr->x = x;
         cyc(46);
         wr16(ACTOR(x, 0x08), 0xBE29);
         cyc(56);
-        wr16(0x001905, 0x0001);
+        wr16(W(menu_1905), 0x0001);
         cyc(56);
-        wr16(0x001907, 0x0028);
+        wr16(W(menu_1907), 0x0028);
         cr->a = 0x464A;
         set_p(cr, nz16(cr->p, cr->a));
         cyc(56);
@@ -334,16 +335,16 @@ void MenuPreviewCountdown(Carried *cr)
         { cyc(150); return; }
     cr->a = 0x0001;
     cyc(162);
-    wr16(0x0011EB, 0x0001);
+    wr16(W(menu_exit), 0x0001);
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x0018FD, 0x0000);
+    wr16(W(wram_18FD), 0x0000);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x46);
     (cyc(100), SoundPort0QueuePush_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
-    cr->y = rd16(0x0011FB);
+    cr->y = rd16(W(actor_current_slot));
     (cyc(46), MenuActorFree_cr(cr));
     cyc(42);
 }
@@ -406,7 +407,7 @@ static void preview_picture(Carried *cr, uint16_t vram, uint16_t pic)
     cyc(114);
     n = rd16(0x170000 | (uint16_t)(pic - 2));
     cr->a = (uint16_t)((n << 8) | (n >> 8));
-    wr16(0x0011D5, cr->a);
+    wr16(W(menu_picture_size), cr->a);
     cr->a = pic;
     cr->x = 0x0017;
     (cyc(138), MenuPictureToVram_cr(cr));
@@ -453,26 +454,26 @@ void MenuScreenOpenPreview(Carried *cr)
     cyc(24);
     mdmaen_wr(0x00420B, 0x00);
     cyc(24);
-    wr8(0x0011DA, 0x00);
+    wr8(W(wram_11DA), 0x00);
     cyc(24);
     hw_wr(0x004200, 0x00);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(46);
-    wr16(0x00162D, 0x0000);
+    wr16(W(byte_writes_size), 0x0000);
     cyc(24);
-    wr16(0x0016AF, 0x0000);
+    wr16(W(vram_queue_size), 0x0000);
     cyc(24);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     cyc(24);
-    wr16(0x001193, 0x0000);
+    wr16(W(word_list_b_size), 0x0000);
     cyc(48);
-    wr16(0x000D7D, 0x0006);
+    wr16(W(gsu_buffer_offset), 0x0006);
     cyc(48);
     wr16(0x001189, 0x1234);
     cyc(24);
     wr16(0x00118F, 0x0000);
     cyc(24);
-    wr16(0x0011EB, 0x0000);
+    wr16(W(menu_exit), 0x0000);
     cr->a = 0x1234;
     (cyc(62), MenuActorPoolInit_cr(cr));
     (cyc(46), MenuHdmaSetupB_cr(cr));
@@ -482,8 +483,8 @@ void MenuScreenOpenPreview(Carried *cr)
     (cyc(62), w_MenuActorsRun(cr));
     (cyc(62), MenuOamBuild_cr(cr));
     cyc(0);
-    wr_m(cr, 0x0011ED, 0x0000);
-    wr_m(cr, 0x0011EF, 0x0000);
+    wr_m(cr, W(menu_slide_pos), 0x0000);
+    wr_m(cr, W(menu_scroll_y), 0x0000);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
         { cyc(ppu[i].cost); reg_wr(ppu[i].reg, ppu[i].v); }
@@ -494,7 +495,7 @@ void MenuScreenOpenPreview(Carried *cr)
     cyc(62);
     wr16(0x0000FB, 0xE3AC);
     cyc(40);
-    wr16(0x0000FD, 0x001C);
+    wr16(W(apu_stream_bank), 0x001C);
     cr->a = 0x001C;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     (cyc(112), MenuPaletteLoad_cr(cr));
@@ -503,14 +504,14 @@ void MenuScreenOpenPreview(Carried *cr)
     wr16(0x7EFD65, 0x0000);
     (cyc(46), MenuPaletteSave_cr(cr));
     cyc(48);
-    wr16(0x0011DF, 0x0020);
+    wr16(W(scratch_11df), 0x0020);
     cr->a = 0x0020;
     cr->y = 0x0007;
     cr->x = 0x0120;
     (cyc(110), MenuPaletteScale_cr(cr));
     cr->a = 0x0020;
     cyc(48);
-    wr16(0x0011DF, 0x0020);
+    wr16(W(scratch_11df), 0x0020);
     cr->y = 0x0007;
     cr->x = 0x01A0;
     (cyc(110), MenuPaletteScale_cr(cr));
@@ -529,7 +530,7 @@ void MenuScreenOpenPreview(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->x = 0x1601;
     cyc(114);
-    wr16(0x0011F9, 0x1601);
+    wr16(W(actor_current), 0x1601);
     (cyc(46), MenuLoadPicturesTo7F_cr(cr));
     (cyc(46), MenuLoadClearGsu_cr(cr));
     (cyc(46), MenuLoadBlank0800_cr(cr));
@@ -537,15 +538,15 @@ void MenuScreenOpenPreview(Carried *cr)
     (cyc(46), MenuLoadBlank1800_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(62);
-    wr8(0x000D3F, 0x20);
+    wr8(W(wram_0D3F), 0x20);
     cyc(40);
     hw_wr(0x004209, 0xE0);
     cyc(24);
     hw_wr(0x00420A, 0x00);
     cyc(40);
-    wr8(0x0011D7, 0x0F);
+    wr8(W(frame_update_flags), 0x0F);
     cyc(70);
-    wr8(0x0010DA, 0x00);
+    wr8(W(wram_10DA), 0x00);
     cr->a = (uint16_t)(cr->a & 0xFF00);
     (cyc(62), SoundReset_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -560,7 +561,7 @@ void MenuScreenOpenPreview(Carried *cr)
     cyc(62);
     hdmaen_wr(0x00420C, 0x90);
     cyc(24);
-    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0F)));
     (cyc(46), MenuWaitFrame_cr(cr));
     cr->db = db;
     set_p(cr, p);
@@ -598,9 +599,9 @@ static void frame_write(Carried *cr, uint8_t v, uint16_t reg)
 static void palette_scale(Carried *cr, uint16_t level, int word, uint16_t x, uint16_t y)
 {
     if (word)
-        { cyc(48); wr16(0x0011DF, level); }
+        { cyc(48); wr16(W(scratch_11df), level); }
     else
-        { cyc(24); wr8(0x0011DF, (uint8_t)level); }
+        { cyc(24); wr8(W(scratch_11df), (uint8_t)level); }
     cyc(110);
     cr->a = word ? level : (uint16_t)((cr->a & 0xFF00) | (uint8_t)level);
     cr->y = y;
@@ -652,36 +653,36 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cr->db = 0x00;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(268);
-    wr16(0x00162D, 0x0000);
+    wr16(W(byte_writes_size), 0x0000);
     cyc(24);
-    wr16(0x0016AF, 0x0000);
+    wr16(W(vram_queue_size), 0x0000);
     cyc(24);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     cyc(24);
-    wr16(0x001193, 0x0000);
+    wr16(W(word_list_b_size), 0x0000);
     cyc(24);
-    wr16(0x0011EB, 0x0000);
+    wr16(W(menu_exit), 0x0000);
     cyc(48);
-    wr16(0x000D7D, 0x0006);
+    wr16(W(gsu_buffer_offset), 0x0006);
     cyc(48);
     wr16(0x001189, 0x1234);
     cyc(24);
     wr16(0x00118F, 0x0000);
     cyc(48);
-    wr16(0x0011ED, 0x0000);
+    wr16(W(menu_slide_pos), 0x0000);
     cyc(48);
-    wr16(0x0011EF, 0x0000);
+    wr16(W(menu_scroll_y), 0x0000);
     cr->a = 0x0000;
     (cyc(62), MenuActorPoolInit_cr(cr));
     cr->x = 0x0010;
     (cyc(86), MenuActorSpawnList_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    wr8(0x0011D7, 0x00);
+    wr8(W(frame_update_flags), 0x00);
     (cyc(46), MenuWaitFrame_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(40);
-    wr8(0x000D3F, 0x20);
+    wr8(W(wram_0D3F), 0x20);
     cyc(40);
     hw_wr(0x004209, 0xE0);
     cyc(24);
@@ -690,14 +691,14 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cyc(84);
     wr16(0x0000FB, 0xE3AC);
     cyc(40);
-    wr16(0x0000FD, 0x001C);
+    wr16(W(apu_stream_bank), 0x001C);
     for (x = 0, y = 0; x != 0x0018; x = (uint16_t)(x + 2), y = (uint16_t)(y + 2)) {
         cyc(108);
         src = rd8(0x0000FB);
         src |= (uint32_t)rd8(0x0000FC) << 8;
-        src |= (uint32_t)rd8(0x0000FD) << 16;
+        src |= (uint32_t)rd8(W(apu_stream_bank)) << 16;
         cyc(48);
-        wr16(0x7EFF65 + x, rd16((src + y) & 0xFFFFFF));
+        wr16(W(palette_saved) + x, rd16((src + y) & 0xFFFFFF));
         cyc(56);
         wr16(0x7EFD65 + x, 0x0000);
         cyc(10);
@@ -716,7 +717,7 @@ void MenuScreenOpenPreviewFade(Carried *cr)
           cyc(i + 1 == sizeof first / sizeof first[0] ? 100 : first[i + 1].lda ? 244 : 228); }
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(68);
-    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0F)));
     cyc(48);
     wr8(0x001909, 0x20);
     do {
@@ -730,7 +731,7 @@ void MenuScreenOpenPreviewFade(Carried *cr)
         palette_scale(cr, rd8(0x001909), 0, 0x0018, 0x0003);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(24);
-        wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0B)));
+        wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0B)));
         cyc(32);
         v = (uint8_t)(rd8(0x001909) - 2);
         cyc(60);
@@ -746,7 +747,7 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cyc(206);
     wr16(0x0000FB, 0xE3AC);
     cyc(40);
-    wr16(0x0000FD, 0x001C);
+    wr16(W(apu_stream_bank), 0x001C);
     cr->a = 0x001C;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     (cyc(112), MenuPaletteLoad_cr(cr));
@@ -763,11 +764,11 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     (cyc(62), MenuOamBuild_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
-    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0B)));
+    wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0B)));
     (cyc(46), MenuWaitFrame_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
-    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0F)));
     (cyc(46), MenuWaitFrame_cr(cr));
     cr->db = db;
     set_p(cr, p);
@@ -849,9 +850,9 @@ void MenuSlideToPreview(Carried *cr)
     } else { cyc(46); }
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x0018D3, 0x0000);
+    wr16(W(selection_out), 0x0000);
     cyc(32);
-    cr->a = rd16(0x0018CB);
+    cr->a = rd16(W(selection));
     set_p(cr, nz16(cr->p, cr->a));
     (cyc(46), MenuSet1A66_cr(cr));
     MenuSetPairAnimations_cr(cr);
@@ -860,10 +861,10 @@ void MenuSlideToPreview(Carried *cr)
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
     cyc(56);
-    wr16(0x0018FD, 0x0001);
+    wr16(W(wram_18FD), 0x0001);
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     set_p(cr, nz16(cr->p, 0));
     cyc(42);
 }
@@ -897,24 +898,24 @@ static void preview_menu_loop(Carried *cr)
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cr->a = 0x0000;
         cyc(56);
-        wr16(0x0018FD, 0x0000);
+        wr16(W(wram_18FD), 0x0000);
         cyc(24);
-        wr16(b | 0x11DD, cyc_then(14, (uint16_t)(rd16(b | 0x11DD) + 1)));
+        wr16(b | W(menu_blink_counter), cyc_then(14, (uint16_t)(rd16(b | W(menu_blink_counter)) + 1)));
         (cyc(62), w_MenuActorsRun(cr));
         (cyc(62), MenuOamBuild_cr(cr));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(46);
-        wr16(b | 0x118B, 0x0000);
+        wr16(b | W(menu_joy1_pressed), 0x0000);
         cyc(24);
-        wr16(b | 0x118D, 0x0000);
+        wr16(b | W(menu_joy2_pressed), 0x0000);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(46);
-        cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(b | 0x11D7) | 0x0F));
+        cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(b | W(frame_update_flags)) | 0x0F));
         cyc(40);
-        wr8(b | 0x11D7, (uint8_t)cr->a);
+        wr8(b | W(frame_update_flags), (uint8_t)cr->a);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cyc(46);
-        cr->a = rd16(b | 0x11EB);
+        cr->a = rd16(b | W(menu_exit));
     } while (!cr->a);
     cyc(116);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -978,9 +979,9 @@ void MenuPreviewRunFade(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0F);
     cyc(160);
-    wr8(b | 0x11DA, 0x0F);
+    wr8(b | W(wram_11DA), 0x0F);
     cyc(24);
-    wr8(b | 0x11DB, 0x0F);
+    wr8(b | W(wram_11DB), 0x0F);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     preview_menu_loop(cr);
     cyc(44);                            /* RTL */
@@ -1028,12 +1029,12 @@ void CourseMenuRun(Carried *cr)
     cr->a = (uint16_t)(cr->a & 0xFF00);
     set_p(cr, nz8(cr->p, 0x00));
     cyc(84);
-    wr8(b | 0x1F07, 0x00);
+    wr8(b | W(draw_side), 0x00);
     r_rep(cr, P_M);
     cyc(24);
-    wr16(b | 0x18C3, 0x0000);
+    wr16(b | W(wram_18C3), 0x0000);
     cyc(24);
-    wr16(b | 0x1168, 0x0000);
+    wr16(b | W(frame_step), 0x0000);
     cyc(32);
     r_lda16(cr, 0x001917);
     if (!cr->a) {
@@ -1054,14 +1055,14 @@ void CourseMenuRun(Carried *cr)
     b = (uint32_t)cr->db << 16;
     cyc(32);
 chosen:
-    r_lda16(cr, 0x0018C3);
+    r_lda16(cr, W(wram_18C3));
     cyc(24);
-    wr16(b | 0x0D2B, cr->a);
+    wr16(b | W(hud_mode), cr->a);
     r_lda16_imm(cr, 0x0001);
     cyc(18);
     wr16(0x001917, 0x0001);
     cyc(32);
-    r_lda16(cr, 0x0018C3);
+    r_lda16(cr, W(wram_18C3));
     r_cmp16(cr, 0x0002);
     if (cr->p & P_Z)
         { cyc(108); SelectionCommit_cr(cr); }
@@ -1085,7 +1086,7 @@ chosen:
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x1C);
     set_p(cr, nz8(cr->p, 0x1C));
     cyc(62);
-    wr8(b | 0x0D3F, 0x1C);
+    wr8(b | W(wram_0D3F), 0x1C);
     cyc(24);
     hw_wr(b | 0x4200, 0x00);
     cyc(24);
@@ -1137,9 +1138,9 @@ void MenuPreviewBackOut(Carried *cr)
     wr16(ACTOR(x, 0x08), 0xBE65);
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x0018D3, 0x0000);
+    wr16(W(selection_out), 0x0000);
     cyc(32);
-    cr->a = rd16(0x0018CB);
+    cr->a = rd16(W(selection));
     (cyc(46), MenuSet1A66_cr(cr));
     MenuSetPairAnimations_cr(cr);
     cr->a = 0x0000;
@@ -1181,10 +1182,10 @@ void MenuPreviewBackWait(Carried *cr)
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cr->a = 0x0002;
         cyc(94);
-        wr16(0x001905, 0x0002);
+        wr16(W(menu_1905), 0x0002);
         cr->a = 0x0000;
         cyc(56);
-        wr16(0x001907, 0x0000);
+        wr16(W(menu_1907), 0x0000);
         cr->a = 0xBE84;
         set_p(cr, nz16(cr->p, 0xBE84));
         cyc(46);
@@ -1237,7 +1238,7 @@ void MenuPreviewBackEnd(Carried *cr)
     groups_45(cr, 0x0000);
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x001191, 0x0000);
+    wr16(W(word_list_a_size), 0x0000);
     hdma_on(cr, 0xC0);
 }
 

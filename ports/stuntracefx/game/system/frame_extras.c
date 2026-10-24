@@ -8,6 +8,7 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 void abi_RaceFrameRun(void);
@@ -31,7 +32,7 @@ static void wait_start(Carried *cr, uint32_t b, int held, int first)
 
     do {
         cyc(first ? 62 : 72); /* the first: SEP, LDA #, STA */
-        wr8(b | 0x06E3, 0x64);
+        wr8(b | W(scanline_wait), 0x64);
         first = 0;
         cyc(62); /* JSL */
         WaitScanline_cr(cr);
@@ -61,15 +62,15 @@ void RaceFrameStepPause(Carried *cr)
 
     set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cyc(90);
-    v = rd8(b | 0x1168);
+    v = rd8(b | W(frame_step));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (!v) {
         cyc(40);
-        v = rd8(b | 0x08FB);
+        v = rd8(b | W(slot1_count));
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (v == 0xFF) {
             cyc(72);
-            wr8(b | 0x1168, 0x02);
+            wr8(b | W(frame_step), 0x02);
             cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
             (cyc(62), RaceFrameRun(cr));
             (cyc(62), RaceFrameRun(cr));
@@ -82,11 +83,11 @@ void RaceFrameStepPause(Carried *cr)
             cyc(24);
             wr8(b | 0x030C, 0x00);
             cyc(24);
-            wr8(b | 0x0309, 0x00);
+            wr8(b | W(joy1_held), 0x00);
             cyc(24);
             wr8(b | 0x030B, 0x00);
             cyc(40);
-            wr8(b | 0x1168, 0x01);
+            wr8(b | W(frame_step), 0x01);
             cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
         } else { cyc(38); }
     } else { cyc(22); }

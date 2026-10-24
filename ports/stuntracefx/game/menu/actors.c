@@ -17,6 +17,7 @@
 #include "wram.h"
 #include "menu_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 #define ACTOR_FIRST 0x1265u
@@ -436,11 +437,11 @@ uint16_t MenuActorApplyPalette(uint8_t bank, uint16_t rec, uint16_t *y, uint8_t 
     cyc(52);
     i = rd16((uint16_t)(rec + 0x12));
     cyc(46);
-    n = rd16(0x7F1356 + i);
+    n = rd16(W(menu_sprite_groups) + i);
     i = (uint16_t)(i + 2);
     do {
         cyc(74);
-        wr16(0x7F135A + i, cyc_then(32, (uint16_t)((rd16(0x7F135A + i) & 0xF1FF) | rd16(cyc_then(48, dbw(bank, 0x11DF))))));
+        wr16(W(menu_sprite_attr) + i, cyc_then(32, (uint16_t)((rd16(W(menu_sprite_attr) + i) & 0xF1FF) | rd16(cyc_then(48, dbw(bank, 0x11DF))))));
         s = (unsigned)i + 8;
         *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : (cyc(60), 0)) | ((~(i ^ 8) & (i ^ (uint16_t)s) & 0x8000) ? P_V : 0));
         a = i = (uint16_t)s;
@@ -555,9 +556,9 @@ uint16_t MenuActorBlink(uint8_t bank, uint16_t *x)
     cyc(64);
     *x = rd16((uint32_t)bank << 16 | 0x11E7);
     cyc(32);
-    a = (uint16_t)(rd16(0x7F135A + *x) ^ 0x0800);
+    a = (uint16_t)(rd16(W(menu_sprite_attr) + *x) ^ 0x0800);
     cyc(56);
-    wr16(0x7F135A + *x, a);
+    wr16(W(menu_sprite_attr) + *x, a);
     cyc(42);
     return a;
 }
@@ -618,34 +619,34 @@ uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
         return anim;
     }
     cyc(40);
-    wr16(b | 0x11DF, anim);
+    wr16(b | W(scratch_11df), anim);
     cyc(22);
     pos = (uint16_t)(rd16((uint16_t)(rec + 0x16)) + 4);
     cyc(60);
     wr16((uint16_t)(rec + 0x16), pos);
     cyc(38);
-    m = rd16(b | 0x11DF);
+    m = rd16(b | W(scratch_11df));
     s = (unsigned)pos + m;
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(pos ^ m) & (pos ^ (uint16_t)s) & 0x8000) ? P_V : 0));
     i = (uint16_t)s;
     cyc(102);
     d = rd16(0x0BAB60 + i);
     if (d & 0x8000) {
-        wr16((uint16_t)(rd16(b | 0x11F9) + 0x16), cyc_then(22, 0x0000));
+        wr16((uint16_t)(rd16(b | W(actor_current)) + 0x16), cyc_then(22, 0x0000));
         cyc(24);
-        i = rd16(b | 0x11DF);
+        i = rd16(b | W(scratch_11df));
         cyc(66);
         d = rd16(0x0BAB60 + i);
     }
     cyc(20);
-    wr16(b | 0x11DF, (uint16_t)(d - 1));
+    wr16(b | W(scratch_11df), (uint16_t)(d - 1));
     cyc(72);
     g = rd16(0x0BAB62 + i);
-    *x = rd16(b | 0x11F9);
+    *x = rd16(b | W(actor_current));
     cyc(22);
     wr16((uint16_t)(*x + 0x12), g);
     cyc(24);
-    t = rd16(b | 0x11DF);
+    t = rd16(b | W(scratch_11df));
     cyc(22);
     wr16((uint16_t)(*x + 0x18), t);
     *p = nz16(*p, t);
@@ -740,13 +741,13 @@ static uint16_t sine_position(uint8_t bank, uint16_t *x, uint16_t step, uint8_t 
     s = (uint16_t)(v + 0x80);
     *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(v ^ 0x80) & (v ^ s) & 0x8000) ? P_V : 0));
     v = (uint16_t)((s & 0x00FF) + step);
-    wr16(0x0018BF, v);
+    wr16(W(menu_sine_y), v);
     if (v >= 0x00A8)
         *p |= P_C;
     else
         { cyc(18); v = 0x00A8; }
     cyc(78);
-    wr16(0x0018C1, v);
+    wr16(W(menu_sine_y_min), v);
     cyc(24);
     *x = rd16((uint32_t)bank << 16 | 0x11F9);
     *p = nz16(*p, *x);
@@ -844,23 +845,23 @@ uint16_t MenuActorSetTiles(uint8_t bank, uint16_t rec, uint16_t i, uint16_t off,
     uint16_t e = (uint16_t)(off + rd16((uint16_t)(rec + 0x12))), t, w, r;
 
     cyc(24);
-    wr16(b | 0x11E7, e);
+    wr16(b | W(menu_blink_entry), e);
     cyc(136);
-    wr16(b | 0x11DF, rd16(0x0BC528 + (uint16_t)(i << 1)));
+    wr16(b | W(scratch_11df), rd16(0x0BC528 + (uint16_t)(i << 1)));
     cyc(24);
-    e = rd16(b | 0x11E7);
+    e = rd16(b | W(menu_blink_entry));
     cyc(32);
-    wr16(0x7F135A + e, cyc_then(32, (uint16_t)((rd16(0x7F135A + e) & 0xFE00) | rd16(cyc_then(48, b | 0x11DF)))));
+    wr16(W(menu_sprite_attr) + e, cyc_then(32, (uint16_t)((rd16(W(menu_sprite_attr) + e) & 0xFE00) | rd16(cyc_then(48, b | W(scratch_11df))))));
     cyc(24);
-    t = (uint16_t)(rd16(b | 0x11DF) + 0x10);
+    t = (uint16_t)(rd16(b | W(scratch_11df)) + 0x10);
     cyc(62);
-    wr16(b | 0x11DF, t);
+    wr16(b | W(scratch_11df), t);
     r = (uint16_t)(e - 8);
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (e >= 8 ? P_C : 0) | (((e ^ 8) & (e ^ r) & 0x8000) ? P_V : 0));
     cyc(98);
-    w = (uint16_t)((rd16(0x7F135A + r) & 0xFE00) | rd16(cyc_then(48, b | 0x11DF)));
+    w = (uint16_t)((rd16(W(menu_sprite_attr) + r) & 0xFE00) | rd16(cyc_then(48, b | W(scratch_11df))));
     cyc(32);
-    wr16(0x7F135A + r, w);
+    wr16(W(menu_sprite_attr) + r, w);
     *p = nz16(*p, rec);
     cyc(78);
     return w;
@@ -1068,7 +1069,7 @@ uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p)
     cyc(88);
     MenuActorAnimate(bank, *x, x, p);
     cyc(74);
-    a = rd16(0x0018FD);
+    a = rd16(W(wram_18FD));
     if (!a) {
         cyc(64);
         *p = nz16(*p, a);
@@ -1192,10 +1193,10 @@ uint16_t MenuChoiceAnimations(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
         wr16(dbw(bank, 0x11E3), cyc_then(124, i));
         wr16(dbw(bank, 0x11E5), cyc_then(24, 0x0000));
         cyc(32);
-        a = (uint16_t)(rd16(0x0018CD + i) << 3);
+        a = (uint16_t)(rd16(W(selection_1) + i) << 3);
         wr16(dbw(bank, 0x11E5), cyc_then(24, (uint16_t)(a + rd16(cyc_then(80, dbw(bank, 0x11E5))))));
         cyc(32);
-        a = (uint16_t)(rd16(0x0018E5 + i) << 1);
+        a = (uint16_t)(rd16(W(wram_18E5) + i) << 1);
         s = rd16(cyc_then(52, dbw(bank, 0x11E5)));
         sum = (unsigned)a + s;
         *p = (uint8_t)((*p & ~P_V) | ((~(a ^ s) & (a ^ (uint16_t)sum) & 0x8000) ? P_V : 0));
@@ -1268,7 +1269,7 @@ int MenuSlideInDone(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *y, uint8_
     uint16_t x = rec;
 
     cyc(32);
-    *a = rd16(0x0018C1);
+    *a = rd16(W(menu_sine_y_min));
     *p = cmp16(*p, *a, 0x0100);
     if (!(*p & P_Z))
         { cyc(4); return 0; } else { cyc(134); }
@@ -1330,22 +1331,22 @@ uint16_t MenuChoiceObjectUpdate(uint16_t rec, uint8_t *p)
     uint16_t a, slot = (uint16_t)(rec + 0x20);
 
     cyc(32);
-    a = rd16(0x0018C5);
+    a = rd16(W(wram_18C5));
     cyc(22);
     *p = cmp16(*p, a, rd16(slot));
     if (*p & P_Z) {
         cyc(48);
-        *p = cmp16(*p, a, rd16(0x0018C3));
+        *p = cmp16(*p, a, rd16(W(wram_18C3)));
         if (!(*p & P_Z))
             { cyc(62); wr16((uint16_t)(rec + 0x24), 0x0200); } else { cyc(22); }
     } else { cyc(22); }
     cyc(32);
-    a = rd16(0x0018C3);
+    a = rd16(W(wram_18C3));
     cyc(22);
     *p = cmp16(*p, a, rd16(slot));
     if (*p & P_Z) {
         cyc(48);
-        *p = cmp16(*p, a, rd16(0x0018C5));
+        *p = cmp16(*p, a, rd16(W(wram_18C5)));
         if (!(*p & P_Z)) {
             a = 0x0A00;
             cyc(62);
@@ -1361,17 +1362,17 @@ uint16_t MenuChoiceObjectUpdate(uint16_t rec, uint8_t *p)
                 wr16((uint16_t)(rec + 0x0A), 0x0000);
                 a = 0x00FF;
                 cyc(56);
-                wr16(0x0018F5, a);
+                wr16(W(wram_18F5), a);
             }
         } else { cyc(22); }
     } else { cyc(22); }
     cyc(32);
-    a = rd16(0x0018F5);
+    a = rd16(W(wram_18F5));
     *p = nz16(*p, a);
     if (a)
         { cyc(64); return a; }
     cyc(48);
-    a = rd16(0x0018C3);
+    a = rd16(W(wram_18C3));
     cyc(22);
     *p = cmp16(*p, a, rd16(slot));
     if (!(*p & P_Z))
@@ -1419,10 +1420,10 @@ uint16_t MenuRowPosition(uint16_t rec, uint8_t *p);
 static uint16_t entry_palette5(uint16_t x, uint8_t *p)
 {
     cyc(46);
-    uint16_t w = (uint16_t)((rd16(0x7F135A + x) & 0xF1FF) | 0x0A00);
+    uint16_t w = (uint16_t)((rd16(W(menu_sprite_attr) + x) & 0xF1FF) | 0x0A00);
 
     cyc(80);
-    wr16(0x7F135A + x, w);
+    wr16(W(menu_sprite_attr) + x, w);
     *p = nz16(*p, w);
     cyc(42);
     return w;
@@ -1495,12 +1496,12 @@ uint16_t MenuRowBlinkSettings(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     cyc(70);
     MenuActorFind(bank, 0x0009, x, y, p);
     cyc(56);
-    MenuActorSetTiles(bank, *x, rd16(0x0018EF), 0x002A, p);
+    MenuActorSetTiles(bank, *x, rd16(W(wram_18EF)), 0x002A, p);
     cyc(56);
-    MenuActorSetTiles(bank, *x, rd16(0x0018F1), 0x001A, p);
+    MenuActorSetTiles(bank, *x, rd16(W(wram_18F1)), 0x001A, p);
     *y = 0x000A;
     cyc(56);
-    a = MenuActorSetTiles(bank, *x, rd16(0x0018F3), 0x000A, p);
+    a = MenuActorSetTiles(bank, *x, rd16(W(wram_18F3)), 0x000A, p);
     cyc(42);
     return a;
 }
@@ -1537,7 +1538,7 @@ static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
     cyc(24);
     wr16(b | 0x16B3, src);
     cyc(48);
-    wr16(b | 0x16B1, 0x0040);
+    wr16(b | W(vram_queue_staged), 0x0040);
     cyc(48);
     wr16(b | 0x16B5, 0x007F);
     (cyc(62), VramDmaQueueAdd());
@@ -1566,49 +1567,49 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint1
     uint16_t n, i, v, src, e, s = 0, at;
 
     cyc(38);
-    wr16(b | 0x11DF, (uint16_t)(frame << 1));
+    wr16(b | W(scratch_11df), (uint16_t)(frame << 1));
     cyc(22);
     e = rd16((uint16_t)(rec + 0x12));
     cyc(46);
-    n = rd16(0x7F1356 + e);
+    n = rd16(W(menu_sprite_groups) + e);
     cyc(52);
-    wr16(b | 0x11E5, (uint16_t)(e + 2));
+    wr16(b | W(scratch_11e5), (uint16_t)(e + 2));
     do {
         cyc(38);
-        i = rd16(b | 0x11E3);  /* read once, for both tables */
+        i = rd16(b | W(scratch_11e3));  /* read once, for both tables */
         cyc(72);
-        wr16(b | 0x11E1, rd16(0x0BCCBC + i));
+        wr16(b | W(scratch_11e1), rd16(0x0BCCBC + i));
         cyc(72);
-        wr16(b | 0x11E9, rd16(0x0BCD14 + i));
+        wr16(b | W(scratch_11e9), rd16(0x0BCD14 + i));
         cyc(24);
-        v = rd16(cyc_then(126, 0x0BCC7C + rd16(b | 0x11DF)));
-        wr16(b | 0x11E7, v & 0x8000);
+        v = rd16(cyc_then(126, 0x0BCC7C + rd16(b | W(scratch_11df))));
+        wr16(b | W(menu_blink_entry), v & 0x8000);
         cyc(24);
-        e = rd16(b | 0x11E5);
+        e = rd16(b | W(scratch_11e5));
         cyc(32);
-        at = rd16(0x7F135A + e) & 0x7FFF;  /* the attribute word, then $11E7 */
+        at = rd16(W(menu_sprite_attr) + e) & 0x7FFF;  /* the attribute word, then $11E7 */
         cyc(48);
-        wr16(0x7F135A + e, cyc_then(32, (uint16_t)(at | rd16(b | 0x11E7))));
+        wr16(W(menu_sprite_attr) + e, cyc_then(32, (uint16_t)(at | rd16(b | W(menu_blink_entry)))));
         cyc(98);
-        src = (uint16_t)((v & 0x7FFF) + rd16(b | 0x11E9));
+        src = (uint16_t)((v & 0x7FFF) + rd16(b | W(scratch_11e9)));
         cyc(54);
-        queue_frame_row(b, rd16(b | 0x11E1), src);
+        queue_frame_row(b, rd16(b | W(scratch_11e1)), src);
         cyc(90);
         wr8(b | 0x11E2, cyc_then(6, (uint8_t)(rd8(b | 0x11E2) + 1)));
         cyc(46);
-        queue_frame_row(b, rd16(b | 0x11E1), cyc_then(74, (uint16_t)(src + 0x0200)));
+        queue_frame_row(b, rd16(b | W(scratch_11e1)), cyc_then(74, (uint16_t)(src + 0x0200)));
         cyc(68);
-        wr16(b | 0x11E3, cyc_then(14, (uint16_t)(rd16(b | 0x11E3) + 1)));  /* two memory increments */
+        wr16(b | W(scratch_11e3), cyc_then(14, (uint16_t)(rd16(b | W(scratch_11e3)) + 1)));  /* two memory increments */
         cyc(24);
-        wr16(b | 0x11E3, cyc_then(14, (uint16_t)(rd16(b | 0x11E3) + 1)));
+        wr16(b | W(scratch_11e3), cyc_then(14, (uint16_t)(rd16(b | W(scratch_11e3)) + 1)));
         cyc(24);
-        wr16(b | 0x11DF, cyc_then(76, (uint16_t)(rd16(b | 0x11DF) + 2) & 0x003F));
+        wr16(b | W(scratch_11df), cyc_then(76, (uint16_t)(rd16(b | W(scratch_11df)) + 2) & 0x003F));
         cyc(24);
-        e = rd16(b | 0x11E5);
+        e = rd16(b | W(scratch_11e5));
         s = (uint16_t)(e + 8);
         *p = (uint8_t)((*p & ~(P_C | P_V)) | (s < e ? P_C : 0) | ((~(e ^ 8) & (e ^ s) & 0x8000) ? P_V : 0));
         cyc(62);
-        wr16(b | 0x11E5, s);
+        wr16(b | W(scratch_11e5), s);
         n = (uint16_t)(n - 1);
     } while (cyc_loop(46, !(n & 0x8000)));
     cyc(60);
@@ -1675,7 +1676,7 @@ void abi_MenuActorAnimateOnly(void)
 static uint16_t follow_slide(uint8_t bank, uint16_t top, uint16_t *x, uint8_t *p)
 {
     cyc(70);
-    uint16_t m = rd16(0x0018C1), d = (uint16_t)(top - m);
+    uint16_t m = rd16(W(menu_sine_y_min)), d = (uint16_t)(top - m);
 
     *p = (uint8_t)((nz16(*p, d) & ~(P_C | P_V)) | (top >= m ? P_C : 0) | (((top ^ m) & (top ^ d) & 0x8000) ? P_V : 0));
     cyc(22);
@@ -2235,21 +2236,21 @@ uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p)
 
     cyc(22);
     src = rd16(cyc_then(108, 0x0BAB62 + rd16((uint16_t)(x + 0x14))));
-    size = (uint16_t)(((uint16_t)(rd16(0x7F1356 + src) + 1) << 3) + 2);
+    size = (uint16_t)(((uint16_t)(rd16(W(menu_sprite_groups) + src) + 1) << 3) + 2);
     cyc(118);
-    wr16(b | 0x11DF, size);
+    wr16(b | W(scratch_11df), size);
     cyc(24);
-    wr16(b | 0x11E1, src);
+    wr16(b | W(scratch_11e1), src);
     cyc(24);
     x = rd16(b | CURRENT);
     cyc(24);
-    dst = rd16(b | 0x120B);
+    dst = rd16(b | W(menu_120b));
     cyc(22);
     wr16((uint16_t)(x + 0x12), dst);
     cyc(24);
-    wr16(b | 0x11E3, dst);
+    wr16(b | W(scratch_11e3), dst);
     cyc(38);
-    s = (unsigned)dst + rd16(b | 0x11DF);
+    s = (unsigned)dst + rd16(b | W(scratch_11df));
     *p = (uint8_t)((*p & ~P_V) | ((~(dst ^ size) & (dst ^ (uint16_t)s) & 0x8000) ? P_V : 0));
     if ((uint16_t)s >= 0x2C81) {
         /* the stop, with A the sum and X the object as the ADC and the
@@ -2261,19 +2262,19 @@ uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p)
     }
     *p &= (uint8_t)~P_C;
     cyc(64);
-    wr16(b | 0x120B, (uint16_t)s);
+    wr16(b | W(menu_120b), (uint16_t)s);
     do {
         cyc(24);
-        a = rd16(cyc_then(32, 0x7F1356 + rd16(b | 0x11E1)));
+        a = rd16(cyc_then(32, W(menu_sprite_groups) + rd16(b | W(scratch_11e1))));
         cyc(24);
-        wr16(0x7F1356 + rd16(b | 0x11E3), cyc_then(32, a));
+        wr16(W(menu_sprite_groups) + rd16(b | W(scratch_11e3)), cyc_then(32, a));
         cyc(24);
-        wr16(b | 0x11E1, cyc_then(14, (uint16_t)(rd16(b | 0x11E1) + 2)));
+        wr16(b | W(scratch_11e1), cyc_then(14, (uint16_t)(rd16(b | W(scratch_11e1)) + 2)));
         cyc(86);
-        wr16(b | 0x11E3, cyc_then(14, (uint16_t)(rd16(b | 0x11E3) + 2)));
+        wr16(b | W(scratch_11e3), cyc_then(14, (uint16_t)(rd16(b | W(scratch_11e3)) + 2)));
         cyc(86);
-        wr16(b | 0x11DF, cyc_then(14, (uint16_t)(rd16(b | 0x11DF) - 2)));
-    } while (cyc_loop(44, rd16(cyc_then(24, b | 0x11DF))));
+        wr16(b | W(scratch_11df), cyc_then(14, (uint16_t)(rd16(b | W(scratch_11df)) - 2)));
+    } while (cyc_loop(44, rd16(cyc_then(24, b | W(scratch_11df)))));
     cyc(62);
     *xo = rd16(b | CURRENT);
     *p = nz16(*p, *xo);
@@ -2312,7 +2313,7 @@ static uint16_t fixed_colour_set(uint8_t bank, uint16_t v)
     uint8_t c = (uint8_t)(v | 0xE0);
 
     cyc(98);
-    wr16(0x0018F9, v);
+    wr16(W(wram_18F9), v);
     cyc(198);
     FrameByteWritePush(bank, (uint16_t)COLDATA, c);
     return (uint16_t)((v & 0xFF00) | c);
@@ -2331,7 +2332,7 @@ static uint16_t fixed_colour_set(uint8_t bank, uint16_t v)
 uint16_t MenuFixedColourDown(uint8_t bank, uint16_t x, uint8_t *p)
 {
     cyc(32);
-    uint16_t v = rd16(0x0018F9);
+    uint16_t v = rd16(W(wram_18F9));
 
     if (!v) {
         *p = nz16(*p, v);
@@ -2379,7 +2380,7 @@ void abi_MenuFixedColourDown(void)
 uint16_t MenuFixedColourUp(uint8_t bank, uint16_t x, uint8_t *p)
 {
     cyc(78);
-    uint16_t v = rd16(0x0018F9);
+    uint16_t v = rd16(W(wram_18F9));
 
     *p = cmp16(*p, v, 0x001F);
     if (*p & P_Z)
@@ -2430,7 +2431,7 @@ uint16_t MenuFadeUpHandler(uint8_t bank, uint16_t x, uint16_t *y, uint8_t *p)
 
     MenuFixedColourUp(bank, x, p);
     cyc(120);
-    a = rd16(0x0018C1);
+    a = rd16(W(menu_sine_y_min));
     cyc(42);
     *p = cmp16(*p, a, 0x00A8);
     if (!(*p & P_Z))
@@ -3133,7 +3134,7 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
         MenuPictureDC8CGrid58(bank);
         rec = 0x0700;
         cyc(78);
-        wr16(0x0016B1, 0x0800);
+        wr16(W(vram_queue_staged), 0x0800);
         cyc(56);
         wr16(0x0016B5, 0x0070);
         cyc(56);
@@ -3148,9 +3149,9 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
     pos = rd16((uint16_t)(rec + 0x22));
     wr16(dbw(bank, 0x11ED), cyc_then(54, pos));
     cyc(32);
-    wr16(0x0018BF, pos);
+    wr16(W(menu_sine_y), pos);
     cyc(70);
-    wr16(0x0018C1, (uint16_t)(pos + 0x00A8));
+    wr16(W(menu_sine_y_min), (uint16_t)(pos + 0x00A8));
     cyc(238);
     FrameByteWritePush(bank, (uint16_t)BG1HOFS, (uint8_t)(pos >> 8));
     cyc(324);
@@ -3166,7 +3167,7 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
         *p = nz16(*p, d);
     }
     cyc(100);
-    wr8(0x7F1354, (uint8_t)d);
+    wr8(W(menu_hdma_1354), (uint8_t)d);
     *x = rec;
     cyc(64);
     return d;
@@ -3467,20 +3468,20 @@ static void ror_mem(uint32_t addr, int *c)
 static void oam_high_step(void)
 {
     cyc(24);
-    uint16_t n = (uint16_t)(rd16(0x0011DF) - 1), y;
+    uint16_t n = (uint16_t)(rd16(W(scratch_11df)) - 1), y;
 
     cyc(14);
-    wr16(0x0011DF, n);
+    wr16(W(scratch_11df), n);
     if (!(n & 0x8000))
         { cyc(22); return; }
     cyc(64);
-    wr16(0x0011DF, 0x0007);
+    wr16(W(scratch_11df), 0x0007);
     cyc(24);
-    y = rd16(0x001207);
+    y = rd16(W(oam_high_count));
     cyc(24);
-    wr16(OAM_BUFFER_HIGH + y, cyc_then(30, rd16(0x0011E1)));
+    wr16(OAM_BUFFER_HIGH + y, cyc_then(30, rd16(W(scratch_11e1))));
     cyc(52);
-    wr16(0x001207, (uint16_t)(y + 2));
+    wr16(W(oam_high_count), (uint16_t)(y + 2));
 }
 
 /*
@@ -3513,23 +3514,23 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
     int c;
 
     cyc(178);
-    wr16(0x001205, 0x0000);
+    wr16(W(oam_low_count), 0x0000);
     cyc(24);
-    wr16(0x001207, 0x0000);
+    wr16(W(oam_high_count), 0x0000);
     cyc(48);
-    wr16(0x0011DF, 0x0007);
+    wr16(W(scratch_11df), 0x0007);
     cyc(24);
-    wr16(0x0011E1, 0x0000);
+    wr16(W(scratch_11e1), 0x0000);
     cyc(24);
     /* into the body: BPL 74, or BMI and BRL 98, to the STY */
-    i = (uint16_t)(rd16(0x0011F7) - 2);
+    i = (uint16_t)(rd16(W(actor_list_len)) - 2);
     if (i & 0x8000)
         cyc(24);
     for (t = 74; cyc_loop(t, !(i & 0x8000));
-         i = (uint16_t)(rd16(cyc_then(46, 0x0011FB)) - 2), t = 98) {
-        wr16(0x0011FB, i);
+         i = (uint16_t)(rd16(cyc_then(46, W(actor_current_slot))) - 2), t = 98) {
+        wr16(W(actor_current_slot), i);
         cyc(30);
-        rec = *x = rd16(0x001239 + i);
+        rec = *x = rd16(W(actor_list) + i);
         cyc(22);
         if (rd16((uint16_t)(rec + 0x10)) == 0xFFFF)
             { cyc(38); continue; }
@@ -3538,20 +3539,20 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
         if (n == 0x0000) {
             /* one sprite from the record */
             cyc(46);
-            wr16(0x0011F1, 0x0000);
+            wr16(W(oam_x_high), 0x0000);
             cyc(22);
-            wr16(0x0011F3, cyc_then(24, rd16((uint16_t)(rec + 0x0C))));
+            wr16(W(oam_size), cyc_then(24, rd16((uint16_t)(rec + 0x0C))));
             cyc(24);
-            *y = rd16(0x001205);
+            *y = rd16(W(oam_low_count));
             if (*y == 0x0200)
                 { cyc(48); continue; }
             cyc(68);
-            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, 0x0011ED)));
+            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, W(menu_slide_pos))));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
                     { cyc(64); continue; }
                 cyc(86);
-                wr16(0x0011F1, cyc_then(14, (uint16_t)(rd16(0x0011F1) + 1)));
+                wr16(W(oam_x_high), cyc_then(14, (uint16_t)(rd16(W(oam_x_high)) + 1)));
                 cyc(52);
             } else if (sx >= 0x0100) {
                 cyc(70);
@@ -3559,7 +3560,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             } else { cyc(98); }
             wr16(OAM_BUFFER + *y, sx);
             cyc(22);
-            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, 0x0011EF)));
+            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, W(menu_scroll_y))));
             if (sy & 0x8000) {
                 if (sy < 0xFFF0)
                     { cyc(58); continue; }
@@ -3576,11 +3577,11 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             wr16(OAM_BUFFER + 2 + *y, cyc_then(30, (uint16_t)(rd16((uint16_t)(rec + 0x0E)) | rd16(cyc_then(22, (uint16_t)(rec + 0x10))))));
             *y = (uint16_t)(*y + 4);
             cyc(80);
-            wr16(0x001205, *y);
-            ror_mem(0x0011F1, &c);
-            ror_mem(0x0011E1, &c);
-            ror_mem(0x0011F3, &c);
-            ror_mem(0x0011E1, &c);
+            wr16(W(oam_low_count), *y);
+            ror_mem(W(oam_x_high), &c);
+            ror_mem(W(scratch_11e1), &c);
+            ror_mem(W(oam_size), &c);
+            ror_mem(W(scratch_11e1), &c);
             oam_high_step();
             cyc(2);
             continue;
@@ -3589,30 +3590,30 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             { cyc(64); continue; }
         /* a sprite group */
         cyc(110);
-        wr16(0x0011E3, n);
+        wr16(W(scratch_11e3), n);
         cyc(22);
-        wr16(0x0011FD, cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, 0x0011ED)))));
+        wr16(0x0011FD, cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, W(menu_slide_pos))))));
         cyc(22);
-        wr16(0x0011FF, cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, 0x0011EF)))));
+        wr16(W(oam_group_y), cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, W(menu_scroll_y))))));
         cyc(24);
-        *x = rd16(0x0011E3);
+        *x = rd16(W(scratch_11e3));
         cyc(32);
-        wr16(0x0011E3, cyc_then(24, rd16(0x7F1356 + *x)));
+        wr16(W(scratch_11e3), cyc_then(24, rd16(W(menu_sprite_groups) + *x)));
         *x = (uint16_t)(*x + 2);
         for (;;) {
             cyc(52);
-            wr16(0x0011F1, 0x0000);
+            wr16(W(oam_x_high), 0x0000);
             cyc(24);
-            *y = rd16(0x001205);
+            *y = rd16(W(oam_low_count));
             if (*y == 0x0200)
                 { cyc(48); break; }
             cyc(78);
-            sx = (uint16_t)(rd16(0x7F1356 + *x) + rd16(cyc_then(38, 0x0011FD)));
+            sx = (uint16_t)(rd16(W(menu_sprite_groups) + *x) + rd16(cyc_then(38, 0x0011FD)));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
                     { cyc(62); goto next; }
                 cyc(80);
-                wr16(0x0011F1, cyc_then(14, (uint16_t)(rd16(0x0011F1) + 1)));
+                wr16(W(oam_x_high), cyc_then(14, (uint16_t)(rd16(W(oam_x_high)) + 1)));
                 cyc(52);
             } else if (sx >= 0x0100) {
                 cyc(68);
@@ -3620,58 +3621,58 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             } else { cyc(92); }
             wr16(OAM_BUFFER + *y, sx);
             cyc(32);
-            sy = (uint16_t)(rd16(0x7F1358 + *x) + rd16(cyc_then(38, 0x0011FF)));
+            sy = (uint16_t)(rd16(0x7F1358 + *x) + rd16(cyc_then(38, W(oam_group_y))));
             if (sy & 0x8000 ? sy < 0xFFF0 : sy >= 0x00E0)
                 { cyc(sy & 0x8000 ? 78 : 68); goto next; }
             cyc(92);
             wr16(OAM_BUFFER + 1 + *y, sy);
             *y = (uint16_t)(*y + 2);
             cyc(60);
-            wr16(OAM_BUFFER + *y, cyc_then(30, rd16(0x7F135A + *x)));
+            wr16(OAM_BUFFER + *y, cyc_then(30, rd16(W(menu_sprite_attr) + *x)));
             *y = (uint16_t)(*y + 2);
             cyc(52);
-            wr16(0x001205, *y);
+            wr16(W(oam_low_count), *y);
             cyc(24);
-            w = rd16(0x0011F1);
+            w = rd16(W(oam_x_high));
             c = w & 1;
             cyc(14);
-            wr16(0x0011F1, (uint16_t)(w >> 1));
-            ror_mem(0x0011E1, &c);
+            wr16(W(oam_x_high), (uint16_t)(w >> 1));
+            ror_mem(W(scratch_11e1), &c);
             cyc(32);
             c = rd16(0x7F135C + *x) & 1;
             cyc(14);
-            ror_mem(0x0011E1, &c);
+            ror_mem(W(scratch_11e1), &c);
             cyc(24);
-            w = (uint16_t)(rd16(0x0011DF) - 1);
+            w = (uint16_t)(rd16(W(scratch_11df)) - 1);
             cyc(14);
-            wr16(0x0011DF, w);
+            wr16(W(scratch_11df), w);
             if (w & 0x8000) {
                 /* here the word is stored before $11DF is reset */
                 cyc(40);
-                *y = rd16(0x001207);
+                *y = rd16(W(oam_high_count));
                 cyc(24);
-                wr16(OAM_BUFFER_HIGH + *y, cyc_then(30, rd16(0x0011E1)));
+                wr16(OAM_BUFFER_HIGH + *y, cyc_then(30, rd16(W(scratch_11e1))));
                 *y = (uint16_t)(*y + 2);
                 cyc(52);
-                wr16(0x001207, *y);
+                wr16(W(oam_high_count), *y);
                 cyc(48);
-                wr16(0x0011DF, 0x0007);
+                wr16(W(scratch_11df), 0x0007);
             } else { cyc(22); }
         next:
             *x = (uint16_t)(*x + 8);
             cyc(90);
-            w = (uint16_t)(rd16(0x0011E3) - 1);
+            w = (uint16_t)(rd16(W(scratch_11e3)) - 1);
             cyc(14);
-            wr16(0x0011E3, w);
+            wr16(W(scratch_11e3), w);
             if (w & 0x8000)
                 break; else { cyc(18); }
         }
     }
     cyc(74);
-    *y = rd16(0x0011DF);
+    *y = rd16(W(scratch_11df));
     if (*y != 0x0007) {
         cyc(64);
-        uint16_t a = rd16(0x0011E1);
+        uint16_t a = rd16(W(scratch_11e1));
 
         do {
             cyc(78);
@@ -3680,41 +3681,41 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             *y = (uint16_t)(*y - 1);
         } while (!(*y & 0x8000));
         cyc(18);
-        *y = rd16(0x001207);
+        *y = rd16(W(oam_high_count));
         cyc(30);
         wr16(OAM_BUFFER_HIGH + *y, a);
         *y = (uint16_t)(*y + 2);
         cyc(52);
-        wr16(0x001207, *y);
+        wr16(W(oam_high_count), *y);
     } else { cyc(46); }
     cyc(24);
-    *y = rd16(0x001205);
+    *y = rd16(W(oam_low_count));
     cyc(24);
-    if (*y < rd16(0x001201)) {
+    if (*y < rd16(W(menu_1201))) {
         cyc(18);
         do {
             cyc(52);
             wr16(OAM_BUFFER + *y, 0xEFEF);
             *y = (uint16_t)(*y + 2);
-        } while (*y < rd16(cyc_then(52, 0x001201)));
+        } while (*y < rd16(cyc_then(52, W(menu_1201))));
     } else { cyc(6); }
     cyc(40);
-    wr16(0x001201, cyc_then(24, rd16(0x001205)));
+    wr16(W(menu_1201), cyc_then(24, rd16(W(oam_low_count))));
     cyc(24);
-    *y = rd16(0x001207);
+    *y = rd16(W(oam_high_count));
     cyc(24);
-    if (*y < rd16(0x001203)) {
+    if (*y < rd16(W(menu_1203))) {
         cyc(18);
         do {
             cyc(52);
             wr16(OAM_BUFFER_HIGH + *y, 0x5555);
             *y = (uint16_t)(*y + 2);
-        } while (*y < rd16(cyc_then(52, 0x001203)));
+        } while (*y < rd16(cyc_then(52, W(menu_1203))));
     } else { cyc(6); }
     cyc(40);
-    w = rd16(0x001207);
+    w = rd16(W(oam_high_count));
     cyc(24);
-    wr16(0x001203, w);
+    wr16(W(menu_1203), w);
     cyc(100);
     return w;
 }
@@ -3762,7 +3763,7 @@ void MenuActorsRun(Carried *cr)
     y = (uint16_t)(rd16(LIVE_LEN) - 2);
     /* into the body: 68 the first time, 74 going round */
     for (t = 68; cyc_loop(t, !(y & 0x8000)); t = 74) {
-        wr16(0x0011FB, y);
+        wr16(W(actor_current_slot), y);
         cyc(30);
         cr->x = rd16(LIVE_LIST + y);
         cyc(24);
@@ -3772,7 +3773,7 @@ void MenuActorsRun(Carried *cr)
         cyc(46);
         carried_call(cr, 0x0B0000 | rd16(0x0B0000 | (uint16_t)(cr->x + 0x08)), 0);
         cyc(24);
-        y = (uint16_t)(rd16(0x0011FB) - 2);
+        y = (uint16_t)(rd16(W(actor_current_slot)) - 2);
     }
     cyc(144);
     cr->y = y;

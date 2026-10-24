@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "hud_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 /* Arithmetic shift right by 3, as three CMP #$8000 / ROR A. */
 static uint16_t asr3(uint16_t v)
@@ -40,17 +41,17 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
 
     for (i = 0;; i = (uint16_t)(i + 2)) {
         cyc(70);
-        obj = rd16(0x7EFFBD + i);
+        obj = rd16(W(object_list) + i);
         if (!obj)
             { cyc(118); return i; }
         cyc(98);
-        v = asr3(rd16(0x7E200C + obj));
+        v = asr3(rd16(W(obj_pos_x_long) + obj));
         cyc(164);
         sx = (uint16_t)((uint16_t)((v >> 8 | v << 8) + rd16(0x0000F1)) & 0x00FF);
         cyc(40);
         wr16(0x000002, sx);
         cyc(32);
-        v = asr3((uint16_t)(-rd16(0x7E2010 + obj)));
+        v = asr3((uint16_t)(-rd16(W(obj_pos_z_long) + obj)));
         cyc(182);
         v = (uint16_t)(((uint16_t)(v + rd16(0x0000F3)) & 0xFF00) | sx);
         cyc(72);
@@ -58,11 +59,11 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(30);
         wr16(b | (uint16_t)(0x0375 + *y), v);
         cyc(54);
-        v = rd16(0x7E2026 + obj);
+        v = rd16(0x7E0000 | W(obj_26) + obj);
         cyc(16);
         wr16(0x000008, v);
         cyc(84);
-        v = rd16(0x7F0B46 + 2 * (v & 0x0007));
+        v = rd16(W(map_marker_tiles) + 2 * (v & 0x0007));
         cyc(16);
         wr16(0x000002, v);
         cyc(62);
@@ -129,7 +130,7 @@ uint16_t MapMarkersPanelA(uint8_t bank, uint16_t *y)
     uint16_t x;
 
     cyc(46);
-    map_origin(b | 0x0E0A, 0xFFFC);
+    map_origin(b | W(map_a_x), 0xFFFC);
     *y = 0x0158;
     cyc(86);                                    /* JSL */
     x = MapMarkerSprites(bank, y);
@@ -185,18 +186,18 @@ int MapMarkersPanelB(uint8_t bank, uint16_t *x, uint16_t *y)
     uint8_t v;
 
     cyc(54);
-    v = rd8(0x000D55);
+    v = rd8(W(panel_b_shown));
     if (!v)
-        { cyc(48); v = rd8(0x000D62); }
+        { cyc(48); v = rd8(W(wram_0D62)); }
     cyc(58);
     if (!v)
         return 0;
     /* the setup's stores come before the $0D62 read that picks the first
        slot */
     cyc(10);
-    map_origin(b | 0x0E09, 0x0004);
+    map_origin(b | W(map_b_x), 0x0004);
     cyc(46);                                    /* SEP, LDA long */
-    v = rd8(b | 0x0D62);
+    v = rd8(b | W(wram_0D62));
     *y = v ? 0x0054 : 0x0180;
     cyc(v ? 108 : 124);                         /* BNE, LDY # (and BRA), JSL */
     *x = MapMarkerSprites(bank, y);

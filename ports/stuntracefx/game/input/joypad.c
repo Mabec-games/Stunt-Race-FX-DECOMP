@@ -7,6 +7,7 @@
 #include "hw.h"
 #include "wram.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /*
@@ -148,10 +149,10 @@ void abi_JoypadAccumulate(void)
 static void serial_shift(uint32_t b, uint8_t bit)
 {
     cyc(38);
-    uint8_t v = rd8(b | 0x1182);
+    uint8_t v = rd8(b | W(joy_serial_bits));
 
     cyc(6);
-    wr8(b | 0x1182, (uint8_t)(v << 1 | bit));
+    wr8(b | W(joy_serial_bits), (uint8_t)(v << 1 | bit));
 }
 
 /* The serial loop from count y (7 down to 0): each pass one read of data
@@ -162,14 +163,14 @@ static uint8_t serial_rest(uint32_t b, uint8_t port, int y, uint16_t lead)
     for (; y >= 0; y--, lead = 60)
         { cyc(lead); serial_shift(b, (io_rd8(b | (uint16_t)(0x4016 + port), 0x00) & 0x02) ? (cyc(32), 1) : (cyc(38), 0)); }
     cyc(54);
-    return rd8(b | 0x1182);
+    return rd8(b | W(joy_serial_bits));
 }
 
 /* Eight serial reads into a cleared $1182, first bit highest. */
 static uint8_t serial_byte(uint32_t b, uint8_t port)
 {
     cyc(24);
-    wr8(b | 0x1182, 0x00);
+    wr8(b | W(joy_serial_bits), 0x00);
     return serial_rest(b, port, 7, 40);
 }
 
@@ -208,7 +209,7 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
     }
     if (v != 0xFF) {
         cyc(110);
-        wr16(0x0018FB, 0x0001);
+        wr16(W(wram_18FB), 0x0001);
         found = 1;
     }
 done:

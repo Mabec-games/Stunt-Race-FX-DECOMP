@@ -8,6 +8,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 void abi_ObjectFreeLong(void);
@@ -38,7 +39,7 @@ static void free_list(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
     cyc(76);
-    obj = rd16(b | 0x0325);
+    obj = rd16(b | W(object_list_0325));
     while (obj) {
         cyc(first ? 46 : 102);  /* later ones: PLY, TYX, BNE taken */
         first = 0;
@@ -78,9 +79,9 @@ void ObjectListTableFirst(Carried *cr)
     uint16_t x, a = cr->a, at, v, t = 132;
 
     cyc(68);
-    wr16(b | 0x0D04, 0x0000);
+    wr16(b | W(object_table_count), 0x0000);
     cyc(24);
-    x = rd16(b | 0x0325);
+    x = rd16(b | W(object_list_0325));
     if (x) {
         cr->y = 0x0000;
         if (a & 0x00FF) {
@@ -90,7 +91,7 @@ void ObjectListTableFirst(Carried *cr)
                 cyc(100);
                 at = rd16(b | (uint16_t)(0x2004 + x));
                 cyc(96);
-                wr16(0x7E96AD, x);
+                wr16(W(object_table), x);
                 cyc(30);
                 v = rd16(b | (uint16_t)(0x0008 + at));
                 cyc(32);
@@ -108,9 +109,9 @@ void ObjectListTableFirst(Carried *cr)
                 cyc(32);
                 wr16(0x7E96B5, v);
                 cyc(24);
-                v = rd16(b | 0x0D04);
+                v = rd16(b | W(object_table_count));
                 cyc(14);
-                wr16(b | 0x0D04, (uint16_t)(v + 1));
+                wr16(b | W(object_table_count), (uint16_t)(v + 1));
                 cr->y = 0x000A;
             } else { t = 112; /* BIT, BNE taken */ }
         } else { cyc(66); }
@@ -276,7 +277,7 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
     uint8_t t, want;
 
     cyc(24);
-    wr8(b | 0x1A30, tag);
+    wr8(b | W(child_search_tag), tag);
     for (;;) {
         cyc(60);
         next = rd16(b | (uint16_t)(0x2027 + at));
@@ -286,7 +287,7 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
         t = rd8(b | (uint16_t)(0x2048 + next));
         *a = t;
         cyc(24);
-        want = rd8(b | 0x1A30);
+        want = rd8(b | W(child_search_tag));
         *p = (uint8_t)((*p & ~P_C) | (t >= want ? (cyc(102), P_C) : (cyc(22), 0)));
         if (t == want)
             return next;
@@ -387,10 +388,10 @@ int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
     *y = *x;
     ObjectInit(*y);
     cyc(48);
-    wr8(0x7E2036 + *x, 0x03);
+    wr8(W(obj_36_long) + *x, 0x03);
     *a = 0xA040;
     cyc(78);
-    wr16(0x7E2004 + *x, *a);
+    wr16(W(obj_04_long) + *x, *a);
     return 1;
 }
 

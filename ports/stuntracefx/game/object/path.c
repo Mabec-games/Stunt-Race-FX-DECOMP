@@ -7,6 +7,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 #define PATH_TABLE 0x0885B9u
 
@@ -95,7 +96,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         link = rd16(cyc_then(74, field(bank, obj, 0x4F)));
         cyc(132);
         n = rd16(PATH_TABLE + 3 + t);
-        wr16(b | 0x1F4C, n & 0x00FF);
+        wr16(b | W(wram_1F4C), n & 0x00FF);
         for (i = 0; i < 3; i++) {
             cyc(92);
             v = rd16(PATH_TABLE + 4 + 2 * i + t);
@@ -104,7 +105,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
             wr16(b | (uint16_t)(0x1F4E + 2 * i), (uint16_t)(v - w));
         }
         cyc(60);
-        n = rd16(b | 0x1F4C);
+        n = rd16(b | W(wram_1F4C));
         cyc(44);
         while (n--) {
             for (i = 0; i < 3; i++) {

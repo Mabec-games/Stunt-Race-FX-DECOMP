@@ -4,6 +4,7 @@
 #include "machine.h"
 #include "gsu_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /*
@@ -17,7 +18,7 @@
  */
 uint16_t GsuParamsUpdate(void)
 {
-    static const uint32_t from[8] = {0x000D12, 0x0000C5, 0x0000C7, 0x0000C9, 0x000664, 0x000666, 0x000668, 0x0005FA};
+    static const uint32_t from[8] = {0x000D12, W(dp_c5), W(dp_c7), W(dp_c9), 0x000664, W(wram_0666), W(wram_0668), 0x0005FA};
     static const uint32_t to[8] = {0x70108A, 0x7000D8, 0x7000DA, 0x7000DC, 0x7000DE, 0x7000E0, 0x7000E2, 0x702736};
     uint16_t v = 0;
     unsigned i;
@@ -233,7 +234,7 @@ uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
     unsigned i;
 
     cyc(24);
-    wr16(b | 0x1F4C, entry);
+    wr16(b | W(wram_1F4C), entry);
     cyc(62);
     t = (uint32_t)(rd16(0x701094) & 0x00FF) << 16;
     cyc(156);
@@ -994,7 +995,7 @@ uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
     wr16(0x001F2B, n);
     do {
         for (i = 0; i < 30; i += 2)
-            { cyc(32); wr16(0x700000 | (uint16_t)(d + i), cyc_then(30, rd16(0x7E0000 + s + i))); }
+            { cyc(32); wr16(0x700000 | (uint16_t)(d + i), cyc_then(30, rd16(W(wram_bank_7e) + s + i))); }
         d = (uint16_t)(d + 0x1E);
         *p = (uint8_t)(*p & ~(P_C | P_V));
         if ((unsigned)s + 0x1E > 0xFFFF)

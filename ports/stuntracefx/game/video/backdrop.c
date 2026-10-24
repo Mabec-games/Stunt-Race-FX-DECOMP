@@ -8,6 +8,7 @@
 #include "machine.h"
 #include "video_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -31,9 +32,9 @@ uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
     uint16_t obj = rd16(cyc_then(152, dbw(bank, player ? (cyc(6), 0x034A) : 0x0346)));
 
     cyc(player ? 32 : 54);              /* player 1's load has a BRA after it */
-    obj = rd16(0x7E204F + obj);
+    obj = rd16(W(obj_link) + obj);
     cyc(46);
-    obj = rd16(0x7E204F + obj);
+    obj = rd16(W(obj_link) + obj);
     cyc(46);
     return (rd16(0x000000 + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
 }
@@ -81,9 +82,9 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
     unsigned s;
 
     cyc(54);
-    *x = (uint8_t)(rd8(0x000D7F) << 1);
+    *x = (uint8_t)(rd8(W(gsu_buffer_select)) << 1);
     cyc(m16 ? 90 : 82);                 /* a 16-bit LDA reads a second byte */
-    a = (uint16_t)(rd16(0x0006CF) >> 2);
+    a = (uint16_t)(rd16(W(view_06cf)) >> 2);
     wr16(dbw(bank, (uint16_t)(0x0D92 + *x)), cyc_then(58, a));
     cyc(62);
     a = PlayerVehicleRaised(bank, (uint8_t)*x);

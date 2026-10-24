@@ -10,6 +10,7 @@
 #include "hw.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p);
 int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -641,24 +642,24 @@ void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p
     wr16((uint16_t)(obj + 0x22), n);
     cyc(100);
     off = rd16(0x0BDFCB + (uint32_t)(n << 1));
-    wr16(b | 0x11DF, off);
+    wr16(b | W(scratch_11df), off);
     cyc(32);
-    sel = (uint16_t)(rd16(0x0018CB) << 1);
+    sel = (uint16_t)(rd16(W(selection)) << 1);
     cyc(114);
     v = rd16(0x0BDFD3 + (uint32_t)sel);
-    v = adc16(v, rd16(b | 0x11DF), 0, p);
+    v = adc16(v, rd16(b | W(scratch_11df)), 0, p);
     v = adc16(v, 0x3000, 0, p);
     cyc(84);
     wr16(b | 0x16B3, v);
     cyc(48);
-    wr16(b | 0x16B1, 0x0080);
+    wr16(b | W(vram_queue_staged), 0x0080);
     cyc(48);
     wr16(b | 0x16B5, 0x0070);
     cyc(48);
     wr16(b | 0x16B7, 0x15C0);
     *a = (cyc(62), VramDmaQueueAddTimed(0x15C0));
     cyc(68);
-    *x = rd16(b | 0x11F9);
+    *x = rd16(b | W(actor_current));
     *p = nz16(*p, *x);
     cyc(42);
 }

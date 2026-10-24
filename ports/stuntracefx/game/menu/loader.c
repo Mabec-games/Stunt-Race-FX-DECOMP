@@ -13,6 +13,7 @@
 #include "machine.h"
 #include "menu_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
@@ -25,7 +26,7 @@ uint16_t MenuPictureDC8CGrid0(uint8_t bank);
 static void queue_from_gsu_ram(uint16_t size, uint16_t src, uint16_t vram)
 {
     cyc(78);
-    wr16(0x0016B1, size);
+    wr16(W(vram_queue_staged), size);
     cyc(56);
     wr16(0x0016B5, 0x0070);
     cyc(56);
@@ -329,7 +330,7 @@ static void picture_to_7f(uint16_t dest, uint16_t bytes)
 
     cyc(0);
     for (x = 0; x != bytes; x = (uint16_t)(x + 2))
-        { cyc(96); wr16(0x7F0000 + (uint16_t)(dest + x), cyc_then(32, rd16(0x703000 + x))); cyc(10); }
+        { cyc(96); wr16(W(object_buckets) + (uint16_t)(dest + x), cyc_then(32, rd16(0x703000 + x))); cyc(10); }
     cyc(82);
 }
 
