@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "video_calls.h"
+#include "carried.h"
 
 #define SLOT_MASK 0x05D5u
 #define SLOTS 0x0595u
@@ -75,12 +76,26 @@ uint16_t SpriteSlotFirst(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+/* SpriteSlotFirst on carried registers. */
+void SpriteSlotFirst_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = SpriteSlotFirst(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_SpriteSlotFirst(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = SpriteSlotFirst(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    SpriteSlotFirst_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -106,12 +121,26 @@ uint16_t SpriteSlotFirstLong(uint8_t bank, uint16_t *x, int x8)
     return a;
 }
 
+/* SpriteSlotFirstLong on carried registers. */
+void SpriteSlotFirstLong_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+
+    cr->a = SpriteSlotFirstLong(cr->db, &x, (cr->p & P_X) != 0);
+    cr->x = x;
+}
+
 void abi_SpriteSlotFirstLong(void)
 {
-    uint16_t x = cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = SpriteSlotFirstLong(cpu.db, &x, (cpu.p & P_X) != 0);
-    cpu.x = x;
+    SpriteSlotFirstLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -182,13 +211,27 @@ count:
     return a;
 }
 
+/* SpriteSlot1Countdown on carried registers. */
+void SpriteSlot1Countdown_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+    uint8_t a = SpriteSlot1Countdown(cr->db, &x);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : (cyc(72), x);
+}
+
 void abi_SpriteSlot1Countdown(void)
 {
-    uint16_t x = cpu.x;
-    uint8_t a = SpriteSlot1Countdown(cpu.db, &x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(72), x);
+    SpriteSlot1Countdown_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -228,9 +271,23 @@ uint8_t SpriteSlot4Brighten(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot4Brighten on carried registers. */
+void SpriteSlot4Brighten_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot4Brighten(cr->db));
+}
+
 void abi_SpriteSlot4Brighten(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Brighten(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot4Brighten_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -277,9 +334,23 @@ uint8_t SpriteSlot4Darken(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot4Darken on carried registers. */
+void SpriteSlot4Darken_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot4Darken(cr->db));
+}
+
 void abi_SpriteSlot4Darken(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Darken(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot4Darken_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -312,9 +383,23 @@ uint8_t SpriteSlot4Full(uint8_t bank)
     return 0x1F;
 }
 
+/* SpriteSlot4Full on carried registers. */
+void SpriteSlot4Full_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot4Full(cr->db));
+}
+
 void abi_SpriteSlot4Full(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Full(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot4Full_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Marks record r in use (mask bit) and sets +$04 = 0, +$05 = 2, +$06 = k. */
@@ -361,9 +446,23 @@ uint8_t SpriteSlot2Brighten(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot2Brighten on carried registers. */
+void SpriteSlot2Brighten_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot2Brighten(cr->db));
+}
+
 void abi_SpriteSlot2Brighten(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2Brighten(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot2Brighten_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -380,9 +479,23 @@ uint8_t SpriteSlot2BrightenLong(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot2BrightenLong on carried registers. */
+void SpriteSlot2BrightenLong_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot2BrightenLong(cr->db));
+}
+
 void abi_SpriteSlot2BrightenLong(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2BrightenLong(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot2BrightenLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -419,15 +532,29 @@ uint8_t SpriteSlot1Start(uint8_t b, uint16_t *x, int x8)
     return a;
 }
 
+/* SpriteSlot1Start on carried registers. */
+void SpriteSlot1Start_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+    int x8 = (cr->p & P_X) != 0;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot1Start(cr->db, &x, x8));
+    cr->x = x;
+    if (x8)
+        cr->y &= 0x00FF;
+}
+
 void abi_SpriteSlot1Start(void)
 {
-    uint16_t x = cpu.x;
-    int x8 = (cpu.p & P_X) != 0;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot1Start(cpu.db, &x, x8));
-    cpu.x = x;
-    if (x8)
-        cpu.y &= 0x00FF;
+    SpriteSlot1Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Records 5 and 6 with +$01, +$02, +$03 and +$00: the shared stores. */
@@ -471,9 +598,23 @@ uint8_t SpriteSlot6Yellow(uint8_t bank)
     return 0x1F;
 }
 
+/* SpriteSlot6Yellow on carried registers. */
+void SpriteSlot6Yellow_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot6Yellow(cr->db));
+}
+
 void abi_SpriteSlot6Yellow(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot6Yellow(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot6Yellow_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -489,9 +630,23 @@ uint8_t SpriteSlot6DimYellow(uint8_t bank)
     return 0x07;
 }
 
+/* SpriteSlot6DimYellow on carried registers. */
+void SpriteSlot6DimYellow_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot6DimYellow(cr->db));
+}
+
 void abi_SpriteSlot6DimYellow(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot6DimYellow(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot6DimYellow_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -508,9 +663,23 @@ uint8_t SpriteSlot6Red(uint8_t bank)
     return 0x1F;
 }
 
+/* SpriteSlot6Red on carried registers. */
+void SpriteSlot6Red_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot6Red(cr->db));
+}
+
 void abi_SpriteSlot6Red(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot6Red(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot6Red_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -527,9 +696,23 @@ uint8_t SpriteSlot5DimRed(uint8_t bank)
     return 0x0A;
 }
 
+/* SpriteSlot5DimRed on carried registers. */
+void SpriteSlot5DimRed_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot5DimRed(cr->db));
+}
+
 void abi_SpriteSlot5DimRed(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot5DimRed(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot5DimRed_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -550,9 +733,23 @@ uint8_t SpriteSlot5Off(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot5Off on carried registers. */
+void SpriteSlot5Off_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot5Off(cr->db));
+}
+
 void abi_SpriteSlot5Off(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot5Off(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot5Off_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -591,9 +788,23 @@ uint8_t SpriteSlot2Darken(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot2Darken on carried registers. */
+void SpriteSlot2Darken_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot2Darken(cr->db));
+}
+
 void abi_SpriteSlot2Darken(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2Darken(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot2Darken_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -610,9 +821,23 @@ uint8_t SpriteSlot2DarkenLong(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot2DarkenLong on carried registers. */
+void SpriteSlot2DarkenLong_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot2DarkenLong(cr->db));
+}
+
 void abi_SpriteSlot2DarkenLong(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2DarkenLong(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot2DarkenLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -636,9 +861,23 @@ uint8_t SpriteSlot2FadeOut(uint8_t bank)
     return a;
 }
 
+/* SpriteSlot2FadeOut on carried registers. */
+void SpriteSlot2FadeOut_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot2FadeOut(cr->db));
+}
+
 void abi_SpriteSlot2FadeOut(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2FadeOut(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot2FadeOut_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -654,7 +893,21 @@ uint8_t SpriteSlot5Yellow(uint8_t bank)
     return 0x1F;
 }
 
+/* SpriteSlot5Yellow on carried registers. */
+void SpriteSlot5Yellow_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SpriteSlot5Yellow(cr->db));
+}
+
 void abi_SpriteSlot5Yellow(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot5Yellow(cpu.db));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteSlot5Yellow_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

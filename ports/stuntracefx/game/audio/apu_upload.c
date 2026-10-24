@@ -13,6 +13,7 @@
 #include "hw.h"
 #include "wram.h"
 #include "audio_calls.h"
+#include "carried.h"
 
 /*
  * @routine 04:D788 ApuUploadNextByte
@@ -81,21 +82,35 @@ static uint8_t next_byte(uint16_t *offset)
     return ApuUploadNextByte(offset);
 }
 
-void abi_ApuUploadNextByte(void)
+/* ApuUploadNextByte on carried registers. */
+void ApuUploadNextByte_cr(Carried *cr)
 {
     /* The carry and overflow the original's 16-bit add leaves behind. */
-    uint16_t y = cpu.y, next = (uint16_t)(y + 1), low;
+    uint16_t y = cr->y, next = (uint16_t)(y + 1), low;
     uint8_t value = ApuUploadNextByte(&y);
     uint32_t sum;
 
     low = next_low;
     sum = (uint32_t)low + next;
-    cpu.y = y;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | value);
-    cpu.p = nz16(cpu.p, cpu.a);
-    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
-                      | ((~(next ^ low) & (next ^ sum) & 0x8000) ? P_V : 0));
-    cpu.p |= P_M;
+    cr->y = y;
+    cr->a = (uint16_t)((cr->a & 0xFF00) | value);
+    set_p(cr, nz16(cr->p, cr->a));
+    set_p(cr, (uint8_t)((cr->p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
+                      | ((~(next ^ low) & (next ^ sum) & 0x8000) ? P_V : 0)));
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+}
+
+void abi_ApuUploadNextByte(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApuUploadNextByte_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -178,14 +193,28 @@ ApuUploadEnd ApuUpload(uint8_t bank, uint16_t addr)
     return end;
 }
 
+/* ApuUpload on carried registers. */
+void ApuUpload_cr(Carried *cr)
+{
+    ApuUploadEnd end = ApuUpload((uint8_t)cr->a, cr->y);
+
+    cr->a = end.kick;
+    cr->x = 0;
+    cr->y = end.offset;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V)) | P_Z | P_C | P_M));
+}
+
 void abi_ApuUpload(void)
 {
-    ApuUploadEnd end = ApuUpload((uint8_t)cpu.a, cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = end.kick;
-    cpu.x = 0;
-    cpu.y = end.offset;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V)) | P_Z | P_C | P_M);
+    ApuUpload_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -204,11 +233,25 @@ void ApuPort1Send05(void)
     ApuSettleDelay();
 }
 
-void abi_ApuPort1Send05(void)
+/* ApuPort1Send05 on carried registers. */
+void ApuPort1Send05_cr(Carried *cr)
 {
     ApuPort1Send05();
-    cpu.a = 0;
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
+    cr->a = 0;
+    set_p(cr, (uint8_t)((cr->p & ~(P_M | P_N)) | P_Z));
+}
+
+void abi_ApuPort1Send05(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApuPort1Send05_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -224,11 +267,25 @@ void ApuSettleDelay(void)
     delay_turns(0x4000);
 }
 
-void abi_ApuSettleDelay(void)
+/* ApuSettleDelay on carried registers. */
+void ApuSettleDelay_cr(Carried *cr)
 {
     (cyc(0), ApuSettleDelay());
-    cpu.a = 0;
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
+    cr->a = 0;
+    set_p(cr, (uint8_t)((cr->p & ~(P_M | P_N)) | P_Z));
+}
+
+void abi_ApuSettleDelay(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApuSettleDelay_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -250,11 +307,25 @@ uint16_t ApuUploadBank19(void)
     return end.offset;
 }
 
-void abi_ApuUploadBank19(void)
+/* ApuUploadBank19 on carried registers. */
+void ApuUploadBank19_cr(Carried *cr)
 {
     uint16_t offset = ApuUploadBank19();
 
-    cpu.a = 0;
-    cpu.x = 0;
-    cpu.y = offset;
+    cr->a = 0;
+    cr->x = 0;
+    cr->y = offset;
+}
+
+void abi_ApuUploadBank19(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApuUploadBank19_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

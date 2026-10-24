@@ -8,6 +8,7 @@
  * $70:FC0B has bit 2 set (for player 1 also when the mode $18C3 is 3).
  */
 #include "machine.h"
+#include "carried.h"
 
 void SoundPort0QueuePush(uint8_t command);
 void MenuSet1A66(uint8_t bank, uint16_t i);
@@ -92,12 +93,26 @@ uint16_t MenuChoiceStepP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return cyc_then(42, step_p1(bank, CHOICE_RIGHT, 0x0001, x, y, p));
 }
 
+/* MenuChoiceStepP1 on carried registers. */
+void MenuChoiceStepP1_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceStepP1(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceStepP1(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceStepP1(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceStepP1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -139,12 +154,26 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return 0;
 }
 
+/* MenuChoicePressesP1 on carried registers. */
+void MenuChoicePressesP1_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoicePressesP1(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoicePressesP1(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoicePressesP1(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoicePressesP1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* One direction for player 2: as step_p1 on $18C9, with the repeat value
@@ -198,12 +227,26 @@ uint16_t MenuChoiceStepP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return cyc_then(42, step_p2(bank, CHOICE_RIGHT, 0x0001, x, y, p));
 }
 
+/* MenuChoiceStepP2 on carried registers. */
+void MenuChoiceStepP2_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceStepP2(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceStepP2(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceStepP2(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceStepP2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -241,12 +284,26 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return 0;
 }
 
+/* MenuChoicePressesP2 on carried registers. */
+void MenuChoicePressesP2_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoicePressesP2(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoicePressesP2(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoicePressesP2(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoicePressesP2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -375,11 +432,25 @@ uint16_t MenuChoicesFromSave(uint16_t menu, uint16_t *x)
     return v;
 }
 
+/* MenuChoicesFromSave on carried registers. */
+void MenuChoicesFromSave_cr(Carried *cr)
+{
+    cr->a = MenuChoicesFromSave(cr->a, &cr->x);
+    if (cr->p & P_X)
+        cr->x &= 0x00FF; else { cyc(92); }
+}
+
 void abi_MenuChoicesFromSave(void)
 {
-    cpu.a = MenuChoicesFromSave(cpu.a, &cpu.x);
-    if (cpu.p & P_X)
-        cpu.x &= 0x00FF; else { cyc(92); }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuChoicesFromSave_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -425,12 +496,26 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
     return a;
 }
 
+/* MenuSettingsRowMarker on carried registers. */
+void MenuSettingsRowMarker_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSettingsRowMarker(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSettingsRowMarker(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSettingsRowMarker(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSettingsRowMarker_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -486,12 +571,26 @@ uint16_t MenuSettingsShow(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+/* MenuSettingsShow on carried registers. */
+void MenuSettingsShow_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSettingsShow(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSettingsShow(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSettingsShow(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSettingsShow_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -562,12 +661,26 @@ uint16_t MenuSettingsInput(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return cyc_then(42, MenuChoiceAnimations(bank, x, y, p));
 }
 
+/* MenuSettingsInput on carried registers. */
+void MenuSettingsInput_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSettingsInput(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSettingsInput(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSettingsInput(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSettingsInput_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The end of both settings handlers: $18D3 = 0, then the choice $18CB is
@@ -647,12 +760,26 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return settings_leave(bank, x, y, p);
 }
 
+/* MenuSettingsHandler on carried registers. */
+void MenuSettingsHandler_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSettingsHandler(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSettingsHandler(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSettingsHandler(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSettingsHandler_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -702,12 +829,26 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     return settings_leave(bank, x, y, p);
 }
 
+/* MenuSettingsHandler2 on carried registers. */
+void MenuSettingsHandler2_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuSettingsHandler2(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSettingsHandler2(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuSettingsHandler2(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuSettingsHandler2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuChoiceUpDown(uint8_t bank);
@@ -780,12 +921,26 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
-void abi_MenuModeSelect(void)
+/* MenuModeSelect on carried registers. */
+void MenuModeSelect_cr(Carried *cr)
 {
     cyc(46);
-    uint8_t p = cpu.p;
+    uint8_t p = cr->p;
 
-    cpu.a = MenuModeSelect(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    cr->a = MenuModeSelect(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
     cyc(42);
+}
+
+void abi_MenuModeSelect(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuModeSelect_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

@@ -7,6 +7,7 @@
  * each byte's nibbles). No script reaches this code.
  */
 #include "machine.h"
+#include "carried.h"
 
 #define TEXT_HALF 0x000307u
 #define TEXT_HIGH 0x000308u
@@ -115,9 +116,23 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     cyc(70); /* PLP, RTS */
 }
 
+/* DebugDrawChar on carried registers. */
+void DebugDrawChar_cr(Carried *cr)
+{
+    DebugDrawChar(cr->db, (uint8_t)cr->a, &cr->a, &cr->x, &cr->y);
+}
+
 void abi_DebugDrawChar(void)
 {
-    DebugDrawChar(cpu.db, (uint8_t)cpu.a, &cpu.a, &cpu.x, &cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugDrawChar_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -156,10 +171,24 @@ void DebugPrint(uint8_t bank)
     }
 }
 
+/* DebugPrint on carried registers. */
+void DebugPrint_cr(Carried *cr)
+{
+    DebugPrint(cr->db);
+    set_p(cr, nz8(cr->p, cr->db));
+}
+
 void abi_DebugPrint(void)
 {
-    DebugPrint(cpu.db);
-    cpu.p = nz8(cpu.p, cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPrint_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The three messages, in bank 08, and where each is printed. */
@@ -205,8 +234,22 @@ uint16_t DebugShowErrors(uint8_t bank)
     return a;
 }
 
+/* DebugShowErrors on carried registers. */
+void DebugShowErrors_cr(Carried *cr)
+{
+    cr->a = DebugShowErrors(cr->db);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
+}
+
 void abi_DebugShowErrors(void)
 {
-    cpu.a = DebugShowErrors(cpu.db);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugShowErrors_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "hud_calls.h"
+#include "carried.h"
 
 /* Arithmetic shift right by 3, as three CMP #$8000 / ROR A. */
 static uint16_t asr3(uint16_t v)
@@ -71,14 +72,28 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
     }
 }
 
+/* MapMarkerSprites on carried registers. */
+void MapMarkerSprites_cr(Carried *cr)
+{
+    cr->x = MapMarkerSprites(cr->db, &cr->y);
+    cr->a = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
+    }
+}
+
 void abi_MapMarkerSprites(void)
 {
-    cpu.x = MapMarkerSprites(cpu.db, &cpu.y);
-    cpu.a = 0;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MapMarkerSprites_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The map origin from the word at x_at ($F1, low byte) and at x_at + 2
@@ -122,19 +137,33 @@ uint16_t MapMarkersPanelA(uint8_t bank, uint16_t *y)
     return x;
 }
 
-void abi_MapMarkersPanelA(void)
+/* MapMarkersPanelA on carried registers. */
+void MapMarkersPanelA_cr(Carried *cr)
 {
     uint16_t y;
 
     /* an interrupt inside the markers pushes the P they run under */
-    cpu.p = (uint8_t)nz16((uint8_t)(cpu.p & ~P_M), 0x0158);
-    cpu.x = MapMarkersPanelA(cpu.db, &y);
-    cpu.y = y;
-    cpu.a = 0;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+    set_p(cr, (uint8_t)nz16((uint8_t)(cr->p & ~P_M), 0x0158));
+    cr->x = MapMarkersPanelA(cr->db, &y);
+    cr->y = y;
+    cr->a = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_MapMarkersPanelA(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MapMarkersPanelA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -175,25 +204,39 @@ int MapMarkersPanelB(uint8_t bank, uint16_t *x, uint16_t *y)
     return 1;
 }
 
-void abi_MapMarkersPanelB(void)
+/* MapMarkersPanelB on carried registers. */
+void MapMarkersPanelB_cr(Carried *cr)
 {
     uint16_t x, y;
-    uint8_t p0 = cpu.p;
+    uint8_t p0 = cr->p;
 
-    cpu.p = (uint8_t)((p0 | P_M) & ~(P_N | P_Z));
-    if (!MapMarkersPanelB(cpu.db, &x, &y)) {
-        cpu.p = p0;
-        cpu.a &= 0xFF00;
-        cpu.p = (uint8_t)(nz8(cpu.p, 0) | P_M);
+    set_p(cr, (uint8_t)((p0 | P_M) & ~(P_N | P_Z)));
+    if (!MapMarkersPanelB(cr->db, &x, &y)) {
+        set_p(cr, p0);
+        cr->a &= 0xFF00;
+        set_p(cr, (uint8_t)(nz8(cr->p, 0) | P_M));
         return;
     }
     /* N, Z from the first slot, which is never 0 or negative */
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~(P_N | P_Z));
-    cpu.x = x;
-    cpu.y = y;
-    cpu.a = 0;
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+    set_p(cr, (uint8_t)((cr->p | P_M) & ~(P_N | P_Z)));
+    cr->x = x;
+    cr->y = y;
+    cr->a = 0;
+    if (cr->p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_MapMarkersPanelB(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MapMarkersPanelB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

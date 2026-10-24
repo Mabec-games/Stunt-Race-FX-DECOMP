@@ -4,6 +4,7 @@
  * the tile is byte 2).
  */
 #include "machine.h"
+#include "carried.h"
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -53,11 +54,25 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
     return (uint16_t)((a & 0xFF00) | c);
 }
 
+/* OamClassName on carried registers. */
+void OamClassName_cr(Carried *cr)
+{
+    uint16_t x = cr->x, y = cr->y;
+
+    cr->a = OamClassName(cr->db, &x, &y);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : (cyc(86), x);
+    cr->y = (cr->p & P_X) ? (uint8_t)y : y;
+}
+
 void abi_OamClassName(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = OamClassName(cpu.db, &x, &y);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(86), x);
-    cpu.y = (cpu.p & P_X) ? (uint8_t)y : y;
+    OamClassName_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

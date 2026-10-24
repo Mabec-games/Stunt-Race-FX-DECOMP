@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "race_calls.h"
+#include "carried.h"
 
 /* An 8-bit SBC in decimal mode, as the 65816 does it: C is the decimal
    no-borrow, V from the binary sum of the top digit before its adjustment. */
@@ -122,12 +123,26 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     return mins;
 }
 
+/* LapSplit on carried registers. */
+void LapSplit_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | LapSplit(cr->db, (uint8_t)cr->x, &p));
+    set_p(cr, p);
+}
+
 void abi_LapSplit(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | LapSplit(cpu.db, (uint8_t)cpu.x, &p));
-    cpu.p = p;
+    LapSplit_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -159,12 +174,26 @@ uint8_t RaceTimeKeep(uint8_t bank)
     return v;
 }
 
-void abi_RaceTimeKeep(void)
+/* RaceTimeKeep on carried registers. */
+void RaceTimeKeep_cr(Carried *cr)
 {
     uint8_t v;
 
-    cpu.p |= P_M;                               /* what an interrupt pushes */
-    v = RaceTimeKeep(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    set_p(cr, (uint8_t)(cr->p | (P_M)));                               /* what an interrupt pushes */
+    v = RaceTimeKeep(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    set_p(cr, nz8(cr->p, v));
+}
+
+void abi_RaceTimeKeep(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceTimeKeep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

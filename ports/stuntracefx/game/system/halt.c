@@ -11,6 +11,7 @@
 #include "cpu_ops.h"
 
 #include "system_calls.h"
+#include "carried.h"
 
 /*
  * @routine 0B:E41D SystemHalt
@@ -150,11 +151,25 @@ void DebugByteHalt(uint16_t d)
     }
 }
 
-void abi_DebugByteHalt(void)
+/* DebugByteHalt on carried registers. */
+void DebugByteHalt_cr(Carried *cr)
 {
     /* SEP #$20, REP #$10, PHB, PHK, PLB: what an interrupt in the loop
        finds (the C below never returns) */
-    cpu.p = nz8((uint8_t)((cpu.p | P_M) & ~P_X), 0x03);
-    cpu.db = 0x03;
-    DebugByteHalt(cpu.d);
+    set_p(cr, nz8((uint8_t)((cr->p | P_M) & ~P_X), 0x03));
+    cr->db = 0x03;
+    DebugByteHalt(cr->d);
+}
+
+void abi_DebugByteHalt(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugByteHalt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

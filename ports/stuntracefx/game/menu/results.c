@@ -11,6 +11,7 @@
 #include "cpu_ops.h"
 
 #include "alu.h"
+#include "carried.h"
 
 uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p);
 uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p);
@@ -189,12 +190,26 @@ void ResultsWaitThenRise(uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsWaitThenRise on carried registers. */
+void ResultsWaitThenRise_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsWaitThenRise(cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsWaitThenRise(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsWaitThenRise(cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsWaitThenRise_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The rise shared by ResultsRise and ResultsRiseAgain: +$0A up by 4 to at
@@ -248,12 +263,26 @@ void ResultsRise(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(186);
 }
 
+/* ResultsRise on carried registers. */
+void ResultsRise_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsRise(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsRise(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsRise(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsRise_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The window opening shared by ResultsOpenTop and ResultsOpenBottom: +$0A
@@ -292,12 +321,26 @@ void ResultsOpenTop(uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsOpenTop on carried registers. */
+void ResultsOpenTop_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsOpenTop(cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsOpenTop(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsOpenTop(cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsOpenTop_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -345,12 +388,26 @@ void ResultsOpenBottom(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint
     cyc(42);
 }
 
+/* ResultsOpenBottom on carried registers. */
+void ResultsOpenBottom_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsOpenBottom(cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsOpenBottom(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsOpenBottom(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsOpenBottom_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -427,12 +484,26 @@ void ResultsCarIndex(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     cyc(26);
 }
 
+/* ResultsCarIndex on carried registers. */
+void ResultsCarIndex_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsCarIndex(cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsCarIndex(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsCarIndex(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsCarIndex_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -467,12 +538,26 @@ void ResultsPlaceCar(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     *a = (cyc(24), MenuWaitThenAnimate(bank, *a, x, p));
 }
 
+/* ResultsPlaceCar on carried registers. */
+void ResultsPlaceCar_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlaceCar(cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlaceCar(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlaceCar(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlaceCar_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -514,12 +599,26 @@ void ResultsGroupPalette(uint8_t bank, uint16_t x, uint16_t *a, uint16_t *y, uin
     *p = nz16(*p, obj);
 }
 
+/* ResultsGroupPalette on carried registers. */
+void ResultsGroupPalette_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsGroupPalette(cr->db, cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsGroupPalette(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsGroupPalette(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsGroupPalette_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -561,12 +660,26 @@ void ResultsLeaderBlink(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uin
     cyc(42);
 }
 
+/* ResultsLeaderBlink on carried registers. */
+void ResultsLeaderBlink_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsLeaderBlink(cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsLeaderBlink(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsLeaderBlink(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsLeaderBlink_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -658,12 +771,26 @@ void ResultsWaitButton(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint
     sound_46(bank, a, p);
 }
 
+/* ResultsWaitButton on carried registers. */
+void ResultsWaitButton_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsWaitButton(cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsWaitButton(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsWaitButton(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsWaitButton_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -684,12 +811,26 @@ void ResultsRiseAgain(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsRiseAgain on carried registers. */
+void ResultsRiseAgain_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsRiseAgain(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsRiseAgain(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsRiseAgain(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsRiseAgain_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -708,12 +849,26 @@ void ResultsWaitEnd(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t
     end_screen(bank, x, a, y, p);
 }
 
+/* ResultsWaitEnd on carried registers. */
+void ResultsWaitEnd_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsWaitEnd(cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsWaitEnd(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsWaitEnd(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsWaitEnd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -744,12 +899,26 @@ void ResultsOverOrHide(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsOverOrHide on carried registers. */
+void ResultsOverOrHide_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsOverOrHide(cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsOverOrHide(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsOverOrHide(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsOverOrHide_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p);
@@ -848,12 +1017,26 @@ void ResultsLower(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *
     cyc(42);
 }
 
+/* ResultsLower on carried registers. */
+void ResultsLower_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsLower(cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsLower(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsLower(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsLower_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The sprite tile at $11E3 into the next entry of the group, $11E1 or
@@ -908,12 +1091,26 @@ void ResultsLetterTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     *p = nz16(*p, x0);
 }
 
+/* ResultsLetterTiles on carried registers. */
+void ResultsLetterTiles_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsLetterTiles(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsLetterTiles(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsLetterTiles(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsLetterTiles_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -938,12 +1135,26 @@ void ResultsDigitTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     *p = nz16(*p, x0);
 }
 
+/* ResultsDigitTiles on carried registers. */
+void ResultsDigitTiles_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsDigitTiles(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsDigitTiles(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsDigitTiles(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsDigitTiles_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -971,12 +1182,26 @@ void ResultsBcdPair(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsBcdPair on carried registers. */
+void ResultsBcdPair_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsBcdPair(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsBcdPair(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsBcdPair(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsBcdPair_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1128,12 +1353,26 @@ void ResultsBlankLetters(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsBlankLetters on carried registers. */
+void ResultsBlankLetters_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsBlankLetters(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsBlankLetters(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsBlankLetters(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsBlankLetters_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1183,12 +1422,26 @@ void ResultsNoTime(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t 
     cyc(42);
 }
 
+/* ResultsNoTime on carried registers. */
+void ResultsNoTime_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsNoTime(cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsNoTime(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsNoTime(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsNoTime_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1261,12 +1514,26 @@ void ResultsPointsTile(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(78);
 }
 
+/* ResultsPointsTile on carried registers. */
+void ResultsPointsTile_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPointsTile(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPointsTile(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPointsTile(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPointsTile_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1294,12 +1561,26 @@ void ResultsPointsPair(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsPointsPair on carried registers. */
+void ResultsPointsPair_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPointsPair(cr->db, cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPointsPair(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPointsPair(cpu.db, cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPointsPair_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1388,12 +1669,26 @@ void ResultsPhaseAnim(uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsPhaseAnim on carried registers. */
+void ResultsPhaseAnim_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPhaseAnim(cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPhaseAnim(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPhaseAnim(cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPhaseAnim_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ResultsPlace0-3: place n's points object: after its count +$0A runs
@@ -1472,12 +1767,26 @@ void ResultsPlace0Hide(uint16_t x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsPlace0Hide on carried registers. */
+void ResultsPlace0Hide_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlace0Hide(cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlace0Hide(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlace0Hide(cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlace0Hide_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1552,12 +1861,26 @@ uint16_t ResultsPlace0Animate(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+/* ResultsPlace0Animate on carried registers. */
+void ResultsPlace0Animate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ResultsPlace0Animate(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlace0Animate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ResultsPlace0Animate(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    ResultsPlace0Animate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1574,12 +1897,26 @@ uint16_t ResultsPlace1Animate(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+/* ResultsPlace1Animate on carried registers. */
+void ResultsPlace1Animate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ResultsPlace1Animate(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlace1Animate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ResultsPlace1Animate(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    ResultsPlace1Animate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1596,12 +1933,26 @@ uint16_t ResultsPlace2Animate(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+/* ResultsPlace2Animate on carried registers. */
+void ResultsPlace2Animate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ResultsPlace2Animate(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlace2Animate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ResultsPlace2Animate(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    ResultsPlace2Animate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1618,10 +1969,24 @@ uint16_t ResultsPlace3Animate(uint8_t bank, uint16_t *x, uint8_t *p)
     return a;
 }
 
+/* ResultsPlace3Animate on carried registers. */
+void ResultsPlace3Animate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = ResultsPlace3Animate(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlace3Animate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = ResultsPlace3Animate(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    ResultsPlace3Animate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

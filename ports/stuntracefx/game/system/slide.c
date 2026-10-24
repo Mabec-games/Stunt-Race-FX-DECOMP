@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "system_calls.h"
+#include "carried.h"
 
 /*
  * @routine 7E:E0E8 SlideStep
@@ -54,10 +55,24 @@ uint16_t SlideStep(uint16_t a)
     }
 }
 
+/* SlideStep on carried registers. */
+void SlideStep_cr(Carried *cr)
+{
+    cr->a = SlideStep(cr->a);
+    cyc(100);
+}
+
 void abi_SlideStep(void)
 {
-    cpu.a = SlideStep(cpu.a);
-    cyc(100);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SlideStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The flags SlideOutWobble leaves besides N and Z (those come from the
@@ -137,15 +152,29 @@ uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
     return a;
 }
 
+/* SlideOutWobble on carried registers. */
+void SlideOutWobble_cr(Carried *cr)
+{
+    uint8_t pulled, a = SlideOutWobble(cr->db, &pulled);
+
+    set_p(cr, (uint8_t)(cr->p | (P_M)));
+    set_p(cr, (uint8_t)((cr->p & ~P_C) | (wobble_c ? P_C : 0)));
+    if (wobble_v >= 0)
+        set_p(cr, (uint8_t)((cr->p & ~P_V) | (wobble_v ? P_V : 0)));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->db = pulled;
+    set_p(cr, nz8(cr->p, pulled));
+}
+
 void abi_SlideOutWobble(void)
 {
-    uint8_t pulled, a = SlideOutWobble(cpu.db, &pulled);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.p |= P_M;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (wobble_c ? P_C : 0));
-    if (wobble_v >= 0)
-        cpu.p = (uint8_t)((cpu.p & ~P_V) | (wobble_v ? P_V : 0));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.db = pulled;
-    cpu.p = nz8(cpu.p, pulled);
+    SlideOutWobble_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

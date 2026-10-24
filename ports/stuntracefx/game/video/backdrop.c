@@ -7,6 +7,7 @@
  */
 #include "machine.h"
 #include "video_calls.h"
+#include "carried.h"
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -37,10 +38,24 @@ uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
     return (rd16(0x000000 + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
 }
 
+/* PlayerVehicleRaised on carried registers. */
+void PlayerVehicleRaised_cr(Carried *cr)
+{
+    cr->a = PlayerVehicleRaised(cr->db, (uint8_t)cr->x);
+    cr->x &= 0x00FF;
+}
+
 void abi_PlayerVehicleRaised(void)
 {
-    cpu.a = PlayerVehicleRaised(cpu.db, (uint8_t)cpu.x);
-    cpu.x &= 0x00FF;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerVehicleRaised_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The vertical scroll base for each half, a word per half, just before
@@ -87,7 +102,21 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
     return a;
 }
 
+/* BackdropScrollFromView on carried registers. */
+void BackdropScrollFromView_cr(Carried *cr)
+{
+    cr->a = BackdropScrollFromView(cr->db, &cr->x, !(cr->p & P_M));
+}
+
 void abi_BackdropScrollFromView(void)
 {
-    cpu.a = BackdropScrollFromView(cpu.db, &cpu.x, !(cpu.p & P_M));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BackdropScrollFromView_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

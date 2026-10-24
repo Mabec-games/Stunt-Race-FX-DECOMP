@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "gsu_programs_calls.h"
+#include "carried.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 
@@ -51,12 +52,26 @@ uint16_t Gsu8277(int x8)
     return v;
 }
 
+/* Gsu8277 on carried registers. */
+void Gsu8277_cr(Carried *cr)
+{
+    int x8 = (cr->p & P_X) != 0;
+
+    cr->a = Gsu8277(x8);
+    set_p(cr, x8 ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
+}
+
 void abi_Gsu8277(void)
 {
-    int x8 = (cpu.p & P_X) != 0;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = Gsu8277(x8);
-    cpu.p = x8 ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+    Gsu8277_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -95,10 +110,24 @@ uint16_t VectorGsu81E3(uint8_t bank)
     return r;
 }
 
+/* VectorGsu81E3 on carried registers. */
+void VectorGsu81E3_cr(Carried *cr)
+{
+    cr->a = VectorGsu81E3(cr->db);
+    set_p(cr, nz16((uint8_t)((cr->p & ~(P_M | P_C | P_V)) | vector_cv), cr->x));
+}
+
 void abi_VectorGsu81E3(void)
 {
-    cpu.a = VectorGsu81E3(cpu.db);
-    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_C | P_V)) | vector_cv), cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    VectorGsu81E3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ADC and SBC (8-bit, binary: D is clear here) with the carry in *p; N,
@@ -391,14 +420,28 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     *rx = x;
 }
 
+/* ScaledOffset on carried registers. */
+void ScaledOffset_cr(Carried *cr)
+{
+    uint8_t a = (uint8_t)cr->a, x = (uint8_t)cr->x;
+
+    ScaledOffset(cr->db, &a, &x, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->x = x;
+    cyc(44);                            /* RTL */
+}
+
 void abi_ScaledOffset(void)
 {
-    uint8_t a = (uint8_t)cpu.a, x = (uint8_t)cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ScaledOffset(cpu.db, &a, &x, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = x;
-    cyc(44);                            /* RTL */
+    ScaledOffset_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -479,13 +522,27 @@ void ScaledOffsetPair(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     cyc(44);                            /* RTL */
 }
 
+/* ScaledOffsetPair on carried registers. */
+void ScaledOffsetPair_cr(Carried *cr)
+{
+    uint8_t a, x = (uint8_t)cr->x;
+
+    ScaledOffsetPair(cr->db, &a, &x, &cr->p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | a);
+    cr->x = x;
+}
+
 void abi_ScaledOffsetPair(void)
 {
-    uint8_t a, x = (uint8_t)cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ScaledOffsetPair(cpu.db, &a, &x, &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = x;
+    ScaledOffsetPair_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA / CMP #$8000 / ROR seven times: an arithmetic shift right by 7. */
@@ -605,12 +662,26 @@ uint16_t ViewFromAnglesGsu8277(uint8_t bank)
     return w;
 }
 
+/* ViewFromAnglesGsu8277 on carried registers. */
+void ViewFromAnglesGsu8277_cr(Carried *cr)
+{
+    cr->a = ViewFromAnglesGsu8277(cr->db);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    set_p(cr, nz8((uint8_t)((cr->p & ~P_C) | view_c | P_M | P_X), (uint8_t)cr->a));
+}
+
 void abi_ViewFromAnglesGsu8277(void)
 {
-    cpu.a = ViewFromAnglesGsu8277(cpu.db);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p = nz8((uint8_t)((cpu.p & ~P_C) | view_c | P_M | P_X), (uint8_t)cpu.a);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewFromAnglesGsu8277_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -658,10 +729,24 @@ uint16_t ViewToGsuParams(uint8_t bank)
     return w;
 }
 
+/* ViewToGsuParams on carried registers. */
+void ViewToGsuParams_cr(Carried *cr)
+{
+    cr->a = ViewToGsuParams(cr->db);
+    cr->x &= 0x00FF;
+    cr->y &= 0x00FF;
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) | P_M | P_X));
+}
+
 void abi_ViewToGsuParams(void)
 {
-    cpu.a = ViewToGsuParams(cpu.db);
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M | P_X);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ViewToGsuParams_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

@@ -8,6 +8,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "carried.h"
 
 /*
  * @routine 7E:E6BA PpuMultiplierSetLowByteTimes8
@@ -32,14 +33,28 @@ uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v)
     return factor;
 }
 
-void abi_PpuMultiplierSetLowByteTimes8(void)
+/* PpuMultiplierSetLowByteTimes8 on carried registers. */
+void PpuMultiplierSetLowByteTimes8_cr(Carried *cr)
 {
     cyc(0);
-    uint16_t factor = PpuMultiplierSetLowByteTimes8((uint8_t)cpu.a);
+    uint16_t factor = PpuMultiplierSetLowByteTimes8((uint8_t)cr->a);
 
-    cpu.a = (uint16_t)(factor << 8 | factor >> 8);
-    cpu.p = (uint8_t)(nz8(cpu.p, (uint8_t)(factor >> 8)) & ~(P_C | P_M));
+    cr->a = (uint16_t)(factor << 8 | factor >> 8);
+    set_p(cr, (uint8_t)(nz8(cr->p, (uint8_t)(factor >> 8)) & ~(P_C | P_M)));
     cyc(64);
+}
+
+void abi_PpuMultiplierSetLowByteTimes8(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PpuMultiplierSetLowByteTimes8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -57,9 +72,23 @@ uint16_t PpuMultiply(uint8_t v)
     return io_rd16(MPYM, (uint16_t)(ppu_mul(v) >> 8));
 }
 
+/* PpuMultiply on carried registers. */
+void PpuMultiply_cr(Carried *cr)
+{
+    cr->a = PpuMultiply((uint8_t)cr->a);
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
+    cyc(42);
+}
+
 void abi_PpuMultiply(void)
 {
-    cpu.a = PpuMultiply((uint8_t)cpu.a);
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PpuMultiply_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

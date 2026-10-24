@@ -100,8 +100,9 @@ def touches_any(f, b, skip):
     return False
 
 if EXPORT:
-    # each adapter abi_X here gets a carried form X_cr beside it: the
-    # adapter's body on carried registers (it may use this file's helpers)
+    # each adapter abi_X here that does register work gets a carried form
+    # X_cr: the adapter's body on carried registers (it may use this file's
+    # helpers), and abi_X becomes the standard adapter of X_cr
     made = []
     fexp = functions(text)
     out, pos = [], 0
@@ -116,13 +117,19 @@ if EXPORT:
             continue
         if re.search(r'^void %s_cr\(Carried \*cr\)' % n, text, re.M):
             continue
+        if not re.search(r'\bcpu\.(a|x|y|d|p|db)\b|\bop_\w+\(', b):
+            continue
         bb = re.sub(r'\bcpu\.(a|x|y|d|p|db)\b', r'cr->\1', b)
         bb = carried_p(bb)
         bb = re.sub(r'\bop_(adc16|sbc16|adc8|sbc8)\(', r'alu_\1(', bb)
         bb = re.sub(r'\bop_(\w+)\(\s*\)', r'r_\1(cr)', bb)
         bb = re.sub(r'\bop_(\w+)\(', r'r_\1(cr, ', bb)
-        out.append(text[pos:m.end()])
-        out.append('\n/* %s on carried registers, as abi_%s leaves them. */\nvoid %s_cr(Carried *cr)\n{\n%s}\n' % (n, n, n, bb))
+        # the carried form first, then the adapter as the standard one
+        # around it: one copy of the routine's register work
+        out.append(text[pos:m.start()])
+        out.append('/* %s on carried registers. */\nvoid %s_cr(Carried *cr)\n{\n%s}\n\n' % (n, n, bb))
+        out.append('void abi_%s(void)\n{\n    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};\n\n    %s_cr(&r);\n'
+                   '    cpu.a = r.a;\n    cpu.x = r.x;\n    cpu.y = r.y;\n    cpu.d = r.d;\n    cpu.p = r.p;\n    cpu.db = r.db;\n}\n' % (n, n))
         pos = m.end()
         made.append(n)
     out.append(text[pos:])

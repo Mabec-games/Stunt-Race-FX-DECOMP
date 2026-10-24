@@ -2,6 +2,7 @@
  * random.c: the pseudo-random generator in direct page $E6-$E9.
  */
 #include "machine.h"
+#include "carried.h"
 
 /* SBC with borrow in: a - m - (1 - C), C out = no borrow. */
 static uint8_t sbc8(uint8_t a, uint8_t m, int *c)
@@ -47,9 +48,23 @@ uint8_t RandomStep(void)
     return a;
 }
 
+/* RandomStep on carried registers. */
+void RandomStep_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | RandomStep());
+}
+
 void abi_RandomStep(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | RandomStep());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RandomStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -95,9 +110,23 @@ uint16_t RandomWordStep(uint8_t bank)
     return v;
 }
 
+/* RandomWordStep on carried registers. */
+void RandomWordStep_cr(Carried *cr)
+{
+    cr->a = RandomWordStep(cr->db);
+}
+
 void abi_RandomWordStep(void)
 {
-    cpu.a = RandomWordStep(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RandomWordStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -111,7 +140,21 @@ uint8_t RandomStepLong(void)
     return cyc_then(44, RandomStep());
 }
 
+/* RandomStepLong on carried registers. */
+void RandomStepLong_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (cyc(46), RandomStepLong()));
+}
+
 void abi_RandomStepLong(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cyc(46), RandomStepLong()));
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RandomStepLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

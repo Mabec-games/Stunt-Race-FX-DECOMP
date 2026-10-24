@@ -6,6 +6,7 @@
  * data bank, not an offset).
  */
 #include "machine.h"
+#include "carried.h"
 
 #define PATH_TABLE 0x0885B9u
 
@@ -132,13 +133,27 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
     return 1;
 }
 
+/* ObjectPathCommand on carried registers. */
+void ObjectPathCommand_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ObjectPathCommand(cr->db, cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
+    cyc(28);
+}
+
 void abi_ObjectPathCommand(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectPathCommand(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
-    cyc(28);
+    ObjectPathCommand_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -158,10 +173,24 @@ int ObjectPathStart(uint8_t bank, uint16_t obj, uint16_t path, uint16_t *a, uint
     return cyc_then(22, ObjectPathCommand(bank, obj, a, y, p));
 }
 
+/* ObjectPathStart on carried registers. */
+void ObjectPathStart_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ObjectPathStart(cr->db, cr->x, cr->y, &cr->a, &cr->y, &p);
+    set_p(cr, (uint8_t)(nz16(p, cr->x) | P_M));
+}
+
 void abi_ObjectPathStart(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectPathStart(cpu.db, cpu.x, cpu.y, &cpu.a, &cpu.y, &p);
-    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+    ObjectPathStart_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

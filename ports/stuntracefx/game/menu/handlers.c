@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "carried.h"
 
 uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p);
 int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -62,12 +63,26 @@ uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p)
     return cyc_then(42, MenuActorAnimateFrame(bank, x, p));
 }
 
+/* MenuWaitThenAnimate on carried registers. */
+void MenuWaitThenAnimate_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuWaitThenAnimate(cr->db, cr->a, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuWaitThenAnimate(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuWaitThenAnimate(cpu.db, cpu.a, &cpu.x, &p);
-    cpu.p = p;
+    MenuWaitThenAnimate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The button sequence MenuButtonSequence watches for, one mask a step. */
@@ -106,11 +121,25 @@ void MenuSequenceColourMath(uint8_t bank)
     FrameByteWritePush(bank, WOBJSEL, 0x30);
 }
 
+/* MenuSequenceColourMath on carried registers. */
+void MenuSequenceColourMath_cr(Carried *cr)
+{
+    MenuSequenceColourMath(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x30);
+    set_p(cr, nz16((uint8_t)(cr->p & ~(P_M | P_X)), cr->x));
+}
+
 void abi_MenuSequenceColourMath(void)
 {
-    MenuSequenceColourMath(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x30);
-    cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X)), cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuSequenceColourMath_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -195,12 +224,26 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+/* MenuButtonSequence on carried registers. */
+void MenuButtonSequence_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuButtonSequence(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuButtonSequence(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuButtonSequence(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuButtonSequence_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -230,12 +273,26 @@ uint16_t MenuWaitThenSequence(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y
     return MenuButtonSequence(bank, x, y, p);
 }
 
+/* MenuWaitThenSequence on carried registers. */
+void MenuWaitThenSequence_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuWaitThenSequence(cr->db, cr->a, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuWaitThenSequence(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuWaitThenSequence(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuWaitThenSequence_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p);
@@ -278,12 +335,26 @@ uint16_t MenuChoiceObject38(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     return cyc_then(42, MenuChoiceObjectFrames(bank, a, x, y, p));
 }
 
+/* MenuChoiceObject38 on carried registers. */
+void MenuChoiceObject38_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject38(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject38(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject38(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject38_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -301,12 +372,26 @@ uint16_t MenuChoiceObject38Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
     return MenuChoiceObject38(bank, x, y, p);
 }
 
+/* MenuChoiceObject38Start on carried registers. */
+void MenuChoiceObject38Start_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject38Start(cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuChoiceObject38Start(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject38Start(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuChoiceObject38Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -431,12 +516,26 @@ uint16_t MenuBg1RiseAway(uint8_t bank, uint16_t *x, uint8_t *p)
     return v;
 }
 
+/* MenuBg1RiseAway on carried registers. */
+void MenuBg1RiseAway_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuBg1RiseAway(cr->db, &cr->x, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuBg1RiseAway(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuBg1RiseAway(cpu.db, &cpu.x, &p);
-    cpu.p = p;
+    MenuBg1RiseAway_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -520,12 +619,26 @@ void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p
     cyc(42);
 }
 
+/* MenuSelectionFramesCycle on carried registers. */
+void MenuSelectionFramesCycle_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    MenuSelectionFramesCycle(cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuSelectionFramesCycle(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuSelectionFramesCycle(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    MenuSelectionFramesCycle_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The save area MenuEraseConfirm2 clears: $400 bytes of Super FX RAM. */
@@ -606,11 +719,25 @@ void MenuSequenceColourOff(uint8_t bank)
     cyc(208);                           /* the push's end, PLX, REP, RTS */
 }
 
+/* MenuSequenceColourOff on carried registers. */
+void MenuSequenceColourOff_cr(Carried *cr)
+{
+    MenuSequenceColourOff(cr->db);
+    cr->a &= 0xFF00;
+    set_p(cr, nz16((uint8_t)(cr->p & ~(P_M | P_X)), cr->x));
+}
+
 void abi_MenuSequenceColourOff(void)
 {
-    MenuSequenceColourOff(cpu.db);
-    cpu.a &= 0xFF00;
-    cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X)), cpu.x);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuSequenceColourOff_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* B with "no" chosen: back to MenuButtonSequence ($D606) with the colour
@@ -682,12 +809,26 @@ void MenuEraseConfirm(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     cyc(64);                            /* REP, RTS */
 }
 
+/* MenuEraseConfirm on carried registers. */
+void MenuEraseConfirm_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    MenuEraseConfirm(cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuEraseConfirm(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuEraseConfirm(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    MenuEraseConfirm_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -715,12 +856,26 @@ uint16_t MenuEraseSave(uint16_t *x, uint16_t *y, uint8_t *p)
     return a;
 }
 
+/* MenuEraseSave on carried registers. */
+void MenuEraseSave_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuEraseSave(&cr->x, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuEraseSave(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuEraseSave(&cpu.x, &cpu.y, &p);
-    cpu.p = p;
+    MenuEraseSave_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -778,12 +933,26 @@ void MenuEraseConfirm2(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a, uint
     cyc(42);                            /* RTS */
 }
 
+/* MenuEraseConfirm2 on carried registers. */
+void MenuEraseConfirm2_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    MenuEraseConfirm2(cr->db, &cr->x, &cr->y, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuEraseConfirm2(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuEraseConfirm2(cpu.db, &cpu.x, &cpu.y, &cpu.a, &p);
-    cpu.p = p;
+    MenuEraseConfirm2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -809,12 +978,26 @@ void MenuEraseDone(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     menu_erase_cancel(bank, *x, a, p, 0);
 }
 
+/* MenuEraseDone on carried registers. */
+void MenuEraseDone_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    MenuEraseDone(cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_MenuEraseDone(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    MenuEraseDone(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    MenuEraseDone_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

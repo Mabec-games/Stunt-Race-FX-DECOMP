@@ -2,6 +2,7 @@
  * checksum.c: the checksum of the battery-backed save data in Super FX RAM.
  */
 #include "machine.h"
+#include "carried.h"
 
 /*
  * @routine 03:F02B SaveChecksum
@@ -31,7 +32,21 @@ uint8_t SaveChecksum(void)
     return (uint8_t)sum;
 }
 
+/* SaveChecksum on carried registers. */
+void SaveChecksum_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | SaveChecksum());
+}
+
 void abi_SaveChecksum(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SaveChecksum());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SaveChecksum_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

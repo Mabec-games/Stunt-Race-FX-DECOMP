@@ -3,6 +3,7 @@
  * $11DB every other call.
  */
 #include "machine.h"
+#include "carried.h"
 
 /*
  * @routine 7F:0FDC HalfRateApproach
@@ -35,10 +36,24 @@ uint8_t HalfRateApproach(void)
     return v;
 }
 
+/* HalfRateApproach on carried registers. */
+void HalfRateApproach_cr(Carried *cr)
+{
+    cr->a = (uint16_t)((cr->a & 0xFF00) | HalfRateApproach());
+    cyc(70);
+}
+
 void abi_HalfRateApproach(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | HalfRateApproach());
-    cyc(70);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    HalfRateApproach_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -54,10 +69,24 @@ void ApproachTargetFull(uint8_t bank)
     cyc(70);
 }
 
+/* ApproachTargetFull on carried registers. */
+void ApproachTargetFull_cr(Carried *cr)
+{
+    ApproachTargetFull(cr->db);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0F);
+}
+
 void abi_ApproachTargetFull(void)
 {
-    ApproachTargetFull(cpu.db);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachTargetFull_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -73,7 +102,21 @@ void ApproachTargetZero(uint8_t bank)
     cyc(70);
 }
 
+/* ApproachTargetZero on carried registers. */
+void ApproachTargetZero_cr(Carried *cr)
+{
+    ApproachTargetZero(cr->db);
+}
+
 void abi_ApproachTargetZero(void)
 {
-    ApproachTargetZero(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ApproachTargetZero_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

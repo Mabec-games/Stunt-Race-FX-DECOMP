@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "carried.h"
 
 uint8_t SoundPairFromTable(void);
 void MenuOamFromList(uint8_t bank, uint16_t *x, uint16_t *y);
@@ -81,10 +82,24 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     return a;
 }
 
-void abi_MenuCourseScreenSetup(void)
+/* MenuCourseScreenSetup on carried registers. */
+void MenuCourseScreenSetup_cr(Carried *cr)
 {
     cyc(106);
-    cpu.a = MenuCourseScreenSetup(cpu.db);
-    cpu.x = 0x0020;
-    cpu.y = 0x0020;
+    cr->a = MenuCourseScreenSetup(cr->db);
+    cr->x = 0x0020;
+    cr->y = 0x0020;
+}
+
+void abi_MenuCourseScreenSetup(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuCourseScreenSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

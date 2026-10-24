@@ -10,6 +10,7 @@
 #include "native.h"
 #include "hw.h"
 #include "video_calls.h"
+#include "carried.h"
 
 /* The run expansion GradientExpandFirst and GradientExpandSecond share,
    from run table index x: each run byte n stores the colour word at the
@@ -73,15 +74,29 @@ uint16_t GradientExpandFirst(uint8_t bank, uint16_t *y, int *carry)
     return expand_list(bank, y, 0x000A, 0x0028, carry);
 }
 
-void abi_GradientExpandFirst(void)
+/* GradientExpandFirst on carried registers. */
+void GradientExpandFirst_cr(Carried *cr)
 {
-    uint16_t y = cpu.y;
+    uint16_t y = cr->y;
     int carry;
 
-    cpu.x = GradientExpandFirst(cpu.db, &y, &carry);
-    cpu.y = y;
-    cpu.a = 0;
-    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0));
+    cr->x = GradientExpandFirst(cr->db, &y, &carry);
+    cr->y = y;
+    cr->a = 0;
+    set_p(cr, (uint8_t)((nz16(cr->p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0)));
+}
+
+void abi_GradientExpandFirst(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientExpandFirst_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -97,15 +112,29 @@ uint16_t GradientExpandSecond(uint8_t bank, uint16_t *y, int *carry)
     return expand_list(bank, y, 0x0001, 0x0050, carry);
 }
 
-void abi_GradientExpandSecond(void)
+/* GradientExpandSecond on carried registers. */
+void GradientExpandSecond_cr(Carried *cr)
 {
-    uint16_t y = cpu.y;
+    uint16_t y = cr->y;
     int carry;
 
-    cpu.x = GradientExpandSecond(cpu.db, &y, &carry);
-    cpu.y = y;
-    cpu.a = 0;
-    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0));
+    cr->x = GradientExpandSecond(cr->db, &y, &carry);
+    cr->y = y;
+    cr->a = 0;
+    set_p(cr, (uint8_t)((nz16(cr->p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0)));
+}
+
+void abi_GradientExpandSecond(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientExpandSecond_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -144,15 +173,29 @@ uint16_t GradientBuildColours(uint16_t x, int *carry)
     return y;
 }
 
-void abi_GradientBuildColours(void)
+/* GradientBuildColours on carried registers. */
+void GradientBuildColours_cr(Carried *cr)
 {
     int carry;
 
-    cpu.y = GradientBuildColours(cpu.x, &carry);
-    cpu.a = 0;
-    cpu.x = 0xFFFE;
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (carry ? P_C : 0));
+    cr->y = GradientBuildColours(cr->x, &carry);
+    cr->a = 0;
+    cr->x = 0xFFFE;
+    set_p(cr, (uint8_t)((nz8(cr->p, cr->db) & ~P_C) | P_M | (carry ? P_C : 0)));
     cyc(104);
+}
+
+void abi_GradientBuildColours(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientBuildColours_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Store a word `count` times at $7F:3497 + X, stepping 2. */
@@ -180,11 +223,25 @@ uint16_t GradientFillCgadd(uint16_t value, uint16_t x, uint16_t count)
     return fill_cgadd(value, x, count);
 }
 
+/* GradientFillCgadd on carried registers. */
+void GradientFillCgadd_cr(Carried *cr)
+{
+    cr->x = GradientFillCgadd(cr->a, cr->x, cr->y);
+    cr->y = 0;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
 void abi_GradientFillCgadd(void)
 {
-    cpu.x = GradientFillCgadd(cpu.a, cpu.x, cpu.y);
-    cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientFillCgadd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -198,11 +255,25 @@ uint16_t GradientFillCgaddB(uint16_t value, uint16_t x, uint16_t count)
     return fill_cgadd(value, x, count);
 }
 
+/* GradientFillCgaddB on carried registers. */
+void GradientFillCgaddB_cr(Carried *cr)
+{
+    cr->x = GradientFillCgaddB(cr->a, cr->x, cr->y);
+    cr->y = 0;
+    set_p(cr, (uint8_t)((cr->p & ~P_N) | P_Z));
+}
+
 void abi_GradientFillCgaddB(void)
 {
-    cpu.x = GradientFillCgaddB(cpu.a, cpu.x, cpu.y);
-    cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientFillCgaddB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -228,10 +299,24 @@ uint16_t GradientPointersToBank7F(void)
     return v;
 }
 
+/* GradientPointersToBank7F on carried registers. */
+void GradientPointersToBank7F_cr(Carried *cr)
+{
+    cr->a = GradientPointersToBank7F();
+    set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
+}
+
 void abi_GradientPointersToBank7F(void)
 {
-    cpu.a = GradientPointersToBank7F();
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientPointersToBank7F_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -320,9 +405,23 @@ uint16_t GradientSetup(uint8_t bank)
     return a;
 }
 
+/* GradientSetup on carried registers. */
+void GradientSetup_cr(Carried *cr)
+{
+    cr->a = GradientSetup(cr->db);
+    cr->x = 0x0020;
+    cr->y = 0x0020;
+}
+
 void abi_GradientSetup(void)
 {
-    cpu.a = GradientSetup(cpu.db);
-    cpu.x = 0x0020;
-    cpu.y = 0x0020;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GradientSetup_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

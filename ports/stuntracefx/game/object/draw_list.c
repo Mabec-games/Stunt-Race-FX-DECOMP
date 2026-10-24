@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "object_calls.h"
+#include "carried.h"
 
 #define DRAW_COUNT 0x7E0CEEu      /* records written (at most $31) */
 #define TRIGGER_POS 0x7E1F2Bu     /* offset into the trigger list */
@@ -238,15 +239,29 @@ ObjectDrawListEnd ObjectDrawListBuild(uint16_t y)
     return e;
 }
 
+/* ObjectDrawListBuild on carried registers. */
+void ObjectDrawListBuild_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+    ObjectDrawListEnd e = ObjectDrawListBuild(cr->y);
+
+    cr->a = 0;
+    cr->x = e.x;
+    cr->y = e.y;
+    set_p(cr, p);
+}
+
 void abi_ObjectDrawListBuild(void)
 {
-    uint8_t p = cpu.p;
-    ObjectDrawListEnd e = ObjectDrawListBuild(cpu.y);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = 0;
-    cpu.x = e.x;
-    cpu.y = e.y;
-    cpu.p = p;
+    ObjectDrawListBuild_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

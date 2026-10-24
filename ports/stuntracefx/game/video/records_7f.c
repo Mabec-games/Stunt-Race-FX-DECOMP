@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "carried.h"
 
 /*
  * @routine 09:EFFB Records7FFromF634
@@ -52,13 +53,27 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
 }
 
+/* Records7FFromF634 on carried registers. */
+void Records7FFromF634_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    Records7FFromF634(cr->db, &cr->x, &cr->y, &p);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
+    set_p(cr, (uint8_t)((p & ~P_X) | P_M));
+}
+
 void abi_Records7FFromF634(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    Records7FFromF634(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
-    cpu.p = (uint8_t)((p & ~P_X) | P_M);
+    Records7FFromF634_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -119,10 +134,24 @@ uint16_t Records7FFromF170(uint8_t bank)
     return (uint16_t)(y & 0x00FF);
 }
 
+/* Records7FFromF170 on carried registers. */
+void Records7FFromF170_cr(Carried *cr)
+{
+    cr->y = Records7FFromF170(cr->db);
+    cr->a = 0x0001;
+    cr->x = 0x0009;
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z | P_M)) | P_X));
+}
+
 void abi_Records7FFromF170(void)
 {
-    cpu.y = Records7FFromF170(cpu.db);
-    cpu.a = 0x0001;
-    cpu.x = 0x0009;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_M)) | P_X);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Records7FFromF170_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

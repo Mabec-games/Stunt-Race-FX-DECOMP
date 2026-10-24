@@ -16,6 +16,7 @@
 #include "cpu_ops.h"
 
 #include "alu.h"
+#include "carried.h"
 
 int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y);
 uint16_t ObjectCopyPositionTo(uint8_t bank, uint16_t from, uint16_t to);
@@ -360,15 +361,29 @@ void ObjectBreakOffBurst15(uint8_t bank, LRegs *r)
     cyc(34);
 }
 
+/* ObjectBreakOffBurst15 on carried registers. */
+void ObjectBreakOffBurst15_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectBreakOffBurst15(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectBreakOffBurst15(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectBreakOffBurst15(cpu.db, &r);
+    ObjectBreakOffBurst15_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -399,15 +414,29 @@ void ObjectLampPair08(uint8_t bank, LRegs *r)
     handler_none(bank, r, r->x);
 }
 
+/* ObjectLampPair08 on carried registers. */
+void ObjectLampPair08_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectLampPair08(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectLampPair08(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectLampPair08(cpu.db, &r);
+    ObjectLampPair08_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* A light of the lamp stack (kind $A104, $5D = $9975, +$5F = $32) `up`
@@ -448,15 +477,29 @@ void ObjectLampStack(uint8_t bank, LRegs *r)
     handler_none(bank, r, r->x);
 }
 
+/* ObjectLampStack on carried registers. */
+void ObjectLampStack_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectLampStack(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectLampStack(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectLampStack(cpu.db, &r);
+    ObjectLampStack_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* +$24 |= 8, +$3A = 0, +$5F = $14, then no handler ($08:D81B). */
@@ -481,15 +524,29 @@ void ObjectLampLow08(uint8_t bank, LRegs *r)
     lamp_still(bank, r);
 }
 
+/* ObjectLampLow08 on carried registers. */
+void ObjectLampLow08_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectLampLow08(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectLampLow08(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectLampLow08(cpu.db, &r);
+    ObjectLampLow08_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -505,15 +562,29 @@ void ObjectFallerStep(uint8_t bank, LRegs *r)
     cyc(44);
 }
 
+/* ObjectFallerStep on carried registers. */
+void ObjectFallerStep_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectFallerStep(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectFallerStep(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectFallerStep(cpu.db, &r);
+    ObjectFallerStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -534,15 +605,29 @@ void ObjectFallerRecord(uint8_t bank, LRegs *r)
     (cyc(102), ObjectFallerStep(bank, r));
 }
 
+/* ObjectFallerRecord on carried registers. */
+void ObjectFallerRecord_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectFallerRecord(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectFallerRecord(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectFallerRecord(cpu.db, &r);
+    ObjectFallerRecord_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The falling object's set-up ($08:D7C0): $12C higher ($FED4 on +$0E),
@@ -573,15 +658,29 @@ void ObjectFaller(uint8_t bank, LRegs *r)
     faller(bank, r);
 }
 
+/* ObjectFaller on carried registers. */
+void ObjectFaller_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectFaller(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectFaller(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectFaller(cpu.db, &r);
+    ObjectFaller_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -595,15 +694,29 @@ void ObjectFallerB(uint8_t bank, LRegs *r)
     faller(bank, r);
 }
 
+/* ObjectFallerB on carried registers. */
+void ObjectFallerB_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectFallerB(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectFallerB(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectFallerB(cpu.db, &r);
+    ObjectFallerB_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The eight pieces of ObjectSpray8: kind, +$2E, the rise +$29 the
@@ -673,15 +786,29 @@ void ObjectSpray8(uint8_t bank, LRegs *r)
     r->p = nz16(r->p, r->x);
 }
 
+/* ObjectSpray8 on carried registers. */
+void ObjectSpray8_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSpray8(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSpray8(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSpray8(cpu.db, &r);
+    ObjectSpray8_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ObjectSprayPieceStep's work on object X. */
@@ -741,15 +868,29 @@ void ObjectSprayPieceStart(uint8_t bank, LRegs *r)
     spray_piece_step(bank, r);
 }
 
+/* ObjectSprayPieceStart on carried registers. */
+void ObjectSprayPieceStart_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSprayPieceStart(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSprayPieceStart(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSprayPieceStart(cpu.db, &r);
+    ObjectSprayPieceStart_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -769,15 +910,29 @@ void ObjectSprayPieceStep(uint8_t bank, LRegs *r)
     spray_piece_step(bank, r);
 }
 
+/* ObjectSprayPieceStep on carried registers. */
+void ObjectSprayPieceStep_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSprayPieceStep(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSprayPieceStep(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSprayPieceStep(cpu.db, &r);
+    ObjectSprayPieceStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -833,15 +988,29 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     cyc(44);
 }
 
+/* ObjectPlayerPassCount on carried registers. */
+void ObjectPlayerPassCount_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectPlayerPassCount(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectPlayerPassCount(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectPlayerPassCount(cpu.db, &r);
+    ObjectPlayerPassCount_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA #v, STA d (direct page, D = $0000), 16-bit, between REP and SEP. */
@@ -878,15 +1047,29 @@ void ObjectCameraPadRecord(uint8_t bank, LRegs *r)
     cyc(44);
 }
 
+/* ObjectCameraPadRecord on carried registers. */
+void ObjectCameraPadRecord_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectCameraPadRecord(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectCameraPadRecord(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectCameraPadRecord(cpu.db, &r);
+    ObjectCameraPadRecord_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -904,15 +1087,29 @@ void ObjectCameraPadSetup(uint8_t bank, LRegs *r)
     ObjectCameraPadRecord(bank, r);
 }
 
+/* ObjectCameraPadSetup on carried registers. */
+void ObjectCameraPadSetup_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectCameraPadSetup(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectCameraPadSetup(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectCameraPadSetup(cpu.db, &r);
+    ObjectCameraPadSetup_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -931,15 +1128,29 @@ void ObjectCameraPad(uint8_t bank, LRegs *r)
     (cyc(32), ObjectCameraPadSetup(bank, r));
 }
 
+/* ObjectCameraPad on carried registers. */
+void ObjectCameraPad_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectCameraPad(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectCameraPad(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectCameraPad(cpu.db, &r);
+    ObjectCameraPad_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -956,15 +1167,29 @@ void ObjectCameraPadB(uint8_t bank, LRegs *r)
     (cyc(32), ObjectCameraPadSetup(bank, r));
 }
 
+/* ObjectCameraPadB on carried registers. */
+void ObjectCameraPadB_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectCameraPadB(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectCameraPadB(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectCameraPadB(cpu.db, &r);
+    ObjectCameraPadB_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The camera pads' handler: the offsets $1F4C, $1F4E, $1F50 all 0, then
@@ -991,15 +1216,29 @@ void ObjectCameraPadStep(uint8_t bank, LRegs *r)
     camera_pad_step(bank, r);
 }
 
+/* ObjectCameraPadStep on carried registers. */
+void ObjectCameraPadStep_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectCameraPadStep(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectCameraPadStep(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectCameraPadStep(cpu.db, &r);
+    ObjectCameraPadStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1014,15 +1253,29 @@ void ObjectCameraPadStepB(uint8_t bank, LRegs *r)
     camera_pad_step(bank, r);
 }
 
+/* ObjectCameraPadStepB on carried registers. */
+void ObjectCameraPadStepB_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectCameraPadStepB(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectCameraPadStepB(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectCameraPadStepB(cpu.db, &r);
+    ObjectCameraPadStepB_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1098,15 +1351,29 @@ next:
     }
 }
 
+/* ObjectContactsCameraPoint on carried registers. */
+void ObjectContactsCameraPoint_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectContactsCameraPoint(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectContactsCameraPoint(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectContactsCameraPoint(cpu.db, &r);
+    ObjectContactsCameraPoint_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ObjectSpin8Step's work: the turn +$15 grows by 8. */
@@ -1150,15 +1417,29 @@ void ObjectSpin8Kind0(uint8_t bank, LRegs *r)
     spin(bank, r, 0x00, 1, 0x30);
 }
 
+/* ObjectSpin8Kind0 on carried registers. */
+void ObjectSpin8Kind0_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSpin8Kind0(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSpin8Kind0(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSpin8Kind0(cpu.db, &r);
+    ObjectSpin8Kind0_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1172,15 +1453,29 @@ void ObjectSpin8Kind1(uint8_t bank, LRegs *r)
     spin(bank, r, 0x01, 1, 0x20);
 }
 
+/* ObjectSpin8Kind1 on carried registers. */
+void ObjectSpin8Kind1_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSpin8Kind1(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSpin8Kind1(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSpin8Kind1(cpu.db, &r);
+    ObjectSpin8Kind1_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1194,15 +1489,29 @@ void ObjectSpin8Kind2(uint8_t bank, LRegs *r)
     spin(bank, r, 0x02, 1, 0x10);
 }
 
+/* ObjectSpin8Kind2 on carried registers. */
+void ObjectSpin8Kind2_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSpin8Kind2(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSpin8Kind2(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSpin8Kind2(cpu.db, &r);
+    ObjectSpin8Kind2_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1217,15 +1526,29 @@ void ObjectSpin8Kind3(uint8_t bank, LRegs *r)
     spin(bank, r, 0x03, 0, 0x00);
 }
 
+/* ObjectSpin8Kind3 on carried registers. */
+void ObjectSpin8Kind3_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSpin8Kind3(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSpin8Kind3(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSpin8Kind3(cpu.db, &r);
+    ObjectSpin8Kind3_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1240,15 +1563,29 @@ void ObjectSpin8Step(uint8_t bank, LRegs *r)
     spin_step(bank, r);
 }
 
+/* ObjectSpin8Step on carried registers. */
+void ObjectSpin8Step_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectSpin8Step(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectSpin8Step(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectSpin8Step(cpu.db, &r);
+    ObjectSpin8Step_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* ObjectRecordMatchStep's work on object X. */
@@ -1318,15 +1655,29 @@ void ObjectRecordMatchStep(uint8_t bank, LRegs *r)
     record_match_step(bank, r);
 }
 
+/* ObjectRecordMatchStep on carried registers. */
+void ObjectRecordMatchStep_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectRecordMatchStep(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectRecordMatchStep(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectRecordMatchStep(cpu.db, &r);
+    ObjectRecordMatchStep_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1344,13 +1695,27 @@ void ObjectRecordMatch(uint8_t bank, LRegs *r)
     record_match_step(bank, r);
 }
 
+/* ObjectRecordMatch on carried registers. */
+void ObjectRecordMatch_cr(Carried *cr)
+{
+    LRegs r = {cr->a, cr->x, cr->y, cr->p};
+
+    ObjectRecordMatch(cr->db, &r);
+    cr->a = r.a;
+    cr->x = r.x;
+    cr->y = r.y;
+    set_p(cr, r.p);
+}
+
 void abi_ObjectRecordMatch(void)
 {
-    LRegs r = {cpu.a, cpu.x, cpu.y, cpu.p};
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ObjectRecordMatch(cpu.db, &r);
+    ObjectRecordMatch_cr(&r);
     cpu.a = r.a;
     cpu.x = r.x;
     cpu.y = r.y;
+    cpu.d = r.d;
     cpu.p = r.p;
+    cpu.db = r.db;
 }

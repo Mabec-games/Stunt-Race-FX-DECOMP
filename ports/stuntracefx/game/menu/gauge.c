@@ -8,6 +8,7 @@
 #include "cpu_ops.h"
 #include "wram.h"
 #include "menu_calls.h"
+#include "carried.h"
 
 #define MENU_GAUGE 0x00117Eu
 
@@ -51,9 +52,23 @@ uint16_t MenuGaugeFromButtonB(void)
     return g;
 }
 
+/* MenuGaugeFromButtonB on carried registers. */
+void MenuGaugeFromButtonB_cr(Carried *cr)
+{
+    cr->a = MenuGaugeFromButtonB();
+}
+
 void abi_MenuGaugeFromButtonB(void)
 {
-    cpu.a = MenuGaugeFromButtonB();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuGaugeFromButtonB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -97,9 +112,23 @@ uint16_t MenuGaugeSlideToTarget(void)
     return 0xFF00;
 }
 
+/* MenuGaugeSlideToTarget on carried registers. */
+void MenuGaugeSlideToTarget_cr(Carried *cr)
+{
+    cr->a = MenuGaugeSlideToTarget();
+}
+
 void abi_MenuGaugeSlideToTarget(void)
 {
-    cpu.a = MenuGaugeSlideToTarget();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuGaugeSlideToTarget_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The vehicle kinds by the handler word at +$27 of the object $0346 names
@@ -139,10 +168,24 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
     return cyc_then(84, (uint16_t)(off + rd16(0x0011DF)));
 }
 
+/* GaugeTableIndex on carried registers. */
+void GaugeTableIndex_cr(Carried *cr)
+{
+    cr->a = GaugeTableIndex(cr->db, cr->x);
+    cr->x = (cr->p & P_X) ? (uint8_t)cr->a : cr->a;
+}
+
 void abi_GaugeTableIndex(void)
 {
-    cpu.a = GaugeTableIndex(cpu.db, cpu.x);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)cpu.a : cpu.a;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GaugeTableIndex_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -182,12 +225,26 @@ uint16_t GaugeFromSpeed(uint8_t bank, uint16_t *x)
     return a;
 }
 
+/* GaugeFromSpeed on carried registers. */
+void GaugeFromSpeed_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+
+    cr->a = GaugeFromSpeed(cr->db, &x);
+    cr->x = (cr->p & P_X) ? (cyc(70), (uint8_t)x) : (cyc(70), x);
+}
+
 void abi_GaugeFromSpeed(void)
 {
-    uint16_t x = cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = GaugeFromSpeed(cpu.db, &x);
-    cpu.x = (cpu.p & P_X) ? (cyc(70), (uint8_t)x) : (cyc(70), x);
+    GaugeFromSpeed_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -270,12 +327,26 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
     return a;
 }
 
+/* SpeedGaugeUpdate on carried registers. */
+void SpeedGaugeUpdate_cr(Carried *cr)
+{
+    uint16_t x = cr->x;
+
+    cr->a = SpeedGaugeUpdate(cr->db, cr->a, &x);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : (cyc(72), x);
+}
+
 void abi_SpeedGaugeUpdate(void)
 {
-    uint16_t x = cpu.x;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = SpeedGaugeUpdate(cpu.db, cpu.a, &x);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(72), x);
+    SpeedGaugeUpdate_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 #define GAUGE_2 0x1180u   /* the second gauge, through the data bank */
@@ -400,8 +471,22 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
     return a;
 }
 
+/* SpeedGauge2Update on carried registers. */
+void SpeedGauge2Update_cr(Carried *cr)
+{
+    cr->a = SpeedGauge2Update(cr->db, cr->a);
+    cyc(72);
+}
+
 void abi_SpeedGauge2Update(void)
 {
-    cpu.a = SpeedGauge2Update(cpu.db, cpu.a);
-    cyc(72);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpeedGauge2Update_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

@@ -3,6 +3,7 @@
  * per-course table index ($0E3D holds the course number).
  */
 #include "machine.h"
+#include "carried.h"
 
 static uint16_t word_lookup(uint32_t table, uint16_t i)
 {
@@ -22,12 +23,26 @@ uint16_t HandlerTableA(uint16_t i)
     return word_lookup(0x03B6F1, i);
 }
 
+/* HandlerTableA on carried registers. */
+void HandlerTableA_cr(Carried *cr)
+{
+    uint16_t x = (uint16_t)(cr->a << 1);
+
+    cr->a = HandlerTableA(cr->a);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : x;
+}
+
 void abi_HandlerTableA(void)
 {
-    uint16_t x = (uint16_t)(cpu.a << 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = HandlerTableA(cpu.a);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    HandlerTableA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -41,12 +56,26 @@ uint16_t HandlerTableB(uint16_t i)
     return word_lookup(0x03B704, i);
 }
 
+/* HandlerTableB on carried registers. */
+void HandlerTableB_cr(Carried *cr)
+{
+    uint16_t x = (uint16_t)(cr->a << 1);
+
+    cr->a = HandlerTableB(cr->a);
+    cr->x = (cr->p & P_X) ? (uint8_t)x : x;
+}
+
 void abi_HandlerTableB(void)
 {
-    uint16_t x = (uint16_t)(cpu.a << 1);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = HandlerTableB(cpu.a);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    HandlerTableB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -83,13 +112,27 @@ uint8_t CourseIndex12(uint8_t a, uint8_t *p)
     return (uint8_t)s;
 }
 
+/* CourseIndex12 on carried registers. */
+void CourseIndex12_cr(Carried *cr)
+{
+    uint8_t p = cr->p, i = CourseIndex12((uint8_t)cr->a, &p);
+
+    cr->a = (uint16_t)((cr->a & 0xFF00) | i);
+    cr->x = i;
+    set_p(cr, p);
+}
+
 void abi_CourseIndex12(void)
 {
-    uint8_t p = cpu.p, i = CourseIndex12((uint8_t)cpu.a, &p);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | i);
-    cpu.x = i;
-    cpu.p = p;
+    CourseIndex12_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -113,15 +156,29 @@ uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p)
     return r;
 }
 
-void abi_CourseDataPointer(void)
+/* CourseDataPointer on carried registers. */
+void CourseDataPointer_cr(Carried *cr)
 {
-    uint8_t bank, p = cpu.p;
+    uint8_t bank, p = cr->p;
     uint16_t x = CourseDataPointer(&bank, &p);
 
-    cpu.x = x;
-    cpu.y = x;
-    cpu.a = (uint16_t)((x & 0xFF00) | bank);
-    cpu.p = (uint8_t)((nz16(p, x) & ~P_X) | P_M);
+    cr->x = x;
+    cr->y = x;
+    cr->a = (uint16_t)((x & 0xFF00) | bank);
+    set_p(cr, (uint8_t)((nz16(p, x) & ~P_X) | P_M));
+}
+
+void abi_CourseDataPointer(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseDataPointer_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -201,12 +258,26 @@ uint16_t SelectionTables18CB(uint8_t bank)
     return v;
 }
 
+/* SelectionTables18CB on carried registers. */
+void SelectionTables18CB_cr(Carried *cr)
+{
+    uint16_t v = SelectionTables18CB(cr->db);
+
+    cr->a = v;
+    cr->x = 0x0008;
+}
+
 void abi_SelectionTables18CB(void)
 {
-    uint16_t v = SelectionTables18CB(cpu.db);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = v;
-    cpu.x = 0x0008;
+    SelectionTables18CB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_SelectionTables18CB(void);

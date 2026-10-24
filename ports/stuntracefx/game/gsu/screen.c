@@ -6,6 +6,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "carried.h"
 
 /*
  * @routine 03:B83C GsuScreenFlip
@@ -52,10 +53,24 @@ uint16_t GsuScreenFlip(uint8_t bank)
     return (uint16_t)((mode & 0xFF00) | 0x0B);
 }
 
+/* GsuScreenFlip on carried registers. */
+void GsuScreenFlip_cr(Carried *cr)
+{
+    cr->a = GsuScreenFlip(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
 void abi_GsuScreenFlip(void)
 {
-    cpu.a = GsuScreenFlip(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuScreenFlip_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -104,10 +119,24 @@ uint16_t GsuScreenFlipMenu(uint8_t bank)
     return (uint16_t)((mode & 0xFF00) | base);
 }
 
+/* GsuScreenFlipMenu on carried registers. */
+void GsuScreenFlipMenu_cr(Carried *cr)
+{
+    cr->a = GsuScreenFlipMenu(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
 void abi_GsuScreenFlipMenu(void)
 {
-    cpu.a = GsuScreenFlipMenu(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuScreenFlipMenu_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -156,8 +185,22 @@ uint16_t GsuScreenToggle(uint8_t bank)
     return (uint16_t)((mode & 0xFF00) | base);
 }
 
+/* GsuScreenToggle on carried registers. */
+void GsuScreenToggle_cr(Carried *cr)
+{
+    cr->a = GsuScreenToggle(cr->db);
+    set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
+}
+
 void abi_GsuScreenToggle(void)
 {
-    cpu.a = GsuScreenToggle(cpu.db);
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GsuScreenToggle_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
