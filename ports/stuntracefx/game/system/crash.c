@@ -14,11 +14,9 @@
 #include "cpu_ops.h"
 #include "system_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
-#define CRASH_COLOUR 0x1A2Eu
-#define CRASH_CODE 0x000717u
-#define CRASH_SCROLL 0x000719u
 
 void CrashGreen_cr(Carried *cr);
 void CrashWhite(Carried *cr, uint8_t bank);
@@ -33,7 +31,7 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     uint16_t a, step;
 
     cyc(70);
-    wr16((uint32_t)bank << 16 | (uint16_t)CRASH_CODE, code);
+    wr16((uint32_t)bank << 16 | (uint16_t)W(crash_code), code);
     /* Through the caller's data bank: from bank $7E or $7F these four land
        in work RAM, and interrupts and HDMA stay on. */
     cyc(46);
@@ -50,9 +48,9 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     cyc(24);
     ppu_wr(CGADD, 0x00);
     cyc(24);
-    ppu_wr(CGDATA, cyc_then(24, rd8(CRASH_COLOUR)));
+    ppu_wr(CGDATA, cyc_then(24, rd8(W(crash_colour))));
     cyc(24);
-    ppu_wr(CGDATA, cyc_then(24, rd8(CRASH_COLOUR + 1)));
+    ppu_wr(CGDATA, cyc_then(24, rd8(W(crash_colour) + 1)));
     cyc(40);
     ppu_wr(BG1SC, 0x40);
     cyc(40);
@@ -110,9 +108,9 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     for (;;) {
         cyc(92);
         delay_turns(20000);
-        a = rd16(CRASH_CODE);
+        a = rd16(W(crash_code));
         cyc(24);
-        if (a == rd16(CRASH_SCROLL)) {
+        if (a == rd16(W(crash_scroll))) {
             /* As the loop leaves them: 16-bit, IRQs masked, Z and C from
                the compare, X the HDMA table, Y the delay's end. */
             cr->a = a;
@@ -122,15 +120,15 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
             carried_loop_forever(cr, 0x00812C);
         }
         cyc(54);
-        step = (uint16_t)((uint16_t)(a - rd16(CRASH_SCROLL)) >> 3);
+        step = (uint16_t)((uint16_t)(a - rd16(W(crash_scroll))) >> 3);
         if (!step)
             step = 0x0001;
         cyc(102);
-        wr16(CRASH_SCROLL, cyc_then(24, (uint16_t)(step + rd16(CRASH_SCROLL))));
+        wr16(W(crash_scroll), cyc_then(24, (uint16_t)(step + rd16(W(crash_scroll)))));
         cyc(46);
-        ppu_wr(BG1VOFS, cyc_then(24, rd8(CRASH_SCROLL)));
+        ppu_wr(BG1VOFS, cyc_then(24, rd8(W(crash_scroll))));
         cyc(24);
-        ppu_wr(BG1VOFS, cyc_then(24, rd8(CRASH_SCROLL + 1)));
+        ppu_wr(BG1VOFS, cyc_then(24, rd8(W(crash_scroll) + 1)));
         cyc(40);
         hw_wr(APUIO0, 0x03);
     }
@@ -148,7 +146,7 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
 void CrashWhite(Carried *cr, uint8_t bank)
 {
     cyc(70);
-    wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x7FFF);
+    wr16((uint32_t)bank << 16 | W(crash_colour), 0x7FFF);
     crash_body(cr, bank, 0x00AA);
 }
 
@@ -181,7 +179,7 @@ void abi_CrashWhite(void)
 void CrashGreen(Carried *cr, uint8_t bank)
 {
     cyc(70);
-    wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x03E0);
+    wr16((uint32_t)bank << 16 | W(crash_colour), 0x03E0);
     crash_body(cr, bank, 0x00E2);
 }
 

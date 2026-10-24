@@ -19,8 +19,6 @@ void Set7EBC2BTrio(uint8_t v);
 void WaitScanline(uint8_t bank);
 
 #define PALETTES 0x03A145u   /* 16 colours (32 bytes) per palette */
-#define COLOURS 0x0722u      /* 128 colour words, through the data bank */
-#define ROW 0x0866u          /* 32 tilemap words */
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -220,11 +218,11 @@ void ColoursRedDouble(void)
     cyc(162);
     for (y = 0; y != 0x100; y = (uint16_t)(y + 2)) {
         cyc(160);
-        w = rd16(COLOURS + y);
+        w = rd16(W(colour_list) + y);
         cyc(40);
         wr16(W(dp_3e), (uint16_t)(w & 0x7FE0));
         cyc(30);
-        w = rd16(COLOURS + y);
+        w = rd16(W(colour_list) + y);
         r = (uint16_t)(w & 0x001F);
         if (r <= 3) {
             cyc(r == 3 ? 8 : 18); /* BEQ taken, ORA; or BCS not taken, ORA */
@@ -237,7 +235,7 @@ void ColoursRedDouble(void)
         cyc(186);
         r |= rd16(W(dp_3e));
         cyc(30);
-        wr16(COLOURS + y, r);
+        wr16(W(colour_list) + y, r);
     }
     cyc(142);
     wr16(W(colour_list_end), 0x0000);
@@ -277,7 +275,7 @@ void ColoursClear(uint8_t bank)
 
     cyc(56);
     for (x = 0xDF; x >= 0; x--)
-        wr8(dbw(bank, (uint16_t)(COLOURS + x)), cyc_then(66, 0x00));
+        wr8(dbw(bank, (uint16_t)(W(colour_list) + x)), cyc_then(66, 0x00));
     cyc(110);
 }
 
@@ -546,7 +544,7 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
         a = rd16(dbw(bank, 0x08E6));
         s = (unsigned)w + a;
         *p = (uint8_t)((*p & ~P_V) | ((~(w ^ a) & (w ^ s) & 0x8000) ? P_V : 0));
-        wr16(dbw(bank, (uint16_t)(ROW + *y)), cyc_then(30, (uint16_t)s));
+        wr16(dbw(bank, (uint16_t)(W(tile_row) + *y)), cyc_then(30, (uint16_t)s));
         i = back ? (cyc(64), (uint16_t)(i - 2)) : (cyc(64), (uint16_t)(i + 2));
     }
     *x = i;
@@ -644,7 +642,7 @@ void TileRowUpload(uint8_t bank)
 {
     ppu_wr(dbw(bank, 0x2115), cyc_then(40, 0x80));
     dma_wr(dbw(bank, 0x4301), cyc_then(40, 0x18));
-    dma_wr16(dbw(bank, 0x4302), cyc_then(48, ROW));
+    dma_wr16(dbw(bank, 0x4302), cyc_then(48, W(tile_row)));
     dma_wr(dbw(bank, 0x4304), cyc_then(24, 0x00));
     ppu_wr16(dbw(bank, 0x2116), cyc_then(48, 0x2FA0));
     dma_wr16(dbw(bank, 0x4305), cyc_then(48, 0x0040));

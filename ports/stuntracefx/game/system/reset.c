@@ -18,9 +18,6 @@ void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count);
 uint16_t SoftResetApu(void);
 
-#define RESET_STATE 0x0D51u     /* $0D51: a reset under way when not 0 */
-#define RESET_TICK 0x0D52u      /* set by each vertical blank */
-#define RESET_FRAMES 0x0D5Fu    /* frames left to wait */
 
 /* LDA #bank, LDX, LDY (the pre clocks), then WramFillZeroLong. */
 static void reset_fill(uint8_t bank, uint16_t x, uint16_t y, uint32_t pre)
@@ -110,7 +107,7 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
     int fresh = 0;
 
     cyc(68);
-    if (!rd8(b | RESET_STATE)) {
+    if (!rd8(b | W(wram_0D51))) {
         cyc(22 + 40);
         *a = rd16(b | W(joy1_held)) & 0x3030;
         cyc(2);
@@ -122,28 +119,28 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
         if (*a)
             { cyc(96 + 42); return 0; }
         cyc(90);
-        v = (uint8_t)(rd8(b | RESET_STATE) - 1);
+        v = (uint8_t)(rd8(b | W(wram_0D51)) - 1);
         cyc(6);
-        wr8(b | RESET_STATE, v);
+        wr8(b | W(wram_0D51), v);
         cyc(38 + 40);
         SoundPort1QueuePushW(0x04, x16 ? 16 : 0);
         cyc(40);
         wr8(b | W(fade_out), 0x01);
         cyc(40);
-        wr8(b | RESET_FRAMES, 0x70);
+        wr8(b | W(wram_0D5F), 0x70);
         fresh = 1;
     }
     int started = fresh;
     do {
         do
             { cyc(fresh ? 24 : 46); fresh = 0; }
-        while (!rd8(b | RESET_TICK));
+        while (!rd8(b | W(wram_0D52)));
         cyc(40);
-        wr8(b | RESET_TICK, 0x00);
+        wr8(b | W(wram_0D52), 0x00);
         cyc(24);
-        v = (uint8_t)(rd8(b | RESET_FRAMES) - 1);
+        v = (uint8_t)(rd8(b | W(wram_0D5F)) - 1);
         cyc(6);
-        wr8(b | RESET_FRAMES, v);
+        wr8(b | W(wram_0D5F), v);
     } while (v);
     cyc(40 + 16);
     ppu_wr(b | INIDISP, 0x80);
@@ -154,7 +151,7 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
     cyc(24);
     hdmaen_wr(b | HDMAEN, 0x00);
     cyc(24);
-    wr8(b | RESET_STATE, 0x00);
+    wr8(b | W(wram_0D51), 0x00);
     SoftResetApu();
     cyc(22 + 24);                       /* SEP */
     wr8(b | W(hud_mode), 0x00);

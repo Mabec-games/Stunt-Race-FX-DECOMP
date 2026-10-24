@@ -15,7 +15,6 @@
 
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size);
 
-#define PALETTE_ANIMATE 0x000E5Fu  /* nonzero: the animated colours are in use */
 
 /* Write n bytes from src to CGRAM starting at colour c; return the last. */
 static uint8_t cgram_put(uint8_t c, uint32_t src, unsigned n)
@@ -47,7 +46,7 @@ static uint8_t cgram_put(uint8_t c, uint32_t src, unsigned n)
 uint8_t RasterColours(void)
 {
     cyc(46);
-    if (rd8(PALETTE_ANIMATE) == 0)
+    if (rd8(W(palette_animate)) == 0)
         { cyc(22); return cgram_put(0x00, W(palette_buffer), 2); } else { cyc(16); }
     return cgram_put(0xE1, W(palette_kept), 6);
 }
@@ -115,11 +114,11 @@ uint8_t RasterPaletteUpload(int *animating)
 {
     *animating = 0;
     cyc(46);
-    if (rd8(PALETTE_ANIMATE) == 0)
+    if (rd8(W(palette_animate)) == 0)
         { cyc(22); return cgram_put(0x00, W(palette_buffer), 2); } else { cyc(156); }
     CgramDma(0xFD65, 0x00, 0x0060);
     cyc(88);
-    if (rd8(PALETTE_ANIMATE) == 0)
+    if (rd8(W(palette_animate)) == 0)
         return cgram_put(0x00, W(palette_buffer), 2); else { cyc(156); }
     *animating = 1;
     CgramDma(0xFEC5, 0xB0, 0x0020);
@@ -1743,10 +1742,6 @@ void abi_CoursePaletteCycle(void)
 #define HC_TO(o) (W(wram_7F3458) + (o))      /* $3458: +2 band end, +4 request, +8 blend, +12 last blend */
 #define HC_AMT(o) (W(slide_out) + (o))     /* $3468: amount, +4 last amount */
 #define HC_TGT(o) (W(slide_done) + (o))     /* $3470: target, +4 last, +8 gradient flag, +12 band */
-#define HC_WORK_A 0x7F35D7u
-#define HC_WORK_B 0x7F37D7u
-#define HC_WORK_C 0x7F39D7u
-#define HC_BUFFER 0x7EFD65u
 
 /* The multiplier's factor loaded from the low byte of v (PpuMultiplierSetLowByteTimes8
    as the colour step calls it, with its own clocks). */
@@ -1909,7 +1904,7 @@ gradient_load:
         x = 0x0004;
         do {
             cyc(42);
-            wr16(HC_BUFFER + x, a);
+            wr16(W(palette_buffer) + x, a);
             cyc(36);
             x = (uint16_t)(x + 2);
             cyc(28);
@@ -2124,9 +2119,9 @@ buffer:
             { cyc(40); goto hud; }
         do {
             cyc(54);
-            a = rd16(HC_WORK_A + x);
+            a = rd16(W(palette_work_a) + x);
             cyc(32);
-            wr16(HC_BUFFER + x, a);
+            wr16(W(palette_buffer) + x, a);
             cyc(24);
             x = (uint16_t)(x + 2);
             cyc(28);
@@ -2153,9 +2148,9 @@ buffer:
     cyc(18);
     do {
         cyc(14);
-        a = rd16(HC_WORK_B + x);
+        a = rd16(W(palette_work_b) + x);
         cyc(32);
-        m = rd16(HC_WORK_C + x);
+        m = rd16(W(palette_work_c) + x);
         cyc(0);
         if (a != m) {
             cyc(40);
@@ -2163,13 +2158,13 @@ buffer:
             cyc(16);
             wr16(W(dp_f3), a);
             cyc(32);
-            a = rd16(HC_WORK_A + x);
+            a = rd16(W(palette_work_a) + x);
             cyc(16);
             wr16(W(dp_f1), a);
             cyc(46);
             a = ColourBlend(bank);
             cyc(32);
-            wr16(HC_BUFFER + x, a);
+            wr16(W(palette_buffer) + x, a);
         } else { cyc(22); }
         cyc(64);
         x = (uint16_t)(x + 2);
@@ -2181,9 +2176,9 @@ blend_rows:
     cyc(2);
     do {
         cyc(78);
-        a = rd16(HC_WORK_B + x);
+        a = rd16(W(palette_work_b) + x);
         cyc(46);
-        m = rd16(HC_WORK_C + x);
+        m = rd16(W(palette_work_c) + x);
         a = sub16(a, m, NULL, NULL);
         if (a) {
             cyc(34);
@@ -2201,15 +2196,15 @@ blend_rows:
             cyc(0);
             if (a == 0x001F) {
                 cyc(84);
-                a = rd16(HC_WORK_C + x);
+                a = rd16(W(palette_work_c) + x);
                 goto work;
             }
             cyc(90);
-            a = rd16(HC_WORK_B + x);
+            a = rd16(W(palette_work_b) + x);
             cyc(16);
             wr16(W(dp_f1), a);
             cyc(32);
-            a = rd16(HC_WORK_C + x);
+            a = rd16(W(palette_work_c) + x);
             cyc(16);
             wr16(W(dp_f3), a);
             cyc(24);
@@ -2221,10 +2216,10 @@ blend_rows:
             goto work;
 from_b:
             cyc(54);
-            a = rd16(HC_WORK_B + x);
+            a = rd16(W(palette_work_b) + x);
 work:
             cyc(54);
-            wr16(HC_WORK_A + x, a);
+            wr16(W(palette_work_a) + x, a);
             cyc(16);
             wr16(W(dp_f1), a);
             cyc(24);
@@ -2238,7 +2233,7 @@ work:
             cyc(46);
             a = ColourBlendBy(bank);
             cyc(32);
-            wr16(HC_BUFFER + x, a);
+            wr16(W(palette_buffer) + x, a);
         } else { cyc(16); }
         x = (uint16_t)(x + 2);
         cyc(28);
@@ -2256,9 +2251,9 @@ blend_both:
     do {
         cyc(first ? 32 : 78);           /* LDA long; after the first, INX, INX, CPX, BCC too */
         first = 0;
-        a = rd16(HC_WORK_B + x);
+        a = rd16(W(palette_work_b) + x);
         cyc(46);
-        m = rd16(HC_WORK_C + x);
+        m = rd16(W(palette_work_c) + x);
         a = sub16(a, m, NULL, NULL);
         if (a) {
             cyc(52);
@@ -2270,19 +2265,19 @@ blend_both:
                 if (a == 0xFFFF)
                     { cyc(4); } else {
                     cyc(30);
-                    a = rd16(HC_WORK_B + x);
+                    a = rd16(W(palette_work_b) + x);
                     cyc(16);
                     wr16(W(dp_f1), a);
                     cyc(32);
-                    a = rd16(HC_WORK_C + x);
+                    a = rd16(W(palette_work_c) + x);
                     cyc(16);
                     wr16(W(dp_f3), a);
                     cyc(46);
                     a = ColourBlend(bank);
                     cyc(32);
-                    wr16(HC_WORK_A + x, a);
+                    wr16(W(palette_work_a) + x, a);
                     cyc(32);
-                    wr16(HC_BUFFER + x, a);
+                    wr16(W(palette_buffer) + x, a);
                 }
             }
         } else { cyc(16); }
@@ -2324,19 +2319,19 @@ hud:
             cyc(42);
             do {
                 cyc(14);
-                a = rd16(HC_WORK_B + x);
+                a = rd16(W(palette_work_b) + x);
                 cyc(16);
                 wr16(W(dp_f1), a);
                 cyc(32);
-                a = rd16(HC_WORK_C + x);
+                a = rd16(W(palette_work_c) + x);
                 cyc(16);
                 wr16(W(dp_f3), a);
                 cyc(46);
                 a = ColourBlend(bank);
                 cyc(32);
-                wr16(HC_WORK_A + x, a);
+                wr16(W(palette_work_a) + x, a);
                 cyc(32);
-                wr16(HC_BUFFER + x, a);
+                wr16(W(palette_buffer) + x, a);
                 x = (uint16_t)(x + 2);
                 cyc(28);
             } while (cyc_loop(64, !(x >= 0x0020)));

@@ -5,7 +5,6 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
-#include "wram.h"
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
@@ -26,7 +25,7 @@ void OamHideRange(uint16_t offset, uint16_t count)
     cyc(0);
     do {
         cyc(48);
-        wr8(OAM_BUFFER + 1 + offset, 0xF0);
+        wr8(W(oam_buffer) + 1 + offset, 0xF0);
         offset += 4;
     } while (cyc_loop(76, --count));
     cyc(112);
@@ -165,7 +164,7 @@ uint8_t OamWriteSprites36To46(void)
     ppu_wr(OAMADDH, 0x00);
     for (i = 0; i < 0x2C; i++) {
         cyc(i ? 80 : 54);               /* INX, DEY, BNE taken; the first: LDY */
-        v = rd8(OAM_BUFFER + 0x90 + i);
+        v = rd8(W(oam_buffer) + 0x90 + i);
         cyc(24);
         ppu_wr(OAMDATA, v);
     }
@@ -248,14 +247,14 @@ static uint16_t sprite_strip(uint16_t index, uint16_t offset, uint32_t table, ui
         cyc(16);
         pos = rd16(W(dp_02));
         cyc(30);
-        wr16(OAM_BUFFER + offset, pos);
+        wr16(W(oam_buffer) + offset, pos);
         pos = (uint16_t)(pos + step);
         cyc(54);
         wr16(W(dp_02), pos);
         cyc(32);
         v = rd16(table + index);
         cyc(30);
-        wr16(OAM_BUFFER + 2 + offset, v);
+        wr16(W(oam_buffer) + 2 + offset, v);
         index = (uint16_t)(index + 2);
         offset = (uint16_t)(offset + 4);
         cyc(100);
@@ -1591,22 +1590,22 @@ void OamPlaceRows75And112(uint8_t bank)
     if (!rd8(b | W(wram_10CD))) {
         cyc(32);
         for (i = 0; i < 7; i++)
-            { cyc(24); wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * at8c[i]), 0x8C); }
+            { cyc(24); wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * at8c[i]), 0x8C); }
         cyc(16);
         for (i = 0; i < 5; i++)
-            { cyc(24); wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * at94[i]), 0x94); }
+            { cyc(24); wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * at94[i]), 0x94); }
     } else { cyc(22); }
     cyc(16);
     for (i = 75; i <= 86; i++)
-        { cyc(24); wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * i), 0x93); }
+        { cyc(24); wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * i), 0x93); }
     cyc(40);
-    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 112), 0x70);
+    wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * 112), 0x70);
     cyc(24);
-    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 113), 0x70);
+    wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * 113), 0x70);
     cyc(40);
-    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 114), 0x80);
+    wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * 114), 0x80);
     cyc(24);
-    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 115), 0x80);
+    wr8(b | (uint16_t)(W(oam_buffer) + 1 + 4 * 115), 0x80);
     for (i = 0; i < 6; i++)
         { cyc(i & 1 ? 24 : 40); wr8(b | high[i], 0x00); }   /* LDA # before each pair */
     cyc(70);

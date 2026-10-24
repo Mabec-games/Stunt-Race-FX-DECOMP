@@ -210,12 +210,62 @@ def meter(paths):
     print('%6d  in %d files: work-RAM addresses spelled as numbers' % (total, len(rows)))
 
 
+MACRO = re.compile(r'^(?:/\*[^\n]*\*/\n)?#define\s+([A-Z_][A-Z0-9_]*)\s+(0x[0-9A-Fa-f]+)u?\b[ \t]*(?:/\*[^\n]*\*/)?[ \t]*\n', re.M)
+
+
+def macro_value_name(v, digits, names, known):
+    """The W() spelling for a macro's value, or None if it is not work RAM."""
+    def pick(x):
+        if x in names:
+            return names[x]
+        return auto_name(x) if x not in known else None
+    if v >> 16 in (0x7E, 0x7F) and digits == 6:
+        if v >> 16 == 0x7E and (v & 0xFFFF) < 0x2000:
+            n = pick(v & 0xFFFF)
+            return '(0x7E0000 | W(%s))' % n if n else None
+        n = pick(v)
+        return 'W(%s)' % n if n else None
+    if v < 0x2000 and (digits == 6 or v >= 0x100 or digits == 4):
+        n = pick(v)
+        return 'W(%s)' % n if n else None
+    if digits <= 4 and is_wram(v, True):
+        n = pick(v)
+        return 'W(%s)' % n if n else None
+    return None
+
+
+def name_macros(t, names, known):
+    """A file's own #define of a work-RAM address: its uses become the name,
+    the define goes."""
+    for m in list(MACRO.finditer(t)):
+        mac, num = m.group(1), m.group(2)
+        v = int(num, 16)
+        if v == 0 or len(num) - 2 not in (4, 6):
+            continue
+        spell = macro_value_name(v, len(num) - 2, names, known)
+        if not spell:
+            continue
+        body = t.replace(m.group(0), '', 1)
+        body = re.sub(r'(?<![\w.>])%s\b(?!\s*\()' % mac, spell, body)
+        t = body
+    return t
+
+
 def main(argv):
     if argv == ['header']:
         write_header()
         return 0
     if argv == ['--meter']:
         meter(sorted(glob.glob(os.path.join(G, '*', '*.c'))))
+        return 0
+    if argv and argv[0] == '--macros':
+        for f in argv[1:]:
+            p = os.path.join(G, f)
+            t = open(p).read()
+            n = name_macros(t, *table(f))
+            if n != t:
+                open(p, 'w').write(ensure_include(n))
+                print('macros named', f)
         return 0
     for f in argv:
         p = os.path.join(G, f)

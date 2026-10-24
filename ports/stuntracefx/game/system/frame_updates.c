@@ -11,16 +11,11 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
-#include "wram.h"
 #include "system_calls.h"
 #include "carried.h"
 #include "wram_names.h"
 
 
-#define FRAME_UPDATE_FLAGS 0x0011D7u
-#define BYTE_WRITES_SIZE 0x00162Du   /* bytes used in the list below */
-#define BYTE_WRITES 0x00162Fu        /* entries: 16-bit address, 16-bit value */
-#define PALETTE_BUFFER 0x7EFD65u
 
 /*
  * @routine 7F:0EC9 OamDmaIfPending
@@ -33,7 +28,7 @@
 static uint8_t oam_dma_if_pending(int *ran)
 {
     cyc(90);
-    uint8_t flags = rd8(FRAME_UPDATE_FLAGS);
+    uint8_t flags = rd8(W(frame_update_flags));
 
     *ran = (flags & 0x04) != 0;
     if (!*ran)
@@ -43,7 +38,7 @@ static uint8_t oam_dma_if_pending(int *ran)
     cyc(40);
     dma_wr(DMAP0 + 1, 0x04);
     cyc(48);
-    dma_wr16(A1T0L, OAM_BUFFER);
+    dma_wr16(A1T0L, W(oam_buffer));
     cyc(40);
     dma_wr(A1B0, 0x00);
     cyc(48);
@@ -53,9 +48,9 @@ static uint8_t oam_dma_if_pending(int *ran)
     cyc(40);
     mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
-    flags = rd8(FRAME_UPDATE_FLAGS) & 0xFB;
+    flags = rd8(W(frame_update_flags)) & 0xFB;
     cyc(40);
-    wr8(FRAME_UPDATE_FLAGS, flags);
+    wr8(W(frame_update_flags), flags);
     return flags;
 }
 
@@ -114,7 +109,7 @@ void abi_OamDmaIfPending(void)
 static uint8_t cgram_dma_if_pending(int *ran)
 {
     cyc(90);
-    uint8_t flags = rd8(FRAME_UPDATE_FLAGS);
+    uint8_t flags = rd8(W(frame_update_flags));
 
     *ran = (flags & 0x08) != 0;
     if (!*ran)
@@ -124,9 +119,9 @@ static uint8_t cgram_dma_if_pending(int *ran)
     cyc(40);
     dma_wr(DMAP0 + 1, 0x22);
     cyc(48);
-    dma_wr16(A1T0L, (uint16_t)PALETTE_BUFFER);
+    dma_wr16(A1T0L, (uint16_t)W(wram_7EFD65));
     cyc(40);
-    dma_wr(A1B0, (uint8_t)(PALETTE_BUFFER >> 16));
+    dma_wr(A1B0, (uint8_t)(W(wram_7EFD65) >> 16));
     cyc(48);
     dma_wr16(DAS0L, 0x0200);
     cyc(24);
@@ -134,9 +129,9 @@ static uint8_t cgram_dma_if_pending(int *ran)
     cyc(40);
     mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
-    flags = rd8(FRAME_UPDATE_FLAGS) & 0xF7;
+    flags = rd8(W(frame_update_flags)) & 0xF7;
     cyc(40);
-    wr8(FRAME_UPDATE_FLAGS, flags);
+    wr8(W(frame_update_flags), flags);
     return flags;
 }
 
@@ -195,19 +190,19 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
     ByteWritesEnd end = {0, x0, y0, 0, 0, 0};
 
     cyc(90);
-    if (!(rd8(FRAME_UPDATE_FLAGS) & 0x01))
+    if (!(rd8(W(frame_update_flags)) & 0x01))
         { cyc(38); return end; }
     end.ran = 1;
     {
         cyc(78);
-        uint16_t x = (uint16_t)(rd16(BYTE_WRITES_SIZE) - 4);
+        uint16_t x = (uint16_t)(rd16(W(byte_writes_size)) - 4);
         end.a = x;
         if (!(x & 0x8000)) {   /* X and Y are only touched when there is an entry */
             do {
                 cyc(100);
-                end.y = rd16(BYTE_WRITES + x);
+                end.y = rd16(W(byte_writes) + x);
                 cyc(46);
-                end.a = rd16(BYTE_WRITES + 2 + x);
+                end.a = rd16(W(byte_writes) + 2 + x);
                 cyc(52);
                 reg_wr((uint32_t)bank << 16 | end.y, (uint8_t)end.a);
                 x = (uint16_t)(x - 4);
@@ -218,11 +213,11 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
         }
     }
     cyc(84);
-    wr16(BYTE_WRITES_SIZE, 0);
+    wr16(W(byte_writes_size), 0);
     cyc(46);
-    end.flags = rd8(FRAME_UPDATE_FLAGS) & 0xFE;
+    end.flags = rd8(W(frame_update_flags)) & 0xFE;
     cyc(40);
-    wr8(FRAME_UPDATE_FLAGS, end.flags);
+    wr8(W(frame_update_flags), end.flags);
     return end;
 }
 
@@ -443,7 +438,7 @@ static FlushEnd vram_dma_queue_flush(void)
     uint16_t x;
 
     cyc(90);
-    if (!(rd8(FRAME_UPDATE_FLAGS) & 0x02))
+    if (!(rd8(W(frame_update_flags)) & 0x02))
         { cyc(38); return end; }
     end.ran = 1;
     cyc(72);
@@ -477,9 +472,9 @@ static FlushEnd vram_dma_queue_flush(void)
     cyc(106);
     wr16(W(vram_queue_size), 0);
     cyc(46);
-    end.flags = rd8(FRAME_UPDATE_FLAGS) & 0xFD;
+    end.flags = rd8(W(frame_update_flags)) & 0xFD;
     cyc(40);
-    wr8(FRAME_UPDATE_FLAGS, end.flags);
+    wr8(W(frame_update_flags), end.flags);
     return end;
 }
 
@@ -534,16 +529,16 @@ uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(182);
-    uint16_t x = rd16(b | (uint16_t)BYTE_WRITES_SIZE);
+    uint16_t x = rd16(b | (uint16_t)W(byte_writes_size));
 
     if (x == 0x0080)
         SystemHalt();
     cyc(108);
-    wr16(BYTE_WRITES + 2 + x, value);
+    wr16(W(byte_writes) + 2 + x, value);
     cyc(68);
-    wr16(BYTE_WRITES + x, addr);
+    wr16(W(byte_writes) + x, addr);
     cyc(76);
-    wr16(b | (uint16_t)BYTE_WRITES_SIZE, (uint16_t)(x + 4));
+    wr16(b | (uint16_t)W(byte_writes_size), (uint16_t)(x + 4));
     return x;
 }
 

@@ -10,7 +10,6 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
-#include "wram.h"
 #include "cpu_ops.h"
 #include "carried.h"
 
@@ -31,14 +30,14 @@ static void gsu_wait(uint32_t first)
 
     cyc(first);
     do {
-        n = (uint8_t)(rd8(GSU_WAIT_COUNT) + 1);
+        n = (uint8_t)(rd8(W(gsu_wait_count)) + 1);
         cyc(6);
-        wr8(GSU_WAIT_COUNT, n);
+        wr8(W(gsu_wait_count), n);
         if (!n) {
             cyc(32);
-            n = (uint8_t)(rd8(GSU_WAIT_COUNT + 1) + 1);
+            n = (uint8_t)(rd8(W(gsu_wait_count) + 1) + 1);
             cyc(6);
-            wr8(GSU_WAIT_COUNT + 1, n);
+            wr8(W(gsu_wait_count) + 1, n);
         } else { cyc(22); }
     } while (cyc_loop(54, hw_rd(cyc_then(24, GSU_SFR)) & 0x20));
 }
@@ -49,7 +48,7 @@ static uint8_t gsu_scmr_back(void)
     uint8_t mode;
 
     cyc(56);
-    mode = rd8(GSU_SCMR_SHADOW);
+    mode = rd8(W(gsu_scmr_shadow));
     cyc(24);
     hw_wr(GSU_SCMR, mode);
     return mode;
@@ -139,7 +138,7 @@ uint8_t GsuRun(uint8_t bank, uint16_t start)
     cyc(32);
     hw_wr(GSU_PBR, bank);
     cyc(112);
-    hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) | 0x18));
+    hw_wr(GSU_SCMR, cyc_then(40, rd8(W(gsu_scmr_shadow)) | 0x18));
     cyc(24);
     hw_wr(GSU_SFR, 0x00);
     cyc(24);
@@ -310,7 +309,7 @@ void FrameRunGsu8FCA(Carried *cr)
     hw_wr(GSU_PBR, 0x04);
     cr->db = 0x00;
     cyc(112);
-    hw_wr(GSU_SCMR, cyc_then(40, (uint8_t)(rd8(GSU_SCMR_SHADOW) | 0x18)));
+    hw_wr(GSU_SCMR, cyc_then(40, (uint8_t)(rd8(W(gsu_scmr_shadow)) | 0x18)));
     cyc(24);
     hw_wr(GSU_SFR, 0x00);
     cyc(24);

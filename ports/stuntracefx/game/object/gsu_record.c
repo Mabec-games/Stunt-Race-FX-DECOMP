@@ -862,7 +862,6 @@ uint8_t GsuRun(uint8_t bank, uint16_t start);
    new record's +$0A. */
 #define GSU_RECORD_ARG 0x70238Eu
 #define GSU_IN_AMOUNT 0x702390u
-#define RECORD_0A_WORD 0x1F4Cu
 
 /* The tail every routine below ends in ($08:CC7C): the new record becomes
    object X's +$22; when there is one, its +$0A is set and GsuRecordFromObject
@@ -875,7 +874,7 @@ static uint8_t record_new(uint8_t bank, uint16_t obj, uint16_t program, uint16_t
     cyc(100);
     GsuRun(0x04, program);
     cyc(214);
-    wr16(b | RECORD_0A_WORD, word0a);
+    wr16(b | W(wram_1F4C), word0a);
     cyc(join); /* SEP, BRL/JMP/BRA, REP, LDA long */
     rec = rd16(GSU_RECORD_ARG);
     cyc(30);
@@ -883,7 +882,7 @@ static uint8_t record_new(uint8_t bank, uint16_t obj, uint16_t program, uint16_t
     if (!rec)
         { cyc(68); return 0xFF; }
     cyc(104);
-    wr16(0x70000A + rec, cyc_then(32, rd16(b | RECORD_0A_WORD)));
+    wr16(0x70000A + rec, cyc_then(32, rd16(b | W(wram_1F4C))));
     cyc(36);
     GsuRecordFromObject(bank, obj);
     return 0x00;
@@ -1960,17 +1959,12 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t m)
     return (uint8_t)((nz16(p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? (cyc(24), P_C) : 0));
 }
 
-#define SEQ_COUNT 0x1A33u
-#define SEQ_STAGE 0x1A35u
-#define SEQ_INPUT 0x1AF0u
 
 void abi_RecordButtonSequence(void);
 void abi_RandomStepLong(void);
 void abi_SoundPort0QueuePush(void);
 void abi_ObjectLinkedHandlerByState(void);
 
-#define SEQ_PREV 0x1AF2u
-#define CTL_PLAYER 0x1A5Du
 
 /* An object's field at DB:at + X, as abs,X reaches it ($2000 + offset). */
 static uint32_t ctl_field(uint32_t b, uint16_t obj, uint16_t off)
@@ -2039,7 +2033,7 @@ static void ctl_linked_flags(Carried *cr, uint32_t b, uint8_t m1, uint8_t m2)
 static uint16_t ctl_player_word(Carried *cr, uint32_t b)
 {
     cyc(46);
-    r_lda16(cr, b | CTL_PLAYER);
+    r_lda16(cr, b | W(current_player));
     r_and16(cr, 0x00FF);
     return cr->a ? 0x1A60 : (cyc(6), 0x1A5E);
 }
@@ -2125,10 +2119,10 @@ void CarControlsToRecord(Carried *cr)
     r_and16(cr, 0x0010);
     if (cr->a)
         { cyc(68); goto out; } else { cyc(44); }
-    if (ctl_held(cr, b, SEQ_INPUT, 0x2000)) {
+    if (ctl_held(cr, b, W(seq_input), 0x2000)) {
         cyc(46);
         RecordButtonSequence_cr(cr);
-        if (!ctl_held(cr, b, SEQ_PREV, 0x2000)) {
+        if (!ctl_held(cr, b, W(wram_1AF2), 0x2000)) {
             uint16_t y = cr->y;
 
             r_lda16(cr, cyc_then(60, ctl_field(b, cr->y, 0x204F)));
@@ -2137,11 +2131,11 @@ void CarControlsToRecord(Carried *cr)
             cyc(36);
             ctl_flags_or(cr, b, 0x01);
             cyc(24);
-            r_lda8(cr, b | SEQ_INPUT);
+            r_lda8(cr, b | W(seq_input));
             ctl_bit(cr, 0x20);
             if (cr->a & 0x20) {
                 cyc(24);
-                r_lda8(cr, b | SEQ_INPUT);
+                r_lda8(cr, b | W(seq_input));
                 ctl_bit(cr, 0x10);
                 if (cr->a & 0x10)
                     ctl_flags_or(cr, b, 0x02); else { cyc(26); }
@@ -2175,7 +2169,7 @@ void CarControlsToRecord(Carried *cr)
                 if (!(cr->p & P_N)) {
                     cyc(40);
                     for (i = 0; i < 4; i++)
-                        if (ctl_held(cr, b, SEQ_INPUT, clear_timer[i]))
+                        if (ctl_held(cr, b, W(seq_input), clear_timer[i]))
                             break;
                     if (i < 4) {
                         r_lda16_imm(cr, 0xFFFF);
@@ -2217,15 +2211,15 @@ void CarControlsToRecord(Carried *cr)
     r_and16(cr, 0xD800);
     cyc(54);
     wr16(r + 0x42, cr->a);
-    if (ctl_held(cr, b, SEQ_INPUT, 0x0200))
+    if (ctl_held(cr, b, W(seq_input), 0x0200))
         { ctl_rec_or(cr, r + 0x42, 0x0001); cyc(22); /* BRA */ }
-    else { cyc(26); if (ctl_held(cr, b, SEQ_INPUT, 0x0100))
+    else { cyc(26); if (ctl_held(cr, b, W(seq_input), 0x0100))
         ctl_rec_or(cr, r + 0x42, 0x0002); else { cyc(26); } }
-    if (ctl_held(cr, b, SEQ_INPUT, 0x0020))
+    if (ctl_held(cr, b, W(seq_input), 0x0020))
         { ctl_rec_or(cr, r + 0x42, 0x0004); cyc(22); /* BRA */ }
-    else { cyc(26); if (ctl_held(cr, b, SEQ_INPUT, 0x0010))
+    else { cyc(26); if (ctl_held(cr, b, W(seq_input), 0x0010))
         ctl_rec_or(cr, r + 0x42, 0x0008); else { cyc(26); } }
-    if (ctl_held(cr, b, SEQ_INPUT, 0x0080)) {
+    if (ctl_held(cr, b, W(seq_input), 0x0080)) {
         ctl_rec_or(cr, r + 0x42, 0x2040);
         cyc(32);
         r_lda16(cr, r + 0x4A);
@@ -2233,7 +2227,7 @@ void CarControlsToRecord(Carried *cr)
         if (cr->p & P_N)
             { cyc(48); ctl_rec_or(cr, r + 0x42, 0x0020); } else { cyc(54); }
     } else { cyc(26); }
-    if (ctl_held(cr, b, SEQ_INPUT, 0x4000)) {
+    if (ctl_held(cr, b, W(seq_input), 0x4000)) {
         cyc(32);
         r_lda16(cr, r + 0x6A);
         if (cr->a)
@@ -2262,7 +2256,7 @@ void CarControlsToRecord(Carried *cr)
             { cyc(24); ctl_player_store(cr, b, (uint16_t)(cr->a & 0xFFEF)); }
         else cyc(pw == 0x1A60 ? 30 : 8);
     }
-    if (ctl_held(cr, b, SEQ_INPUT, 0x0040) && !ctl_held(cr, b, SEQ_PREV, 0x0040)) {
+    if (ctl_held(cr, b, W(seq_input), 0x0040) && !ctl_held(cr, b, W(wram_1AF2), 0x0040)) {
         cyc(32);
         r_lda16(cr, r + 0x5E);
         if (!cr->a) {
@@ -2273,21 +2267,21 @@ void CarControlsToRecord(Carried *cr)
                 { cyc(38); ctl_rec_or(cr, r + 0x42, 0x0080); } else { cyc(44); }
         } else { cyc(22); }
     } else { cyc(26); }
-    if (ctl_held(cr, b, SEQ_INPUT, 0x8000))
+    if (ctl_held(cr, b, W(seq_input), 0x8000))
         ctl_rec_or(cr, r + 0x42, 0x0010); else { cyc(26); }
     cyc(32);
     r_lda16(cr, r + 0x40);
     r_and16(cr, 0x0100);
     if (cr->a) {
         cyc(38);
-        if (ctl_held(cr, b, SEQ_INPUT, 0x0400)) {
+        if (ctl_held(cr, b, W(seq_input), 0x0400)) {
             cyc(32);
             r_lda16(cr, r + 0x26);
             r_sub16(cr, 0x0600);
             cyc(64);
             wr16(r + 0x26, cr->a);
         } else { cyc(26); }
-        if (ctl_held(cr, b, SEQ_INPUT, 0x0800)) {
+        if (ctl_held(cr, b, W(seq_input), 0x0800)) {
             cyc(32);
             r_lda16(cr, r + 0x26);
             r_add16(cr, 0x0600);
@@ -2323,11 +2317,11 @@ static void ctl_player(Carried *cr, uint16_t held, uint16_t prev, uint8_t player
     cyc(40);
     r_lda16(cr, W(wram_bank_7e) | held);
     cyc(24);
-    wr16(W(wram_bank_7e) | SEQ_INPUT, cr->a);
+    wr16(W(wram_bank_7e) | W(seq_input), cr->a);
     cyc(24);
     r_lda16(cr, W(wram_bank_7e) | prev);
     cyc(24);
-    wr16(W(wram_bank_7e) | SEQ_PREV, cr->a);
+    wr16(W(wram_bank_7e) | W(wram_1AF2), cr->a);
     r_sep(cr, P_M);
     if (player) {
         cyc(16);
@@ -2335,7 +2329,7 @@ static void ctl_player(Carried *cr, uint16_t held, uint16_t prev, uint8_t player
         set_p(cr, nz8(cr->p, player));
     }
     cyc(46);
-    wr8(W(wram_bank_7e) | CTL_PLAYER, player);
+    wr8(W(wram_bank_7e) | W(current_player), player);
     cyc(24);
     cr->x = rd16(W(wram_bank_7e) | car);
     set_p(cr, nz16(cr->p, cr->x));
@@ -2426,11 +2420,11 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
     uint16_t n, s, in;
 
     cyc(24);
-    n = (uint16_t)(rd16(b | SEQ_COUNT) + 1);
+    n = (uint16_t)(rd16(b | W(seq_count)) + 1);
     cyc(14);
-    wr16(b | SEQ_COUNT, n);
+    wr16(b | W(seq_count), n);
     cyc(24);
-    s = rd16(b | SEQ_STAGE);
+    s = rd16(b | W(seq_stage));
     *p = nz16(*p, s);
     if (s != 0)
         { cyc(16); *p = cmp16(*p, s, 0x0001); }
@@ -2438,12 +2432,12 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
         { cyc(16); *p = cmp16(*p, s, 0x0002); }
     if (s <= 2) {
         cyc(46);
-        n = rd16(b | SEQ_COUNT);
+        n = rd16(b | W(seq_count));
         *p = cmp16(*p, n, 0x0005);
         if (!(*p & P_N))
             goto reset;
         cyc(64);
-        in = rd16(b | SEQ_INPUT);
+        in = rd16(b | W(seq_input));
         *p = nz16(*p, in);
         if (!(in & press[s])) {
             cyc(68);
@@ -2451,11 +2445,11 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
             return in;
         }
         cyc(96);
-        wr16(b | SEQ_COUNT, 0x0000);
+        wr16(b | W(seq_count), 0x0000);
         cyc(24);
-        s = (uint16_t)(rd16(b | SEQ_STAGE) + 1);
+        s = (uint16_t)(rd16(b | W(seq_stage)) + 1);
         cyc(14);
-        wr16(b | SEQ_STAGE, s);
+        wr16(b | W(seq_stage), s);
         *p = nz16(*p, s);
         cyc(22);
         return in;
@@ -2463,12 +2457,12 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
     *p = cmp16(*p, s, 0x0003);
     if (s == 3) {
         cyc(62);
-        n = rd16(b | SEQ_COUNT);
+        n = rd16(b | W(seq_count));
         *p = cmp16(*p, n, 0x0011);
         if (!(*p & P_N))
             goto reset;
         cyc(64);
-        in = rd16(b | SEQ_INPUT);
+        in = rd16(b | W(seq_input));
         *p = nz16(*p, in);
         if (!(in & 0x0800)) {
             cyc(72);
@@ -2476,7 +2470,7 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
             return in;
         }
         cyc(70);
-        n = rd16(b | SEQ_COUNT);
+        n = rd16(b | W(seq_count));
         *p = cmp16(*p, n, 0x000C);
         if (*p & P_N)
             { cyc(24); goto reset; } else { cyc(8); }
@@ -2493,9 +2487,9 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
     n = 0x1000;
 reset:
     cyc(46);
-    wr16(b | SEQ_COUNT, 0x0000);
+    wr16(b | W(seq_count), 0x0000);
     cyc(24);
-    wr16(b | SEQ_STAGE, 0x0000);
+    wr16(b | W(seq_stage), 0x0000);
     return n;
 }
 

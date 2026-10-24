@@ -16,12 +16,6 @@ int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t
 uint16_t MenuRowPalette5(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 uint16_t MenuRowBlinkSettings(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 
-#define POSITION 0x0018EDu
-#define LETTERS 0x0018EFu
-#define UP_HELD 0x00190Bu
-#define DOWN_HELD 0x00190Du
-#define JOY1_HELD 0x000309u
-#define PRESS 0x118Fu
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -88,89 +82,89 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t a, v;
     int rep;
 
-    a = rd16(cyc_then(24, dbw(bank, PRESS))) & 0x0200;
+    a = rd16(cyc_then(24, dbw(bank, W(wram_118F)))) & 0x0200;
     *p = nz16(*p, a);
     if (a) {
         cyc(72);
-        a = rd16(POSITION);
+        a = rd16(W(wram_18ED));
         *p = nz16(*p, a);
         if (a) {
             cyc(16);
             sound0(bank, 0x46, p);
             MenuRowPalette5(bank, x, y, p);
             cyc(32);
-            a = (uint16_t)(rd16(POSITION) - 1);
+            a = (uint16_t)(rd16(W(wram_18ED)) - 1);
             *p = nz16(*p, a);
             cyc(46);
-            wr16(POSITION, a);
+            wr16(W(wram_18ED), a);
         }
     } else { cyc(46); }
-    a = rd16(cyc_then(24, dbw(bank, PRESS))) & 0x0100;
+    a = rd16(cyc_then(24, dbw(bank, W(wram_118F)))) & 0x0100;
     *p = nz16(*p, a);
     if (a) {
         cyc(72);
-        a = rd16(POSITION);
+        a = rd16(W(wram_18ED));
         *p = cmp16(*p, a, 0x0002);
         if (a != 0x0002) {
             cyc(40);
             sound0(bank, 0x46, p);
             MenuRowPalette5(bank, x, y, p);
             cyc(32);
-            a = (uint16_t)(rd16(POSITION) + 1);
+            a = (uint16_t)(rd16(W(wram_18ED)) + 1);
             *p = nz16(*p, a);
             cyc(46);
-            wr16(POSITION, a);
+            wr16(W(wram_18ED), a);
         }
     } else { cyc(46); }
     cyc(32);
-    a = rd16(POSITION);
+    a = rd16(W(wram_18ED));
     *p = (uint8_t)((*p & ~P_C) | (a & 0x8000 ? P_C : 0));
     *x = (uint16_t)(a << 1);
     *p = nz16(*p, *x);
 
     cyc(60);
-    rep = hold_repeats(rd16(JOY1_HELD) & 0x0800, UP_HELD, p, &a);
+    rep = hold_repeats(rd16(W(joy1_held)) & 0x0800, W(wram_190B), p, &a);
     if (!rep) {
-        a = rd16(dbw(bank, PRESS)) & 0x0800;
+        a = rd16(dbw(bank, W(wram_118F))) & 0x0800;
         *p = nz16(*p, a);
     }
     if (rep || a) {
         cyc(96);
-        wr16(UP_HELD, 0x0000);
+        wr16(W(wram_190B), 0x0000);
         sound0(bank, 0x45, p);
         cyc(54);
-        v = (uint16_t)(rd16(LETTERS + *x) + 1);
+        v = (uint16_t)(rd16(W(wram_18EF) + *x) + 1);
         *p = cmp16(*p, v, 0x001A);
         if (v == 0x001A) {
             v = 0x0000;
             *p = nz16(*p, v);
         }
         cyc(92);
-        wr16(LETTERS + *x, v);
+        wr16(W(wram_18EF) + *x, v);
         cyc(64);
         return v;
     }
 
     cyc(78);
-    rep = hold_repeats(rd16(JOY1_HELD) & 0x0400, DOWN_HELD, p, &a);
+    rep = hold_repeats(rd16(W(joy1_held)) & 0x0400, W(wram_190D), p, &a);
     if (!rep) {
-        a = rd16(dbw(bank, PRESS)) & 0x0400;
+        a = rd16(dbw(bank, W(wram_118F))) & 0x0400;
         *p = nz16(*p, a);
         if (!a)
             { cyc(88); return a; }
     }
     cyc(96);
-    wr16(DOWN_HELD, 0x0000);
+    wr16(W(wram_190D), 0x0000);
     sound0(bank, 0x45, p);
     cyc(54);
-    v = (uint16_t)(rd16(LETTERS + *x) - 1);
+    v = (uint16_t)(rd16(W(wram_18EF) + *x) - 1);
     *p = cmp16(*p, v, 0xFFFF);
     if (v == 0xFFFF) {
         v = 0x0019;
         *p = nz16(*p, v);
     }
     cyc(92);
-    wr16(LETTERS + *x, v);
+    wr16(W(wram_18EF) + *x, v);
     cyc(42);
     return v;
 }
@@ -239,7 +233,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             *x = i;
             cyc(90);
             v = rd16(W(word_list_a) + i);
-            wr16(dbw(bank, PRESS), cyc_then(24, v));
+            wr16(dbw(bank, W(wram_118F)), cyc_then(24, v));
             v |= rd16(cyc_then(24, dbw(bank, 0x118B)));
             wr16(dbw(bank, 0x118B), cyc_then(24, v));
             cyc(76);

@@ -61,7 +61,6 @@ void abi_PlayerVehicleRaised(void)
 
 /* The vertical scroll base for each half, a word per half, just before
    BackdropScrollFromView. */
-#define BACKDROP_Y_BASE 0x7EE920u
 
 /*
  * @routine 7E:E924 BackdropScrollFromView
@@ -97,7 +96,7 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
         { cyc(18); t = 0xF257; }
     wr16(dbw(bank, (uint16_t)(0x0D96 + *x)), cyc_then(182, t));
     cyc(82);
-    a = (uint16_t)(a + rd16(BACKDROP_Y_BASE + *x));
+    a = (uint16_t)(a + rd16(W(backdrop_y_base) + *x));
     wr16(dbw(bank, (uint16_t)(0x0D8E + *x)), cyc_then(30, a));
     cyc(70);
     return a;

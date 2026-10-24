@@ -4,15 +4,10 @@
  * tile bytes of sprite entries already placed in the work-RAM sprite table.
  */
 #include "machine.h"
-#include "wram.h"
 #include "carried.h"
 #include "wram_names.h"
 
 
-#define RACE_TIME_FRACTION 0x000E63u  /* BCD */
-#define RACE_TIME_SECONDS 0x000E64u   /* BCD, 00-59 */
-#define RACE_TIME_MINUTES 0x000E66u
-#define HUD_TIME_SPRITE 0x000E60u     /* table offset of the time's first sprite */
 
 /* The tile bytes of sprite entry `offset` (in bytes) and the one after it;
    second is the time to the second store, each copy's own (44, or 38). */
@@ -68,23 +63,23 @@ static TimeEnd hud_draw_time(void)
         { cyc(16); return end; }
 draw:
     cyc(46);
-    base = rd16(HUD_TIME_SPRITE);
+    base = rd16(W(hud_time_sprite));
     cyc(24);
-    v = rd8(RACE_TIME_SECONDS);
+    v = rd8(W(race_time_seconds));
     cyc(16);
-    digit(OAM_BUFFER + 0x1A + base, v & 0x0F, 44);
+    digit(W(oam_buffer) + 0x1A + base, v & 0x0F, 44);
     cyc(88);
-    digit(OAM_BUFFER + 0x12 + base, v >> 4, 44);
+    digit(W(oam_buffer) + 0x12 + base, v >> 4, 44);
     cyc(24);
-    v = rd8(RACE_TIME_FRACTION);
+    v = rd8(W(race_time_fraction));
     cyc(16);
-    digit(OAM_BUFFER + 0x0A + base, v & 0x0F, 44);
+    digit(W(oam_buffer) + 0x0A + base, v & 0x0F, 44);
     cyc(88);
-    digit(OAM_BUFFER + 0x02 + base, v >> 4, 44);
+    digit(W(oam_buffer) + 0x02 + base, v >> 4, 44);
     cyc(24);
-    v = rd8(RACE_TIME_MINUTES);
+    v = rd8(W(race_time_minutes));
     cyc(16);
-    digit(OAM_BUFFER + 0x22 + base, v & 0x0F, 44);
+    digit(W(oam_buffer) + 0x22 + base, v & 0x0F, 44);
     end.drew = 1;
     end.a = (uint8_t)(((v & 0x0F) << 1) + 1);
     end.x = base;
@@ -158,11 +153,11 @@ static uint8_t hud_draw_digits_19ec(int *drew)
     cyc(48);
     v = rd8(W(hud_digits_19ec));
     cyc(10);
-    digit(OAM_BUFFER + 0x16A, v & 0x0F, 38);
+    digit(W(oam_buffer) + 0x16A, v & 0x0F, 38);
     cyc(32);
     v = rd8(W(hud_digits_19ec));
     cyc(50);
-    digit(OAM_BUFFER + 0x162, v >> 4, 38);
+    digit(W(oam_buffer) + 0x162, v >> 4, 38);
     *drew = 1;
     return (uint8_t)(((v >> 4) << 1) + 1);
 }
@@ -227,7 +222,7 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     }
     cyc(76);
     count = rd8(W(digit_count));
-    digit(OAM_BUFFER + 2 + offset, count, 44);
+    digit(W(oam_buffer) + 2 + offset, count, 44);
     cyc(44);
     wr8(W(digit_count), 0x00);
     c = 64;                             /* the first ten; 86 for each after */
@@ -242,9 +237,9 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     }
     cyc(c == 86 ? 98 : 76);             /* out after a ten, or with none */
     count = rd8(W(digit_count));
-    digit(OAM_BUFFER + 0x0A + offset, count, 44);
+    digit(W(oam_buffer) + 0x0A + offset, count, 44);
     cyc(28);
-    digit(OAM_BUFFER + 0x12 + offset, n, 44);
+    digit(W(oam_buffer) + 0x12 + offset, n, 44);
     cyc(42);
     return (uint8_t)((n << 1) + 1);
 }

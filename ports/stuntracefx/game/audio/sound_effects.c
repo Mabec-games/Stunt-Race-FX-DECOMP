@@ -7,7 +7,6 @@
  * when it changes.
  */
 #include "machine.h"
-#include "wram.h"
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
@@ -34,16 +33,16 @@ static void held_sound_set(uint32_t held, uint8_t announce, uint8_t sound)
 static uint8_t player_hold_sound(uint8_t p1, uint8_t p2)
 {
     cyc(107);
-    if (rd8(CURRENT_PLAYER) == 0) {
+    if (rd8(W(current_player)) == 0) {
         cyc(64);
-        if (rd8(PLAYER1_HELD_SOUND) != p1)
-            held_sound_set(PLAYER1_HELD_SOUND, 0x09, p1); else { cyc(16); }
+        if (rd8(W(player1_held_sound)) != p1)
+            held_sound_set(W(player1_held_sound), 0x09, p1); else { cyc(16); }
         cyc(72);
         return p1;
     }
     cyc(70);
-    if (rd8(PLAYER2_HELD_SOUND) != p2)
-        held_sound_set(PLAYER2_HELD_SOUND, 0x14, p2); else { cyc(16); }
+    if (rd8(W(player2_held_sound)) != p2)
+        held_sound_set(W(player2_held_sound), 0x14, p2); else { cyc(16); }
     cyc(72);
     return p2;
 }
@@ -149,8 +148,8 @@ void abi_PlayerHoldSound33(void)
 static uint8_t player_stop_held_sound(void)
 {
     cyc(68);
-    uint8_t two = rd8(CURRENT_PLAYER) != 0;
-    uint32_t held = two ? PLAYER2_HELD_SOUND : PLAYER1_HELD_SOUND;
+    uint8_t two = rd8(W(current_player)) != 0;
+    uint32_t held = two ? W(player2_held_sound) : W(player1_held_sound);
     uint8_t stop = two ? (cyc(6), 0x1A) : 0x0A;
 
     cyc(48);
@@ -258,10 +257,10 @@ void abi_PlayerHoldSound35(void)
 static uint8_t sound_0e1a_stop(void)
 {
     cyc(46);
-    if (rd8(WRAM_0E1A) == 0)
+    if (rd8(W(wram_0E1A)) == 0)
         { cyc(72); return 0; }
     cyc(40);
-    wr8(WRAM_0E1A, 0);
+    wr8(W(wram_0E1A), 0);
     cyc(78);
     SoundPort1QueuePush(0x08);
     cyc(50);
@@ -296,7 +295,7 @@ void abi_Sound0E1AStop(void)
 static uint8_t player_sound(uint8_t p1, uint8_t p2)
 {
     cyc(208);
-    uint8_t command = rd8(CURRENT_PLAYER) != 0 ? (cyc(100), p2) : (cyc(94), p1);
+    uint8_t command = rd8(W(current_player)) != 0 ? (cyc(100), p2) : (cyc(94), p1);
     SoundPort1QueuePush(command);
     return command;
 }

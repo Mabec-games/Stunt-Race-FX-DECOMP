@@ -7,13 +7,7 @@
 #include "carried.h"
 #include "wram_names.h"
 
-#define DRAW_COUNT 0x7E0CEEu      /* records written (at most $31) */
-#define TRIGGER_POS 0x7E1F2Bu     /* offset into the trigger list */
-#define TRIGGER_WORD 0x7E1F2Du    /* the current trigger's first word */
-#define TRIGGER_LIST 0x7E1AF5u    /* two words per trigger, 0 ends it */
-#define DRAW_NEXT 0x00003Eu       /* direct page: the next record's address */
 #define DRAW_LIST 0xF77Fu         /* the records, 30 bytes each, bank $7E */
-#define DRAW_SIDE 0x7E1F07u       /* nonzero: the view is on the far side */
 #define OBJ(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
 #define REC(r, f) (W(wram_bank_7e) + (uint16_t)((f) + (r)))
 
@@ -97,7 +91,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(46);
     wr8(REC(r, 0x19), (uint8_t)(v & 0x7F));
     cyc(24);
-    if (rd8(DRAW_SIDE)) {
+    if (rd8((0x7E0000 | W(draw_side)))) {
         cyc(46);
         v = rd8(OBJ(o, 0x19));
         if (!(v & 0x80))
@@ -120,7 +114,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(52);
     wr16(REC(r, 0x16), cyc_then(30, rd16(OBJ(o, 0x5D))));
     cyc(90);
-    wr16(DRAW_COUNT, cyc_then(14, (uint16_t)(rd16(DRAW_COUNT) + 1)));
+    wr16((0x7E0000 | W(draw_count)), cyc_then(14, (uint16_t)(rd16((0x7E0000 | W(draw_count))) + 1)));
     return (uint16_t)(r + 0x1E);
 }
 
@@ -139,14 +133,14 @@ static int drawn(uint16_t o)
         cyc(94);
         if (rd8(OBJ(o, 0x26)) == 0x02) {
             cyc(62);
-            if (rd8(DRAW_SIDE))
+            if (rd8((0x7E0000 | W(draw_side))))
                 return 0;
-        } else { cyc(56); if (!rd8(DRAW_SIDE)) {
+        } else { cyc(56); if (!rd8((0x7E0000 | W(draw_side)))) {
             return 0;
         } }
     } else { cyc(48); }
     cyc(68);
-    n = (int16_t)(rd16(DRAW_COUNT) - 0x0031);
+    n = (int16_t)(rd16((0x7E0000 | W(draw_count))) - 0x0031);
     if (n >= 0)
         { cyc(8); return 0; }
     cyc(76);
@@ -188,7 +182,7 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
         o = rd16(OBJ(o, 0x3C));
     } while (cyc_loop(60, o));
     cyc(52);
-    wr16(DRAW_NEXT, r);
+    wr16(W(draw_next), r);
     cyc(24);
 }
 
@@ -203,25 +197,25 @@ static void draw_triggers(unsigned end, ObjectDrawListEnd *e)
 
     for (;;) {
         cyc(24);
-        pos = rd16(TRIGGER_POS);
+        pos = rd16((0x7E0000 | W(trigger_pos)));
         cyc(30);
-        a = rd16(TRIGGER_LIST + pos);
+        a = rd16((0x7E0000 | W(group_trigger_list)) + pos);
         e->x = pos;
         if (!a)
             { cyc(end); return; }
         cyc(46);
-        wr16(TRIGGER_WORD, a);
+        wr16((0x7E0000 | W(trigger_word)), a);
         cyc(30);
-        a = rd16(TRIGGER_LIST + 2 + pos);
+        a = rd16((0x7E0000 | W(group_trigger_list)) + 2 + pos);
         pos = (uint16_t)(pos + 4);
         cyc(80);
-        wr16(TRIGGER_POS, pos);
+        wr16((0x7E0000 | W(trigger_pos)), pos);
         cyc(70);
         a = rd16(W(object_buckets) + (a & 0x07FE));
         if (!a)
             { cyc(22); continue; }
         cyc(46);
-        draw_bucket(a, rd16(DRAW_NEXT), 0);
+        draw_bucket(a, rd16(W(draw_next)), 0);
         e->y = 0;
     }
 }
@@ -231,11 +225,11 @@ ObjectDrawListEnd ObjectDrawListBuild(uint16_t y)
     ObjectDrawListEnd e = {0, y};
 
     cyc(178);
-    wr16(DRAW_COUNT, 0x0000);
+    wr16((0x7E0000 | W(draw_count)), 0x0000);
     cyc(24);
-    wr16(TRIGGER_POS, 0x0000);
+    wr16((0x7E0000 | W(trigger_pos)), 0x0000);
     cyc(40);
-    wr16(DRAW_NEXT, DRAW_LIST);
+    wr16(W(draw_next), DRAW_LIST);
     draw_triggers(144, &e);
     return e;
 }

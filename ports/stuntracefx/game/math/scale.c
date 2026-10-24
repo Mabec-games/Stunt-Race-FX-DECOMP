@@ -9,9 +9,6 @@
 #include "wram_names.h"
 
 
-/* Direct page $3E and $40: scratch the routines below leave behind. */
-#define SCALE_SCRATCH 0x00003Eu
-#define SCALE_SCRATCH2 0x000040u
 
 /* An arithmetic shift right by one, as CMP #$8000 / ROR A does it: the sign
    bit stays, the low bit falls out into carry. */
@@ -38,12 +35,12 @@ static uint16_t three_quarters(uint16_t v, uint8_t *p)
     uint16_t half = asr1(v), quarter;
 
     cyc(8);
-    wr16(SCALE_SCRATCH, half);
+    wr16(W(scale_scratch), half);
     cyc(2);
     quarter = asr1(half);
     *p &= (uint8_t)~P_C;
     cyc(20);
-    return adc16p(quarter, rd16(SCALE_SCRATCH), p);
+    return adc16p(quarter, rd16(W(scale_scratch)), p);
 }
 
 /*
@@ -150,11 +147,11 @@ uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p)
     uint16_t half = asr1(v), sixteenth;
 
     cyc(8);
-    wr16(SCALE_SCRATCH, half);
+    wr16(W(scale_scratch), half);
     sixteenth = asr1(asr1(asr1(half)));
     *p &= (uint8_t)~P_C;
     cyc(6);
-    return adc16p(sixteenth, rd16(SCALE_SCRATCH), p);
+    return adc16p(sixteenth, rd16(W(scale_scratch)), p);
 }
 
 void ScaleNineSixteenths_cr(Carried *cr)
@@ -192,11 +189,11 @@ uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p)
     uint16_t half = asr1(v), eighth;
 
     cyc(8);
-    wr16(SCALE_SCRATCH, half);
+    wr16(W(scale_scratch), half);
     eighth = asr1(asr1(half));
     *p &= (uint8_t)~P_C;
     cyc(14);
-    return adc16p(eighth, rd16(SCALE_SCRATCH), p);
+    return adc16p(eighth, rd16(W(scale_scratch)), p);
 }
 
 void ScaleFiveEighths_cr(Carried *cr)
@@ -234,17 +231,17 @@ uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p)
     uint16_t half = asr1(v), quarter, r;
 
     cyc(8);
-    wr16(SCALE_SCRATCH, half);
+    wr16(W(scale_scratch), half);
     quarter = asr1(half);
     cyc(8);
-    wr16(SCALE_SCRATCH2, quarter);
+    wr16(W(dp_40), quarter);
     r = asr1(quarter);
     *p &= (uint8_t)~P_C;
     cyc(22);
-    r = adc16p(r, rd16(SCALE_SCRATCH), p);
+    r = adc16p(r, rd16(W(scale_scratch)), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    return adc16p(r, rd16(SCALE_SCRATCH2), p);
+    return adc16p(r, rd16(W(dp_40)), p);
 }
 
 void ScaleSevenEighths_cr(Carried *cr)
@@ -285,10 +282,10 @@ uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
     uint16_t half = asr1(v), quarter, eighth, r;
 
     cyc(8);
-    wr16(SCALE_SCRATCH, half);
+    wr16(W(scale_scratch), half);
     quarter = asr1(half);
     cyc(8);
-    wr16(SCALE_SCRATCH2, quarter);
+    wr16(W(dp_40), quarter);
     eighth = asr1(quarter);
     cyc(16);
     wr16(eighth_at, eighth);
@@ -298,10 +295,10 @@ uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
     r = adc16p(r, rd16(eighth_at), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    r = adc16p(r, rd16(SCALE_SCRATCH), p);
+    r = adc16p(r, rd16(W(scale_scratch)), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    return adc16p(r, rd16(SCALE_SCRATCH2), p);
+    return adc16p(r, rd16(W(dp_40)), p);
 }
 
 void ScaleFifteenSixteenths_cr(Carried *cr)

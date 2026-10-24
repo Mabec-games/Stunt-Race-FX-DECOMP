@@ -8,8 +8,6 @@
 #include "wram_names.h"
 
 
-/* The sliding panel's offset; $10 is fully shown. */
-#define HUD_SLIDE 0x000D57u
 
 /*
  * @routine 7E:AECE HudSlideIn
@@ -22,7 +20,7 @@
 static uint8_t hud_slide_in(uint8_t *p)
 {
     cyc(70);
-    uint8_t v = rd8(HUD_SLIDE);
+    uint8_t v = rd8(W(hud_slide));
     unsigned sum = v + 4;
     uint8_t r = (uint8_t)sum;
 
@@ -38,7 +36,7 @@ static uint8_t hud_slide_in(uint8_t *p)
         }
     }
     cyc(76);
-    wr8(HUD_SLIDE, r);
+    wr8(W(hud_slide), r);
     cyc(42);
     return r;
 }

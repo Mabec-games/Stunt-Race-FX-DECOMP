@@ -7,6 +7,7 @@
  */
 #include "gsu.h"
 #include "gsu_ops.h"
+#include "wram_names.h"
 
 /*
  * @routine 01:D0DB FxUnpackRefill
@@ -129,11 +130,6 @@ void abi_FxUnpackBits(void)
     FxUnpackBits();
 }
 
-#define FX_UNPACK_DEST 0x002Cu      /* the output's start */
-#define FX_UNPACK_SRC 0x0068u       /* the packed data's end, in the ROM bank */
-#define FX_UNPACK_BANK 0x006Au
-#define FX_UNPACK_END 0x0060u       /* the output's end */
-#define FX_UNPACK_ADD 0x00A2u       /* added to each output word when not 0 */
 #define FX_UNPACK_TOP 0xCF78u       /* the command loop, R8 */
 #define FX_UNPACK_BITS_LOOP 0xD0F7u /* FxUnpackBits' loop, R7 */
 
@@ -358,14 +354,14 @@ static void unpack_copy_code(void)
 void FxUnpackProgram(void)
 {
     gsu_code(0x01cf43, 3);
-    gsu.r[0] = gsu_ldw(FX_UNPACK_BANK);
+    gsu.r[0] = gsu_ldw(W(mul_product));
     gsu_code(0x01cf46, 2);
     gsu_romb(gsu.r[0]);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_code(0x01cf48, 3);
     gsu_ramb(gsu.r[0]);
     gsu_code(0x01cf4b, 3);
-    gsu_r14(gsu_ldw(FX_UNPACK_SRC));
+    gsu_r14(gsu_ldw(W(fx_normal_x_w)));
     gsu.r[1] = unpack_rom_word(GSU_COPY(0));                   /* the size */
     gsu_code(0x01cf55, 1);
     gsu_r14(gsu_dec(gsu.r[14]));
@@ -374,10 +370,10 @@ void FxUnpackProgram(void)
     gsu.r[3] = unpack_rom_word(GSU_COPY(1));
     gsu.r[2] = unpack_rom_word(GSU_COPY(2));
     gsu_code(0x01cf65, 3);
-    gsu.r[9] = gsu_ldw(FX_UNPACK_DEST);
+    gsu.r[9] = gsu_ldw(W(dp_2c));
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[9], 0);
     gsu_code(0x01cf68, 5);
-    gsu_stw(FX_UNPACK_END, gsu.r[1]);
+    gsu_stw(W(fxrec_y_held), gsu.r[1]);
     gsu.r[4] = 0;
     gsu.r[6] = 0;
     gsu.r[5] = 0;
@@ -430,16 +426,16 @@ void FxUnpackProgram(void)
         gsu_code(0x01d0d9, 2); gsu_code(0x01cf78, 1);
     }
     gsu_code(0x01d008, 5);
-    gsu_stw(FX_UNPACK_SRC, gsu.r[14]);
+    gsu_stw(W(fx_normal_x_w), gsu.r[14]);
     gsu_code(0x01d00d, 3);
-    gsu.r[3] = gsu_ldw(FX_UNPACK_ADD);
+    gsu.r[3] = gsu_ldw(W(dp_a2));
     gsu_moves(gsu.r[3]);
     if (gsu.z)
         { gsu_code(0x01d010, 4); gsu_code(0x01d025, 1); return; } else { gsu_code(0x01d010, 4); }
     gsu_code(0x01d014, 4);
-    gsu.r[1] = gsu_ldw(FX_UNPACK_DEST);
+    gsu.r[1] = gsu_ldw(W(dp_2c));
     gsu_code(0x01d018, 3);
-    gsu.r[2] = gsu_ldw(FX_UNPACK_END);
+    gsu.r[2] = gsu_ldw(W(fxrec_y_held));
     gsu.r[12] = gsu_sub(gsu.r[2], gsu.r[1], 0);
     gsu.r[13] = 0xD01F;
     gsu_code(0x01d01b, 5);

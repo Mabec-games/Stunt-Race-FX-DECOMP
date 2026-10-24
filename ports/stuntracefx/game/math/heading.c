@@ -22,16 +22,6 @@
 #include "wram_names.h"
 
 
-#define H_X 0x000002u
-#define H_Y 0x000008u
-#define H_Z 0x000094u
-#define H_SAVE_X 0x00007Au
-#define H_SAVE_Y 0x00007Cu
-#define H_SIN_A 0x00007Eu
-#define H_COS_A 0x00007Fu
-#define H_SIN_B 0x000086u
-#define H_COS_B 0x000087u
-#define H_SPEED 0x000082u
 #define SIN_TABLE 0x0096FEu
 #define COS_TABLE 0x00973Eu
 
@@ -127,13 +117,13 @@ static uint8_t flat(uint8_t i)
     uint8_t v;
 
     cyc(150 + crossed(SIN_TABLE, i));
-    wr8(H_SIN_A, rd8(SIN_TABLE + i));
+    wr8(W(heading_sin_a), rd8(SIN_TABLE + i));
     cyc(48 + crossed(COS_TABLE, i));
-    wr8(H_COS_A, rd8(COS_TABLE + i));
-    v = smul_at(H_SPEED, H_SIN_A);
-    store_extended(H_X, v);
-    v = smul_at(H_SPEED, H_COS_A);
-    store_extended(H_Z, v);
+    wr8(W(heading_cos_a), rd8(COS_TABLE + i));
+    v = smul_at(W(heading_speed), W(heading_sin_a));
+    store_extended(W(dp_02), v);
+    v = smul_at(W(heading_speed), W(heading_cos_a));
+    store_extended(W(dp_94), v);
     return v;
 }
 
@@ -146,21 +136,21 @@ static uint8_t pitched(uint8_t ia, uint8_t ib)
     uint8_t v;
 
     cyc(84 + crossed(SIN_TABLE, ia));
-    wr8(H_SIN_A, rd8(SIN_TABLE + ia));
+    wr8(W(heading_sin_a), rd8(SIN_TABLE + ia));
     cyc(48 + crossed(COS_TABLE, ia));
-    wr8(H_COS_A, rd8(COS_TABLE + ia));
+    wr8(W(heading_cos_a), rd8(COS_TABLE + ia));
     cyc(48 + crossed(SIN_TABLE, ib));
-    wr8(H_SIN_B, rd8(SIN_TABLE + ib));
+    wr8(W(heading_sin_b), rd8(SIN_TABLE + ib));
     cyc(48 + crossed(COS_TABLE, ib));
-    wr8(H_COS_B, rd8(COS_TABLE + ib));
-    wr8(H_X, cyc_then(14, smul_at(H_SPEED, H_SIN_A)));
-    v = smul_at(H_X, H_COS_B);
-    store_dec(H_X, v);
-    wr8(H_Z, cyc_then(14, smul_at(H_SPEED, H_COS_A)));
-    v = smul_at(H_Z, H_COS_B);
-    store_dec(H_Z, v);
-    v = smul_at(H_SPEED, H_SIN_B);
-    store_dec(H_Y, v);
+    wr8(W(heading_cos_b), rd8(COS_TABLE + ib));
+    wr8(W(dp_02), cyc_then(14, smul_at(W(heading_speed), W(heading_sin_a))));
+    v = smul_at(W(dp_02), W(heading_cos_b));
+    store_dec(W(dp_02), v);
+    wr8(W(dp_94), cyc_then(14, smul_at(W(heading_speed), W(heading_cos_a))));
+    v = smul_at(W(dp_94), W(heading_cos_b));
+    store_dec(W(dp_94), v);
+    v = smul_at(W(heading_speed), W(heading_sin_b));
+    store_dec(W(dp_08), v);
     return v;
 }
 
@@ -171,17 +161,17 @@ static uint8_t pitched(uint8_t ia, uint8_t ib)
 static void save_xy(uint16_t x, uint16_t y)
 {
     cyc(16);
-    wr16(H_SAVE_X, x);
+    wr16(W(heading_save_x), x);
     cyc(16);
-    wr16(H_SAVE_Y, y);
+    wr16(W(heading_save_y), y);
 }
 
 static void finish(void)
 {
     cyc(38);
-    (void)rd16(H_SAVE_X);
+    (void)rd16(W(heading_save_x));
     cyc(16);
-    (void)rd16(H_SAVE_Y);
+    (void)rd16(W(heading_save_y));
     cyc(72);
 }
 
@@ -238,12 +228,12 @@ uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     (cyc(22), save_xy(x, y));
     cyc(16);
-    wr8(H_Y, 0x00);
+    wr8(W(dp_08), 0x00);
     cyc(16);
-    wr8(H_Y + 1, 0x00);
+    wr8(W(dp_08) + 1, 0x00);
     cyc(30);
     i = rd8(b | (uint16_t)(0x2015 + x));
     v = flat(i);
@@ -284,14 +274,14 @@ uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(30);
     i = rd8(b | (uint16_t)(0x2015 + x));
     save_xy(x, y);
     cyc(16);
-    wr8(H_Y, 0x00);
+    wr8(W(dp_08), 0x00);
     cyc(16);
-    wr8(H_Y + 1, 0x00);
+    wr8(W(dp_08) + 1, 0x00);
     cyc(80);
     v = flat((uint8_t)(~i + 2));
     finish();
@@ -333,13 +323,13 @@ uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(16);
-    wr8(H_X + 1, 0x00);
+    wr8(W(dp_02) + 1, 0x00);
     cyc(16);
-    wr8(H_Y + 1, 0x00);
+    wr8(W(dp_08) + 1, 0x00);
     cyc(16);
-    wr8(H_Z + 1, 0x00);
+    wr8(W(dp_94) + 1, 0x00);
     save_xy(x, y);
     cyc(30);
     h = rd8(b | (uint16_t)(0x2015 + x));
@@ -376,11 +366,11 @@ static uint8_t pitched_1f7c(uint16_t x, uint16_t y)
     uint8_t h, pitch, v;
 
     cyc(16);
-    wr8(H_X + 1, 0x00);
+    wr8(W(dp_02) + 1, 0x00);
     cyc(16);
-    wr8(H_Y + 1, 0x00);
+    wr8(W(dp_08) + 1, 0x00);
     cyc(16);
-    wr8(H_Z + 1, 0x00);
+    wr8(W(dp_94) + 1, 0x00);
     save_xy(x, y);
     cyc(112);
     h = rd8(W(heading_turn));
@@ -406,7 +396,7 @@ uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(30);
     wr8(b | W(heading_turn), cyc_then(24, rd8(b | (uint16_t)(0x2015 + x))));
     cyc(30);
@@ -479,12 +469,12 @@ uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t
 
     head_v = -1;
     cyc(16);
-    wr8(H_SPEED, speed);
+    wr8(W(heading_speed), speed);
     save_xy(x, y);
     cyc(16);
-    wr8(H_Y, 0x00);
+    wr8(W(dp_08), 0x00);
     cyc(16);
-    wr8(H_Y + 1, 0x00);
+    wr8(W(dp_08) + 1, 0x00);
     cyc(60);
     i = sbc8(0x40, rd8(b | (uint16_t)(0x2015 + x)));
     cyc(20);
@@ -525,12 +515,12 @@ uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(16);
-    wr8(H_SPEED, speed);
+    wr8(W(heading_speed), speed);
     save_xy(x, y);
     cyc(16);
-    wr8(H_Y, 0x00);
+    wr8(W(dp_08), 0x00);
     cyc(16);
-    wr8(H_Y + 1, 0x00);
+    wr8(W(dp_08) + 1, 0x00);
     cyc(30);
     i = rd8(b | (uint16_t)(0x2015 + x));
     cyc(36);
@@ -579,19 +569,19 @@ static uint16_t move_by(uint8_t bank, uint16_t x)
     cyc(52);
     v = rd16(b | (uint16_t)(0x200C + x));
     cyc(30);
-    v = add16(v, rd16(H_X));
+    v = add16(v, rd16(W(dp_02)));
     cyc(30);
     wr16(b | (uint16_t)(0x200C + x), v);
     cyc(30);
     v = rd16(b | (uint16_t)(0x200E + x));
     cyc(30);
-    v = add16(v, rd16(H_Y));
+    v = add16(v, rd16(W(dp_08)));
     cyc(30);
     wr16(b | (uint16_t)(0x200E + x), v);
     cyc(30);
     v = rd16(b | (uint16_t)(0x2010 + x));
     cyc(30);
-    v = add16(v, rd16(H_Z));
+    v = add16(v, rd16(W(dp_94)));
     cyc(30);
     wr16(b | (uint16_t)(0x2010 + x), v);
     return v;
@@ -607,7 +597,7 @@ static void move_regs(Carried *cr, uint16_t v)
 /* ASL of the three words at $02, $08, $94 in that order. */
 static void double_vector(void)
 {
-    static const uint32_t at[3] = {H_X, H_Y, H_Z};
+    static const uint32_t at[3] = {W(dp_02), W(dp_08), W(dp_94)};
     unsigned i;
     uint16_t v;
 
@@ -735,7 +725,7 @@ static int vel_carry;
    shift a 16-bit ASL of A). Returns A, the last word. */
 static uint16_t velocity_from_vector(uint8_t bank, uint16_t x, uint16_t y, int shift)
 {
-    static const uint32_t from[3] = {H_X, H_Y, H_Z};
+    static const uint32_t from[3] = {W(dp_02), W(dp_08), W(dp_94)};
     uint32_t b = (uint32_t)bank << 16;
     uint16_t v = 0;
     unsigned i;
@@ -912,19 +902,19 @@ uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
     uint16_t v;
 
     cyc(16);
-    wr8(b | W(heading_pitch), cyc_then(24, rd8(H_X)));
+    wr8(b | W(heading_pitch), cyc_then(24, rd8(W(dp_02))));
     cyc(16);
-    wr8(H_SPEED, cyc_then(16, rd8(H_Z)));
+    wr8(W(heading_speed), cyc_then(16, rd8(W(dp_94))));
     cyc(40);
     wr8(b | W(heading_turn), 0x40);
     cyc(62);
     HeadingPitchedFrom1F7C(x, y);
     cyc(38);
-    v = rd16(H_X);
+    v = rd16(W(dp_02));
     cyc(30);
     wr16(b | (uint16_t)(0x202E + x), v);
     cyc(16);
-    v = rd16(H_Y);
+    v = rd16(W(dp_08));
     cyc(30);
     wr16(b | (uint16_t)(0x2030 + x), v);
     cyc(30);

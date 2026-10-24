@@ -6,13 +6,11 @@
  * is forced blank. While $0E3A is zero the screen fades in, otherwise out.
  */
 #include "machine.h"
-#include "wram.h"
 #include "video_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
-/* Per-brightness fade-in steps, in the frame code's RAM copy at $7E:AC9D. */
-#define FADE_IN_STEPS 0x7EAC9Du
 
 /* Flags left by CMP #$0F00 on a sum, or by LDA #$0F00 when it was clamped. */
 static uint8_t clamp_flags(uint8_t p, uint16_t sum)
@@ -24,7 +22,7 @@ static uint8_t clamp_flags(uint8_t p, uint16_t sum)
 
 static uint16_t fade_in(uint16_t step, uint16_t pre, uint8_t *p)
 {
-    uint16_t level = rd16(FADE_LEVEL);
+    uint16_t level = rd16(W(fade_level));
     uint16_t sum = (uint16_t)(level + step);
 
     /* V comes from the add; CMP leaves it alone. */
@@ -36,7 +34,7 @@ static uint16_t fade_in(uint16_t step, uint16_t pre, uint8_t *p)
     } else {
         cyc(pre + 70);     /* CMP, BCC taken, STA */
     }
-    wr16(FADE_LEVEL, sum);
+    wr16(W(fade_level), sum);
     return sum;
 }
 
@@ -45,7 +43,7 @@ static uint16_t fade_in(uint16_t step, uint16_t pre, uint8_t *p)
 static uint16_t fade_out(uint8_t *p)
 {
     cyc(62);
-    uint16_t level = rd16(FADE_LEVEL);
+    uint16_t level = rd16(W(fade_level));
 
     if (level & 0x8000) {
         *p = nz16(*p, level);
@@ -60,7 +58,7 @@ static uint16_t fade_out(uint8_t *p)
         level = 0x8000;
     }
     cyc(46);
-    wr16(FADE_LEVEL, level);
+    wr16(W(fade_level), level);
     return level;
 }
 
@@ -82,7 +80,7 @@ uint16_t FadeStepFixed(void)
     uint16_t level;
 
     cyc(94);
-    level = rd8(FADE_OUT) == 0 ? (cyc(62), fade_in(0x0098, 38, &fade_p)) : (cyc(6), fade_out(&fade_p));
+    level = rd8(W(fade_out)) == 0 ? (cyc(62), fade_in(0x0098, 38, &fade_p)) : (cyc(6), fade_out(&fade_p));
     fade_p |= P_M;
     cyc(64);
     return level;
@@ -126,13 +124,13 @@ uint16_t FadeStep(void)
     uint16_t level;
 
     cyc(24);
-    if (rd8(FADE_OUT) != 0) {
+    if (rd8(W(fade_out)) != 0) {
         level = fade_out(&fade_p);
     } else {
         cyc(46);
-        fade_x = (uint8_t)(rd8(FADE_LEVEL + 1) << 1);
+        fade_x = (uint8_t)(rd8(W(fade_level) + 1) << 1);
         cyc(136);
-        level = fade_in(rd16(FADE_IN_STEPS + fade_x), 0, &fade_p);
+        level = fade_in(rd16(W(wram_7EAC9D) + fade_x), 0, &fade_p);
     }
     cyc(64);
     fade_p |= P_M;

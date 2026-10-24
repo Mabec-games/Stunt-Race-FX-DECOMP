@@ -11,7 +11,6 @@
 #include "native.h"
 #include "hw.h"
 #include "draw_list.h"
-#include "wram.h"
 #include "cpu_ops.h"
 #include "video_calls.h"
 #include "carried.h"
@@ -116,11 +115,11 @@ uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram)
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(24);
-    hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
+    hw_wr(GSU_SCMR, cyc_then(40, rd8(W(gsu_scmr_shadow)) & 0xF7));
     cyc(40);
     mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
-    mode = rd8(GSU_SCMR_SHADOW) | 0x18;
+    mode = rd8(W(gsu_scmr_shadow)) | 0x18;
     cyc(40);
     hw_wr(GSU_SCMR, mode);
     cyc(42);
@@ -176,7 +175,7 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(54);
-    hw_wr16(GSU_SCMR, cyc_then(48, rd16(GSU_SCMR_SHADOW) & 0xFFF7));
+    hw_wr16(GSU_SCMR, cyc_then(48, rd16(W(gsu_scmr_shadow)) & 0xFFF7));
     for (;;) {
         cyc(60);
         dma_wr16(A1T0L, src);
@@ -189,7 +188,7 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
         src = (uint16_t)(src + 0x0200);
     }
     cyc(60);
-    mode = rd16(GSU_SCMR_SHADOW) | 0x0018;
+    mode = rd16(W(gsu_scmr_shadow)) | 0x0018;
     cyc(48);
     hw_wr16(GSU_SCMR, mode);
     fx_op_upload(0);
@@ -286,7 +285,7 @@ void abi_OamDma(void)
 void OamDmaAll(void)
 {
     cyc(160);
-    OamDma(OAM_BUFFER, 0x0220);
+    OamDma(W(oam_buffer), 0x0220);
     cyc(72);
 }
 
@@ -477,7 +476,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
 
     fx_op_upload(1);
     cyc(238);
-    hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
+    hw_wr(GSU_SCMR, cyc_then(40, rd8(W(gsu_scmr_shadow)) & 0xF7));
     cyc(38);
     wr16(W(dp_fb), src);
     cyc(24);
@@ -505,7 +504,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
         mdmaen_wr(MDMAEN, 0x01);
     } while (!(--rows_less_one & 0x80));
     cyc(76);
-    mode = rd8(GSU_SCMR_SHADOW) | 0x18;
+    mode = rd8(W(gsu_scmr_shadow)) | 0x18;
     cyc(40);
     hw_wr(GSU_SCMR, mode);
     *next = s;

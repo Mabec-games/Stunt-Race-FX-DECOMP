@@ -5,7 +5,6 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
-#include "wram.h"
 #include "carried.h"
 #include "wram_names.h"
 
@@ -25,26 +24,26 @@ uint16_t JoypadRead(void)
     cyc(98);
     uint16_t now1 = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    uint16_t new1 = (uint16_t)((now1 ^ rd16(JOY1_HELD)) & io_rd16(cyc_then(32, JOY1L), input_pad(0)));
+    uint16_t new1 = (uint16_t)((now1 ^ rd16(W(joy1_held))) & io_rd16(cyc_then(32, JOY1L), input_pad(0)));
     uint16_t now2;
     uint16_t new2;
 
     cyc(24);
-    wr16(JOY1_PRESSED, new1);
+    wr16(W(joy1_pressed), new1);
     cyc(24);
-    wr16(JOY1_PRESSED_COPY, new1);
+    wr16(W(joy1_pressed_copy), new1);
     cyc(32);
     now2 = io_rd16(JOY2L, input_pad(1));
     cyc(54);
-    new2 = (uint16_t)((now2 ^ rd16(JOY2_HELD)) & io_rd16(cyc_then(32, JOY2L), input_pad(1)));
+    new2 = (uint16_t)((now2 ^ rd16(W(joy2_held))) & io_rd16(cyc_then(32, JOY2L), input_pad(1)));
     cyc(24);
-    wr16(JOY2_PRESSED, new2);
+    wr16(W(joy2_pressed), new2);
     cyc(24);
-    wr16(JOY2_PRESSED_COPY, new2);
+    wr16(W(joy2_pressed_copy), new2);
     cyc(60);
-    wr16(JOY2_HELD, now2);
+    wr16(W(joy2_held), now2);
     cyc(60);
-    wr16(JOY1_HELD, now1);
+    wr16(W(joy1_held), now1);
     return now1;
 }
 
@@ -97,32 +96,32 @@ uint16_t JoypadAccumulate(void)
     cyc(68);
     now = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    wr16(JOY1_PRESSED_COPY, cyc_then(24, (uint16_t)(((now ^ rd16(JOY1_LAST)) & io_rd16(cyc_then(24, JOY1L), input_pad(0))) | rd16(cyc_then(24, JOY1_PRESSED_COPY)))));
+    wr16(W(joy1_pressed_copy), cyc_then(24, (uint16_t)(((now ^ rd16(W(joy1_last))) & io_rd16(cyc_then(24, JOY1L), input_pad(0))) | rd16(cyc_then(24, W(joy1_pressed_copy))))));
     cyc(60);
-    wr16(JOY1_LAST, now);
+    wr16(W(joy1_last), now);
     cyc(24);
     now = io_rd16(JOY2L, input_pad(1));
     cyc(54);
-    wr16(JOY2_PRESSED_COPY, cyc_then(24, (uint16_t)(((now ^ rd16(JOY2_LAST)) & io_rd16(cyc_then(24, JOY2L), input_pad(1))) | rd16(cyc_then(24, JOY2_PRESSED_COPY)))));
+    wr16(W(joy2_pressed_copy), cyc_then(24, (uint16_t)(((now ^ rd16(W(joy2_last))) & io_rd16(cyc_then(24, JOY2L), input_pad(1))) | rd16(cyc_then(24, W(joy2_pressed_copy))))));
     cyc(60);
-    wr16(JOY2_LAST, now);
+    wr16(W(joy2_last), now);
 
     cyc(24);
     now = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    wr16(JOY2_PRESSED, cyc_then(24, (uint16_t)((now ^ rd16(JOY2_HELD)) & io_rd16(cyc_then(24, JOY1L), input_pad(0)))));
+    wr16(W(joy2_pressed), cyc_then(24, (uint16_t)((now ^ rd16(W(joy2_held))) & io_rd16(cyc_then(24, JOY1L), input_pad(0)))));
     {
         cyc(24);
         uint16_t now2 = io_rd16(JOY2L, input_pad(1));
         cyc(54);
-        wr16(JOY2_PRESSED, cyc_then(24, (uint16_t)((now2 ^ rd16(JOY2_HELD)) & io_rd16(cyc_then(24, JOY2L), input_pad(1)))));
+        wr16(W(joy2_pressed), cyc_then(24, (uint16_t)((now2 ^ rd16(W(joy2_held))) & io_rd16(cyc_then(24, JOY2L), input_pad(1)))));
         cyc(60);
-        wr16(JOY2_HELD, cyc_then(24, (uint16_t)(now2 | rd16(JOY2_HELD))));
+        wr16(W(joy2_held), cyc_then(24, (uint16_t)(now2 | rd16(W(joy2_held)))));
     }
     cyc(60);
-    held = (uint16_t)(now | rd16(JOY1_HELD));
+    held = (uint16_t)(now | rd16(W(joy1_held)));
     cyc(24);
-    wr16(JOY1_HELD, held);
+    wr16(W(joy1_held), held);
     cyc(70);
     return held;
 }

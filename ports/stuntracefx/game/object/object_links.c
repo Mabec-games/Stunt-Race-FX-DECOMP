@@ -15,7 +15,6 @@ void abi_ObjectFreeLong(void);
 void ObjectInit(uint16_t obj);
 int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y);
 
-#define LINKS_SCRATCH 0x00003Eu
 
 void ObjectChildFindTagX_cr(Carried *cr);
 void ObjectChildFindTagY_cr(Carried *cr);
@@ -230,7 +229,7 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     cyc(126);
     wr16(b | (uint16_t)(0x2027 + child), 0x0000);
     cyc(60);
-    wr16(LINKS_SCRATCH, child);
+    wr16(W(debug_digit), child);
     for (;;) {
         cyc(58);
         next = rd16(b | (uint16_t)(0x2027 + at));
@@ -239,11 +238,11 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
         at = next;
     }
     cyc(32);
-    child = rd16(LINKS_SCRATCH);
+    child = rd16(W(debug_digit));
     cyc(30);
     wr16(b | (uint16_t)(0x2027 + at), child);
     cyc(16);
-    (void)rd16(LINKS_SCRATCH);
+    (void)rd16(W(debug_digit));
     cyc(66);                            /* SEP, RTL */
 }
 

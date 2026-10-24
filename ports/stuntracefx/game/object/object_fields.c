@@ -13,7 +13,6 @@
 #include "wram_names.h"
 
 
-#define FIELDS_SCRATCH 0x00003Eu
 
 /*
  * @routine 03:CBE0 ObjectStubZero
@@ -163,7 +162,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     uint8_t v, d, s;
 
     cyc(16);
-    wr8(FIELDS_SCRATCH, step);
+    wr8(W(dp_3e), step);
     cyc(30);
     v = rd8(b | (uint16_t)(0x2017 + obj));
     *p |= P_C;
@@ -177,7 +176,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     if (d & 0x80)
         { cyc(24); d = (uint8_t)(~d + 1); }
     cyc(38);
-    s = rd8(FIELDS_SCRATCH);
+    s = rd8(W(dp_3e));
     if ((uint8_t)(d - s) & 0x80) {
         cyc(40);
         v = rd8(b | W(wram_1F2B));
@@ -192,11 +191,11 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
             if ((uint8_t)(v - s) & 0x80) {
                 *p &= (uint8_t)~P_C;
                 cyc(68);
-                v = alu_adc8(v, rd8(FIELDS_SCRATCH), p);
+                v = alu_adc8(v, rd8(W(dp_3e)), p);
             } else {
                 *p |= P_C;
                 cyc(62);
-                v = alu_sbc8(v, rd8(FIELDS_SCRATCH), p);
+                v = alu_sbc8(v, rd8(W(dp_3e)), p);
                 cyc(6);
             }
         } else {

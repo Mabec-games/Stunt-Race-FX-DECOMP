@@ -11,12 +11,9 @@
 #include "machine.h"
 #include "system_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
-#define NUM_BYTE 0x0006E7u
-#define NUM_VALUE 0x000042u
-#define NUM_DIGIT 0x00003Eu
-#define NUM_BITS 0x000040u
 #define HEX_DIGITS 0x03D7B1u
 #define POWERS_OF_TEN 0x03D57Au
 #define DECIMAL_PAIRS 0x03D5EDu
@@ -246,9 +243,9 @@ static uint16_t long_wrapper(void (*print)(uint8_t, uint8_t, DebugRegs *),
 
     /* PHA pushes a word with M 16-bit; PHX and PHY a byte each with X 8-bit */
     cyc((p & P_M ? 194 : 202) - (p & P_X ? 16 : 0));
-    wr8((uint32_t)bank << 16 | NUM_BYTE, byte);
+    wr8((uint32_t)bank << 16 | W(debug_byte), byte);
     cyc(90);
-    byte = rd8(NUM_BYTE);
+    byte = rd8(W(debug_byte));
     (cyc(46), print(0x00, byte, &r));
     if (!(p & P_M))
         cyc(8);
@@ -429,48 +426,48 @@ void DebugPrintDecimalWord(uint16_t value)
     uint16_t v, pw, n, x, drawn = 0, neg = 0, skip;
 
     cyc(172);
-    wr16(NUM_VALUE, value);
+    wr16(W(dp_42), value);
     cyc(126);
-    v = rd16(NUM_VALUE);
+    v = rd16(W(dp_42));
     if (v & 0x8000) {
         cyc(70);
-        wr16(NUM_VALUE, (uint16_t)(~v + 1));
+        wr16(W(dp_42), (uint16_t)(~v + 1));
         cyc(30);
         draw(0x00, 0x0D, &r);
         neg = 1;
     }
     x = 0;
     cyc(neg ? 62 : 84);
-    wr16(NUM_DIGIT, 0x0000);
+    wr16(W(dp_3e), 0x0000);
     do {
         cyc(2);
         for (;;) {
             cyc(38);
-            v = rd16(NUM_VALUE);
+            v = rd16(W(dp_42));
             pw = rd16(POWERS_OF_TEN + x);
             if ((uint16_t)(v - pw) & 0x8000)
                 break;
             cyc(100);
-            wr16(NUM_VALUE, (uint16_t)(v - pw));
+            wr16(W(dp_42), (uint16_t)(v - pw));
             cyc(16);
-            n = rd16(NUM_DIGIT);
+            n = rd16(W(dp_3e));
             cyc(14);
-            wr16(NUM_DIGIT, (uint16_t)(n + 1));
+            wr16(W(dp_3e), (uint16_t)(n + 1));
         }
         cyc(156);
         pw = rd16(POWERS_OF_TEN + x);
-        wr16(NUM_VALUE, v);
+        wr16(W(dp_42), v);
         cyc(16);
-        n = rd16(NUM_DIGIT);
+        n = rd16(W(dp_3e));
         skip = !(n || drawn);
         if (!skip) {
             drawn = 1;
             cyc(n ? 168 : 202);
-            n = rd8(NUM_DIGIT);
+            n = rd8(W(dp_3e));
             draw(0x00, (uint8_t)(n + 0x10), &r);
         }
         cyc(skip ? 124 : 110);
-        wr16(NUM_DIGIT, 0x0000);
+        wr16(W(dp_3e), 0x0000);
         x = (uint16_t)(x + 2);
     } while (cyc_loop(50, x != 0x000A));
     cyc(22);
@@ -516,17 +513,17 @@ void DebugPrintBinaryByte(uint8_t bank, uint8_t byte, DebugRegs *r)
     int i;
 
     cyc(60);
-    wr8(NUM_BITS, byte);
+    wr8(W(dp_40), byte);
     for (i = 0; i < 4; i++) {
         cyc(i ? 152 : 32); /* later pairs: ROL, ASL x3, PLP, ROL, PHA, LDA #0 first */
-        v = rd8(NUM_BITS);
+        v = rd8(W(dp_40));
         lo = v & 1;
         cyc(6);
-        wr8(NUM_BITS, (uint8_t)(v >> 1));
+        wr8(W(dp_40), (uint8_t)(v >> 1));
         cyc(38);
-        v = rd8(NUM_BITS);
+        v = rd8(W(dp_40));
         cyc(6);
-        wr8(NUM_BITS, (uint8_t)(v >> 1));
+        wr8(W(dp_40), (uint8_t)(v >> 1));
         pair[i] = (uint8_t)((v & 1) << 4 | lo);
     }
     cyc(22);

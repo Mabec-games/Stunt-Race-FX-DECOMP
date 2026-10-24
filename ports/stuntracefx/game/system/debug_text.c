@@ -10,13 +10,6 @@
 #include "carried.h"
 #include "wram_names.h"
 
-#define TEXT_HALF 0x000307u
-#define TEXT_HIGH 0x000308u
-#define TEXT_BITS 0x001F2Bu
-#define TEXT_MASK 0x001F2Cu
-#define TEXT_POS 0x000046u
-#define TEXT_BASE 0x000048u
-#define TEXT_ROWS 0x000040u
 #define TEXT_FONT 0x009022u
 
 /* The six byte offsets of a cell row in Super FX RAM, in the order written,
@@ -46,64 +39,64 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     unsigned i;
 
     cyc(90);
-    dest = rd16(TEXT_POS);
+    dest = rd16(W(text_pos));
     cyc(30);
-    dest = (uint16_t)(dest + rd16(TEXT_BASE));
+    dest = (uint16_t)(dest + rd16(W(text_base)));
     *x = dest;
     cyc(104);
-    wr16(TEXT_ROWS, (uint16_t)(ch << 1));
+    wr16(W(dp_40), (uint16_t)(ch << 1));
     cyc(44);
-    *y = (uint16_t)((ch << 2) + rd16(TEXT_ROWS));
+    *y = (uint16_t)((ch << 2) + rd16(W(dp_40)));
     cyc(54);
-    wr16(TEXT_ROWS, 0x0006);
+    wr16(W(dp_40), 0x0006);
     rows = 6;
     do {
         cyc(rows == 6 ? 76 : 92); /* PHX first, BRL after */
-        v = rd8(b | TEXT_HALF);
+        v = rd8(b | W(text_half));
         f = rd8(b | (uint16_t)(TEXT_FONT + *y));
         cyc((v & 0x04) ? 94 : 100); /* BEQ not taken / taken */
-        wr8(b | TEXT_BITS, f);
+        wr8(b | W(wram_1F2B), f);
         high = (v & 0x04) ? (cyc(40), (uint8_t)(f >> 4)) : (uint8_t)(f & 0xF0);
         cyc(40);
-        wr8(b | TEXT_HIGH, high);
+        wr8(b | W(text_high), high);
         cyc(24);
-        bits = rd8(b | TEXT_BITS);
+        bits = rd8(b | W(wram_1F2B));
         bits = (v & 0x04) ? (uint8_t)(bits & 0x0F) : (cyc(40), (uint8_t)(bits << 4));
         cyc(40);
-        wr8(b | TEXT_BITS, bits);
+        wr8(b | W(wram_1F2B), bits);
         cyc(24);
-        high = rd8(b | TEXT_HIGH);
+        high = rd8(b | W(text_high));
         cyc(40);
-        wr8(b | TEXT_MASK, (uint8_t)~(bits | high));
+        wr8(b | W(text_mask), (uint8_t)~(bits | high));
         cyc((v & 0x04) ? 46 : 24); /* BRA */
-        if (!(rd8(b | TEXT_HALF) & 0x04))
+        if (!(rd8(b | W(text_half)) & 0x04))
             for (i = 0; i < 8; i++)
                 { cyc(i == 0 ? 80 : i == 5 ? 48 : 32); wr8(0x700000 + cell[i].off + *x, cell[i].cleared); } else { cyc(38); }
         for (i = 0; i < 8; i++) {
             cyc(32);
             v = rd8(0x700000 + cell[i].off + *x);
             cyc(24);
-            v = (uint8_t)(v & rd8(b | TEXT_MASK));
+            v = (uint8_t)(v & rd8(b | W(text_mask)));
             if (cell[i].high < 2)
-                { cyc(24); v |= rd8(b | TEXT_BITS); }
+                { cyc(24); v |= rd8(b | W(wram_1F2B)); }
             if (cell[i].high == 1)
-                { cyc(24); v |= rd8(b | TEXT_HIGH); }
+                { cyc(24); v |= rd8(b | W(text_high)); }
             cyc(32);
             wr8(0x700000 + cell[i].off + *x, v);
         }
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 1);
         cyc(80);
-        rows = (uint16_t)(rd16(TEXT_ROWS) - 1);
+        rows = (uint16_t)(rd16(W(dp_40)) - 1);
         cyc(14);
-        wr16(TEXT_ROWS, rows);
+        wr16(W(dp_40), rows);
     } while (rows);
     cyc(88);
-    pos = (uint16_t)(dest - rd16(TEXT_BASE));
+    pos = (uint16_t)(dest - rd16(W(text_base)));
     cyc(54);
-    half = (uint16_t)(rd16(b | TEXT_HALF) ^ 0x0004);
+    half = (uint16_t)(rd16(b | W(text_half)) ^ 0x0004);
     cyc(48);
-    wr16(b | TEXT_HALF, half);
+    wr16(b | W(text_half), half);
     if (!half) {
         cyc(92);
         pos = (uint16_t)(pos + 0x0400);
@@ -112,7 +105,7 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
             { cyc(54); pos = (uint16_t)(pos - 0x67C0); }
     }
     cyc(74);
-    wr16(TEXT_POS, pos);
+    wr16(W(text_pos), pos);
     *a = pos;
     cyc(70); /* PLP, RTS */
 }
@@ -156,7 +149,7 @@ void DebugPrint(uint8_t bank)
     unsigned top;
 
     cyc(242);
-    wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
+    wr16((uint32_t)bank << 16 | W(text_half), 0x0000);
     for (top = 150;; top = 90) { /* later rounds follow a draw: its tail is stated */
         cyc(top);
         s = rd24(W(dp_54));
@@ -221,9 +214,9 @@ uint16_t DebugShowErrors(uint8_t bank)
         if (!a)
             continue;
         cyc(56);
-        wr16(TEXT_POS, errors[i].pos);
+        wr16(W(text_pos), errors[i].pos);
         cyc(48);
-        wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
+        wr16((uint32_t)bank << 16 | W(text_half), 0x0000);
         cyc(54);
         wr8(W(dp_56), 0x08);
         cyc(62);

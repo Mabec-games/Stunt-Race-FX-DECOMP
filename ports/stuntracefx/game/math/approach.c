@@ -7,9 +7,9 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
-#define APPROACH_VALUE 0x00003Eu
 
 /* The time is the assembly's, every routine the same shape (master
    clocks: a ROM byte 8, an internal cycle 6). I is an immediate
@@ -47,18 +47,18 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
 
     target &= mask;
     cyc(16);                                    /* to the CMP's read */
-    cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+    cur = wide ? rd16(W(dp_3e)) : rd8(W(dp_3e));
     m = target != cur;
     if (moved)
         *moved = m;
     if (!m) {
         cyc(64);                                /* BNE, JML, the tail's LDA */
-        cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+        cur = wide ? rd16(W(dp_3e)) : rd8(W(dp_3e));
         cyc(58);                                /* the rest of the tail */
         return cur;
     }
     cyc(52);                                    /* BNE taken, SEC, SBC */
-    cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+    cur = wide ? rd16(W(dp_3e)) : rd8(W(dp_3e));
     d = (uint16_t)(target - cur) & mask;
     if (!(d & sign)) {
         if (d < min) {
@@ -76,16 +76,16 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     for (i = 0; i < shifts; i++)
         d = halve(d, sign, imm) & mask;
     cyc(30);                                    /* CLC, ADC */
-    cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+    cur = wide ? rd16(W(dp_3e)) : rd8(W(dp_3e));
     s = (uint16_t)(d + cur) & mask;
     approach_v = (~(d ^ cur) & (d ^ s) & sign) != 0;
     cyc(16);                                    /* STA */
     if (wide)
-        wr16(APPROACH_VALUE, s);
+        wr16(W(dp_3e), s);
     else
-        wr8(APPROACH_VALUE, (uint8_t)s);
+        wr8(W(dp_3e), (uint8_t)s);
     cyc(46);                                    /* BRL, the tail's LDA */
-    s = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+    s = wide ? rd16(W(dp_3e)) : rd8(W(dp_3e));
     cyc(58);                                    /* the rest of the tail */
     return s;
 }

@@ -11,7 +11,7 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
-#include "wram.h"
+#include "wram_names.h"
 #include "audio_calls.h"
 #include "carried.h"
 
@@ -44,7 +44,7 @@ static int in_rom(uint32_t at)
 static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
 {
     cyc(16);
-    uint32_t base = rd24(APU_STREAM_PTR);
+    uint32_t base = rd24(W(apu_stream_ptr));
     uint32_t at = (base + *offset) & 0xFFFFFF;
     uint8_t value = rd8(at);
     uint16_t bank;
@@ -53,15 +53,15 @@ static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
         cyc(8);
     *offset += 1;
     cyc(110);
-    *low = rd16(APU_STREAM_PTR);
+    *low = rd16(W(apu_stream_ptr));
     if ((uint32_t)*low + *offset > 0xFFFF) {
         cyc(56);
-        wr16(APU_STREAM_PTR, 0);
+        wr16(W(apu_stream_ptr), 0);
         *offset = 0x8000;
         cyc(40);
-        bank = rd16(APU_STREAM_BANK);
+        bank = rd16(W(apu_stream_bank));
         cyc(14);
-        wr16(APU_STREAM_BANK, (uint16_t)(bank + 1));
+        wr16(W(apu_stream_bank), (uint16_t)(bank + 1));
     } else { cyc(22); }
     cyc(100);
     return value;
@@ -135,9 +135,9 @@ ApuUploadEnd ApuUpload(uint8_t bank, uint16_t addr)
     uint8_t kick = 0xCC;
 
     cyc(38);
-    wr16(APU_STREAM_PTR, addr);
+    wr16(W(apu_stream_ptr), addr);
     cyc(16);
-    wr8(APU_STREAM_BANK, bank);
+    wr8(W(apu_stream_bank), bank);
     cyc(26);
     while (hw_rd16(cyc_then(46, APUIO0)) != 0xBBAA) {
     }

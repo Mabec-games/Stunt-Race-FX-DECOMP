@@ -133,8 +133,6 @@ void abi_GsuPictureUploadStep(void)
     cpu.db = r.db;
 }
 
-#define WINDOW_MODE 0x001905u    /* 0 idle, 1 opening, 2 closing, 3 set */
-#define WINDOW_SIZE 0x001907u    /* 0-$2C, in steps of 4 */
 
 /* The window HDMA table's entries for size s: line counts at $7F:134A
    and $7F:134E ($2C - s), and at $7F:134C/$7F:134D either s * 2 and 0 or,
@@ -142,12 +140,12 @@ void abi_GsuPictureUploadStep(void)
    shorter. */
 static void window_table(void)
 {
-    uint16_t s = rd16(WINDOW_SIZE);
+    uint16_t s = rd16(W(menu_1907));
     uint8_t c = (uint8_t)(0x2C - s), d;
 
     wr8(W(window_table_7f_134a), c);
     wr8(W(window_table_7f_134e), c);
-    s = rd16(WINDOW_SIZE);
+    s = rd16(W(menu_1907));
     d = (uint8_t)(s << 1);
     if (d) {
         wr8(W(window_table_7f_134c), d);
@@ -180,7 +178,7 @@ static void window_table(void)
 uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
 {
     cyc(54);
-    uint16_t mode = rd16(WINDOW_MODE), s, t;
+    uint16_t mode = rd16(W(menu_1905)), s, t;
     unsigned r;
 
     *p &= (uint8_t)~(P_M | P_X);
@@ -221,28 +219,28 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
     }
     if (mode != 0x0002) {
         window_table();
-        s = rd16(WINDOW_SIZE);
+        s = rd16(W(menu_1907));
         t = (uint16_t)(s - 4);
         *p = (uint8_t)((nz16(*p, t) & ~(P_C | P_V)) | (s >= 4 ? P_C : 0)
                        | (((s ^ 4) & (s ^ t) & 0x8000) ? P_V : 0));
-        wr16(WINDOW_SIZE, t);
+        wr16(W(menu_1907), t);
         if (!(t & 0x8000))
             return t;
         t = 0x0000;
         *p = nz16(*p, t);
-        wr16(WINDOW_MODE, t);
+        wr16(W(menu_1905), t);
         return t;
     }
     window_table();
-    s = rd16(WINDOW_SIZE);
+    s = rd16(W(menu_1907));
     t = (uint16_t)(s + 4);
     *p = (uint8_t)((*p & ~P_V) | ((~(s ^ 4) & (s ^ t) & 0x8000) ? P_V : 0));
-    wr16(WINDOW_SIZE, t);
+    wr16(W(menu_1907), t);
     *p = (uint8_t)((nz16(*p, (uint16_t)(t - 0x2C)) & ~P_C) | (t >= 0x2C ? P_C : 0));
     if (t != 0x002C)
         return t;
     t = 0x0000;
-    wr16(WINDOW_MODE, t);
+    wr16(W(menu_1905), t);
     wr16(W(wram_7EFD65), t);
     ppu_wr(dbw(bank, CGADD), 0x00);
     ppu_wr(dbw(bank, CGDATA), 0x00);
@@ -275,8 +273,6 @@ void abi_WindowOpenCloseStep(void)
 
 void abi_WindowOpenCloseStep(void);
 
-/* The two colours the blinking colour $D9 alternates between. */
-#define BLINK_COLOURS 0x7F0DA8u
 
 /* Every fifth call toggles $18FF; then CGRAM colour $D9 gets entry $18FF
    of the two colours. Returns X as the code leaves it ($18FF * 2), and the
@@ -297,9 +293,9 @@ static uint16_t blink_colour(uint8_t bank, uint8_t *last)
     cyc(32);
     x = (uint16_t)(rd16(W(wram_18FF)) << 1);
     ppu_wr(dbw(bank, CGADD), cyc_then(90, 0xD9));
-    ppu_wr(dbw(bank, CGDATA), cyc_then(24, rd8(cyc_then(32, BLINK_COLOURS + x))));
+    ppu_wr(dbw(bank, CGDATA), cyc_then(24, rd8(cyc_then(32, W(blink_colours) + x))));
     cyc(32);
-    *last = rd8(BLINK_COLOURS + 1 + x);
+    *last = rd8(W(blink_colours) + 1 + x);
     ppu_wr(dbw(bank, CGDATA), cyc_then(24, *last));
     return x;
 }

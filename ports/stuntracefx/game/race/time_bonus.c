@@ -6,7 +6,6 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
-#include "wram.h"
 #include "carried.h"
 #include "wram_names.h"
 
@@ -36,7 +35,6 @@ void abi_GsuParam216A(void);
 void abi_GsuRun(void);
 void abi_SoundPort0QueuePush(void);
 
-#define TIME_BCD 0x000E70u
 #define GSU_X 0x70020Au      /* the digit program's inputs */
 #define GSU_Y 0x70020Cu
 #define GSU_STEP 0x70020Eu
@@ -101,7 +99,7 @@ static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8, uint32_t lead)
     cyc(56);
     wr16(GSU_STEP, 0x0010);
     cyc(24);
-    v = rd16(b | TIME_BCD);
+    v = rd16(b | W(race_time_bcd));
     if (v >= 0x0100) {
         cyc(130);
         GsuParam216A(bank, (uint16_t)(((v >> 8) & 0x000F) << 1));
@@ -112,12 +110,12 @@ static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8, uint32_t lead)
         cyc(172);
         wr16(GSU_X, 0x00AC);
         cyc(24);
-        v = rd16(b | TIME_BCD);
+        v = rd16(b | W(race_time_bcd));
     } else { cyc(46); }
     cyc(56);
     digit(bank, (uint16_t)((v >> 4) & 0x000F), x8 ? 64 : 70);
     cyc(162);
-    v = (uint16_t)(rd16(b | TIME_BCD) & 0x000F);
+    v = (uint16_t)(rd16(b | W(race_time_bcd)) & 0x000F);
     *mode = digit(bank, v, 70);
     return v;
 }
@@ -492,24 +490,24 @@ static void sound_push_decimal(uint8_t command)
     int c;
 
     cyc(394);
-    if (rd8(SOUND_MUTED) != 0)
+    if (rd8(W(sound_muted)) != 0)
         return;
     cyc(40);
-    n = rd8(SOUND_PORT0_COUNT);
+    n = rd8(W(sound_port0_count));
     if (n == 0) {
         cyc(46);
-        wr8(SOUND_PORT0_COUNT, cyc_then(6, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1)));
+        wr8(W(sound_port0_count), cyc_then(6, (uint8_t)(rd8(W(sound_port0_count)) + 1)));
         cyc(24);
-        wr8(SOUND_PORT0_QUEUE + rd8(SOUND_PORT0_HEAD), cyc_then(30, command));
+        wr8(W(sound_port0_queue) + rd8(W(sound_port0_head)), cyc_then(30, command));
     } else if (n < 0x10) {
         c = 0;
-        slot = adc_decimal8(n, rd8(SOUND_PORT0_HEAD), &c);
+        slot = adc_decimal8(n, rd8(W(sound_port0_head)), &c);
         if (slot >= 0x10) {
             c = 1;
             slot = sbc_decimal8(slot, 0x10, &c);
         }
-        wr8(SOUND_PORT0_QUEUE + slot, command);
-        wr8(SOUND_PORT0_COUNT, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1));
+        wr8(W(sound_port0_queue) + slot, command);
+        wr8(W(sound_port0_count), (uint8_t)(rd8(W(sound_port0_count)) + 1));
     }
     cyc(162);
 }
@@ -960,9 +958,9 @@ static void count_bonus(uint8_t bank, TbRegs *r, uint32_t b)
     v = sbc_decimal16(v, rd16(b | W(time_bonus_step)), &c);
     if (!c) {
         c = 0;
-        v = rd16(b | TIME_BCD);                 /* LDA, then ADC */
+        v = rd16(b | W(race_time_bcd));                 /* LDA, then ADC */
         v = adc_decimal16(v, rd16(b | W(wram_0E74)), &c);
-        wr16(b | TIME_BCD, v);
+        wr16(b | W(race_time_bcd), v);
         r->a = 0x0000;
         wr16(b | W(wram_0E74), 0x0000);
     } else {
@@ -970,11 +968,11 @@ static void count_bonus(uint8_t bank, TbRegs *r, uint32_t b)
         wr16(b | W(wram_0E74), v);
         c = 0;
         cyc(24);
-        r->a = rd16(b | TIME_BCD);             /* LDA, then ADC */
+        r->a = rd16(b | W(race_time_bcd));             /* LDA, then ADC */
         cyc(38);
         r->a = adc_decimal16(r->a, rd16(b | W(time_bonus_step)), &c);
         cyc(10);
-        wr16(b | TIME_BCD, r->a);
+        wr16(b | W(race_time_bcd), r->a);
     }
     cyc(6);
 }
@@ -987,12 +985,12 @@ static void take_from_time(uint8_t bank, TbRegs *r, uint32_t b)
     int c;
 
     cyc(78);
-    v = rd16(b | TIME_BCD);
+    v = rd16(b | W(race_time_bcd));
     if (v >= 0x0009) {
         c = 1;
         v = sbc_decimal16(v, 0x0003, &c);
         cyc(108);
-        wr16(b | TIME_BCD, v);
+        wr16(b | W(race_time_bcd), v);
         c = 0;
         cyc(24);
         v = adc_decimal16(rd16(b | W(wram_0E74)), 0x0003, &c);
@@ -1000,7 +998,7 @@ static void take_from_time(uint8_t bank, TbRegs *r, uint32_t b)
         c = 1;
         v = sbc_decimal16(v, 0x0001, &c);
         cyc(102);
-        wr16(b | TIME_BCD, v);
+        wr16(b | W(race_time_bcd), v);
         if (v == 0) {
             r->a = 0x0044;
             sound_push_decimal(0x44);
@@ -1113,11 +1111,11 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
             int c = 0;
 
             cyc(102);
-            r->a = rd16(b | TIME_BCD);         /* LDA, then ADC */
+            r->a = rd16(b | W(race_time_bcd));         /* LDA, then ADC */
             cyc(38);
             r->a = adc_decimal16(r->a, rd16(b | W(wram_0E74)), &c);
             cyc(10);
-            wr16(b | TIME_BCD, r->a);
+            wr16(b | W(race_time_bcd), r->a);
             cyc(24);
             wr16(b | W(wram_0E74), 0x0000);
             cyc(38);
@@ -1162,7 +1160,7 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         cyc(48);
         wr16(b | W(wram_0E74), r->a);
         cyc(24);
-        r->a = rd16(b | TIME_BCD);
+        r->a = rd16(b | W(race_time_bcd));
         if (r->a)
             { cyc(40); wr16(b | W(time_taken_copy), r->a); }
         else
@@ -1190,7 +1188,7 @@ void TimeBonusTally(uint8_t bank, TbRegs *r)
         return;
     case 0x904A:                        /* 14: take time into $0E74 */
         cyc(24);
-        r->a = rd16(b | TIME_BCD);
+        r->a = rd16(b | W(race_time_bcd));
         if (r->a) {
             cyc(46);
             r->a = rd16(b | W(wram_0E74));
@@ -1478,10 +1476,10 @@ void TimeBonusTransfer(uint8_t bank, TbRegs *r)
         wr16(b | W(wram_19F0), r->a);
         cyc(24);
         wr16(b | W(wram_0E74), r->a);
-        lda16(bank, r, b | TIME_BCD);
+        lda16(bank, r, b | W(race_time_bcd));
         add16(bank, r, step);
         cyc(48);
-        wr16(b | TIME_BCD, r->a);
+        wr16(b | W(race_time_bcd), r->a);
         if (step != 0x0003)
             cyc(22);                    /* BRA */
         lda16(bank, r, b | W(time_bonus_state));
@@ -1589,7 +1587,7 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
     if (v == 0x0C)
         return 58;
     r->p &= (uint8_t)~(P_M | P_X);
-    lda16(bank, r, b | TIME_BCD);
+    lda16(bank, r, b | W(race_time_bcd));
     if (!r->a) {
         cyc(22);
         lda16(bank, r, b | W(time_left_shown));
@@ -1654,7 +1652,7 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
         wr16(GSU_Y, r->a);
         gsu_run(bank, r, 0xF6DF);
         cyc(66);
-        lda16(bank, r, b | TIME_BCD);
+        lda16(bank, r, b | W(race_time_bcd));
         and16(bank, r, 0x000F);
         param_digit(bank, r);
         gsu_run(bank, r, 0xF6DF);
@@ -1670,7 +1668,7 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
         lda16_imm(bank, r, 0x0042);
         tb_SoundPort0QueuePush(bank, r);
     } else { cyc(22); }
-    lda16(bank, r, b | TIME_BCD);
+    lda16(bank, r, b | W(race_time_bcd));
     param_digit(bank, r);
     cyc(22);
     lda16(bank, r, b | W(wram_0E69));

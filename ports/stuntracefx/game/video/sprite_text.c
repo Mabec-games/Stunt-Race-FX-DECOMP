@@ -5,7 +5,6 @@
  * at $07:8000, indexed by $0E3D.
  */
 #include "machine.h"
-#include "wram.h"
 #include "carried.h"
 #include "wram_names.h"
 
@@ -50,20 +49,20 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
             continue;
         }
         cyc(6);
-        wr8(b | (uint16_t)(OAM_BUFFER + 2 + y), cyc_then(30, (uint8_t)(c + rd8(W(dp_f1)))));
+        wr8(b | (uint16_t)(W(oam_buffer) + 2 + y), cyc_then(30, (uint8_t)(c + rd8(W(dp_f1)))));
         x++;
         cyc(30);
         pen = rd8(W(dp_f3));
         cyc(30);
-        wr8(b | (uint16_t)(OAM_BUFFER + y), pen);
+        wr8(b | (uint16_t)(W(oam_buffer) + y), pen);
         cyc(46);
         wr8(W(dp_f3), (uint8_t)(pen + 8));
         cyc(16);
-        wr8(b | (uint16_t)(OAM_BUFFER + 1 + y), cyc_then(30, rd8(W(dp_f4))));
+        wr8(b | (uint16_t)(W(oam_buffer) + 1 + y), cyc_then(30, rd8(W(dp_f4))));
         cyc(16);
         attr = rd8(W(dp_f5));
         cyc(30);
-        wr8(b | (uint16_t)(OAM_BUFFER + 3 + y), attr);
+        wr8(b | (uint16_t)(W(oam_buffer) + 3 + y), attr);
         y += 4;
         cyc(72);
         c = (uint8_t)(rd8(W(dp_f2)) - 1);

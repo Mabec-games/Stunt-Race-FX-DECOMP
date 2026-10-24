@@ -15,7 +15,6 @@
 uint16_t Records7FFromF170(uint8_t bank);
 void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 
-#define WINDOW_HDMA 0x7FF85Bu
 
 /*
  * @routine 7E:D8A8 WindowHdmaFFDD
@@ -27,23 +26,23 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 void WindowHdmaFFDD(void)
 {
     cyc(70);
-    wr8(WINDOW_HDMA + 0, 0x40);
+    wr8(W(window_hdma) + 0, 0x40);
     cyc(48);
-    wr8(WINDOW_HDMA + 3, 0x40);
+    wr8(W(window_hdma) + 3, 0x40);
     cyc(48);
-    wr8(WINDOW_HDMA + 6, 0x40);
+    wr8(W(window_hdma) + 6, 0x40);
     cyc(48);
-    wr8(WINDOW_HDMA + 9, 0x3E);
+    wr8(W(window_hdma) + 9, 0x3E);
     cyc(48);
-    wr8(WINDOW_HDMA + 12, 0x00);
+    wr8(W(window_hdma) + 12, 0x00);
     cyc(78);
-    wr16(WINDOW_HDMA + 1, 0xFFDD);
+    wr16(W(window_hdma) + 1, 0xFFDD);
     cyc(32);
-    wr16(WINDOW_HDMA + 4, 0xFFDD);
+    wr16(W(window_hdma) + 4, 0xFFDD);
     cyc(32);
-    wr16(WINDOW_HDMA + 7, 0xFFDD);
+    wr16(W(window_hdma) + 7, 0xFFDD);
     cyc(32);
-    wr16(WINDOW_HDMA + 10, 0xFFDD);
+    wr16(W(window_hdma) + 10, 0xFFDD);
     cyc(42);
 }
 
@@ -115,25 +114,25 @@ uint16_t WindowHdmaFromTable(uint16_t *sel)
 
     *sel = x;
     cyc(56);
-    wr16(WINDOW_HDMA + 1, 0xF857);
+    wr16(W(window_hdma) + 1, 0xF857);
     cyc(32);
-    wr16(WINDOW_HDMA + 7, 0xF857);
+    wr16(W(window_hdma) + 7, 0xF857);
     cyc(32);
     mid = rd16(W(window_hdma_addrs) + x);
     cyc(32);
-    wr16(WINDOW_HDMA + 4, mid);
+    wr16(W(window_hdma) + 4, mid);
     cyc(54);
     n = rd8(W(window_hdma_counts) + x);
     cyc(32);
-    wr8(WINDOW_HDMA + 0, n);
+    wr8(W(window_hdma) + 0, n);
     cyc(32);
     n = rd8(W(wram_7EE0B5) + x);
     cyc(32);
-    wr8(WINDOW_HDMA + 3, n);
+    wr8(W(window_hdma) + 3, n);
     cyc(48);
-    wr8(WINDOW_HDMA + 6, 0x30);
+    wr8(W(window_hdma) + 6, 0x30);
     cyc(48);
-    wr8(WINDOW_HDMA + 9, 0x00);
+    wr8(W(window_hdma) + 9, 0x00);
     cyc(42);
     return mid;
 }
@@ -170,23 +169,23 @@ void abi_WindowHdmaFromTable(void)
 void WindowHdmaFFD1(void)
 {
     cyc(70);
-    wr8(WINDOW_HDMA + 0, 0x20);
+    wr8(W(window_hdma) + 0, 0x20);
     cyc(48);
-    wr8(WINDOW_HDMA + 3, 0x70);
+    wr8(W(window_hdma) + 3, 0x70);
     cyc(48);
-    wr8(WINDOW_HDMA + 6, 0x10);
+    wr8(W(window_hdma) + 6, 0x10);
     cyc(48);
-    wr8(WINDOW_HDMA + 9, 0x08);
+    wr8(W(window_hdma) + 9, 0x08);
     cyc(48);
-    wr8(WINDOW_HDMA + 12, 0x00);
+    wr8(W(window_hdma) + 12, 0x00);
     cyc(78);
-    wr16(WINDOW_HDMA + 1, 0xF857);
+    wr16(W(window_hdma) + 1, 0xF857);
     cyc(32);
-    wr16(WINDOW_HDMA + 10, 0xF857);
+    wr16(W(window_hdma) + 10, 0xF857);
     cyc(56);
-    wr16(WINDOW_HDMA + 4, 0xFFD1);
+    wr16(W(window_hdma) + 4, 0xFFD1);
     cyc(32);
-    wr16(WINDOW_HDMA + 7, 0xFFD1);
+    wr16(W(window_hdma) + 7, 0xFFD1);
     cyc(42);
 }
 
@@ -240,12 +239,12 @@ static int window_hdma_normal(uint8_t *last)
     if (*last == 0xFF)
         { cyc(16); return 0; } else { cyc(54); }
     for (i = 0; i < 4; i++)
-        { cyc(48); wr8(WINDOW_HDMA + 3 * i, 0x40); }
+        { cyc(48); wr8(W(window_hdma) + 3 * i, 0x40); }
     cyc(48);
-    wr8(WINDOW_HDMA + 12, 0x00);
+    wr8(W(window_hdma) + 12, 0x00);
     cyc(46);
     for (i = 0; i < 4; i++)
-        { cyc(32); wr16(WINDOW_HDMA + 3 * i + 1, 0xF857); }
+        { cyc(32); wr16(W(window_hdma) + 3 * i + 1, 0xF857); }
     return 1;
 }
 
@@ -300,12 +299,12 @@ static int window_hdma_bands(uint8_t *last)
     if (window_hdma_off(last))
         { cyc(22); return 0; } else { cyc(38); }
     for (i = 0; i < 9; i++)
-        { cyc(48); wr8(WINDOW_HDMA + 3 * i, lines[i]); }
+        { cyc(48); wr8(W(window_hdma) + 3 * i, lines[i]); }
     cyc(48);
-    wr8(WINDOW_HDMA + 27, 0x00);
+    wr8(W(window_hdma) + 27, 0x00);
     cyc(46);
     for (i = 0; i < 9; i++)
-        { cyc(32); wr16(WINDOW_HDMA + 3 * i + 1, 0xF857); }
+        { cyc(32); wr16(W(window_hdma) + 3 * i + 1, 0xF857); }
     return 1;
 }
 
@@ -358,23 +357,23 @@ void WindowHdmaAt(uint8_t line, uint8_t *p)
     unsigned sum;
 
     cyc(32);
-    wr8(WINDOW_HDMA + 3, (uint8_t)(line + rd8(W(window_19e5))));
-    wr8(WINDOW_HDMA + 6, (uint8_t)(line + rd8(W(window_19e3))));
-    wr8(WINDOW_HDMA + 0, (uint8_t)(h - 1 + rd8(W(window_19e4))));
+    wr8(W(window_hdma) + 3, (uint8_t)(line + rd8(W(window_19e5))));
+    wr8(W(window_hdma) + 6, (uint8_t)(line + rd8(W(window_19e3))));
+    wr8(W(window_hdma) + 0, (uint8_t)(h - 1 + rd8(W(window_19e4))));
     sum = (unsigned)h + e2;
-    wr8(WINDOW_HDMA + 9, (uint8_t)sum);
+    wr8(W(window_hdma) + 9, (uint8_t)sum);
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (sum > 0xFF ? P_C : 0)
                    | ((~(h ^ e2) & (h ^ (uint8_t)sum) & 0x80) ? P_V : 0));
     cyc(48);
-    wr8(WINDOW_HDMA + 12, 0x00);
+    wr8(W(window_hdma) + 12, 0x00);
     cyc(78);
-    wr16(WINDOW_HDMA + 4, 0xF857);
+    wr16(W(window_hdma) + 4, 0xF857);
     cyc(32);
-    wr16(WINDOW_HDMA + 7, 0xF857);
+    wr16(W(window_hdma) + 7, 0xF857);
     cyc(56);
-    wr16(WINDOW_HDMA + 1, 0xFFDD);
+    wr16(W(window_hdma) + 1, 0xFFDD);
     cyc(32);
-    wr16(WINDOW_HDMA + 10, 0xFFDD);
+    wr16(W(window_hdma) + 10, 0xFFDD);
     cyc(42);
 }
 
@@ -420,14 +419,14 @@ WindowListEnd WindowHdmaFromList(uint8_t db, uint8_t select)
 
     end.a = y;
     cyc(106);
-    wr8(WINDOW_HDMA, 0x20);
+    wr8(W(window_hdma), 0x20);
     cyc(78);
-    wr16(WINDOW_HDMA + 1, 0xF857);
+    wr16(W(window_hdma) + 1, 0xF857);
     for (;;) {
         cyc(76);
         v = rd8((uint32_t)db << 16 | y);
         cyc(32);
-        wr8(WINDOW_HDMA + x, v);
+        wr8(W(window_hdma) + x, v);
         if (v == 0)
             break; else { cyc(22); }
         y++;
@@ -1606,17 +1605,17 @@ void abi_WindowBandsAnimate(void)
 static void window_bands_3(uint16_t at, uint16_t addr)
 {
     cyc(70);
-    wr8(WINDOW_HDMA + at, 0x10);
+    wr8(W(window_hdma) + at, 0x10);
     cyc(48);
-    wr8(WINDOW_HDMA + at + 3, 0x30);
+    wr8(W(window_hdma) + at + 3, 0x30);
     cyc(48);
-    wr8(WINDOW_HDMA + at + 6, 0x10);
+    wr8(W(window_hdma) + at + 6, 0x10);
     cyc(78);
-    wr16(WINDOW_HDMA + at + 1, addr);
+    wr16(W(window_hdma) + at + 1, addr);
     cyc(32);
-    wr16(WINDOW_HDMA + at + 4, addr);
+    wr16(W(window_hdma) + at + 4, addr);
     cyc(32);
-    wr16(WINDOW_HDMA + at + 7, addr);
+    wr16(W(window_hdma) + at + 7, addr);
     cyc(42); /* RTS */
 }
 

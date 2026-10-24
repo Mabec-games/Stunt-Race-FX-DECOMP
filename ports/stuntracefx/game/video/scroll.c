@@ -11,8 +11,6 @@
 
 /* BG2 scroll pairs in work RAM, indexed by the screen band: horizontal at
    $0D92, vertical at $0D8E (low, high). */
-#define BG2_SCROLL_X 0x000D92u
-#define BG2_SCROLL_Y 0x000D8Eu
 
 /*
  * @routine 7E:B28C Bg2ScrollFromTable
@@ -33,14 +31,14 @@ static uint8_t bg2_scroll(uint16_t band, int wide)
 {
     uint8_t v;
 
-    cyc(abs_x(BG2_SCROLL_X, band, wide));
-    ppu_wr(BG2HOFS, cyc_then(24, rd8(BG2_SCROLL_X + band)));
-    cyc(abs_x(BG2_SCROLL_X + 1, band, wide));
-    ppu_wr(BG2HOFS, cyc_then(24, rd8(BG2_SCROLL_X + 1 + band)));
-    cyc(abs_x(BG2_SCROLL_Y, band, wide));
-    ppu_wr(BG2VOFS, cyc_then(24, rd8(BG2_SCROLL_Y + band)));
-    cyc(abs_x(BG2_SCROLL_Y + 1, band, wide));
-    v = rd8(BG2_SCROLL_Y + 1 + band);
+    cyc(abs_x(W(bg2_scroll_x), band, wide));
+    ppu_wr(BG2HOFS, cyc_then(24, rd8(W(bg2_scroll_x) + band)));
+    cyc(abs_x(W(bg2_scroll_x) + 1, band, wide));
+    ppu_wr(BG2HOFS, cyc_then(24, rd8(W(bg2_scroll_x) + 1 + band)));
+    cyc(abs_x(W(bg2_scroll_y), band, wide));
+    ppu_wr(BG2VOFS, cyc_then(24, rd8(W(bg2_scroll_y) + band)));
+    cyc(abs_x(W(bg2_scroll_y) + 1, band, wide));
+    v = rd8(W(bg2_scroll_y) + 1 + band);
     cyc(24);
     ppu_wr(BG2VOFS, v);
     return v;

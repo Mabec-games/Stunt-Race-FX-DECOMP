@@ -10,7 +10,6 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
-#include "wram.h"
 #include "audio_calls.h"
 #include "carried.h"
 #include "wram_names.h"
@@ -24,7 +23,7 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
     uint8_t n;
 
     cyc(46);
-    if (rd8(SOUND_MUTED) != 0)
+    if (rd8(W(sound_muted)) != 0)
         return;
     cyc(40);
     n = rd8(count);
@@ -63,7 +62,7 @@ static unsigned push_wide(uint8_t p)
 void SoundPort0QueuePushRaw(uint8_t command)
 {
     cyc(252);
-    queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
+    queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
 }
 
 void SoundPort0QueuePush_cr(Carried *cr);
@@ -126,7 +125,7 @@ void abi_SoundPort0QueuePushRawX8(void)
 void SoundPort0QueuePushRawWide(uint8_t command, unsigned wide)
 {
     cyc(198 + wide);
-    queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
+    queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
     cyc(wide);
 }
 
@@ -162,9 +161,9 @@ void abi_SoundPort0QueuePushRawWide(void)
 void SoundPort0QueuePushW(uint8_t command, unsigned wide)
 {
     cyc(222 + wide);
-    if (rd8(CURRENT_PLAYER) != 0)
+    if (rd8(W(current_player)) != 0)
         { cyc(10); command |= 0x80; }
-    queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
+    queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
     cyc(wide);
 }
 
@@ -221,7 +220,7 @@ void abi_SoundPort0QueuePushX8(void)
 void SoundPort1QueuePushW(uint8_t command, unsigned wide)
 {
     cyc(176 + wide);
-    queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
+    queue_push(W(sound_port1_queue), W(sound_port1_head), W(sound_port1_count), command);
     cyc(wide);
 }
 
@@ -280,23 +279,23 @@ void abi_SoundPort1QueuePushX8(void)
 void SoundReset(void)
 {
     cyc(92);
-    wr8(SOUND_MUTED, 0);
+    wr8(W(sound_muted), 0);
     cyc(32);
-    wr8(WRAM_0DD0, 0);
+    wr8(W(wram_0DD0), 0);
     cyc(32);
-    wr8(SOUND_PORT1_LAST, 0);
+    wr8(W(sound_port1_last), 0);
     cyc(32);
-    wr8(SOUND_PORT0_HEAD, 0);
+    wr8(W(sound_port0_head), 0);
     cyc(32);
-    wr8(SOUND_PORT1_HEAD, 0);
+    wr8(W(sound_port1_head), 0);
     cyc(32);
-    wr8(SOUND_PORT1_COUNT, 0);
+    wr8(W(sound_port1_count), 0);
     cyc(32);
-    wr8(SOUND_PORT0_COUNT, 0);
+    wr8(W(sound_port0_count), 0);
     cyc(32);
-    wr8(WRAM_0E1B, 0);
+    wr8(W(wram_0E1B), 0);
     cyc(32);
-    wr8(WRAM_0E1C, 0);
+    wr8(W(wram_0E1C), 0);
     cyc(32);
     hw_wr(APUIO3, 0);
     cyc(32);

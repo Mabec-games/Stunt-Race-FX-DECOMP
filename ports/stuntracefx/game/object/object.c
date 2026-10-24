@@ -2168,9 +2168,6 @@ void abi_BucketTriggersFixedArea(void)
     cpu.db = r.db;
 }
 
-#define OBJ_USED_HEAD 0x7E0329u
-#define OBJ_USED_LAST 0x7E032Bu
-#define OBJ_FREE_HEAD 0x7E032Du
 
 /*
  * @routine 03:CB5C ObjectAlloc
@@ -2191,7 +2188,7 @@ void abi_BucketTriggersFixedArea(void)
 int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y)
 {
     cyc(178);
-    uint16_t last = rd16(OBJ_USED_LAST), rec = rd16(cyc_then(38, OBJ_FREE_HEAD)), next;
+    uint16_t last = rd16((0x7E0000 | W(wram_032B))), rec = rd16(cyc_then(38, (0x7E0000 | W(wram_032D)))), next;
 
     if (!rec) {
         cyc(168);
@@ -2200,16 +2197,16 @@ int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y)
         return 0;
     }
     cyc(52);
-    wr16(OBJ_FREE_HEAD, cyc_then(24, rd16(0x7E0000 | W(obj_base) + rec)));
+    wr16((0x7E0000 | W(wram_032D)), cyc_then(24, rd16(0x7E0000 | W(obj_base) + rec)));
     if (!last) {
         cyc(54);
-        *a = rd16(OBJ_USED_HEAD);
+        *a = rd16((0x7E0000 | W(wram_0329)));
         cyc(30);
         wr16(0x7E0000 | W(obj_base) + rec, *a);
         cyc(30);
         wr16(0x7E0000 | W(obj_02) + rec, 0x0000);
         cyc(24);
-        wr16(OBJ_USED_HEAD, rec);
+        wr16((0x7E0000 | W(wram_0329)), rec);
         cyc(22);                        /* BRA */
     } else {
         cyc(66);
@@ -2221,7 +2218,7 @@ int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y)
         *a = last;
     }
     cyc(24);
-    wr16(OBJ_USED_LAST, rec);
+    wr16((0x7E0000 | W(wram_032B)), rec);
     cyc(30);
     next = rd16(0x7E0000 | W(obj_base) + rec);
     if (next) {
