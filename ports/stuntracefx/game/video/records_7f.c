@@ -30,23 +30,23 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     while ((v = rd8(cyc_then(144, b | *y))) != 0xFF) {
         d = (uint8_t)(v - 0x28);
         cyc(80);
-        wr8(0x7F43D8 + *x, d);
+        wr8(W(wram_7F43D8) + *x, d);
         cyc(62);
-        wr8(0x7F4800 + *x, (uint8_t)(d + 0x50));
+        wr8(W(wram_7F4800) + *x, (uint8_t)(d + 0x50));
         cyc(48);
         wr8(W(records_7f_a) + *x, 0x10);
         cyc(48);
         wr8(W(records_7f_b) + *x, 0x60);
         cyc(100);
         d = (uint8_t)(rd8(b | (uint16_t)(*y + 1)) - 0x28);
-        wr8(0x7F43D9 + *x, d);
+        wr8(W(wram_7F43D9) + *x, d);
         *p = (uint8_t)((*p & ~P_V) | ((~(d ^ 0x50) & (d ^ (uint8_t)(d + 0x50)) & 0x80) ? P_V : 0));
         cyc(62);
-        wr8(0x7F4801 + *x, (uint8_t)(d + 0x50));
+        wr8(W(wram_7F4801) + *x, (uint8_t)(d + 0x50));
         cyc(48);
-        wr8(0x7F43DA + *x, 0xA0);
+        wr8(W(wram_7F43DA) + *x, 0xA0);
         cyc(48);
-        wr8(0x7F4802 + *x, 0xF0);
+        wr8(W(wram_7F4802) + *x, 0xF0);
         *x = (uint16_t)(*x + 4);
         *y = (uint16_t)(*y + 2);
         cyc(16);
@@ -101,13 +101,13 @@ uint16_t Records7FFromF170(uint8_t bank)
     cyc(46);
     while ((v = rd8(cyc_then(108, b | y))) != 0xFF) {
         cyc(40);
-        wr8(0x7F43D8 + x, v);
+        wr8(W(wram_7F43D8) + x, v);
         cyc(48);
         wr8(W(records_7f_a) + x, 0x18);
         cyc(70);
-        wr8(0x7F43D9 + x, rd8(b | (uint16_t)(y + 1)));
+        wr8(W(wram_7F43D9) + x, rd8(b | (uint16_t)(y + 1)));
         cyc(48);
-        wr8(0x7F43DA + x, 0xE7);
+        wr8(W(wram_7F43DA) + x, 0xE7);
         x = (uint16_t)(x + 4);
         y = (uint16_t)(y + 2);
         cyc(62);

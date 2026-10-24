@@ -82,19 +82,19 @@ uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
     uint16_t a;
 
     cyc(68);
-    a = (uint16_t)(rd8(b | 0x1189) << 8);
+    a = (uint16_t)(rd8(b | W(menu_random)) << 8);
     cyc(44);
-    a = (uint16_t)(a | rd8(b | 0x118A));
+    a = (uint16_t)(a | rd8(b | W(wram_118A)));
     a = (uint16_t)(a >> 1);
     p &= (uint8_t)~P_C;
     cyc(74);
-    a = alu_adc16(a, rd16(b | 0x1189), &p);
+    a = alu_adc16(a, rd16(b | W(menu_random)), &p);
     cyc(24);
-    a = alu_adc16(a, rd16(b | 0x1189), &p);
+    a = alu_adc16(a, rd16(b | W(menu_random)), &p);
     cyc(24);
     a ^= rd16(b | W(menu_blink_counter));
     cyc(24);
-    wr16(b | 0x1189, a);
+    wr16(b | W(menu_random), a);
     cyc(70);                            /* PLP, RTS */
     return a;
 }

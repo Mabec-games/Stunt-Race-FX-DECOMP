@@ -14,7 +14,7 @@
 #define DRAW_NEXT 0x00003Eu       /* direct page: the next record's address */
 #define DRAW_LIST 0xF77Fu         /* the records, 30 bytes each, bank $7E */
 #define DRAW_SIDE 0x7E1F07u       /* nonzero: the view is on the far side */
-#define OBJ(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
+#define OBJ(o, f) ((0x7E0000 | W(dp_00)) | W(obj_base) + (uint16_t)((f) + (o)))
 #define REC(r, f) (W(wram_bank_7e) + (uint16_t)((f) + (r)))
 
 /* Object `o`'s draw record at `r`: position (relative to the view at
@@ -93,7 +93,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(30);
     v = rd8(OBJ(o, 0x5A));
     if (!(v & 0x80))
-        { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
+        { cyc(40); v = rd8((0x7E0000 | W(dp_00)) | W(wram_05E9)); } else { cyc(22); }
     cyc(46);
     wr8(REC(r, 0x19), (uint8_t)(v & 0x7F));
     cyc(24);
@@ -101,13 +101,13 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(46);
         v = rd8(OBJ(o, 0x19));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); }
+            { cyc(40); v = rd8((0x7E0000 | W(dp_00)) | W(wram_05E9)); }
         cyc(22);
     } else {
         cyc(52);
         v = rd8(OBJ(o, 0x18));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
+            { cyc(40); v = rd8((0x7E0000 | W(dp_00)) | W(wram_05E9)); } else { cyc(22); }
     }
     cyc(46);
     wr8(REC(r, 0x1A), (uint8_t)(v & 0x7F));
@@ -179,7 +179,7 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
         cyc(44);
         if (!next) {
             cyc(2);
-            wr16(0x7E034C, o);
+            wr16(((0x7E0000 | W(dp_00)) | W(draw_object)), o);
             if (drawn(o))
                 r = draw_record(o, r); else { cyc(62); }
         }

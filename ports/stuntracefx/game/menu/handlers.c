@@ -177,7 +177,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         cyc(78);
         wr16((uint16_t)(*x + 0x0A), 0x0000);
         cyc(56);
-        wr16(0x001913, 0x0000);
+        wr16(W(wram_1913), 0x0000);
     } else { cyc(62); }
     rd16(cyc_then(24, dbw(bank, 0x118B)));
     cyc(22);
@@ -650,13 +650,13 @@ void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p
     v = adc16(v, rd16(b | W(scratch_11df)), 0, p);
     v = adc16(v, 0x3000, 0, p);
     cyc(84);
-    wr16(b | 0x16B3, v);
+    wr16(b | W(wram_16B3), v);
     cyc(48);
     wr16(b | W(vram_queue_staged), 0x0080);
     cyc(48);
-    wr16(b | 0x16B5, 0x0070);
+    wr16(b | W(wram_16B5), 0x0070);
     cyc(48);
-    wr16(b | 0x16B7, 0x15C0);
+    wr16(b | W(wram_16B7), 0x15C0);
     *a = (cyc(62), VramDmaQueueAddTimed(0x15C0));
     cyc(68);
     *x = rd16(b | W(actor_current));

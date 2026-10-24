@@ -1044,7 +1044,7 @@ uint16_t SoundNearCarOnce(uint8_t bank)
     cyc(78);
     SoundPort1QueuePushW(0x1D, 0);
     cyc(54);
-    v = rd8(0x000D53);
+    v = rd8(W(wram_0D53));
     if (v != 0)
         { cyc(72); return v; }
     cyc(100);                                       /* PHX, REP #$30, LDX */

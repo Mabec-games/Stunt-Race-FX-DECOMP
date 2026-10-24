@@ -110,7 +110,7 @@ void abi_WindowHdmaFFDD(void)
 uint16_t WindowHdmaFromTable(uint16_t *sel)
 {
     cyc(46);
-    uint16_t x = rd16(0x0019B6), mid;
+    uint16_t x = rd16(W(window_hdma_select)), mid;
     uint8_t n;
 
     *sel = x;
@@ -127,7 +127,7 @@ uint16_t WindowHdmaFromTable(uint16_t *sel)
     cyc(32);
     wr8(WINDOW_HDMA + 0, n);
     cyc(32);
-    n = rd8(0x7EE0B5 + x);
+    n = rd8(W(wram_7EE0B5) + x);
     cyc(32);
     wr8(WINDOW_HDMA + 3, n);
     cyc(48);
@@ -354,13 +354,13 @@ void abi_WindowHdmaBands(void)
 void WindowHdmaAt(uint8_t line, uint8_t *p)
 {
     cyc(268);
-    uint8_t h = rd8(W(window_lines)), e2 = rd8(cyc_then(186, 0x0019E2));
+    uint8_t h = rd8(W(window_lines)), e2 = rd8(cyc_then(186, W(window_19e2)));
     unsigned sum;
 
     cyc(32);
     wr8(WINDOW_HDMA + 3, (uint8_t)(line + rd8(W(window_19e5))));
     wr8(WINDOW_HDMA + 6, (uint8_t)(line + rd8(W(window_19e3))));
-    wr8(WINDOW_HDMA + 0, (uint8_t)(h - 1 + rd8(0x0019E4)));
+    wr8(WINDOW_HDMA + 0, (uint8_t)(h - 1 + rd8(W(window_19e4))));
     sum = (unsigned)h + e2;
     wr8(WINDOW_HDMA + 9, (uint8_t)sum);
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (sum > 0xFF ? P_C : 0)
@@ -608,10 +608,10 @@ uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p)
     wr8(W(window_edges) + rd16(b | W(wram_19B4)), cyc_then(32, v0));
     cyc(188);
     v = mirror80(rd8(b | pair), p);
-    wr8(0x7FF884 + rd16(b | W(wram_19B4)), cyc_then(32, v));
+    wr8(W(wram_7FF884) + rd16(b | W(wram_19B4)), cyc_then(32, v));
     cyc(128);
     v1 = rd8(b | (uint16_t)(pair + 1));
-    wr8(0x7FF885 + rd16(b | W(wram_19B4)), cyc_then(32, v1));
+    wr8(W(wram_7FF885) + rd16(b | W(wram_19B4)), cyc_then(32, v1));
     cyc(200);
     if (rd8(b | (uint16_t)(pair + 1)) == 0x81) {
         *p |= P_C;
@@ -620,7 +620,7 @@ uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p)
         cyc(64);
         v = mirror80(rd8(b | (uint16_t)(pair + 1)), p);
     }
-    wr8(0x7FF886 + rd16(b | W(wram_19B4)), cyc_then(32, v));
+    wr8(W(wram_7FF886) + rd16(b | W(wram_19B4)), cyc_then(32, v));
     return v;
 }
 
@@ -660,12 +660,12 @@ uint16_t WindowEdgesFromList(uint8_t bank, uint16_t *x, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(46);
-    uint16_t sel = rd16(b | 0x19B6), n = 0, s;
+    uint16_t sel = rd16(b | W(window_hdma_select)), n = 0, s;
 
     cyc(86);
     wr16(b | W(wram_19B4), rd16(0x09F155 + sel));
     cyc(24);
-    *x = rd16(cyc_then(62, 0x09F98B + rd16(b | 0x19B6)));
+    *x = rd16(cyc_then(62, 0x09F98B + rd16(b | W(window_hdma_select))));
     for (;;) {
         cyc(92);
         WindowEdgesFromPair(bank, *x, p);
@@ -688,11 +688,11 @@ uint16_t WindowEdgesFromList(uint8_t bank, uint16_t *x, uint8_t *p)
         wr16(b | W(wram_19B4), cyc_then(62, (uint16_t)(rd16(b | W(wram_19B4)) + 4)));
     }
     cyc(212);
-    sel = rd16(b | 0x19B6);
+    sel = rd16(b | W(window_hdma_select));
     s = (uint16_t)(sel + 2);
     *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)sel + 2 > 0xFFFF ? P_C : 0) | ((~sel & s & 0x8000) ? P_V : 0));
     cyc(62);
-    wr16(b | 0x19B6, s);
+    wr16(b | W(window_hdma_select), s);
     cyc(42);
     return s;
 }
@@ -742,50 +742,50 @@ uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
     cyc(54);
     if (!rd8(W(wram_0D2E))) {
         cyc(62);
-        *x = rd16(b | 0x19B6);
+        *x = rd16(b | W(window_hdma_select));
         cyc(56);
-        wr16(0x7FF85C, 0xF857);
+        wr16(W(wram_7FF85C), 0xF857);
         cyc(32);
-        wr16(0x7FF862, 0xF857);
+        wr16(W(wram_7FF862), 0xF857);
         cyc(32);
         w = rd16(W(window_hdma_addrs) + *x);
         cyc(32);
-        wr16(0x7FF85F, w);
+        wr16(W(wram_7FF85F), w);
         cyc(54);
-        wr8(W(window_hdma), cyc_then(32, rd8(0x7EE0C2 + *x)));
+        wr8(W(window_hdma), cyc_then(32, rd8(W(wram_7EE0C2) + *x)));
         cyc(32);
-        wr8(0x7FF85E, cyc_then(32, rd8(0x7EE0C3 + *x)));
+        wr8(W(wram_7FF85E), cyc_then(32, rd8(W(wram_7EE0C3) + *x)));
         cyc(48);
-        wr8(0x7FF861, 0x10);
+        wr8(W(wram_7FF861), 0x10);
         cyc(48);
-        wr8(0x7FF864, 0x00);
+        wr8(W(wram_7FF864), 0x00);
     } else {
         cyc(68);
-        *x = rd16(b | 0x19B6);
+        *x = rd16(b | W(window_hdma_select));
         cyc(56);
-        wr16(0x7FF85C, 0xF857);
+        wr16(W(wram_7FF85C), 0xF857);
         cyc(32);
-        wr16(0x7FF85F, 0xF857);
+        wr16(W(wram_7FF85F), 0xF857);
         cyc(32);
-        wr16(0x7FF865, 0xF857);
+        wr16(W(wram_7FF865), 0xF857);
         cyc(32);
-        w = rd16(0x7EE0E0 + *x);
+        w = rd16(W(wram_7EE0E0) + *x);
         cyc(32);
-        wr16(0x7FF862, w);
+        wr16(W(wram_7FF862), w);
         cyc(54);
-        n = rd8(0x7EE0CA + *x);
+        n = rd8(W(wram_7EE0CA) + *x);
         cyc(32);
         wr8(W(window_hdma), n);
         cyc(32);
-        wr8(0x7FF85E, n);
+        wr8(W(wram_7FF85E), n);
         cyc(32);
-        n = rd8(0x7EE0CB + *x);
+        n = rd8(W(wram_7EE0CB) + *x);
         cyc(32);
-        wr8(0x7FF861, n);
+        wr8(W(wram_7FF861), n);
         cyc(48);
-        wr8(0x7FF864, 0x10);
+        wr8(W(wram_7FF864), 0x10);
         cyc(48);
-        wr8(0x7FF867, 0x00);
+        wr8(W(wram_7FF867), 0x00);
     }
     cyc(42);
     return (uint16_t)(w & 0xFF00);
@@ -831,7 +831,7 @@ uint16_t WindowLayoutStepForScreen(uint16_t a_in, uint16_t *x, uint16_t *y)
     cyc(48);
     wr8(W(wram_0D45), v);
     cyc(24);
-    v = rd8(0x7E0000 | W(wram_0D62));
+    v = rd8((0x7E0000 | W(dp_00)) | W(wram_0D62));
     *y = v ? (cyc(114), 0x0002) : (cyc(108), 0x0000);
     a = WindowLayoutStep(0x7E, (uint8_t)*y, x, &p, &keep);
     cyc(v ? 100 : 124);                 /* (JMP,) PLB, PLP, RTL */
@@ -868,7 +868,7 @@ static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, ui
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(164);
-    uint8_t v = (uint8_t)(rd8(0x001A14) + step);
+    uint8_t v = (uint8_t)(rd8(W(wram_1A14)) + step);
 
     *pos = v;
 
@@ -880,14 +880,14 @@ static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, ui
         return 0;
     }
     cyc(94);
-    wr8(0x001A14, v);
+    wr8(W(wram_1A14), v);
     (cyc(step == 0x01 ? 70 : 62), WindowHdmaFFD1());  /* JMP, JSR */
     cyc(70);
     wr8(W(wram_19AD), 0x40);
     cyc(48);
-    wr8(0x0019AC, 0x20);
+    wr8(W(wram_19AC), 0x20);
     cyc(32);
-    *a = rd8(0x001A14);
+    *a = rd8(W(wram_1A14));
     cyc(32);
     wr8(W(wram_19AE), *a);
     return 1;
@@ -1059,7 +1059,7 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(54);
-    uint8_t req = rd8(0x0019BD), v;
+    uint8_t req = rd8(W(wram_19BD)), v;
     uint16_t y = y8, s, m, pos, lim, a;
     unsigned i;
 
@@ -1070,9 +1070,9 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
         cyc(86);
         wr8(W(window_hdma_19bc), 0xFF);
         cyc(78);
-        wr16(0x0019B8, req == 0x01 ? 0x0002 : 0xFFFE);
+        wr16(W(wram_19B8), req == 0x01 ? 0x0002 : 0xFFFE);
         cyc(56);
-        wr16(0x0019BA, req == 0x01 ? 0x0001 : 0x0000);
+        wr16(W(wram_19BA), req == 0x01 ? 0x0001 : 0x0000);
     } else {
         cyc(34);
         v = rd8(b | W(window_hdma_19bc));
@@ -1084,11 +1084,11 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
         } else { cyc(38); }
     }
     cyc(req == 0x01 ? 94 : 70);         /* the request 1 JMPs to the common part */
-    wr8(0x0019BD, 0x00);
+    wr8(W(wram_19BD), 0x00);
     cyc(54);
-    s = rd16(0x0019B6);
+    s = rd16(W(window_hdma_select));
     cyc(46);
-    m = rd16(0x0019B8);
+    m = rd16(W(wram_19B8));
     pos = (uint16_t)(s + m);
     *p = (uint8_t)(*p & ~P_V);
     if (~(s ^ m) & (s ^ pos) & 0x8000)
@@ -1104,12 +1104,12 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
     lim = rd16(W(layout_limits) + y);
     *p = (uint8_t)((*p & ~P_C) | (pos >= lim ? P_C : 0));
     if (pos != lim)
-        { cyc(48); wr16(0x0019B6, pos); } else { cyc(22); }
+        { cyc(48); wr16(W(window_hdma_select), pos); } else { cyc(22); }
     cyc(62);
     wr8(b | W(windows_setup_index), 0x00);
     cyc(16);
     for (i = 0; i < 6; i++)
-        { cyc(32); wr8(0x0019AC + i, 0xE7); }
+        { cyc(32); wr8(W(wram_19AC) + i, 0xE7); }
     *x = y;
     if (y == 0)
         { cyc(76); a = (uint16_t)(WindowHdmaFromTable(x) & 0xFF00); }
@@ -1207,9 +1207,9 @@ void WindowsInit(Carried *cr)
     cyc(70);
     copy_rom09(0xF999, W(window_band_first), 4);
     copy_rom09(0xF99D, W(window_bands), 4);
-    copy_rom09(0xF9A1, 0x7FFFD5, 4);
-    copy_rom09(0xF9A5, 0x7FFFD9, 4);
-    copy_rom09(0xF9A9, 0x7FFFDD, 4);
+    copy_rom09(0xF9A1, W(wram_7FFFD5), 4);
+    copy_rom09(0xF9A5, W(wram_7FFFD9), 4);
+    copy_rom09(0xF9A9, W(wram_7FFFDD), 4);
     cyc(92);
     v = rd8(b | W(wram_0D62));
     if (v)
@@ -1219,11 +1219,11 @@ void WindowsInit(Carried *cr)
     cyc(42);
     copy_rom09(0xF163, W(window_hdma), 16);
     cyc(92);
-    wr16(b | 0x19B6, 0x0000);
+    wr16(b | W(window_hdma_select), 0x0000);
     do {
         cyc(46);
         WindowEdgesFromList(0x09, &ex, &ep);
-    } while (cyc_loop(46, rd16(cyc_then(46, b | 0x19B6)) != 0x000E));
+    } while (cyc_loop(46, rd16(cyc_then(46, b | W(window_hdma_select))) != 0x000E));
     cyc(34);
     for (x = 0; (w = rd16(cyc_then(172, 0x09FB74 + x))) != 0xFFFF; x = (uint16_t)(x + 2))
         wr16(W(window_colour_hdma) + x, w);
@@ -1241,11 +1241,11 @@ void WindowsInit(Carried *cr)
         cyc(12);
     }
     cyc(92);
-    wr16(b | 0x19B6, 0xFFFE);
+    wr16(b | W(window_hdma_select), 0xFFFE);
     cyc(48);
-    wr16(b | 0x19B8, 0xFFFE);
+    wr16(b | W(wram_19B8), 0xFFFE);
     cyc(24);
-    wr16(b | 0x19BA, 0x0000);
+    wr16(b | W(wram_19BA), 0x0000);
     cyc(46);
     wr8(b | W(window_hdma_19bc), 0x00);
     cyc(40);
@@ -1349,7 +1349,7 @@ void WindowsInit(Carried *cr)
     cyc(46);
     wr8(b | W(wram_19F5), 0x00);
     cyc(62);
-    wr8(b | 0x1A14, 0x80);
+    wr8(b | W(wram_1A14), 0x80);
     cyc(40);
     wr8(b | W(window_hdma_off), 0x00);
     cyc(40);
@@ -1361,7 +1361,7 @@ void WindowsInit(Carried *cr)
     cyc(24);
     wr16(b | W(wram_19DD), 0x0000);
     cyc(62);
-    wr8(b | 0x1A04, 0xFF);
+    wr8(b | W(wram_1A04), 0xFF);
     {
         cyc(38);
         static const uint16_t zero[] = {0x19EC, 0x19ED, 0x19E8, 0x19E9, 0x19EA, 0x19EB, 0x19F2,
@@ -1542,7 +1542,7 @@ WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0)
         { cyc(48); wr16(W(window_band_pos), a); cyc(24); /* JMP */ }
     else {
         cyc(76);
-        v = rd8(0x0019D5);
+        v = rd8(W(wram_19D5));
         if (!v) {
             r.a = (uint16_t)((r.a & 0xFF00) | v);
             cyc(40);
@@ -1554,7 +1554,7 @@ WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0)
     }
     index8(&r);
     cyc(32);
-    v = rd8(0x0019D5);
+    v = rd8(W(wram_19D5));
     r.x = (uint8_t)(v << 1);
     cyc(52);
     v = rd8(b | W(wram_0D62));
@@ -1732,9 +1732,9 @@ WindowRegs WindowSplitAnimate(WindowRegs r, uint8_t p0)
             cyc(56);
             wr16(W(window_band_target), 0x7400);
             cyc(48);
-            wr16(b | 0x19E2, 0xF50B);
+            wr16(b | W(window_19e2), 0xF50B);
             cyc(48);
-            wr16(b | 0x19E4, 0x0000);
+            wr16(b | W(window_19e4), 0x0000);
         } else {
             cyc(174);
             wr16(W(wram_19DD), 0xFC00);
@@ -1743,9 +1743,9 @@ WindowRegs WindowSplitAnimate(WindowRegs r, uint8_t p0)
             cyc(56);
             wr16(W(window_band_target), 0x0800);
             cyc(48);
-            wr16(b | 0x19E4, 0x0BF5);
+            wr16(b | W(window_19e4), 0x0BF5);
             cyc(48);
-            wr16(b | 0x19E2, 0x0000);
+            wr16(b | W(window_19e2), 0x0000);
         }
         cyc(v == 0x01 ? 102 : 78);     /* JMP for the open side, REP, LDA # */
         wr16(W(wram_0DA4), 0x0000);
@@ -1874,9 +1874,9 @@ void WindowHdmaChannelsSetup(uint8_t bank)
             { cyc(40); dma_wr(b | (uint16_t)(base + 7), 0x00); }
     }
     cyc(48);
-    wr8(0x7F130D, 0x00);
+    wr8(W(wram_7F130D), 0x00);
     cyc(32);
-    wr8(0x7F130F, 0x00);
+    wr8(W(wram_7F130F), 0x00);
     cyc(42);                            /* PLP */
     cyc(28);
 }
@@ -1954,7 +1954,7 @@ WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p)
     index8(&r);
     cyc(70);
     r.x = rd8(b | W(wram_19D1));
-    r.a = band_step(r.a, W(wram_19CB), b | W(wram_19C7), 0x7ED5AA + r.x, p);
+    r.a = band_step(r.a, W(wram_19CB), b | W(wram_19C7), W(wram_7ED5AA) + r.x, p);
     return r;
 }
 
@@ -2044,7 +2044,7 @@ WindowRegs ColdataLowBandStep(uint8_t bank, uint16_t dp, uint8_t *p)
     }
     cyc(tail);
     r.a = (uint16_t)((r.a & 0xFF00) | v);
-    r.a = band_step(r.a, W(wram_19CF), b | W(wram_19CD), 0x7ED56E + r.x, p);
+    r.a = band_step(r.a, W(wram_19CF), b | W(wram_19CD), W(wram_7ED56E) + r.x, p);
     return r;
 }
 
@@ -2110,13 +2110,13 @@ WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p)
     index8(&r);
     for (x = 0;; x = (uint8_t)(x + 2)) {
         cyc(48);
-        v = rd8(0x7ED5B3 + x);
+        v = rd8(W(wram_7ED5B3) + x);
         if (v == 0xFF)
             break;
         cyc(64);
-        cmp8(v, rd8(0x0019C4), p);
+        cmp8(v, rd8(W(wram_19C4)), p);
         if (*p & P_C)
-            { cyc(32); wr8(0x7FFF8E + x, cyc_then(32, rd8(0x0019C4))); } else { cyc(22); }
+            { cyc(32); wr8(W(wram_7FFF8E) + x, cyc_then(32, rd8(W(wram_19C4)))); } else { cyc(22); }
         cyc(36);
     }
     r.x = x;
@@ -2178,13 +2178,13 @@ static WindowRegs window_slide_check_step(WindowRegs r, uint8_t p0, uint16_t dp)
 
     r.a = (uint16_t)((r.a & 0xFF00) | 0xE0);
     cyc(108);
-    wr8(0x0019AC, 0xE0);
+    wr8(W(wram_19AC), 0xE0);
     cyc(48);
     wr8(W(wram_19AD), 0xE0);
     cyc(48);
     wr8(W(wram_19AE), 0xE0);
     cyc(32);
-    v = rd8(0x0019C4);
+    v = rd8(W(wram_19C4));
     r.a = (uint16_t)((r.a & 0xFF00) | v);
     cmp8(v, 0xE1, &pp);
     called = pp & P_C;
@@ -2242,7 +2242,7 @@ static WindowRegs window_slide_check_step(WindowRegs r, uint8_t p0, uint16_t dp)
     cyc(32);
     v = rd8(W(wram_19CF));
     cyc(32);
-    wr8(0x7FFFAB, v);
+    wr8(W(wram_7FFFAB), v);
     r.a = (uint16_t)((r.a & 0xFF00) | v);
     cyc(22);                            /* REP #$30 */
     cyc(24);

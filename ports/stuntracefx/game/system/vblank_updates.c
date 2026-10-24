@@ -191,7 +191,7 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
     }
     if (mode == 0x0003) {
         cyc(146);
-        uint8_t n = (uint8_t)(rd8(0x001921) + 1);
+        uint8_t n = (uint8_t)(rd8(W(wram_1921)) + 1);
 
         cyc(46);
         wr8(W(window_lines_12db), n);
@@ -202,20 +202,20 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
         cyc(32);
         wr8(W(window_lines_1301), n);
         cyc(92);
-        t = (uint16_t)(0x0016 - rd16(0x001921));
+        t = (uint16_t)(0x0016 - rd16(W(wram_1921)));
         cyc(46);
-        t = (uint16_t)(t + rd16(0x001925));
+        t = (uint16_t)(t + rd16(W(wram_1925)));
         cyc(32);
-        wr16(0x00191B, t);
+        wr16(W(wram_191B), t);
         cyc(70);
-        s = (uint16_t)(0x0045 - rd16(0x001921));
+        s = (uint16_t)(0x0045 - rd16(W(wram_1921)));
         cyc(46);
-        t = rd16(0x001927);
+        t = rd16(W(wram_1927));
         r = (unsigned)s + t;
         *p = (uint8_t)((nz16(*p, (uint16_t)r) & ~(P_C | P_V)) | (r > 0xFFFF ? P_C : 0)
                        | ((~(s ^ t) & (s ^ (uint16_t)r) & 0x8000) ? P_V : 0));
         cyc(32);
-        wr16(0x00191D, (uint16_t)r);
+        wr16(W(wram_191D), (uint16_t)r);
         *p |= P_M;
         return (uint16_t)r;
     }

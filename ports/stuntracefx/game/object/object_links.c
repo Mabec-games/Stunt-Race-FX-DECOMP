@@ -95,19 +95,19 @@ void ObjectListTableFirst(Carried *cr)
                 cyc(30);
                 v = rd16(b | (uint16_t)(0x0008 + at));
                 cyc(32);
-                wr16(0x7E96AF, v);
+                wr16(W(wram_7E96AF), v);
                 cyc(30);
                 v = rd16(b | (uint16_t)(0x000A + at));
                 cyc(32);
-                wr16(0x7E96B1, v);
+                wr16(W(wram_7E96B1), v);
                 cyc(30);
                 v = rd16(b | (uint16_t)(0x000C + at));
                 cyc(32);
-                wr16(0x7E96B3, v);
+                wr16(W(wram_7E96B3), v);
                 cyc(30);
                 v = rd16(b | (uint16_t)(0x000E + at));
                 cyc(32);
-                wr16(0x7E96B5, v);
+                wr16(W(wram_7E96B5), v);
                 cyc(24);
                 v = rd16(b | W(object_table_count));
                 cyc(14);
@@ -220,9 +220,9 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     uint16_t at = parent, next;
 
     cyc(24);
-    wr8(b | 0x1F2B, tag);
+    wr8(b | W(wram_1F2B), tag);
     cyc(24);
-    tag = rd8(b | 0x1F2B);
+    tag = rd8(b | W(wram_1F2B));
     cyc(30);
     wr8(b | (uint16_t)(0x2048 + child), tag);
     cyc(88);

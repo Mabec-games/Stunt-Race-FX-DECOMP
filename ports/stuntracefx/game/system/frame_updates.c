@@ -282,13 +282,13 @@ static int vram_dma_queue_add(uint16_t *size_out)
         return 0;
     queue_added = 1;
     cyc(64);
-    wr16(W(vram_queue) + x, cyc_then(32, rd16(0x0016B3)));
+    wr16(W(vram_queue) + x, cyc_then(32, rd16(W(wram_16B3))));
     cyc(46);
-    wr8(0x0016BB + x, cyc_then(32, rd8(0x0016B5)));
+    wr8(W(wram_16BB) + x, cyc_then(32, rd8(W(wram_16B5))));
     cyc(46);
-    wr16(0x0016BC + x, cyc_then(32, rd16(0x0016B7)));
+    wr16(W(wram_16BC) + x, cyc_then(32, rd16(W(wram_16B7))));
     cyc(24);
-    wr16(0x0016BE + x, cyc_then(32, rd16(W(vram_queue_staged))));
+    wr16(W(wram_16BE) + x, cyc_then(32, rd16(W(vram_queue_staged))));
     *size_out = (uint16_t)(x + 8);
     cyc(76);
     wr16(W(vram_queue_size), *size_out);
@@ -458,11 +458,11 @@ static FlushEnd vram_dma_queue_flush(void)
             cyc(122);
             dma_wr16(A1T0L, cyc_then(24, rd16(W(vram_queue) + x)));
             cyc(32);
-            ppu_wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
+            ppu_wr16(VMADDL, cyc_then(24, rd16(W(wram_16BC) + x)));
             cyc(32);
-            dma_wr16(DAS0L, cyc_then(24, rd16(0x0016BE + x)));
+            dma_wr16(DAS0L, cyc_then(24, rd16(W(wram_16BE) + x)));
             cyc(54);
-            dma_wr(A1B0, cyc_then(24, rd8(0x0016BB + x)));
+            dma_wr(A1B0, cyc_then(24, rd8(W(wram_16BB) + x)));
             cyc(40);
             dma_wr(DMAP0, 0x01);
             cyc(24);
@@ -592,7 +592,7 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     cyc(24);
     wr8(b | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(b | W(frames_since_tick)) + 1)));
     cyc(16);
-    wr8(0x000006, cyc_then(6, (uint8_t)(rd8(0x000006) + 1)));
+    wr8(W(dp_06), cyc_then(6, (uint8_t)(rd8(W(dp_06)) + 1)));
     cyc(24);
     v = rd8(b | W(wram_11DA));
     cyc(24);
@@ -665,7 +665,7 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     uint8_t lum;
 
     cyc(38);
-    wr8(0x000006, cyc_then(6, (uint8_t)(rd8(0x000006) + 1)));
+    wr8(W(dp_06), cyc_then(6, (uint8_t)(rd8(W(dp_06)) + 1)));
     cyc(24);
     wr8(b | W(frame_count), cyc_then(6, (uint8_t)(rd8(b | W(frame_count)) + 1)));
     cyc(24);

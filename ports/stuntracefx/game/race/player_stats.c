@@ -387,9 +387,9 @@ static void phase_jump(Carried *cr, uint16_t table)
     uint32_t b = (uint32_t)cr->db << 16;
 
     if (cr->p & P_M)
-        { cyc(24); r_lda8(cr, b | 0x0DD6); }
+        { cyc(24); r_lda8(cr, b | W(wram_0DD6)); }
     else
-        r_lda16(cr, b | 0x0DD6);
+        r_lda16(cr, b | W(wram_0DD6));
     cr->x = (cr->p & P_X) ? (uint16_t)(cr->a & 0x00FF) : cr->a;
     set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
     cyc(60);
@@ -514,7 +514,7 @@ void PlayerStatsThenPhaseDD35(Carried *cr)
     r_lda8(cr, b | W(wram_10CD));
     if ((uint8_t)cr->a) {
         cyc(40);
-        r_lda8(cr, b | 0x0DD6);
+        r_lda8(cr, b | W(wram_0DD6));
         v = (uint8_t)cr->a;
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : (cyc(38), 0))));
         if (v >= 0x08) {
@@ -885,7 +885,7 @@ void PlayerOnePhaseRace(Carried *cr)
         cyc(16);
         p1_step8(cr, b | W(wram_0DF8), 1);
         cyc(16);
-        p1_step8(cr, b | 0x0FAE, 1);
+        p1_step8(cr, b | W(wram_0FAE), 1);
         cyc(42);
         return;
     } else { cyc(28); }
@@ -897,9 +897,9 @@ void PlayerOnePhaseRace(Carried *cr)
     SoundPort0QueuePush_cr(cr);
     (cyc(46), OamHideForHudMode_cr(cr));
     p1_lda8(cr, 0x0A);
-    wr8(b | 0x0DD6, 0x0A);
+    wr8(b | W(wram_0DD6), 0x0A);
     cyc(24);
-    wr8(b | 0x0D53, 0x0A);
+    wr8(b | W(wram_0D53), 0x0A);
     cyc(24);
     wr8(b | W(wram_0D5B), 0x00);
     cyc(24);
@@ -937,17 +937,17 @@ void PlayerOnePhaseRace(Carried *cr)
     p1_digit_glyph(cr, b, 0, 0x1016);
     p1_digit_glyph(cr, b, 4, 0x1014);
     cyc(24);
-    r_lda16(cr, b | 0x0FAE);
+    r_lda16(cr, b | W(wram_0FAE));
     if (!cr->a) {
         r_lda16_imm(cr, 0x960E);
         cyc(32);
-        wr16(b | 0x1022, 0x960E);
+        wr16(b | W(wram_1022), 0x960E);
         r_lda16_imm(cr, 0x9610);
         cyc(10);
-        wr16(b | 0x1024, 0x9610);
+        wr16(b | W(wram_1024), 0x9610);
         r_lda16_imm(cr, 0x0000);
         cyc(10);
-        wr16(b | 0x1026, 0x0000);
+        wr16(b | W(wram_1026), 0x0000);
         cyc(42);
         return;
     } else { cyc(4); }
@@ -956,16 +956,16 @@ void PlayerOnePhaseRace(Carried *cr)
         return;
     r_lda16_imm(cr, 0x9610);
     cyc(62);
-    wr16(b | 0x1022, 0x9610);
+    wr16(b | W(wram_1022), 0x9610);
     r_lda16_imm(cr, 0x960E);
     cyc(10);
-    wr16(b | 0x1024, 0x960E);
+    wr16(b | W(wram_1024), 0x960E);
     r_lda16_imm(cr, 0x941C);
     cyc(10);
-    wr16(b | 0x1026, 0x941C);
+    wr16(b | W(wram_1026), 0x941C);
     r_lda16_imm(cr, 0x0000);
     cyc(10);
-    wr16(b | 0x102E, 0x0000);
+    wr16(b | W(wram_102E), 0x0000);
     r_lda16_imm(cr, 0x980E);
     cyc(10);
     wr16(b | W(glyph_spr_1040), 0x980E);
@@ -1028,7 +1028,7 @@ void PlayerOnePhaseTally(Carried *cr)
         p1_lda8(cr, 0x40);
         wr8(b | W(wram_0E58), 0x40);
         p1_lda8(cr, 0x0E);
-        wr8(b | 0x0DD6, 0x0E);
+        wr8(b | W(wram_0DD6), 0x0E);
         p1_lda8(cr, 0x0C);
         wr8(b | W(time_bonus_state), 0x0C);
         r_rep(cr, P_M);
@@ -1201,7 +1201,7 @@ void PlayerOnePhaseStep(Carried *cr)
     (cyc(52), w_PlayerStatsFromRecord(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0DD6);
+    r_lda8(cr, b | W(wram_0DD6));
     cr->x = (uint8_t)cr->a;
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(60);
@@ -1510,13 +1510,13 @@ void StuntPhaseEnd(Carried *cr)
     cyc(56);
     wr8(b | W(wram_0D59), 0x00);
     cyc(24);
-    wr8(b | 0x0E80, 0x00);
+    wr8(b | W(wram_0E80), 0x00);
     cyc(24);
-    wr8(b | 0x0E81, 0x00);
+    wr8(b | W(wram_0E81), 0x00);
     (cyc(46), OverlayFramesUntilFaded(cr));
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x0DD4);
+    r_lda8(cr, b | W(wram_0DD4));
     if ((uint8_t)cr->a)
         { cyc(40); RaceRestart(cr); }
     else
@@ -1625,7 +1625,7 @@ void StuntPhaseRace(Carried *cr)
         wr8(b | W(panel_b_shown), 0x00);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
         cyc(40);
-        wr8(b | 0x0E5A, 0x80);
+        wr8(b | W(wram_0E5A), 0x80);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x31);
         set_p(cr, nz8(cr->p, 0x31));
         (cyc(78), SoundPort0QueuePush_cr(cr));
@@ -1650,7 +1650,7 @@ void StuntPhaseRace(Carried *cr)
         wr8(b | W(wram_0D5B), 0x00);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
         cyc(40);
-        wr8(b | 0x0E18, 0xF0);
+        wr8(b | W(wram_0E18), 0xF0);
         cyc(24);
         wr8(b | W(wram_0E5B), 0x00);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0E);
@@ -1659,7 +1659,7 @@ void StuntPhaseRace(Carried *cr)
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0C);
         set_p(cr, nz8(cr->p, 0x0C));
         cyc(40);
-        wr8(b | 0x0E56, 0x0C);
+        wr8(b | W(wram_0E56), 0x0C);
         cyc(24);
         wr8(b | W(wram_0E4B), 0x0C);
         (cyc(46), OamHide75Up_cr(cr));
@@ -1720,7 +1720,7 @@ void StuntPhaseStep(Carried *cr)
     (cyc(52), w_PlayerStatsFromRecord(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | 0x0DD6);
+    r_lda8(cr, b | W(wram_0DD6));
     cr->x = (uint8_t)cr->a;
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(60);
@@ -1772,7 +1772,7 @@ static void hud_car_word(Carried *cr, uint16_t set, uint16_t clear)
 
     r_rep(cr, P_M | P_X);
     cyc(134);
-    x = rd16(0x7E0000 | W(wram_0346));
+    x = rd16((0x7E0000 | W(dp_00)) | W(wram_0346));
     cyc(30);
     y = rd16(W(wram_bank_7e) | (uint16_t)(0x204F + x));
     cyc(30);
@@ -1888,7 +1888,7 @@ static void hud_mode_zero(Carried *cr, uint8_t p0, uint8_t db0)
     v = (uint8_t)cr->a;
     if (v == 0x03) {
         cyc(56);
-        r_lda8(cr, b | 0x0DD6);
+        r_lda8(cr, b | W(wram_0DD6));
         if ((uint8_t)cr->a >= 0x08) {
             uint8_t pushed[2];
 
@@ -1946,7 +1946,7 @@ static void hud_mode_one(Carried *cr, uint8_t p0, uint8_t db0)
     r_lda8(cr, b | W(hud_blank));
     if ((uint8_t)cr->a) {
         cyc(46);
-        wr8(b | 0x0D53, 0x00);
+        wr8(b | W(wram_0D53), 0x00);
         cr->y = 0x0000;
         set_p(cr, nz8(cr->p, 0));
         (cyc(62), TimeUpPhaseStep(cr));
@@ -2046,15 +2046,15 @@ void TimeUpPhaseStart(Carried *cr)
     wr16(b | W(glyph_spr_y), 0x0014);
     r_lda16_imm(cr, 0xFF9E);
     cyc(10);
-    wr16(b | 0x0FB2, 0xFF9E);
+    wr16(b | W(wram_0FB2), 0xFF9E);
     r_lda16_imm(cr, 0x0040);
     cyc(10);
-    wr16(b | 0x0FE2, 0x0040);
+    wr16(b | W(wram_0FE2), 0x0040);
     for (i = 0; i < 2; i++) {
         cyc(24);
-        v = (uint16_t)(rd16(b | 0x0DD6) + 1);
+        v = (uint16_t)(rd16(b | W(wram_0DD6)) + 1);
         cyc(14);
-        wr16(b | 0x0DD6, v);
+        wr16(b | W(wram_0DD6), v);
         set_p(cr, nz16(cr->p, v));
     }
     cyc(42);
@@ -2162,10 +2162,10 @@ void TimeUpPhaseRace(Carried *cr)
             if (time_cmp8(cr, 0x99)) {
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x20);
                 cyc(78);
-                wr8(b | 0x0E5A, 0x20);
+                wr8(b | W(wram_0E5A), 0x20);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0C);
                 cyc(40);
-                wr8(b | 0x0DD6, 0x0C);
+                wr8(b | W(wram_0DD6), 0x0C);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x31);
                 set_p(cr, nz8(cr->p, 0x31));
                 (cyc(78), SoundPort0QueuePush_cr(cr));
@@ -2180,9 +2180,9 @@ void TimeUpPhaseRace(Carried *cr)
         { cyc(64); return; }            /* BNE taken, RTS */
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     cyc(56);
-    wr8(b | 0x0DD6, 0x08);
+    wr8(b | W(wram_0DD6), 0x08);
     cyc(24);
-    wr8(b | 0x0D53, 0x08);
+    wr8(b | W(wram_0D53), 0x08);
     cyc(24);
     wr8(b | W(wram_0E5B), 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x30);
@@ -2194,11 +2194,11 @@ void TimeUpPhaseRace(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x55);
     set_p(cr, nz8(cr->p, 0x55));
     cyc(40);
-    wr8(b | 0x0592, 0x55);
+    wr8(b | W(wram_0592), 0x55);
     cyc(24);
-    wr8(b | 0x0593, 0x55);
+    wr8(b | W(wram_0593), 0x55);
     cyc(24);
-    wr8(b | 0x0594, 0x55);
+    wr8(b | W(wram_0594), 0x55);
     cyc(46);
     TimeUpRecordUpdate_cr(cr);
     cyc(42);                            /* RTS */
@@ -2223,7 +2223,7 @@ static void race_end_go_on(Carried *cr, uint32_t b)
 {
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x0DD4);
+    r_lda8(cr, b | W(wram_0DD4));
     if ((uint8_t)cr->a)
         { cyc(40); RaceRestart(cr); }
     else
@@ -2311,9 +2311,9 @@ void TimeUpPhaseStep(Carried *cr)
     (cyc(82), w_PlayerStatsFromRecord(cr));     /* TAX, SEP, JSR */
     r_sep(cr, P_X);
     if (cr->p & P_M)
-        { cyc(24); r_lda8(cr, b | 0x0DD6); }
+        { cyc(24); r_lda8(cr, b | W(wram_0DD6)); }
     else
-        r_lda16(cr, b | 0x0DD6);
+        r_lda16(cr, b | W(wram_0DD6));
     cr->x = (uint8_t)cr->a;
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(60);
@@ -2351,10 +2351,10 @@ static void race_end_vblank(Carried *cr, uint32_t b, uint32_t branch)
     do {
         r_sep(cr, P_M);
         cyc(46);
-        r_lda8(cr, b | 0x0D52);
+        r_lda8(cr, b | W(wram_0D52));
     } while (cyc_loop(22, !(uint8_t)cr->a));
     cyc(40);
-    wr8(b | 0x0D52, 0x00);
+    wr8(b | W(wram_0D52), 0x00);
 }
 
 /*
@@ -2377,7 +2377,7 @@ void RaceEndCountdownFade(Carried *cr)
         race_end_vblank(cr, b, branch);
         branch = 22;
         cyc(24);
-        r_lda8(cr, b | 0x0E56);
+        r_lda8(cr, b | W(wram_0E56));
         v = (uint8_t)cr->a;
         if (!v) {
             cyc(46);
@@ -2393,7 +2393,7 @@ void RaceEndCountdownFade(Carried *cr)
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         set_p(cr, nz8(cr->p, v));
         cyc(54);
-        wr8(b | 0x0E56, v);
+        wr8(b | W(wram_0E56), v);
         if (v)
             continue;
         cyc(40);
@@ -2446,9 +2446,9 @@ void RaceEndCountdown(Carried *cr)
         race_end_vblank(cr, b, branch);
         branch = 0;
         cyc(24);
-        v = (uint8_t)(rd8(b | 0x0E5A) - 1);
+        v = (uint8_t)(rd8(b | W(wram_0E5A)) - 1);
         cyc(6);
-        wr8(b | 0x0E5A, v);
+        wr8(b | W(wram_0E5A), v);
         set_p(cr, nz8(cr->p, v));
     } while (cyc_loop(22, v));
     cyc(40);

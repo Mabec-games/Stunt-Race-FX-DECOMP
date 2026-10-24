@@ -169,9 +169,9 @@ void RaceFrameStep(Carried *cr)
     cr->x = 0x1A64;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(200);
-    w = rd16(0x000037 + 0x1A64);
+    w = rd16(W(wram_0037) + 0x1A64);
     cyc(60);
-    wr16(0x000037 + 0x1A64, (uint16_t)(w + 0x0400));
+    wr16(W(wram_0037) + 0x1A64, (uint16_t)(w + 0x0400));
     (cyc(62), CameraFollowStep_cr(cr));
     (cyc(62), ObjectFaceTied_cr(cr));
     cr->db = 0x03;
@@ -274,7 +274,7 @@ void RaceStart(Carried *cr)
     RaceFrameStep(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(106);
-    wr16(b | 0x1A66, cyc_then(54, rd16(W(table_116c))));
+    wr16(b | W(wram_1A66), cyc_then(54, rd16(W(table_116c))));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(62);
     wr8(b | W(wram_0357), 0x01);
@@ -341,7 +341,7 @@ static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, uns
     if ((uint8_t)y != 0x00) {
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(62 + sep);                  /* BNE taken, SEP (RaceFinishPhases10 only), LDA #, STA */
-        wr8(b | 0x0DD6, 0x12);
+        wr8(b | W(wram_0DD6), 0x12);
         cyc(40);
         wr8(b | W(engine_phase_p2), p2);
     } else {
@@ -358,7 +358,7 @@ static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, uns
             CarFinishSound(cr);
             set_p(cr, (uint8_t)(cr->p | (P_M)));
             cyc(40);
-            wr8(b | 0x0DD6, 0x14);
+            wr8(b | W(wram_0DD6), 0x14);
             cyc(24);
             wr8(b | W(engine_phase_p2), 0x14);
             both = 1;
@@ -367,7 +367,7 @@ static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, uns
             cyc(124);
             wr8(b | W(engine_phase_p2), 0x12);
             cyc(40);
-            wr8(b | 0x0DD6, p1);
+            wr8(b | W(wram_0DD6), p1);
         }
     }
     finish_tail(cr, b, both ? 0 : 22, post);
@@ -412,7 +412,7 @@ void RaceFinishSplit(Carried *cr)
         cyc(6);
         CarFinishSound(cr);
         cyc(40);
-        wr8(b | 0x0DD6, 0x12);
+        wr8(b | W(wram_0DD6), 0x12);
         cyc(40);
         wr8(b | W(engine_phase_p2), 0x0A);
     } else {
@@ -420,7 +420,7 @@ void RaceFinishSplit(Carried *cr)
         cyc(40);
         wr8(b | W(engine_phase_p2), 0x12);
         cyc(40);
-        wr8(b | 0x0DD6, 0x0A);
+        wr8(b | W(wram_0DD6), 0x0A);
     }
     cyc(78);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
@@ -1086,7 +1086,7 @@ static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
-    wr16(b | 0x0E35, 0x0000);
+    wr16(b | W(wram_0E35), 0x0000);
     if (scroll) {
         cyc(24);
         cr->a = scroll;
@@ -1095,7 +1095,7 @@ static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
     cyc(24);
     wr16(b | W(scroll_value), scroll);
     cyc(24);
-    wr16(b | 0x0E31, 0x0000);
+    wr16(b | W(wram_0E31), 0x0000);
     cyc(24);
     wr16(b | W(wram_0E33), 0x0000);
     cyc(24);
@@ -1343,37 +1343,37 @@ static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
     cyc(46);
     r_lda8(cr, b | W(frames_since_tick));
     cyc(24);
-    wr8(b | 0x1F3E, (uint8_t)cr->a);
+    wr8(b | W(wram_1F3E), (uint8_t)cr->a);
     cyc(24);
-    r_lda8(cr, b | 0x06D5);
+    r_lda8(cr, b | W(wram_06D5));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
     v = alu_adc8((uint8_t)cr->a, rd8(b | W(frames_taken)), &cr->p);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(24);
-    wr8(b | 0x06D5, v);
+    wr8(b | W(wram_06D5), v);
     cyc(24);
-    v = (uint8_t)(rd8(b | 0x06D6) + 1);
+    v = (uint8_t)(rd8(b | W(wram_06D6)) + 1);
     cyc(6);
-    wr8(b | 0x06D6, v);
+    wr8(b | W(wram_06D6), v);
     set_p(cr, nz8(cr->p, v));
     cyc(24);
-    r_lda8(cr, b | 0x06D5);
+    r_lda8(cr, b | W(wram_06D5));
     frame_cmp8(cr, 0x3C);
     if (cr->p & P_C) {
         cyc(56);
-        r_lda8(cr, b | 0x06D6);
+        r_lda8(cr, b | W(wram_06D6));
         cyc(24);
-        wr8(b | 0x06D7, (uint8_t)cr->a);
+        wr8(b | W(wram_06D7), (uint8_t)cr->a);
         cyc(24);
-        wr8(b | 0x06D6, 0x00);
+        wr8(b | W(wram_06D6), 0x00);
         cyc(24);
-        r_lda8(cr, b | 0x06D5);
+        r_lda8(cr, b | W(wram_06D5));
         set_p(cr, (uint8_t)(cr->p | (P_C)));
         v = alu_sbc8((uint8_t)cr->a, 0x3C, &cr->p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(38);
-        wr8(b | 0x06D5, v);
+        wr8(b | W(wram_06D5), v);
     }
     r_sep(cr, P_M);
     cyc(46);
@@ -1431,7 +1431,7 @@ void RaceFrameRun(Carried *cr)
     wr8(b | W(draw_side), 0x01);
     r_rep(cr, P_M);
     cyc(24);
-    wr16(b | 0x1AE8, 0x0000);
+    wr16(b | W(wram_1AE8), 0x0000);
     r_sep(cr, P_M);
     (cyc(84), FrameRunGsuAB13B(cr));
     r_sep(cr, P_M);
@@ -1446,9 +1446,9 @@ void RaceFrameRun(Carried *cr)
     r_rep(cr, P_M);
     b = (uint32_t)cr->db << 16;
     cyc(24);
-    r_lda16(cr, b | 0x1AE8);
+    r_lda16(cr, b | W(wram_1AE8));
     cyc(24);
-    wr16(b | 0x1AEA, cr->a);
+    wr16(b | W(wram_1AEA), cr->a);
     cyc(32);
     r_lda16(cr, 0x702732);
     if (cr->a) {
@@ -1541,7 +1541,7 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     wr8(b | W(draw_side), 0x01);
     r_rep(cr, P_M);
     cyc(24);
-    wr16(b | 0x1AE8, 0x0000);
+    wr16(b | W(wram_1AE8), 0x0000);
     r_sep(cr, P_M);
     (cyc(106), FrameRunGsuAB13B(cr));
     r_rep(cr, P_M | P_X);
@@ -1647,7 +1647,7 @@ void RaceLoop(Carried *cr)
     cyc(38);
     wr16(0x0000F1, cr->a);
     cyc(24);
-    r_lda16(cr, b | 0x1185);
+    r_lda16(cr, b | W(wram_1185));
     r_asl16(cr);
     r_asl16(cr);
     r_asl16(cr);
@@ -1660,7 +1660,7 @@ void RaceLoop(Carried *cr)
     cyc(16);
     wr16(0x0000F1, cr->a);
     cyc(24);
-    r_lda16(cr, b | 0x1186);
+    r_lda16(cr, b | W(wram_1186));
     r_xba(cr);
     r_asl16(cr);
     r_asl16(cr);
@@ -1669,7 +1669,7 @@ void RaceLoop(Carried *cr)
     cr->a |= rd16(0x0000F1);
     set_p(cr, nz16(cr->p, cr->a));
     cyc(24);
-    wr16(b | 0x0F11, cr->a);
+    wr16(b | W(wram_0F11), cr->a);
     cyc(14);
     loop_push8(cr->p);
     r_sep(cr, P_M | P_X);
@@ -1698,11 +1698,11 @@ void RaceLoop(Carried *cr)
     cyc(24);
     wr8(b | W(fade_out), 0x00);
     cyc(24);
-    wr8(b | 0x0D43, 0x00);
+    wr8(b | W(wram_0D43), 0x00);
     cyc(24);
-    wr8(b | 0x0D40, 0x00);
+    wr8(b | W(wram_0D40), 0x00);
     cyc(24);
-    wr8(b | 0x0D50, 0x00);
+    wr8(b | W(wram_0D50), 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x31);
     set_p(cr, nz8(cr->p, 0x31));
     cyc(40);
@@ -1713,10 +1713,10 @@ void RaceLoop(Carried *cr)
         r_sep(cr, P_M);
         b = (uint32_t)cr->db << 16;
         do
-            { cyc(first ? 60 : 68); first = 0; r_lda8(cr, b | 0x0D52); }
+            { cyc(first ? 60 : 68); first = 0; r_lda8(cr, b | W(wram_0D52)); }
         while (!(uint8_t)cr->a);
         cyc(40);
-        wr8(b | 0x0D52, 0x00);
+        wr8(b | W(wram_0D52), 0x00);
         r_rep(cr, P_M);
         do
             { cyc(24); r_lda16(cr, b | W(wram_0D81)); }

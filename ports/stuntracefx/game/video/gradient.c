@@ -25,21 +25,21 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
 
         if (!n)
             { cyc(32); return x; }
-        wr16(0x0000F1, n);
+        wr16(W(gradient_run_left), n);
         cyc(92);
         colour = rd16(((uint32_t)bank << 16) + 0x0020 + *y);
-        out = rd16(0x0000F3);
+        out = rd16(W(gradient_out));
         do {
             cyc(32);
             wr16((W(gradient_colours) + out) & 0xFFFFFF, colour);
             out = (uint16_t)(out + 2);
             cyc(44);
-            n = (uint16_t)(rd16(0x0000F1) - 1);
+            n = (uint16_t)(rd16(W(gradient_run_left)) - 1);
             cyc(14);
-            wr16(0x0000F1, n);
+            wr16(W(gradient_run_left), n);
         } while (cyc_loop(22, n));
         cyc(32);
-        wr16(0x0000F3, out);
+        wr16(W(gradient_out), out);
         x = (uint16_t)(x + 1);
         *y = (uint16_t)(*y + 2);
         cyc(6);
@@ -159,13 +159,13 @@ uint16_t GradientBuildColours(uint16_t x, int *carry)
     uint16_t y = rd16(0x03F6F1 + x), second;
     int i;
 
-    wr16(0x0000F3, 0x0000);
+    wr16(W(gradient_out), 0x0000);
     GradientExpandFirst(bank, &y, carry);
     cyc(176);
     second = rd16(0x03F745 + x);
     if (second) {
         y = second;
-        wr16(0x0000F3, 0x0400);
+        wr16(W(gradient_out), 0x0400);
         GradientExpandSecond(bank, &y, carry);
     }
     cyc(52);
@@ -288,7 +288,7 @@ void abi_GradientFillCgaddB(void)
 uint16_t GradientPointersToBank7F(void)
 {
     cyc(46);
-    uint16_t v = rd16(0x000D96);
+    uint16_t v = rd16(W(gradient_src_a));
 
     cyc(32);
     wr16(W(gradient_ptr_a), v);

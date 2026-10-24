@@ -811,9 +811,9 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     set10(bank, 0x0004, 0x0000, x, y, p);
     sound0(bank, 0x46, p);
     cyc(78);
-    wr16(0x00190B, 0x0000);
+    wr16(W(wram_190B), 0x0000);
     cyc(32);
-    wr16(0x00190D, 0x0000);
+    wr16(W(wram_190D), 0x0000);
     set10(bank, 0x0008, 0x0000, x, y, p);
     set10(bank, 0x0009, 0x0000, x, y, p);
     set10(bank, 0x000A, 0xFFFF, x, y, p);

@@ -13,7 +13,7 @@ void abi_ObjectInit(void);
 void abi_ObjectPoolInit(void);
 void abi_CrashGreen(void);
 
-#define OBJ_FIELD(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
+#define OBJ_FIELD(o, f) ((0x7E0000 | W(dp_00)) | W(obj_base) + (uint16_t)((f) + (o)))
 
 void CourseScriptRun(Carried *cr);
 static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint16_t link);
@@ -160,7 +160,7 @@ void CourseScriptRun(Carried *cr)
             for (i = 0; i < 0x0800; i = (uint16_t)(i + 2))
                 { cyc(96); wr16(W(object_buckets) + i, 0x0000); }
             cyc(128);
-            wr8(0x001AF4, 0x00);
+            wr8(W(wram_1AF4), 0x00);
             cyc(46);
             wr16(b | W(spawn_counter), 0x0000);
             cyc(56);
@@ -191,7 +191,7 @@ void CourseScriptRun(Carried *cr)
             break;
         case 0x8112:                                   /* $08 */
             cyc(68);
-            wr8(0x001AF4, rd8(b | (uint16_t)(0x8001 + y)));
+            wr8(W(wram_1AF4), rd8(b | (uint16_t)(0x8001 + y)));
             cyc(22);
             x = (uint16_t)(y + 2);
             break;
@@ -232,11 +232,11 @@ void CourseScriptRun(Carried *cr)
             n = (uint16_t)((uint16_t)((rd16(b | (uint16_t)(0x8001 + y)) & 0x00FF) - 1) << 3);
             wr16(W(script_records) + n, rd16(b | (uint16_t)(0x8002 + y)));
             cyc(78);
-            wr16(0x7EFF68 + n, rd16(b | (uint16_t)(0x8004 + y)));
+            wr16(W(wram_7EFF68) + n, rd16(b | (uint16_t)(0x8004 + y)));
             cyc(78);
-            wr16(0x7EFF6A + n, rd16(b | (uint16_t)(0x8006 + y)));
+            wr16(W(wram_7EFF6A) + n, rd16(b | (uint16_t)(0x8006 + y)));
             cyc(92);
-            wr8(0x7EFF6C + n, rd8(b | (uint16_t)(0x8008 + y)));
+            wr8(W(wram_7EFF6C) + n, rd8(b | (uint16_t)(0x8008 + y)));
             cyc(22);                                   /* REP */
             x = (uint16_t)(y + 9);
             break;

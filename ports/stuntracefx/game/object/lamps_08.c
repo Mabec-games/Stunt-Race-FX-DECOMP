@@ -17,6 +17,7 @@
 
 #include "alu.h"
 #include "carried.h"
+#include "wram_names.h"
 
 int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y);
 uint16_t ObjectCopyPositionTo(uint8_t bank, uint16_t from, uint16_t to);
@@ -818,7 +819,7 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
 
     lr_lda8(r, cyc_then(30, F(0x2014, r->x)));
     cyc(16);
-    wr8(0x00003E, (uint8_t)r->a);
+    wr8(W(dp_3e), (uint8_t)r->a);
     cyc(58);
     lda8(bank, r, 0x00);
     lr_approach_byte(r, ApproachSixteenthMin16Byte);
@@ -835,7 +836,7 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
     r->p &= (uint8_t)~P_M;
     lr_lda(r, cyc_then(52, F(0x2030, r->x)));
     cyc(16);
-    wr16(0x00003E, r->a);
+    wr16(W(dp_3e), r->a);
     lr_lda(r, cyc_then(30, F(0x2029, r->x)));
     (cyc(14), lr_approach(r, ApproachEighthMin8));
     wr16(F(0x2030, r->x), cyc_then(30, r->a));
@@ -843,7 +844,7 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
     r->p &= (uint8_t)~P_M;
     lr_lda(r, cyc_then(74, F(0x2032, r->x)));
     cyc(16);
-    wr16(0x00003E, r->a);
+    wr16(W(dp_3e), r->a);
     lr_lda_imm(r, 0x05DC);
     lr_approach(r, ApproachEighthMin8);
     wr16(F(0x2032, r->x), cyc_then(30, r->a));
@@ -1038,11 +1039,11 @@ void ObjectCameraPadRecord(uint8_t bank, LRegs *r)
 {
     (cyc(62), l_GsuRecordNew42D(bank, r));
     l_GsuRecordFlag10(bank, r);
-    dp16i(bank, r, 0x000002, 0x0780);
+    dp16i(bank, r, W(dp_02), 0x0780);
     cyc(22);
-    dp16i(bank, r, 0x000008, 0x0780);
+    dp16i(bank, r, W(dp_08), 0x0780);
     cyc(22);
-    dp16i(bank, r, 0x000094, 0x0780);
+    dp16i(bank, r, W(dp_94), 0x0780);
     (cyc(84), l_GsuRecordPosition(bank, r));
     cyc(44);
 }

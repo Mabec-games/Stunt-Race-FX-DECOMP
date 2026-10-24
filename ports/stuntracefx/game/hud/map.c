@@ -49,23 +49,23 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(164);
         sx = (uint16_t)((uint16_t)((v >> 8 | v << 8) + rd16(0x0000F1)) & 0x00FF);
         cyc(40);
-        wr16(0x000002, sx);
+        wr16(W(dp_02), sx);
         cyc(32);
         v = asr3((uint16_t)(-rd16(W(obj_pos_z_long) + obj)));
         cyc(182);
-        v = (uint16_t)(((uint16_t)(v + rd16(0x0000F3)) & 0xFF00) | sx);
+        v = (uint16_t)(((uint16_t)(v + rd16(W(dp_f3))) & 0xFF00) | sx);
         cyc(72);
-        wr16(0x000008, v);
+        wr16(W(dp_08), v);
         cyc(30);
         wr16(b | (uint16_t)(0x0375 + *y), v);
         cyc(54);
-        v = rd16(0x7E0000 | W(obj_26) + obj);
+        v = rd16((0x7E0000 | W(dp_00)) | W(obj_26) + obj);
         cyc(16);
-        wr16(0x000008, v);
+        wr16(W(dp_08), v);
         cyc(84);
         v = rd16(W(map_marker_tiles) + 2 * (v & 0x0007));
         cyc(16);
-        wr16(0x000002, v);
+        wr16(W(dp_02), v);
         cyc(62);
         wr16(b | (uint16_t)(0x0377 + *y), v);
         cyc(108);
@@ -109,7 +109,7 @@ static void map_origin(uint32_t x_at, uint16_t step)
     cyc(24);
     v = (uint16_t)(rd16(x_at + 2) & 0xFF00);
     cyc(40);
-    wr16(0x0000F3, v);
+    wr16(W(dp_f3), v);
     cyc(40);
     wr16(0x0000F5, step);
 }

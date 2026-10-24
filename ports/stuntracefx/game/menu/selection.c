@@ -695,7 +695,7 @@ uint8_t MenuCursorFourWay(uint8_t bank)
     cyc(8);
     if (rd8(b | W(digit62_override))) {
         cyc(56);
-        wr8(b | 0x0D37, 0x88);
+        wr8(b | W(wram_0D37), 0x88);
         return 0x88;
     }
     cyc(46);
@@ -704,7 +704,7 @@ uint8_t MenuCursorFourWay(uint8_t bank)
     v = rd8(b | (uint16_t)(0xEB49 + mc_x));
     wr8(b | W(wram_0E91), v);
     cyc(24);
-    wr8(b | 0x0D37, v);
+    wr8(b | W(wram_0D37), v);
     return v;
 }
 

@@ -10,6 +10,7 @@
 #include "cpu_ops.h"
 #include "object_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 #define FIELDS_SCRATCH 0x00003Eu
@@ -101,7 +102,7 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     v = rd16(b | (uint16_t)(0x200C + from));
     *p &= (uint8_t)~P_C;
     cyc(30);
-    v = alu_adc16(v, rd16(0x000004), p);
+    v = alu_adc16(v, rd16(W(dp_04)), p);
     cyc(30);
     wr16(b | (uint16_t)(0x200C + to), v);
     cyc(30);
@@ -167,7 +168,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     v = rd8(b | (uint16_t)(0x2017 + obj));
     *p |= P_C;
     cyc(38);
-    d = alu_sbc8(v, rd8(b | 0x1F2B), p);
+    d = alu_sbc8(v, rd8(b | W(wram_1F2B)), p);
     if (!d) {
         cyc(64);                        /* BEQ taken, SEC, RTL */
         *p |= P_C;
@@ -179,14 +180,14 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     s = rd8(FIELDS_SCRATCH);
     if ((uint8_t)(d - s) & 0x80) {
         cyc(40);
-        v = rd8(b | 0x1F2B);
+        v = rd8(b | W(wram_1F2B));
         *p = nz8(*p, v);
         cyc(22);                        /* BRA */
     } else {
         cyc(52);
         v = rd8(b | (uint16_t)(0x2017 + obj));
         cyc(24);
-        s = rd8(b | 0x1F2B);
+        s = rd8(b | W(wram_1F2B));
         if (v != s) {
             if ((uint8_t)(v - s) & 0x80) {
                 *p &= (uint8_t)~P_C;

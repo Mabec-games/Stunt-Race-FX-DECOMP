@@ -202,7 +202,7 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
     cyc(86);
     wr8(b | W(race_time_bcd), v);
     cyc(24);
-    wr8(b | 0x0E71, 0x00);
+    wr8(b | W(wram_0E71), 0x00);
     cyc(42);
     return v;
 }

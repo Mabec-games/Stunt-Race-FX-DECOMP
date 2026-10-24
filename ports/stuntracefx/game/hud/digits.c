@@ -215,33 +215,33 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     uint8_t count;
     uint32_t c;
 
-    wr8(0x0000F1, 0x00);
+    wr8(W(digit_count), 0x00);
     while (n >= 100) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 100) & (n ^ (uint8_t)(n - 100)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 100);
         cyc(64);
-        count = rd8(0x0000F1);
+        count = rd8(W(digit_count));
         cyc(6);
-        wr8(0x0000F1, (uint8_t)(count + 1));
+        wr8(W(digit_count), (uint8_t)(count + 1));
         cyc(22);
     }
     cyc(76);
-    count = rd8(0x0000F1);
+    count = rd8(W(digit_count));
     digit(OAM_BUFFER + 2 + offset, count, 44);
     cyc(44);
-    wr8(0x0000F1, 0x00);
+    wr8(W(digit_count), 0x00);
     c = 64;                             /* the first ten; 86 for each after */
     while (n >= 10) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 10) & (n ^ (uint8_t)(n - 10)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 10);
         cyc(c);
         c = 86;
-        count = rd8(0x0000F1);
+        count = rd8(W(digit_count));
         cyc(6);
-        wr8(0x0000F1, (uint8_t)(count + 1));
+        wr8(W(digit_count), (uint8_t)(count + 1));
     }
     cyc(c == 86 ? 98 : 76);             /* out after a ten, or with none */
-    count = rd8(0x0000F1);
+    count = rd8(W(digit_count));
     digit(OAM_BUFFER + 0x0A + offset, count, 44);
     cyc(28);
     digit(OAM_BUFFER + 0x12 + offset, n, 44);
@@ -462,9 +462,9 @@ static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
 
     *digit = d;
     cyc(38);
-    wr8(b | 0x046F, (uint8_t)(d << 1));
+    wr8(b | W(wram_046F), (uint8_t)(d << 1));
     cyc(38);
-    wr8(b | 0x0473, (uint8_t)((d << 1) + 1));
+    wr8(b | W(wram_0473), (uint8_t)((d << 1) + 1));
     return (uint8_t)((d << 1) + 1);
 }
 

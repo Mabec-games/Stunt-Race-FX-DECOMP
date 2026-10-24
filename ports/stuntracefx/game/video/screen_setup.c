@@ -165,20 +165,20 @@ void RaceScreenSetup(uint8_t bank)
     /* The scroll HDMA table: $38 lines of $0E33, $4F lines of $0E37, then
        three single lines of $0E37 and the end. */
     cyc(62);
-    wr8(b | 0x10AA, 0x38);
+    wr8(b | W(wram_10AA), 0x38);
     cyc(24);
-    wr8(b | 0x10AB, cyc_then(24, rd8(b | W(wram_0E33))));
+    wr8(b | W(wram_10AB), cyc_then(24, rd8(b | W(wram_0E33))));
     cyc(24);
-    wr8(b | 0x10AC, cyc_then(24, rd8(b | 0x0E34)));
+    wr8(b | W(wram_10AC), cyc_then(24, rd8(b | W(wram_0E34))));
     cyc(40);
-    wr8(b | 0x10AD, 0x4F);
+    wr8(b | W(wram_10AD), 0x4F);
     for (i = 0; i < 4; i++) {
         cyc(24);
         lo = rd8(b | W(scroll_value));
         cyc(24);
         wr8(b | (uint16_t)(0x10AE + 3 * i), lo);
         cyc(24);
-        hi = rd8(b | 0x0E38);
+        hi = rd8(b | W(wram_0E38));
         cyc(24);
         wr8(b | (uint16_t)(0x10AF + 3 * i), hi);
         cyc(40);
@@ -269,7 +269,7 @@ void VideoStartUploads(uint8_t bank)
     cyc(82);
     io8(bank, NMITIMEN, 0x00);
     cyc(16);
-    wr8(0x000000, 0x00);
+    wr8(W(dp_00), 0x00);
     cyc(24);
     rd8(b | W(wram_1073));
     cyc(54);
@@ -445,14 +445,14 @@ static uint16_t rv_tilemap_rows(uint16_t y0, uint32_t lead, uint16_t *x, uint16_
 
     *y = y0;
     cyc(lead);
-    wr16(0x0000F1, 0x0000);
+    wr16(W(tilemap_row_offset), 0x0000);
     do {
         for (i = 0; i < 5; i++)
             (cyc(70), TilemapRowFromGsuRam(0x7F, src[i], x, y, &p));
         cyc(16);
-        a = (uint16_t)(rd16(0x0000F1) + 0x0040);
+        a = (uint16_t)(rd16(W(tilemap_row_offset)) + 0x0040);
         cyc(54);
-        wr16(0x0000F1, a);
+        wr16(W(tilemap_row_offset), a);
     } while (cyc_loop(46, a < 0x0800));
     cyc(112);
     return a;
@@ -532,7 +532,7 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
         MenuCourseGraphics(0x03);
         cyc(112 + 122);
         wr16(W(tilemap_7f9bd7), 0x0000);
-        rv_mvn(W(tilemap_7f9bd7), 0x7F9BD8, 0x2000);
+        rv_mvn(W(tilemap_7f9bd7), W(wram_7F9BD8), 0x2000);
         cyc(42);                                    /* PLP */
         rv_gsu_vram(0xF84C, 0xF7E3);
         cyc(88);
@@ -771,7 +771,7 @@ static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_
 {
     cr->a = from;
     cyc(34);
-    wr16(0x0000F1, from);
+    wr16(W(tilemap_row_offset), from);
     cyc(24);
     r_lda16(cr, b | w);
     cr->x = vram;
@@ -870,7 +870,7 @@ void RaceHudLoad(Carried *cr)
     cyc(18);
     video_gsu_3000(cr, 0xD920, 0x0018, 0);
     cyc(182);
-    video_mvn(cr, 0x703000, 0x7F63D7, 0x3000);
+    video_mvn(cr, 0x703000, W(wram_7F63D7), 0x3000);
     r_sep(cr, P_M);
     (cyc(110), SoundReset_cr(cr));
     r_sep(cr, P_M);

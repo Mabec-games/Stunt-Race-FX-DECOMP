@@ -334,7 +334,7 @@ uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
     uint16_t m, s;
 
     cyc(16);
-    m = rd16(0x000004);
+    m = rd16(W(dp_04));
     cyc(44);
     s = rd16(b | (uint16_t)(0x200C + obj));
     wr16(GSU_IN_68, cyc_then(32, sub16(m, s, p)));
@@ -385,11 +385,11 @@ uint16_t Gsu82CE(void)
     unsigned i;
 
     cyc(104);
-    wr16(GSU_IN_68, cyc_then(32, rd16(0x000002)));
+    wr16(GSU_IN_68, cyc_then(32, rd16(W(dp_02))));
     cyc(16);
-    wr16(0x70002C, cyc_then(32, rd16(0x000008)));
+    wr16(0x70002C, cyc_then(32, rd16(W(dp_08))));
     cyc(16);
-    wr16(0x70002E, cyc_then(32, rd16(0x000094)));
+    wr16(0x70002E, cyc_then(32, rd16(W(dp_94))));
     cyc(124);
     GsuRun(0x01, 0x82CE);
     cyc(94);
@@ -397,7 +397,7 @@ uint16_t Gsu82CE(void)
         cyc(32);
         r = rd16(0x700026 + 2 * i);
         cyc(16);
-        wr16(0x0000B7 + 2 * i, r);
+        wr16(W(dp_b7) + 2 * i, r);
     }
     cyc(128);
     return r;
@@ -742,7 +742,7 @@ static uint16_t view_setup_tail(uint8_t bank)
     for (i = 0; i < 5; i++)
         { cyc(24); wr8(b | clear[i], 0x00); }
     cyc(40);
-    wr8(b | 0x05FA, 0x00);
+    wr8(b | W(wram_05FA), 0x00);
     ViewReset(bank);
     cyc(62);
     ReadTable9022(bank);
@@ -826,7 +826,7 @@ uint16_t ViewDefaults(uint8_t bank)
     cyc(40);
     wr8((uint32_t)bank << 16 | 0x05EF, 0xFF);
     cyc(16);
-    wr8(0x000000, 0x00);
+    wr8(W(dp_00), 0x00);
     cyc(22);
     for (i = 0; i < 16; i++)
         { cyc(32); wr8(dp[i][0], dp[i][1]); }
@@ -1179,9 +1179,9 @@ void abi_GsuFA1BFromTables(void)
 uint16_t Gsu81E3(void)
 {
     cyc(90);
-    wr16(GSU_IN_68, cyc_then(32, rd16(0x000002)));
+    wr16(GSU_IN_68, cyc_then(32, rd16(W(dp_02))));
     cyc(16);
-    wr16(GSU_DEST, cyc_then(32, rd16(0x000008)));
+    wr16(GSU_DEST, cyc_then(32, rd16(W(dp_08))));
     cyc(146);
     GsuRun(0x01, 0x81E3);
     cyc(126);
@@ -1694,12 +1694,12 @@ uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
     wr16(0x700214, 0x0100);
     cyc(24);
     x = add16(rd16(cyc_then(86, 0x070000 | (uint16_t)(0x9806 + rd16(b | W(wram_0D6B))))), rd16(b | W(wram_0D6D)), p);
-    wr16(0x0000F1, x);
+    wr16(W(recip_divisor), x);
     for (i = 0; i < 6; i++) {
         if (i == 4) {
-            x = add16(rd16(0x0000F1), 0x0008, p);
+            x = add16(rd16(W(recip_divisor)), 0x0008, p);
             cyc(38);
-            wr16(0x0000F1, x);
+            wr16(W(recip_divisor), x);
         } else { cyc(16); }
         cyc(16);
         y = rd16(b | W(wram_0D6F));
@@ -2175,18 +2175,18 @@ uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
     uint16_t a, n, d;
 
     cyc(40);
-    wr16(0x0000F3, 0xFFFF);
+    wr16(W(recip_dividend), 0xFFFF);
     cyc(40);
-    if (0x00FF < rd16(0x0000F1)) {
+    if (0x00FF < rd16(W(recip_divisor))) {
         cyc(32);
-        wr16(0x0000F1, cyc_then(14, (uint16_t)(rd16(0x0000F1) >> 1)));
+        wr16(W(recip_divisor), cyc_then(14, (uint16_t)(rd16(W(recip_divisor)) >> 1)));
         cyc(16);
-        wr16(0x0000F3, cyc_then(14, (uint16_t)(rd16(0x0000F3) >> 1)));
+        wr16(W(recip_dividend), cyc_then(14, (uint16_t)(rd16(W(recip_dividend)) >> 1)));
     } else { cyc(22); }
     cyc(16);
-    io_wr16(b | 0x4204, n = cyc_then(24, rd16(0x0000F3)));
+    io_wr16(b | 0x4204, n = cyc_then(24, rd16(W(recip_dividend))));
     cyc(16);
-    d = cyc_then(24, rd16(0x0000F1));
+    d = cyc_then(24, rd16(W(recip_divisor)));
     io_wr8(b | 0x4206, (uint8_t)d);
     hw_wr(b | 0x4207, (uint8_t)(d >> 8));      /* the high byte to HTIMEL */
     cyc(80);
@@ -2269,13 +2269,13 @@ uint16_t GsuPieceScaleFromView(uint8_t bank)
     cyc(32);
     wr16(0x700210, q2);
     cyc(16);
-    wr16(0x0000F1, q2);
+    wr16(W(recip_divisor), q2);
     cyc(16);
-    wr16(0x0000F1, q2);
+    wr16(W(recip_divisor), q2);
     cyc(46);
     wr16(0x700214, cyc_then(74, GsuReciprocal(bank, &p)));
     cyc(52);
-    wr16(0x0000F1, q1);
+    wr16(W(recip_divisor), q1);
     cyc(46);
     r = GsuReciprocal(bank, &p);
     cyc(74);
@@ -2457,12 +2457,12 @@ uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
     cyc(144);
     v = ObjectGsu80BC(bank, x, &p);
     cyc(16);
-    wr16(0x000008, v);
+    wr16(W(dp_08), v);
     cyc(24);
     object_cv = 0;
     v = sub16(rd16(b | 0x000A), rd16(cyc_then(44, b | (uint16_t)(0x200E + x))), &object_cv);
     cyc(16);
-    wr16(0x000002, v);
+    wr16(W(dp_02), v);
     v = (cyc(62), Gsu81E3Long());
     cyc(62);
     cyc(98);
@@ -2502,17 +2502,17 @@ uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
 
     object_cv = 0;
     cyc(98);
-    m = rd16(0x000004);
+    m = rd16(W(dp_04));
     cyc(44);
     s = rd16(b | (uint16_t)(0x200C + x));
-    wr16(0x000002, cyc_then(16, sub16(m, s, &object_cv)));
+    wr16(W(dp_02), cyc_then(16, sub16(m, s, &object_cv)));
     cyc(24);
     m = rd16(b | 0x05F2);
     cyc(44);
     s = rd16(b | (uint16_t)(0x2010 + x));
     v = sub16(m, s, &object_cv);
     cyc(16);
-    wr16(0x000008, v);
+    wr16(W(dp_08), v);
     v = (cyc(62), Gsu81E3Long());
     cyc(138);                           /* REP, PLY, PLX, RTL */
     return v;
@@ -2567,7 +2567,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     fa5a_unit_scale();
     cyc(24);
     x = add16(rd16(cyc_then(86, 0x079806 + rd16(b | W(wram_0D6B)))), rd16(b | W(wram_0D6D)), p);
-    wr16(0x0000F1, x);
+    wr16(W(recip_divisor), x);
     cyc(32);
     wr16(0x70020A, x);
     cyc(24);
@@ -2577,7 +2577,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     cyc(146);
     GsuRun(0x07, 0xFA5A);
     cyc(132);
-    wr16(0x70020A, cyc_then(32, rd16(0x0000F1)));
+    wr16(0x70020A, cyc_then(32, rd16(W(recip_divisor))));
     cyc(24);
     wr16(0x70020C, cyc_then(54, add16(rd16(b | W(wram_0D6F)), 0x0018, p)));
     cyc(56);
@@ -2589,7 +2589,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     cyc(56);
     wr16(0x700214, 0x0080);
     cyc(16);
-    wr16(0x70020A, cyc_then(32, rd16(0x0000F1)));
+    wr16(0x70020A, cyc_then(32, rd16(W(recip_divisor))));
     cyc(24);
     wr16(0x70020C, cyc_then(54, add16(rd16(b | W(wram_0D6F)), 0x0008, p)));
     cyc(56);
@@ -3445,11 +3445,11 @@ uint16_t GlyphListDraw(uint8_t bank)
     cyc(48);
     v = (uint16_t)(rd16(b | W(glyph_list_first)) << 1);
     cyc(30);
-    wr16(0x0000F1, v);
+    wr16(W(recip_divisor), v);
     cyc(24);
     v = (uint16_t)(rd16(b | W(glyph_list_count)) << 1);
     cyc(30);
-    wr16(0x0000F3, v);
+    wr16(W(recip_dividend), v);
     do {
         cyc(22);                        /* REP #$20 */
         cyc(30);
@@ -3470,7 +3470,7 @@ uint16_t GlyphListDraw(uint8_t bank)
             cyc(54);
             wr16(0x70020C, v);
             cyc(16);
-            lim = rd16(0x0000F1);
+            lim = rd16(W(recip_divisor));
             if (x >= lim)
                 { cyc(84); GsuBytes200_BFB3BE(); }
             else
@@ -3482,7 +3482,7 @@ uint16_t GlyphListDraw(uint8_t bank)
             cyc(88);
         } else { cyc(66); }
         x = (uint16_t)(x + 2);
-        lim = rd16(0x0000F3);
+        lim = rd16(W(recip_dividend));
         if (x >= lim)
             cyc(58);
     } while (cyc_loop(22, x < lim));
@@ -3689,14 +3689,14 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     cyc(30);                            /* TAX */
     v = (uint16_t)(rd16(b | x) & 0x00FF);
     cyc(2);
-    wr16(0x0000F1, v);
+    wr16(W(recip_divisor), v);
     v = (uint16_t)(v << 2);
     cyc(6);                             /* the SBC */
     v = (uint16_t)(0x0068 - v);         /* SBC #$68, negated */
     cyc(114);
-    wr16(0x0000F3, v);
+    wr16(W(recip_dividend), v);
     cyc(16);
-    v = (uint16_t)(rd16(0x0000F1) - 1);
+    v = (uint16_t)(rd16(W(recip_divisor)) - 1);
     cyc(38);
     wr16(b | W(glyph_list_first), v);
     cyc(62);
@@ -3710,7 +3710,7 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
             cyc(52);
             wr16(b | (uint16_t)(0x10E8 + y), v);
             cyc(38);
-            v = rd8(0x0000F3);
+            v = rd8(W(recip_dividend));
             cyc(30);
             wr8(b | (uint16_t)(0x1134 + y), (uint8_t)v);
             cyc(46);
@@ -3721,18 +3721,18 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
         }
         cyc(22);
         cyc(44);
-        v = (uint16_t)(rd16(0x0000F3) + 8);
+        v = (uint16_t)(rd16(W(recip_dividend)) + 8);
         cyc(54);
-        wr16(0x0000F3, v);
+        wr16(W(recip_dividend), v);
         x = (uint16_t)(x + 2);
         cyc(44);
-        v = (uint16_t)(rd16(0x0000F1) - 1);
+        v = (uint16_t)(rd16(W(recip_divisor)) - 1);
         cyc(14);
-        wr16(0x0000F1, v);
+        wr16(W(recip_divisor), v);
     } while (v);
     message_end = x;
     cyc(22);
-    y = time_glyph(b, y, digit_glyph(0x0000F7, 0), 0x4C, 0);
+    y = time_glyph(b, y, digit_glyph(W(glyph_time_low), 0), 0x4C, 0);
     y = time_glyph(b, y, 0x980A, 0x54, 0);
     cyc(22);
     y = time_glyph(b, y, digit_glyph(W(glyph_time_mid), 1), 0x5C, 0);
@@ -3740,9 +3740,9 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     y = time_glyph(b, y, digit_glyph(W(glyph_time_mid), 0), 0x64, 0);
     y = time_glyph(b, y, 0x980C, 0x6C, 0);
     cyc(22);
-    y = time_glyph(b, y, digit_glyph(0x0000F5, 1), 0x74, 0);
+    y = time_glyph(b, y, digit_glyph(W(glyph_time_high), 1), 0x74, 0);
     cyc(22);
-    return time_glyph(b, y, digit_glyph(0x0000F5, 0), 0x7C, 1);
+    return time_glyph(b, y, digit_glyph(W(glyph_time_high), 0), 0x7C, 1);
 }
 
 void GlyphListMessageAndTime_cr(Carried *cr)
@@ -4059,7 +4059,7 @@ static void glyph_load_time(uint32_t b, uint16_t from, uint16_t extra)
     }
     cyc(22);
     cyc(22);
-    wr16(b | 0x115C, 0x0000);
+    wr16(b | W(wram_115C), 0x0000);
     glyph_next(b);
     cyc(24);
     v = (uint16_t)(rd16(b | W(wram_0D4A)) & 0x00FF);
@@ -4081,20 +4081,20 @@ static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
 {
     uint16_t v;
 
-    v = rd16(b | 0x115C);
+    v = rd16(b | W(wram_115C));
     cyc(30);                            /* TAX */
     cyc(38);
     wr16(b | (uint16_t)(0x110E + v), flag);
     cyc(24);
-    v = (uint16_t)(rd16(b | 0x115C) + 1);
+    v = (uint16_t)(rd16(b | W(wram_115C)) + 1);
     cyc(14);
-    wr16(b | 0x115C, v);
+    wr16(b | W(wram_115C), v);
     cyc(24);
-    v = (uint16_t)(rd16(b | 0x115C) + 1);
+    v = (uint16_t)(rd16(b | W(wram_115C)) + 1);
     cyc(14);
-    wr16(b | 0x115C, v);
+    wr16(b | W(wram_115C), v);
     cyc(24);
-    v = (uint16_t)(rd16(b | 0x115C) >> 1);
+    v = (uint16_t)(rd16(b | W(wram_115C)) >> 1);
     cyc(38);
     if (v >= rd16(b | W(glyph_list_count))) {
         cyc(16);
@@ -4168,7 +4168,7 @@ void GlyphTimesSequence(Carried *cr, uint8_t bank)
         wr16(b | W(wram_115A), v);
         if (!v) {
             cyc(40);
-            wr16(b | 0x115C, 0x0000);
+            wr16(b | W(wram_115C), 0x0000);
             glyph_next(b);
         } else { cyc(22); }
         cyc(46);
@@ -4786,7 +4786,7 @@ void HudTimesDraw(uint8_t bank)
         }
     }
     cyc(70);
-    if (rd16(b | 0x0F2B) == 0xFFFF) {
+    if (rd16(b | W(wram_0F2B)) == 0xFFFF) {
         cyc(102);
         GsuBytes200_BFB3BE();
         cyc(2);
@@ -4918,13 +4918,13 @@ void TimeDigitsStore(uint8_t bank, uint8_t min, uint8_t sec, uint8_t hund)
     cyc(70);
     wr8(b | W(lap_record_a), min);
     cyc(94);
-    wr8(b | 0x0F65, (uint8_t)(sec >> 4));
+    wr8(b | W(wram_0F65), (uint8_t)(sec >> 4));
     cyc(54);
-    wr8(b | 0x0F66, (uint8_t)(sec & 0x0F));
+    wr8(b | W(wram_0F66), (uint8_t)(sec & 0x0F));
     cyc(94);
-    wr8(b | 0x0F67, (uint8_t)(hund >> 4));
+    wr8(b | W(wram_0F67), (uint8_t)(hund >> 4));
     cyc(54);
-    wr8(b | 0x0F68, (uint8_t)(hund & 0x0F));
+    wr8(b | W(wram_0F68), (uint8_t)(hund & 0x0F));
     cyc(42);
 }
 
@@ -5359,9 +5359,9 @@ static uint8_t glyph_slide_draw(uint32_t b)
     GsuBytes200_BFBCBD();
     cyc(22);
     cyc(74);
-    wr16(0x70020A, cyc_then(32, rd16(b | 0x0FB2)));
+    wr16(0x70020A, cyc_then(32, rd16(b | W(wram_0FB2))));
     cyc(24);
-    wr16(0x70020C, cyc_then(32, rd16(b | 0x0FE2)));
+    wr16(0x70020C, cyc_then(32, rd16(b | W(wram_0FE2))));
     for (i = 0; i < 8; i++) {
         if (i == 3)
             pos_add(0x70020A, 0x0008, 0);
@@ -5412,24 +5412,24 @@ int GlyphSpritesSlideOut(uint8_t bank)
     cyc(100);
     wr16(b | W(glyph_spr_x), a);
     cyc(24);
-    v = rd16(b | 0x0FB2);
+    v = rd16(b | W(wram_0FB2));
     a = (uint16_t)(v + 0x0016);
     slide_v = (~v & a & 0x8000) ? P_V : 0;
     slide_cmp16(a, 0x00D0);
     if (a >= 0x00D0)
         a = 0x00D0;
     cyc(108);
-    wr16(b | 0x0FB2, a);
+    wr16(b | W(wram_0FB2), a);
     cyc(24);
     a = rd16(b | W(glyph_spr_x));
     slide_cmp16(a, 0xFF98);
     if (a == 0xFF98) {
         cyc(46);
-        a = rd16(b | 0x0FB2);
+        a = rd16(b | W(wram_0FB2));
         slide_cmp16(a, 0x00D0);
         if (a == 0x00D0) {
             cyc(70);
-            wr16(b | 0x0DD6, 0x0006);
+            wr16(b | W(wram_0DD6), 0x0006);
             cyc(42);                    /* RTS */
             return 1;
         }
@@ -5493,27 +5493,27 @@ uint8_t GlyphSpritesSlideIn(uint8_t bank)
     cyc(84);
     wr16(b | W(glyph_spr_x), a);
     cyc(24);
-    a = (uint16_t)(rd16(b | 0x0FB2) + 0x0016);
+    a = (uint16_t)(rd16(b | W(wram_0FB2)) + 0x0016);
     if (!(a & 0x8000)) {
         slide_cmp16(a, 0x0024);
         if (a >= 0x0024)
             a = 0x0024;
     }
     cyc(124);
-    wr16(b | 0x0FB2, a);
+    wr16(b | W(wram_0FB2), a);
     cyc(24);
     a = rd16(b | W(glyph_spr_x));
     slide_cmp16(a, 0x0034);
     there = 0;
     if (a == 0x0034) {
         cyc(46);
-        a = rd16(b | 0x0FB2);
+        a = rd16(b | W(wram_0FB2));
         slide_cmp16(a, 0x0024);
         there = a == 0x0024;
     }
     if (there) {
         cyc(68);
-        v = rd8(b | 0x0E55);
+        v = rd8(b | W(wram_0E55));
         if (v < 0x10)
             cyc(38);
         if (v == 0x10) {
@@ -5524,17 +5524,17 @@ uint8_t GlyphSpritesSlideIn(uint8_t bank)
             (cyc(86), SoundPort0QueuePush(0x3A));
         }
         cyc(24);
-        v = (uint8_t)(rd8(b | 0x0E55) - 1);
+        v = (uint8_t)(rd8(b | W(wram_0E55)) - 1);
         cyc(6);
-        wr8(b | 0x0E55, v);
+        wr8(b | W(wram_0E55), v);
         if (!v) {
             cyc(56);
-            wr8(b | 0x0DD6, 0x04);
+            wr8(b | W(wram_0DD6), 0x04);
         }
         cyc(22);
     } else {
         cyc(90);
-        wr8(b | 0x0E55, 0x10);
+        wr8(b | W(wram_0E55), 0x10);
     }
     return glyph_slide_draw(b);
 }

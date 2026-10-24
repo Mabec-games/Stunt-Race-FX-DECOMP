@@ -79,13 +79,13 @@ void RaceFrameStepPause(Carried *cr)
             wait_start(cr, b, 1, 0);
             wait_start(cr, b, 0, 0);
             cyc(56);
-            wr8(b | 0x030A, 0x00);
+            wr8(b | W(wram_030A), 0x00);
             cyc(24);
-            wr8(b | 0x030C, 0x00);
+            wr8(b | W(wram_030C), 0x00);
             cyc(24);
             wr8(b | W(joy1_held), 0x00);
             cyc(24);
-            wr8(b | 0x030B, 0x00);
+            wr8(b | W(wram_030B), 0x00);
             cyc(40);
             wr8(b | W(frame_step), 0x01);
             cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);

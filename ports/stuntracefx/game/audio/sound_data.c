@@ -114,9 +114,9 @@ void abi_SoundDataLoad(void)
 static uint16_t music_index(uint16_t n)
 {
     cyc(40);
-    wr16(0x0000F1, n);
+    wr16(W(music_index), n);
     cyc(44);
-    return (uint16_t)((uint16_t)(n << 1) + rd16(0x0000F1));
+    return (uint16_t)((uint16_t)(n << 1) + rd16(W(music_index)));
 }
 
 /* What MusicLoadForCourse and CourseSoundLoad leave, for their adapters:
@@ -331,7 +331,7 @@ void CourseSoundLoad(uint8_t bank)
     v = reg_rd(b | W(wram_10DC));
     if (v) {
         cyc(46);
-        v = reg_rd(b | 0x10DE);
+        v = reg_rd(b | W(wram_10DE));
         if (v) {
             cyc(46);                    /* BEQ, BRL */
             cyc(42);
@@ -341,9 +341,9 @@ void CourseSoundLoad(uint8_t bank)
             return;
         }
         cyc(46);
-        v = (uint8_t)(rd8(b | 0x10DE) - 1);
+        v = (uint8_t)(rd8(b | W(wram_10DE)) - 1);
         cyc(6);
-        wr8(b | 0x10DE, v);
+        wr8(b | W(wram_10DE), v);
         (cyc(84), ApuPort1Send05());
         apu_step(0, 0x0019, 0x8D4C);
         delay_4000();

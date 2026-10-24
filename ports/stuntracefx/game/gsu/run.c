@@ -192,7 +192,7 @@ static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
         cyc(6);
         wr8(b | W(gsu_ab13_polls), n);
         if (!n)
-            { cyc(40); wr8(b | 0x1F22, cyc_then(6, (uint8_t)(rd8(b | 0x1F22) + 1))); } else { cyc(22); }
+            { cyc(40); wr8(b | W(wram_1F22), cyc_then(6, (uint8_t)(rd8(b | W(wram_1F22)) + 1))); } else { cyc(22); }
     } while (cyc_loop(16, hw_rd(cyc_then(24, b | 0x3030)) & 0x20));
     cyc(56);
     mode = rd8(b | W(gsu_scmr_shadow));
@@ -537,7 +537,7 @@ void FrameRunGsuAB13A(Carried *cr)
     cyc(24);
     wr8(b | W(gsu_ab13_polls), 0x00);
     cyc(24);
-    wr8(b | 0x1F22, 0x00);
+    wr8(b | W(wram_1F22), 0x00);
     start_ab13(cr, b);
     HudFrameWhileGsuRuns(cr);
     (cyc(88), HudGaugesPanelA_cr(cr));

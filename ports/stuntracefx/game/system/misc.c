@@ -204,7 +204,7 @@ uint8_t ReadTable9022(uint8_t bank)
     for (i = 0; i < 0x80; i++)
         v = rd8((uint32_t)bank << 16 | (uint16_t)(0x9022 + 2 * i));
     cyc(108);
-    wr8(0x000064, 0);
+    wr8(W(wram_0064), 0);
     return v;
 }
 
@@ -245,7 +245,7 @@ uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
     *x = (uint16_t)((rd16(b | W(wram_0D48)) & 0x00FF) << 1);
     cyc(124);
     v = rd16(0x02FC58 + *x);
-    wr16(b | 0x0D37, v);
+    wr16(b | W(wram_0D37), v);
     return v;
 }
 
@@ -886,15 +886,15 @@ void DemoRun(Carried *cr)
 
     r_rep(cr, P_M | P_X);
     cyc(24);
-    cr->x = rd16(b | 0x1A57);
+    cr->x = rd16(b | W(wram_1A57));
     cyc(72);
     r_lda16(cr, 0x038006 + cr->x);
     wr16(b | 0x0E3D, cr->a);
     r_lda16_imm(cr, 0x0020);
     cyc(10);
-    wr16(b | 0x1A5B, 0x0020);
+    wr16(b | W(wram_1A5B), 0x0020);
     cyc(24);
-    cr->x = rd16(b | 0x1A57);
+    cr->x = rd16(b | W(wram_1A57));
     cyc(80);
     r_lda16(cr, 0x038004 + cr->x);
     wr16(0x0018DB, cr->a);
@@ -960,7 +960,7 @@ void DemoRun(Carried *cr)
     wr8(b | W(wram_05E9), 0x00);
     r_rep(cr, P_M);
     cyc(24);
-    wr16(b | 0x1A59, 0x0000);
+    wr16(b | W(wram_1A59), 0x0000);
     (cyc(62), w_ObjectsRunHandlers(cr));
     r_sep(cr, P_M);
     b = (uint32_t)cr->db << 16;
@@ -982,22 +982,22 @@ void DemoRun(Carried *cr)
     cyc(18);
     wr16(0x702732, 0x0000);
     cyc(24);
-    r_lda16(cr, b | 0x1A57);
+    r_lda16(cr, b | W(wram_1A57));
     r_add16(cr, 0x0003);
     cyc(62);
-    wr16(b | 0x1A57, cr->a);
+    wr16(b | W(wram_1A57), cr->a);
     for (;;) {
         cyc(62);
         w_PlayerStatsAndPaletteAnimate(cr);
         r_rep(cr, P_M | P_X);
         b = (uint32_t)cr->db << 16;
         cyc(24);
-        cr->x = rd16(b | 0x1A57);
+        cr->x = rd16(b | W(wram_1A57));
         set_p(cr, nz16(cr->p, cr->x));
         for (;;) {
             /* $8762: the next command, X kept in $1A57. */
             cyc(24);
-            wr16(b | 0x1A57, cr->x);
+            wr16(b | W(wram_1A57), cr->x);
             cyc(242);
             r_lda16(cr, 0x038004 + cr->x);
             r_and16(cr, 0x00FF);
@@ -1017,7 +1017,7 @@ void DemoRun(Carried *cr)
             } else { cyc(16); }
             if (c == 0x03) {
                 r_lda16(cr, 0x038005 + cr->x);
-                r_cmp16(cr, rd16(b | 0x1A59));
+                r_cmp16(cr, rd16(b | W(wram_1A59)));
                 if (!(cr->p & P_Z))
                     break; else { cyc(22); }
                 demo_next(cr, 0x0003);
@@ -1074,7 +1074,7 @@ void DemoRun(Carried *cr)
                 cr->x = 0x1A64;
                 r_lda16(cr, cyc_then(70, dp_addr(cr, 0x02)));
                 cyc(32);
-                wr16(0x000008 + cr->x, cr->a);
+                wr16(W(dp_08) + cr->x, cr->a);
                 r_lda16(cr, cyc_then(16, dp_addr(cr, 0x94)));
                 cyc(32);
                 wr16(0x00000C + cr->x, cr->a);
@@ -1108,7 +1108,7 @@ void DemoRun(Carried *cr)
             }
             if (c == 0x0B) {
                 cyc(104);
-                r_lda16(cr, b | 0x030A);
+                r_lda16(cr, b | W(wram_030A));
                 if (!cr->a)
                     goto next_pass;
                 demo_fade_out(cr, b);
@@ -1118,12 +1118,12 @@ void DemoRun(Carried *cr)
             }
             if (c == 0x0C || (cyc(46), c == 0x0D)) {
                 cyc(150);
-                r_lda16(cr, b | 0x1A5B);
+                r_lda16(cr, b | W(wram_1A5B));
                 cyc(72);
                 v = rd16(0x038005 + cr->x);
                 cr->a = c == 0x0C ? (uint16_t)(cr->a | v) : (uint16_t)(cr->a & v);
                 set_p(cr, nz16(cr->p, cr->a));
-                wr16(b | 0x1A5B, cr->a);
+                wr16(b | W(wram_1A5B), cr->a);
                 demo_next(cr, 0x0003);
                 continue;
             }
@@ -1136,24 +1136,24 @@ void DemoRun(Carried *cr)
             r_rep(cr, P_M | P_X);
             b = (uint32_t)cr->db << 16;
             cyc(24);
-            v = (uint16_t)(rd16(b | 0x1A59) + 1);
+            v = (uint16_t)(rd16(b | W(wram_1A59)) + 1);
             cyc(14);
-            wr16(b | 0x1A59, v);
+            wr16(b | W(wram_1A59), v);
             set_p(cr, nz16(cr->p, v));
             cyc(24);
-            r_lda16(cr, b | 0x1A5B);
+            r_lda16(cr, b | W(wram_1A5B));
             if (!(cr->a & 0x0001)) {
                 set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & 0x0002) ? (cyc(64), 0) : P_Z)));
                 if (cr->a & 0x0002)
                     goto next_pass;
                 cyc(110);
-                r_lda16(cr, b | 0x030A);
+                r_lda16(cr, b | W(wram_030A));
                 if (!cr->a)
                     goto next_pass;
-                r_lda16(cr, b | 0x1A5B);
+                r_lda16(cr, b | W(wram_1A5B));
                 cr->a |= 0x0041;
                 set_p(cr, nz16(cr->p, cr->a));
-                wr16(b | 0x1A5B, cr->a);
+                wr16(b | W(wram_1A5B), cr->a);
                 demo_fade_out(cr, b);
             } else {
                 set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_Z)));
@@ -1179,11 +1179,11 @@ end:
     hdmaen_wr(b | HDMAEN, 0x00);
     r_rep(cr, P_M);
     cyc(24);
-    r_lda16(cr, b | 0x1A5B);
+    r_lda16(cr, b | W(wram_1A5B));
     r_and16(cr, 0x0040);
     v = cr->a;
     cyc(62);
-    wr16(b | 0x1A5B, 0x0000);
+    wr16(b | W(wram_1A5B), 0x0000);
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (v ? P_C : (cyc(58), 0))));
 }
 

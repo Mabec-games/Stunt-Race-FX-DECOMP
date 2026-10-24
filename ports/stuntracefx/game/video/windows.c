@@ -254,7 +254,7 @@ void abi_WindowsColourSub81(void)
 static uint8_t windows_setup_select(uint8_t *sel)
 {
     cyc(140);
-    *sel = rd8(0x7E0000 | W(windows_setup_index));
+    *sel = rd8((0x7E0000 | W(dp_00)) | W(windows_setup_index));
     switch (*sel) {
     case 0: cyc(76); WindowsColourAddBg12(); cyc(100); return 0x17;
     case 2: cyc(76); ColourMathSub83Windowed(); cyc(100); return 0x03;
@@ -399,7 +399,7 @@ static int bob_window(Carried *cr, uint8_t x, uint16_t at)
     if (v == 0x18)
         return 0;
     cyc(102);
-    wr8((uint32_t)(0x000002 + at), (uint8_t)(v | 0x80));
+    wr8((uint32_t)(W(dp_02) + at), (uint8_t)(v | 0x80));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     w = alu_sbc8((uint8_t)(v | 0x40), 0x02, &cr->p);
     cyc(90);
@@ -599,7 +599,7 @@ void WindowSweep(Carried *cr)
     if (v == 0xEE)
         { cyc(80); return; }
     cyc(64);
-    wr8(0x0019AC, v);
+    wr8(W(wram_19AC), v);
     cyc(32);
     wr8(W(wram_19AE), v);
     cyc(32);
@@ -800,7 +800,7 @@ void OscillatorWindow(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(32);
-    v = rd8(0x000DDA);
+    v = rd8(W(wram_0DDA));
     cyc(32);
     wr8(W(wram_1A11), v);
     cr->x = 0x00;
@@ -810,7 +810,7 @@ void OscillatorWindow(Carried *cr)
     cyc(32);
     wr8(W(wram_19AD), v);
     cyc(48);
-    wr8(0x0019AC, 0x20);
+    wr8(W(wram_19AC), 0x20);
     cyc(48);
     wr8(W(wram_19AE), 0x95);
     cyc(24);
@@ -981,7 +981,7 @@ void WindowSlideOrOscillate(Carried *cr)
     cr->db = 0x7E;
     r_sep(cr, P_M);
     cyc(140);
-    r_lda8(cr, (0x7E0000 | W(window_hdma_off)));
+    r_lda8(cr, ((0x7E0000 | W(dp_00)) | W(window_hdma_off)));
     if (!(uint8_t)cr->a) {
         cyc(48);
         r_lda8(cr, W(window_hdma_19bc));
@@ -989,7 +989,7 @@ void WindowSlideOrOscillate(Carried *cr)
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(38), P_C) : 0)));
         if (v != 0xFF) {
             cyc(78);
-            r_lda8(cr, (0x7E0000 | W(slide_flags)));
+            r_lda8(cr, ((0x7E0000 | W(dp_00)) | W(slide_flags)));
             v = (uint8_t)(cr->a & 0x06);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             set_p(cr, nz8(cr->p, v));
@@ -997,10 +997,10 @@ void WindowSlideOrOscillate(Carried *cr)
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
                 set_p(cr, nz8(cr->p, 0x02));
                 cyc(72);
-                wr8(0x7E0000 | W(windows_setup_index), 0x02);
+                wr8((0x7E0000 | W(dp_00)) | W(windows_setup_index), 0x02);
                 WindowSlideStep_cr(cr);
                 cyc(108);
-                r_lda8(cr, (0x7E0000 | W(slide_flags)));
+                r_lda8(cr, ((0x7E0000 | W(dp_00)) | W(slide_flags)));
                 v = (uint8_t)(cr->a & 0x06);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | v);
                 set_p(cr, nz8(cr->p, v));
@@ -1009,7 +1009,7 @@ void WindowSlideOrOscillate(Carried *cr)
             }
             r_sep(cr, P_M);
             cyc(84);
-            r_lda8(cr, (0x7E0000 | W(slide_flags)));
+            r_lda8(cr, ((0x7E0000 | W(dp_00)) | W(slide_flags)));
             v = (uint8_t)(cr->a & 0x08);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             set_p(cr, nz8(cr->p, v));
@@ -1018,7 +1018,7 @@ void WindowSlideOrOscillate(Carried *cr)
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
                 set_p(cr, nz8(cr->p, 0x02));
                 cyc(94);
-                wr8(0x7E0000 | W(windows_setup_index), 0x02);
+                wr8((0x7E0000 | W(dp_00)) | W(windows_setup_index), 0x02);
                 (cyc(46), OscillatorWindow(cr));
             } else { cyc(38); }
         }

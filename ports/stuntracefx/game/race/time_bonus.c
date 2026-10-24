@@ -1583,7 +1583,7 @@ static uint32_t time_left_digits(uint8_t bank, TbRegs *r)
     if (!bonus_flag(bank, r, b))
         return 58;
     cyc(46);
-    v = rd8(b | 0x0DD6);
+    v = rd8(b | W(wram_0DD6));
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = (uint8_t)((nz8(r->p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(16), P_C) : (cyc(60), 0)));
     if (v == 0x0C)

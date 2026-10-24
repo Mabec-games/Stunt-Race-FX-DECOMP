@@ -1534,13 +1534,13 @@ void VramDmaQueueAdd(void);
 static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
 {
     cyc(46);
-    wr16(b | 0x16B7, dest);
+    wr16(b | W(wram_16B7), dest);
     cyc(24);
-    wr16(b | 0x16B3, src);
+    wr16(b | W(wram_16B3), src);
     cyc(48);
     wr16(b | W(vram_queue_staged), 0x0040);
     cyc(48);
-    wr16(b | 0x16B5, 0x007F);
+    wr16(b | W(wram_16B5), 0x007F);
     (cyc(62), VramDmaQueueAdd());
 }
 
@@ -1595,7 +1595,7 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint1
         cyc(54);
         queue_frame_row(b, rd16(b | W(scratch_11e1)), src);
         cyc(90);
-        wr8(b | 0x11E2, cyc_then(6, (uint8_t)(rd8(b | 0x11E2) + 1)));
+        wr8(b | W(wram_11E2), cyc_then(6, (uint8_t)(rd8(b | W(wram_11E2)) + 1)));
         cyc(46);
         queue_frame_row(b, rd16(b | W(scratch_11e1)), cyc_then(74, (uint16_t)(src + 0x0200)));
         cyc(68);
@@ -3136,11 +3136,11 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
         cyc(78);
         wr16(W(vram_queue_staged), 0x0800);
         cyc(56);
-        wr16(0x0016B5, 0x0070);
+        wr16(W(wram_16B5), 0x0070);
         cyc(56);
-        wr16(0x0016B3, 0x3000);
+        wr16(W(wram_16B3), 0x3000);
         cyc(56);
-        wr16(0x0016B7, 0x6400);
+        wr16(W(wram_16B7), 0x6400);
         (cyc(62), VramDmaQueueAdd());
         cyc(112);
         wr16((uint16_t)(rec + 0x22), 0x0000);
@@ -3621,7 +3621,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             } else { cyc(92); }
             wr16(OAM_BUFFER + *y, sx);
             cyc(32);
-            sy = (uint16_t)(rd16(0x7F1358 + *x) + rd16(cyc_then(38, W(oam_group_y))));
+            sy = (uint16_t)(rd16(W(wram_7F1358) + *x) + rd16(cyc_then(38, W(oam_group_y))));
             if (sy & 0x8000 ? sy < 0xFFF0 : sy >= 0x00E0)
                 { cyc(sy & 0x8000 ? 78 : 68); goto next; }
             cyc(92);
@@ -3639,7 +3639,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             wr16(W(oam_x_high), (uint16_t)(w >> 1));
             ror_mem(W(scratch_11e1), &c);
             cyc(32);
-            c = rd16(0x7F135C + *x) & 1;
+            c = rd16(W(wram_7F135C) + *x) & 1;
             cyc(14);
             ror_mem(W(scratch_11e1), &c);
             cyc(24);

@@ -126,7 +126,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
             { cyc(32); a = (uint16_t)(~a + 1); }
         a = asr_round(a, 1);
         cyc(74);
-        wr16(0x000094, a);
+        wr16(W(cam_tmp_c), a);
         a = asr_round(a, 2);
         cyc(16);
         wr16(0x000008, a);
@@ -137,7 +137,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(16);
         wr16(CAM(r, 0x28), cyc_then(60, (uint16_t)(~rd16(0x000008) + 1)));
         cyc(16);
-        wr16(CAM(r, 0x2A), cyc_then(60, (uint16_t)(~rd16(0x000094) + 1)));
+        wr16(CAM(r, 0x2A), cyc_then(60, (uint16_t)(~rd16(W(cam_tmp_c)) + 1)));
         cyc(44);                        /* BRA to .lead_done, LDA dp,X */
     } else {
         cyc(92);
@@ -152,12 +152,12 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     cyc(22);
     wr16(0x000008, cyc_then(16, rd16(CAM(r, 0x1C))));
     cyc(22);
-    wr16(0x000094, cyc_then(16, rd16(CAM(r, 0x1E))));
+    wr16(W(cam_tmp_c), cyc_then(16, rd16(CAM(r, 0x1E))));
     cyc(24);
     f = rd16(b | CAM_FLAGS);
     if (f & 0x0100) {
         cyc(64);
-        wr16(b | 0x065E, 0x0000);
+        wr16(b | W(view_pitch), 0x0000);
         cyc(24);
         wr16(b | W(view_turn), 0x0000);
         cyc(24);
@@ -176,7 +176,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(78);
         wr16(CAM(r, 0x14), a);
         cyc(24);
-        wr16(b | 0x065E, a);
+        wr16(b | W(view_pitch), a);
         cyc(24);
         wr16(b | W(view_roll), 0x0000);
         cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
@@ -260,16 +260,16 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(66);
         wr16(CAM(r, 0x14), a);
         cyc(24);
-        wr16(b | 0x065E, a);
+        wr16(b | W(view_pitch), a);
         cyc(24);
         wr16(b | W(view_roll), 0x0000);
         cyc(54);                        /* falls into .to_super_fx: PHX, LDA */
     }
-    a = rd16(b | 0x065E);
+    a = rd16(b | W(view_pitch));
     cyc(36);
     a = (uint16_t)(a + rd16(CAM(r, 0x35)));
     cyc(62);
-    wr16(b | 0x065E, (uint16_t)(~a + 1));
+    wr16(b | W(view_pitch), (uint16_t)(~a + 1));
     cyc(24);
     a = rd16(b | W(view_turn));
     cyc(36);
@@ -292,7 +292,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(100);
         a = rd16(b | (uint16_t)(0x200C + y));
         cyc(30);
-        a = (uint16_t)(a + rd16(0x0000B7));
+        a = (uint16_t)(a + rd16(W(cam_offset_x)));
         cyc(36);
         a = asr_n((uint16_t)(a - rd16(CAM(r, 0x08))), 2);
         cyc(48);
@@ -302,7 +302,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(30);
         a = rd16(b | (uint16_t)(0x200E + y));
         cyc(30);
-        a = (uint16_t)(a + rd16(0x0000B9));
+        a = (uint16_t)(a + rd16(W(cam_offset_y)));
         cyc(36);
         a = asr_n((uint16_t)(a - rd16(CAM(r, 0x0A))), 3);
         cyc(54);
@@ -312,7 +312,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(30);
         a = rd16(b | (uint16_t)(0x2010 + y));
         cyc(30);
-        a = (uint16_t)(a + rd16(0x0000BB));
+        a = (uint16_t)(a + rd16(W(cam_offset_z)));
         cyc(36);
         a = asr_n((uint16_t)(a - rd16(CAM(r, 0x0C))), 2);
         cyc(48);
@@ -326,13 +326,13 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(30);
         a = rd16(b | (uint16_t)(0x200C + y));
         cyc(30);
-        a = add16(a, rd16(0x0000B7), &p);
+        a = add16(a, rd16(W(cam_offset_x)), &p);
         cyc(22);
         wr16(CAM(r, 0x08), a);
         cyc(30);
         a = rd16(b | (uint16_t)(0x200E + y));
         cyc(30);
-        a = add16(a, rd16(0x0000B9), &p);
+        a = add16(a, rd16(W(cam_offset_y)), &p);
         if (f & 0x0010) {
             cyc(36);
             a = (uint16_t)(a - rd16(CAM(r, 0x0A)));
@@ -345,7 +345,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(30);
         a = rd16(b | (uint16_t)(0x2010 + y));
         cyc(30);
-        a = add16(a, rd16(0x0000BB), &p);
+        a = add16(a, rd16(W(cam_offset_z)), &p);
         cyc(22);
         wr16(CAM(r, 0x0C), a);
     }

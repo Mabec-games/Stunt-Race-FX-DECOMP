@@ -171,14 +171,14 @@ static uint8_t hud_panel_b_y(uint32_t b)
 
     v = sbc8i(v, 0x0D);
     cyc(38);
-    wr8(b | 0x0535, v);
+    wr8(b | W(wram_0535), v);
     cyc(24);
-    wr8(b | 0x053D, v);
+    wr8(b | W(wram_053D), v);
     v = adc8i(v, 0x10, &c);
     cyc(52);
-    wr8(b | 0x0539, v);
+    wr8(b | W(wram_0539), v);
     cyc(24);
-    wr8(b | 0x0541, v);
+    wr8(b | W(wram_0541), v);
     return v;
 }
 
@@ -193,9 +193,9 @@ static uint8_t hud_marker_y(uint32_t b)
     int i, j, c;
 
     cyc(24);
-    wr8(b | 0x056D, v);
+    wr8(b | W(wram_056D), v);
     cyc(24);
-    wr8(b | 0x0571, v);
+    wr8(b | W(wram_0571), v);
     for (i = 0; i < 6; i++) {
         cyc(50);
         c = 0;
@@ -304,7 +304,7 @@ static uint8_t hud_panel_slide(uint8_t bank, uint16_t d, uint8_t f9, uint16_t x,
     uint8_t v, p = 0;
 
     cyc(106);
-    wr8(b | 0x00F9, f9);
+    wr8(b | W(dp_f9), f9);
     v = lda8_after(b | W(wram_0D54), panel_a ? 24 : 48);   /* A: STA, LDA; B: STA, LDX #, LDA */
     cmp8(v, 0x08);
     if (v < 0x08) {
@@ -460,7 +460,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
         } else {
             if (v >= 0x2A) {
                 cyc(118);
-                wr8(b | 0x0E0C, 0x7C);
+                wr8(b | W(wram_0E0C), 0x7C);
                 v = 0x2A;
                 cyc(40);
             } else { cyc(108); }

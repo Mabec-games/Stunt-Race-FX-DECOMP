@@ -28,11 +28,11 @@ static void queue_from_gsu_ram(uint16_t size, uint16_t src, uint16_t vram)
     cyc(78);
     wr16(W(vram_queue_staged), size);
     cyc(56);
-    wr16(0x0016B5, 0x0070);
+    wr16(W(wram_16B5), 0x0070);
     cyc(56);
-    wr16(0x0016B3, src);
+    wr16(W(wram_16B3), src);
     cyc(56);
-    wr16(0x0016B7, vram);
+    wr16(W(wram_16B7), vram);
     (cyc(62), VramDmaQueueAdd());
 }
 

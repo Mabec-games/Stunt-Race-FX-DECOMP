@@ -612,9 +612,9 @@ void MenuSettingsFrame(Carried *cr)
             cr->a = 0x0000;
             set_p(cr, nz16(cr->p, 0));
             cyc(78);
-            wr16(0x00190B, 0x0000);
+            wr16(W(wram_190B), 0x0000);
             cyc(32);
-            wr16(0x00190D, 0x0000);
+            wr16(W(wram_190D), 0x0000);
             set10(cr, 0x0005, 0xFFFF);
             kinds67_anim(cr);
             cyc(36);

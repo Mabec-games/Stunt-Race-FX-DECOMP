@@ -120,7 +120,7 @@ void abi_MenuScrollReset(void)
 uint16_t MenuPaletteLoad(void)
 {
     cyc(108);
-    uint32_t src = rd24(0x0000FB);
+    uint32_t src = rd24(W(dp_fb));
     uint16_t c = 0;
     unsigned i;
 
@@ -1009,11 +1009,11 @@ int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *factor)
     cyc(150);
     wr16(W(vram_queue_staged), 0x0080);
     cyc(56);
-    wr16(0x0016B5, 0x000B);
+    wr16(W(wram_16B5), 0x000B);
     cyc(56);
-    wr16(0x0016B3, 0xD56C);
+    wr16(W(wram_16B3), 0xD56C);
     cyc(56);
-    wr16(0x0016B7, 0x7000);
+    wr16(W(wram_16B7), 0x7000);
     (cyc(62), VramDmaQueueAdd());
     cyc(8);
     for (i = 0; i < sizeof set / sizeof set[0]; i++)
@@ -1136,7 +1136,7 @@ void MenuScreenOpen0(Carried *cr)
     SoundReset();
     (cyc(46), MenuScrollReset());
     cyc(62);
-    wr16(0x0000FB, 0x989C);
+    wr16(W(dp_fb), 0x989C);
     cyc(40);
     wr16(W(apu_stream_bank), 0x001C);
     (cyc(90), MenuPaletteLoad());
@@ -1159,9 +1159,9 @@ void MenuScreenOpen0(Carried *cr)
     cyc(56);
     wr16(W(menu_18b9), 0x0000);
     cyc(48);
-    wr16(0x001189, 0x1234);
+    wr16(W(menu_1189), 0x1234);
     cyc(24);
-    wr16(0x00118F, 0x0000);
+    wr16(W(menu_118f), 0x0000);
     cyc(24);
     wr16(W(menu_exit), 0x0000);
     cyc(48);
@@ -1285,7 +1285,7 @@ void MenuScreenOpen6(Carried *cr)
     hw_wr(APUIO0, 0x01);
     (cyc(46), MenuScrollReset());
     cyc(84);
-    wr16(0x0000FB, 0x989C);
+    wr16(W(dp_fb), 0x989C);
     cyc(40);
     wr16(W(apu_stream_bank), 0x001C);
     (cyc(90), MenuPaletteLoad());
@@ -1332,9 +1332,9 @@ void MenuScreenOpen6(Carried *cr)
     cyc(32);
     wr16(W(menu_18b9), 0x0000);
     cyc(48);
-    wr16(0x001189, 0x1234);
+    wr16(W(menu_1189), 0x1234);
     cyc(24);
-    wr16(0x00118F, 0x0000);
+    wr16(W(menu_118f), 0x0000);
     cyc(24);
     wr16(W(menu_exit), 0x0000);
     cyc(48);
@@ -1553,7 +1553,7 @@ void ChampionScreenOpen(Carried *cr)
     (cyc(46), MenuScrollReset_cr(cr));
     r_sep(cr, P_M);
     cyc(54);
-    r_lda8(cr, 0x000DD6);
+    r_lda8(cr, W(wram_0DD6));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : (cyc(100), 0))));
     if (v == 0x08) {
@@ -1578,7 +1578,7 @@ void ChampionScreenOpen(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->a = 0xEBCB;
     cyc(84);
-    wr16(0x0000FB, 0xEBCB);
+    wr16(W(dp_fb), 0xEBCB);
     cr->a = 0x0004;
     set_p(cr, nz16(cr->p, 0x0004));
     cyc(40);
@@ -1755,9 +1755,9 @@ void ChampionScreenOpen(Carried *cr)
     wr16(W(menu_1905), 0x0003);
     cr->a = 0x0000;
     cyc(56);
-    wr16(0x001921, 0x0000);
+    wr16(W(wram_1921), 0x0000);
     cyc(32);
-    wr16(0x001925, 0x0000);
+    wr16(W(wram_1925), 0x0000);
     cr->a = 0x0066;
     cyc(56);
     wr16(W(menu_scroll_y), 0x0066);
@@ -1769,20 +1769,20 @@ void ChampionScreenOpen(Carried *cr)
     }
     cr->a = a;
     cyc(126);
-    wr16(0x001919, a);
+    wr16(W(wram_1919), a);
     cyc(32);
-    a = (uint16_t)(rd16(0x000DD6) & 0x00FF);
+    a = (uint16_t)(rd16(W(wram_0DD6)) & 0x00FF);
     set_p(cr, (uint8_t)((nz16(cr->p, (uint16_t)(a - 0x0008)) & ~P_C) | (a >= 0x0008 ? (cyc(6), P_C) : 0)));
     cr->a = a == 0x0008 ? 0x0000 : 0x0020;
     cyc(120);
-    wr16(0x001927, cr->a);
+    wr16(W(wram_1927), cr->a);
     if (a != 0x0008)
         cyc(22);   /* BRA */
     cr->a = 0x1234;
     cyc(48);
-    wr16(0x001189, 0x1234);
+    wr16(W(menu_1189), 0x1234);
     cyc(24);
-    wr16(0x00118F, 0x0000);
+    wr16(W(menu_118f), 0x0000);
     cyc(24);
     wr16(W(menu_exit), 0x0000);
     cr->a = 0x0000;
@@ -1951,11 +1951,11 @@ void TitleScreenLoop(Carried *cr)
             r_lda16(cr, (uint16_t)(cr->d + 0x0A + cr->x));
             if (!cr->a) {
                 cyc(48);
-                r_lda16(cr, 0x001913);
+                r_lda16(cr, W(wram_1913));
                 cr->a++;
                 set_p(cr, nz16(cr->p, cr->a));
                 cyc(46);
-                wr16(0x001913, cr->a);
+                wr16(W(wram_1913), cr->a);
                 r_cmp16(cr, 0x0400);
                 if (cr->p & P_Z) {
                     cyc(86);
@@ -1968,7 +1968,7 @@ void TitleScreenLoop(Carried *cr)
                     wr8(W(wram_10DA), 0xFF);
                     r_rep(cr, P_M);
                     cyc(32);
-                    r_lda16(cr, 0x001915);
+                    r_lda16(cr, W(wram_1915));
                     cr->a++;
                     set_p(cr, nz16(cr->p, cr->a));
                     r_and16(cr, 0x0003);
@@ -1977,7 +1977,7 @@ void TitleScreenLoop(Carried *cr)
                         r_lda16_imm(cr, 0x0000);
                     v = cr->a;
                     cyc(114);
-                    wr16(0x001915, v);
+                    wr16(W(wram_1915), v);
                     r_cmp16(cr, 0x0000);
                     if (cr->p & P_Z)
                         { cyc(108); DemoRunFirst(cr); }
@@ -2058,7 +2058,7 @@ void TitleScreenRun(Carried *cr)
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x0000);
     cyc(18);
-    wr16(0x001913, 0x0000);
+    wr16(W(wram_1913), 0x0000);
     TitleScreenLoop(cr);
 }
 

@@ -393,7 +393,7 @@ void abi_Mode7ScaleProduct(void)
 uint16_t ScaleDp02Dp94(uint8_t *p)
 {
     cyc(16);
-    uint16_t a = asr1(asr1(rd16(0x000002))), b, s;
+    uint16_t a = asr1(asr1(rd16(W(dp_02)))), b, s;
 
     /* XBA, BIT #, then ORA # and BRA (negative) or AND #, then CLC,
        ADC #, AND #, STA (the shifts' time is asr1's) */
@@ -401,12 +401,12 @@ uint16_t ScaleDp02Dp94(uint8_t *p)
     a = (uint16_t)(int16_t)(int8_t)(uint8_t)(a >> 8);
     a = (uint16_t)((uint16_t)(a + 0x20) & 0xFFFE);
     cyc(4);
-    wr16(0x000002, a);
+    wr16(W(dp_02), a);
     cyc(16);
-    b = (uint16_t)((int16_t)(rd16(0x000094) & 0xF800) >> 5);
+    b = (uint16_t)((int16_t)(rd16(W(dp_94)) & 0xF800) >> 5);
     b = (uint16_t)(b + 0x0400);
     cyc(268);
-    wr16(0x000094, b);
+    wr16(W(dp_94), b);
     s = (uint16_t)(b + a);
     *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)b + a > 0xFFFF ? P_C : 0)
                    | ((~(b ^ a) & (b ^ s) & 0x8000) ? P_V : 0));
@@ -445,9 +445,9 @@ void abi_ScaleDp02Dp94(void)
 uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p)
 {
     cyc(32);
-    wr16(0x000002, cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
+    wr16(W(dp_02), cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
     cyc(32);
-    wr16(0x000094, cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
+    wr16(W(dp_94), cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
     return ScaleDp02Dp94(p);
 }
 

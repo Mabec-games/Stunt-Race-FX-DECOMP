@@ -928,11 +928,11 @@ static void gate_record(Carried *cr)
     (cyc(62), GsuRecordNew42D_cr(cr));
     GsuRecordFlag10_cr(cr);
     cyc(8);
-    st16i(cr, 0x000002, 0x0F00);
+    st16i(cr, W(dp_02), 0x0F00);
     cyc(30);
-    st16i(cr, 0x000008, 0x0F00);
+    st16i(cr, W(dp_08), 0x0F00);
     cyc(30);
-    st16i(cr, 0x000094, 0x0F00);
+    st16i(cr, W(dp_94), 0x0F00);
     (cyc(84), GsuRecordPosition_cr(cr));
     gate_frame(cr);
 }
@@ -1157,7 +1157,7 @@ static void counter_slide(Carried *cr)
         dec8(cr, F_c(0x200A, o));
         v = ld8(cr, cyc_then(22, F_c(0x2015, o)));
         cyc(16);
-        wr8(0x00003E, v);
+        wr8(W(dp_3e), v);
         lda8(cr, 0x40);
         (cyc(58), r_approach_byte(cr, ApproachQuarterMin4Byte));
         wr8(F_c(0x2015, o), cyc_then(30, (uint8_t)cr->a));
@@ -1349,11 +1349,11 @@ void abi_GsuRecordSet2AHigh(void);
 static void record_at(Carried *cr, uint16_t x, uint16_t y, uint16_t z)
 {
     cyc(8);
-    st16i(cr, 0x000002, x);
+    st16i(cr, W(dp_02), x);
     cyc(30);
-    st16i(cr, 0x000008, y);
+    st16i(cr, W(dp_08), y);
     cyc(30);
-    st16i(cr, 0x000094, z);
+    st16i(cr, W(dp_94), z);
     (cyc(84), GsuRecordPosition_cr(cr));
 }
 
@@ -1752,7 +1752,7 @@ static void add8(Carried *cr, uint32_t addr, uint8_t v)
 static int ease8p(Carried *cr, uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *), unsigned pre)
 {
     cyc(pre);
-    wr8(0x00003E, cyc_then(16, ld8(cr, addr)));
+    wr8(W(dp_3e), cyc_then(16, ld8(cr, addr)));
     cyc(58);
     lda8(cr, target);
     r_approach_byte(cr, to);
@@ -2460,7 +2460,7 @@ static void ease16(Carried *cr, uint32_t addr, uint32_t target, uint16_t (*to)(u
     cyc(52);
     r_lda16(cr, addr);
     cyc(16);
-    wr16(0x00003E, cr->a);
+    wr16(W(dp_3e), cr->a);
     cyc(30);
     r_lda16(cr, target);
     r_approach(cr, to);
@@ -13590,7 +13590,7 @@ void ObjectPuffFollow(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(52, F_c(0x2029, cr->x)));
     cyc(16);
-    wr16(0x00003E, cr->a);
+    wr16(W(dp_3e), cr->a);
     r_lda16_imm(cr, 0xF9C0);
     r_approach(cr, ApproachEighthMin8);
     wr16(F_c(0x2029, cr->x), cyc_then(30, cr->a));

@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "wram.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /*
@@ -36,13 +37,13 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
     wr8(0x0000F2, c);
     x++;
     cyc(72);
-    wr8(0x0000F3, cyc_then(46, (uint8_t)(rd8(0x0000F3) - (uint8_t)(c << 2))));
+    wr8(W(dp_f3), cyc_then(46, (uint8_t)(rd8(W(dp_f3)) - (uint8_t)(c << 2))));
     for (;;) {
         cyc(84);
         c = rd8(b | x);
         if (c & 0x80) {
             x++;
-            wr8(0x0000F3, cyc_then(46, (uint8_t)(rd8(0x0000F3) + 8)));
+            wr8(W(dp_f3), cyc_then(46, (uint8_t)(rd8(W(dp_f3)) + 8)));
             cyc(16);
             wr8(0x0000F2, cyc_then(6, (uint8_t)(rd8(0x0000F2) - 1)));
             cyc(22);
@@ -52,11 +53,11 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
         wr8(b | (uint16_t)(OAM_BUFFER + 2 + y), cyc_then(30, (uint8_t)(c + rd8(0x0000F1))));
         x++;
         cyc(30);
-        pen = rd8(0x0000F3);
+        pen = rd8(W(dp_f3));
         cyc(30);
         wr8(b | (uint16_t)(OAM_BUFFER + y), pen);
         cyc(46);
-        wr8(0x0000F3, (uint8_t)(pen + 8));
+        wr8(W(dp_f3), (uint8_t)(pen + 8));
         cyc(16);
         wr8(b | (uint16_t)(OAM_BUFFER + 1 + y), cyc_then(30, rd8(0x0000F4)));
         cyc(16);
@@ -158,7 +159,7 @@ static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp
     cyc(74);
     wr8(0x0000F4, y);
     cyc(36);
-    wr8(0x0000F3, x);
+    wr8(W(dp_f3), x);
     cyc(32);
     wr8(0x0000F2, 0x70);
     cyc(32);

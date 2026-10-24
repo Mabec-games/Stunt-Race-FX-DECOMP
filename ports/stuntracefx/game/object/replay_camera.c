@@ -14,6 +14,7 @@
 #include "math_calls.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "wram_names.h"
 
 int ObjectPathStart(uint8_t bank, uint16_t obj, uint16_t path, uint16_t *a, uint16_t *y, uint8_t *p);
 
@@ -756,7 +757,7 @@ static void drift_frame(Carried *cr, uint16_t ty, void (*done)(Carried *))
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         r_lda16(cr, cyc_then(74, F(v[i], cr->x)));
         cyc(16);
-        wr16(0x00003E, cr->a);
+        wr16(W(dp_3e), cr->a);
         r_lda16_imm(cr, t[i]);
         r_approach(cr, ApproachEighthMin8);
         wr16(F(v[i], cr->x), cyc_then(30, cr->a));
@@ -1122,7 +1123,7 @@ static void zoom_frame(Carried *cr, uint16_t to, uint16_t (*fn)(uint16_t, int *)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(52, cam(cr, 0x000E)));
     cyc(16);
-    wr16(0x00003E, cr->a);
+    wr16(W(dp_3e), cr->a);
     r_lda16_imm(cr, to);
     cyc(48);
     r_approach(cr, fn);

@@ -98,13 +98,13 @@ void ScrollHdmaSet(void)
     uint16_t v = rd16(W(scroll_value));
 
     cyc(32);
-    wr16(0x0010AE, v);
+    wr16(W(wram_10AE), v);
     cyc(32);
-    wr16(0x0010B7, v);
+    wr16(W(wram_10B7), v);
     cyc(56);
-    wr16(0x0010B1, 0x0130);
+    wr16(W(wram_10B1), 0x0130);
     cyc(32);
-    wr16(0x0010B4, 0x0130);
+    wr16(W(wram_10B4), 0x0130);
 }
 
 void ScrollHdmaSet_cr(Carried *cr)

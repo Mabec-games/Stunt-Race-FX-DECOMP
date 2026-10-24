@@ -145,7 +145,7 @@ uint8_t RotateXZ(uint8_t angle)
 
     cyc(292);
     sin_cos(i);
-    return rotate8(0x000002, 0x000094, 0x000004, 0x0005F2);
+    return rotate8(W(dp_02), W(dp_94), W(dp_04), W(rot_z));
 }
 
 void MulWordByte_cr(Carried *cr);
@@ -194,7 +194,7 @@ uint8_t RotateXZFrom08(uint8_t angle)
 {
     cyc(262);
     sin_cos(angle);
-    return rotate8(0x000008, 0x000094, 0x00000A, 0x0005F2);
+    return rotate8(W(dp_08), W(dp_94), 0x00000A, W(rot_z));
 }
 
 void RotateXZFrom08_cr(Carried *cr)
@@ -231,7 +231,7 @@ uint8_t RotateXY(uint8_t angle)
 {
     cyc(262);
     sin_cos(angle);
-    return rotate8(0x000002, 0x000008, 0x000004, 0x00000A);
+    return rotate8(W(dp_02), W(dp_08), W(dp_04), 0x00000A);
 }
 
 void RotateXY_cr(Carried *cr)
@@ -318,9 +318,9 @@ uint16_t MulWordByte(uint8_t bank, uint8_t *yout)
     cyc(16);
     wr8(0x00006C, 0x00);
     cyc(16);
-    wr8(0x00006D, 0x00);
+    wr8(W(wram_006D), 0x00);
     cyc(16);
-    wr8(0x00006B, 0x00);
+    wr8(W(wram_006B), 0x00);
     cyc(16);
     a = rd8(W(mul_byte));
     if (a & 0x80)
@@ -539,22 +539,22 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     cyc(16);
     t = rd8(0x00006A);
     cyc(24);
-    wr8(0x0005F2, t);
+    wr8(W(rot_z), t);
     cyc(16);
-    t = rd8(0x00006B);
+    t = rd8(W(wram_006B));
     cyc(24);
     wr8(W(rot_z_high), t);
     mul_at(0x0094, 0x05F7);
     cyc(16);
     t = rd8(0x00006A);
     cyc(38);
-    v = rd8(0x0005F2);
+    v = rd8(W(rot_z));
     c = (unsigned)t + v;                /* CLC, ADC */
     t = (uint8_t)c;
     cyc(24);
-    wr8(0x0005F2, t);
+    wr8(W(rot_z), t);
     cyc(16);
-    t = rd8(0x00006B);
+    t = rd8(W(wram_006B));
     cyc(24);
     v = rd8(W(rot_z_high));
     t = (uint8_t)(t + v + (c > 0xFF));
@@ -566,7 +566,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     cyc(16);
     wr8(out, t);
     cyc(16);
-    t = rd8(0x00006B);
+    t = rd8(W(wram_006B));
     cyc(16);
     wr8((uint16_t)(out + 1), t);
     w = mul_at(xa, 0x05F7);
@@ -578,7 +578,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = sub8(t, v, &c);
     wr8(out, t);
     cyc(16);
-    t = rd8(0x00006B);
+    t = rd8(W(wram_006B));
     cyc(16);
     v = rd8((uint16_t)(out + 1));
     t = sub8(t, v, &c);
@@ -596,22 +596,22 @@ static uint16_t rotate_wide_keep(uint8_t i, uint16_t xa, uint16_t out, int x8,
 
     if (x8) {
         cyc(16);
-        wr8(0x00003E, (uint8_t)*x);
+        wr8(W(dp_3e), (uint8_t)*x);
         cyc(16);
-        wr8(0x000040, (uint8_t)*y);
+        wr8(W(dp_40), (uint8_t)*y);
     } else {
         cyc(16);
-        wr16(0x00003E, *x);
+        wr16(W(dp_3e), *x);
         cyc(16);
-        wr16(0x000040, *y);
+        wr16(W(dp_40), *y);
     }
     if (extra)
         cyc(30);
     cyc(22);                            /* SEP #$10 */
     a = rotate_wide(i, xa, out);
     cyc(42);                            /* PLP */
-    *y = x8 ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
-    *x = x8 ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
+    *y = x8 ? rd8(cyc_then(30, W(dp_40))) : rd16(cyc_then(30, W(dp_40)));
+    *x = x8 ? rd8(cyc_then(16, W(dp_3e))) : rd16(cyc_then(16, W(dp_3e)));
     cyc(44);
     return a;
 }

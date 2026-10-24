@@ -225,7 +225,7 @@ uint16_t DebugShowErrors(uint8_t bank)
         cyc(48);
         wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
         cyc(54);
-        wr8(0x000056, 0x08);
+        wr8(W(wram_0056), 0x08);
         cyc(62);
         wr16(W(dp_54), errors[i].text);
         DebugPrint(bank);

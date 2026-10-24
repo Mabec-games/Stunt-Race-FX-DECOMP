@@ -18,7 +18,7 @@
  */
 uint16_t GsuParamsUpdate(void)
 {
-    static const uint32_t from[8] = {0x000D12, W(dp_c5), W(dp_c7), W(dp_c9), 0x000664, W(wram_0666), W(wram_0668), 0x0005FA};
+    static const uint32_t from[8] = {0x000D12, W(dp_c5), W(dp_c7), W(dp_c9), W(wram_0664), W(wram_0666), W(wram_0668), W(wram_05FA)};
     static const uint32_t to[8] = {0x70108A, 0x7000D8, 0x7000DA, 0x7000DC, 0x7000DE, 0x7000E0, 0x7000E2, 0x702736};
     uint16_t v = 0;
     unsigned i;
@@ -992,7 +992,7 @@ uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
     s = 0xF77F;
     d = 0x0AAA;
     cyc(102);
-    wr16(0x001F2B, n);
+    wr16(W(wram_1F2B), n);
     do {
         for (i = 0; i < 30; i += 2)
             { cyc(32); wr16(0x700000 | (uint16_t)(d + i), cyc_then(30, rd16(W(wram_bank_7e) + s + i))); }
@@ -1004,9 +1004,9 @@ uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
             *p |= P_V;
         s = (uint16_t)(s + 0x1E);
         cyc(164);
-        n = (uint16_t)(rd16(0x001F2B) - 1);
+        n = (uint16_t)(rd16(W(wram_1F2B)) - 1);
         cyc(46);
-        wr16(0x001F2B, n);
+        wr16(W(wram_1F2B), n);
     } while (cyc_loop(22, n));
     cyc(88);
     *x = s;

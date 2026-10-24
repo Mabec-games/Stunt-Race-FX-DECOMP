@@ -36,7 +36,7 @@ uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
     cyc(46);
     obj = rd16(W(obj_link) + obj);
     cyc(46);
-    return (rd16(0x000000 + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
+    return (rd16(W(dp_00) + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
 }
 
 /* PlayerVehicleRaised on carried registers. */
@@ -89,7 +89,7 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
     cyc(62);
     a = PlayerVehicleRaised(bank, (uint8_t)*x);
     cyc(46);
-    a = (uint16_t)(a + rd16(0x0006CD));
+    a = (uint16_t)(a + rd16(W(wram_06CD)));
     a = (uint16_t)(a + 0x0018);
     s = (unsigned)(uint16_t)(a << 1) + 0xEF99 + (a >> 15);
     t = (uint16_t)s;

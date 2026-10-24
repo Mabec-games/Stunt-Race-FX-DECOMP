@@ -75,8 +75,8 @@ uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
         face_y_set = 1;
         cyc(104);
         x = rd16((uint16_t)(rec + 0x02));
-        wr16(0x000004, cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
-        wr16(0x00000A, cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
+        wr16(W(dp_04), cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
+        wr16(W(tie_y), cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
         wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
         a = (cyc(62), ObjectGsu81E3(bank, x));
         wr16(absidx(bank, 0x0010, rec), cyc_then(68, (uint16_t)(a + 0x8000)));
@@ -151,10 +151,10 @@ static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
 
     wr16(dbw(bank, out), cyc_then(112, v));
     cyc(16);
-    v = rd16(0x000002);
+    v = rd16(W(tie_object));
     wr16(dbw(bank, (uint16_t)(out + 2)), cyc_then(24, v));
     cyc(16);
-    v = rd16(0x000094);
+    v = rd16(W(dp_94));
     wr16(dbw(bank, (uint16_t)(out + 4)), cyc_then(24, v));
     return v;
 }
@@ -192,9 +192,9 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     cyc(46);
     wr16(0x70247A, cyc_then(32, rd16(W(obj_22_long) + obj)));
     cyc(82);
-    wr16(0x000002, cyc_then(16, rd16(W(dp_c5))));
+    wr16(W(tie_object), cyc_then(16, rd16(W(dp_c5))));
     cyc(16);
-    wr16(0x000094, cyc_then(16, rd16(W(dp_c9))));
+    wr16(W(dp_94), cyc_then(16, rd16(W(dp_c9))));
     area_origin(bank, 0x1EF5, p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
@@ -211,9 +211,9 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     cyc(98);
     obj = rd16((uint16_t)(rec + 0x02));
     cyc(46);
-    wr16(0x000002, cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
+    wr16(W(tie_object), cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
     cyc(32);
-    wr16(0x000094, cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
+    wr16(W(dp_94), cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
     v = area_origin(bank, 0x1EFB, p);
     *p = nz16(*p, rec);
     cyc(80);
