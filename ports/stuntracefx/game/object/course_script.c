@@ -134,9 +134,9 @@ void CourseScriptRun(Carried *cr)
             cyc(52);
             wr16(OBJ_FIELD(o, OBJ_OFF(obj_27)), cyc_then(32, rd16(b | (uint16_t)(0x8016 + y))));
             cyc(24);
-            a = (uint16_t)(rd16(0x7F0000 | W(spawn_counter)) + 1);
+            a = (uint16_t)(rd16(0x7E0000 | W(spawn_counter)) + 1);
             cyc(38);
-            wr16(0x7F0000 | W(spawn_counter), a);
+            wr16(0x7E0000 | W(spawn_counter), a);
             cyc(32);
             wr16(OBJ_FIELD(o, OBJ_OFF(obj_29)), a);
             x = (uint16_t)(y + 0x18);

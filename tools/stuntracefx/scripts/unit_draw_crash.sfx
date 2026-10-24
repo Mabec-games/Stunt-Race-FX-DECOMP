@@ -23,6 +23,8 @@ set 7E4F9B 00,00
 call 08:B5B3 long noreturn frames=3 x=2F79 p=20 db=7E d=0000
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E032D 00,00
-call 08:826E noreturn frames=3 y=0000 p=00 db=7F d=0000
+# the spawn runs on a course script's data bank ($05, as the game runs
+# them): on $7F it read the free count from bank $7F and never stopped
+call 08:826E noreturn frames=3 y=0000 p=00 db=05 d=0000
 load build/stuntracefx/states/novice_coupe_race1.state
 wait 1
