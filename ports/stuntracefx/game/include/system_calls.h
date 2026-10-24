@@ -29,10 +29,6 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked);
 uint16_t SlideStep(uint16_t a);
 uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled);
 
-/* The stop screens (crash.c); `bank` the data bank the shared body stores
-   through. They never return. */
-void CrashWhite(uint8_t bank);
-
 /* Debug text and numbers (debug_text.c, debug_numbers.c). DebugDrawChar
    draws the character ch; A, X and Y come back as it leaves them. */
 void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t *y);

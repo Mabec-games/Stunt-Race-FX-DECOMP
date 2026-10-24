@@ -11,7 +11,6 @@
 #include "carried.h"
 
 void abi_MenuActorsRun(void);
-void abi_MenuScreenOpen0(void);
 
 /*
  * @routine 0B:E2D7 MenuFramesTarget7
@@ -46,7 +45,6 @@ uint16_t MenuScreen0Run(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint
 static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y);
 static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y);
 static void w_MenuActorsRun(Carried *cr);
-static void w_MenuScreenOpen0(Carried *cr);
 
 void MenuFramesTarget7_cr(Carried *cr)
 {
@@ -200,7 +198,7 @@ void abi_MenuWaitFrame(void)
 
 void MenuActorsRun(void);
 uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
-void MenuScreenOpen0(void);
+void MenuScreenOpen0(Carried *cr);
 
 /* The objects run (MenuActorsRun, still in registers) with A, P = p and the
    data bank going in, X passing through when there are none; the X and Y
@@ -519,13 +517,12 @@ uint16_t MenuScreen0Run(Carried *cr, uint8_t bank, uint16_t a, uint16_t *x, uint
 
     do {
         *p &= (uint8_t)~(P_M | P_X);
-        /* MenuScreenOpen0 works in registers: A, X, Y, P and DB in, and out. */
         cr->a = a;
         cr->x = *x;
         cr->y = *y;
         set_p(cr, *p);
         cr->db = bank;
-        w_MenuScreenOpen0(cr);
+        MenuScreenOpen0(cr);
         a = cr->a;
         *x = cr->x;
         *y = cr->y;
@@ -601,21 +598,3 @@ static void w_MenuActorsRun(Carried *cr)
     cr->db = cpu.db;
 }
 
-/* MenuScreenOpen0, still in registers: its call with the registers loaded and taken
-   back. */
-static void w_MenuScreenOpen0(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuScreenOpen0();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}

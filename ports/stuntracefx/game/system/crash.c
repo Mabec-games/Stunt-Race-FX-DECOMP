@@ -21,6 +21,7 @@
 #define CRASH_SCROLL 0x000719u
 
 void CrashGreen_cr(Carried *cr);
+void CrashWhite(Carried *cr, uint8_t bank);
 void CrashWhite_cr(Carried *cr);
 void CrashGreen(Carried *cr, uint8_t bank);
 static void crash_body(Carried *cr, uint8_t bank, uint16_t code);
@@ -135,19 +136,6 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     }
 }
 
-static void crash_body_g(uint8_t bank, uint16_t code)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    crash_body(&c, bank, code);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 00:8014 CrashWhite
  * WHAT IT DOES: Stops the game on the stop screen with a white backdrop,
@@ -157,33 +145,16 @@ static void crash_body_g(uint8_t bank, uint16_t code)
  * APU port 0 at each step, and ends in a loop to itself).
  * Entry: any widths; D = $0000. Exit: never returns.
  */
-void CrashWhite(uint8_t bank)
+void CrashWhite(Carried *cr, uint8_t bank)
 {
     cyc(70);
     wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x7FFF);
-    crash_body_g(bank, 0x00AA);
-}
-
-static void CrashWhite_c(Carried *cr, uint8_t bank)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    CrashWhite(bank);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    crash_body(cr, bank, 0x00AA);
 }
 
 void CrashWhite_cr(Carried *cr)
 {
-    CrashWhite_c(cr, cr->db);
+    CrashWhite(cr, cr->db);
 }
 
 void abi_CrashWhite(void)

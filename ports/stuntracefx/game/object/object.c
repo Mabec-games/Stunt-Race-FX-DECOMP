@@ -1405,7 +1405,7 @@ void abi_ObjectRebucket(void)
     cpu.db = r.db;
 }
 
-void CrashWhite(uint8_t bank);
+void CrashWhite(Carried *cr, uint8_t bank);
 
 /*
  * @routine 08:B5B3 ObjectRecordFlag70Step
@@ -1420,7 +1420,7 @@ void CrashWhite(uint8_t bank);
  * Counting: A low byte = the count before the step, N, Z from the new
  * count. Otherwise: A = the new record word, N, Z from X.
  */
-uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
+uint16_t ObjectRecordFlag70Step(Carried *cr, uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(46);
@@ -1437,8 +1437,15 @@ uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t 
         } else { cyc(26); }
     }
     rec = rd16(cyc_then(104, field(bank, obj, 0x22)));
-    if (!rec)
-        { cyc(84); CrashWhite(bank); }
+    if (!rec) {
+        /* The JSL at $08:B5F6 after REP #$20, PHX, LDA +$22,X: A = 0
+           16-bit, X the object, Z set. */
+        cyc(84);
+        cr->a = rec;
+        cr->x = obj;
+        set_p(cr, nz16((uint8_t)(*p & ~P_M), rec));
+        CrashWhite(cr, bank);
+    }
     cyc(flag ? 142 : 148);              /* BEQ taken without the flag */
     w = rd16(0x700070 + rec);
     w = flag ? (uint16_t)(w | 0x0004) : (uint16_t)(w & 0xFFFB);
@@ -1455,7 +1462,7 @@ void ObjectRecordFlag70Step_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    cr->a = ObjectRecordFlag70Step(cr->db, cr->x, cr->a, &p);
+    cr->a = ObjectRecordFlag70Step(cr, cr->db, cr->x, cr->a, &p);
     set_p(cr, (uint8_t)(p | P_M));
 }
 

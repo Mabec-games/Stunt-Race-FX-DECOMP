@@ -49,6 +49,7 @@ void ScrollRegsClear(uint8_t bank)
 }
 
 void ColoursClear_cr(Carried *cr);
+void CrashWhite(Carried *cr, uint8_t bank);
 void ColoursRedDouble_cr(Carried *cr);
 void HardwareRegsInit02_cr(Carried *cr);
 void HardwareRegsInit02Long_cr(Carried *cr);
@@ -1115,7 +1116,7 @@ void UnusedScreenStart(Carried *cr)
     cyc(56);
     wr8(b | 0x0854, 0x00);
     (cyc(62), w_SpriteSlotFirstLong(cr));
-    (cyc(62), CrashWhite(cr->db));
+    (cyc(62), CrashWhite(cr, cr->db));
 }
 
 void abi_UnusedScreenStart(void)

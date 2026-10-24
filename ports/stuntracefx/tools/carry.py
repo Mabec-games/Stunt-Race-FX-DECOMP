@@ -665,6 +665,22 @@ void %s(void)
             out.append('%s(%s)\n{\n%s}\n' % (hdr.rstrip(), np, b))
     elif n in glue or n in adapter:
         b = glue_body(body[n])
+        # an adapter that only calls a void(void) helper now carried is the
+        # standard adapter of that helper, not a call of its register form
+        m = re.fullmatch(r'\s*(\w+)_g\(\);\s*', b)
+        if n in adapter and m and m.group(1) in regfn and not isroutine[m.group(1)] \
+                and byname[m.group(1)][4].strip() in ('void', '') \
+                and re.sub(r'\bstatic\b|\binline\b|\b%s\b' % m.group(1), '', byname[m.group(1)][3]).strip() == 'void':
+            b = '''    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    %s(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+''' % m.group(1)
         if n in cglue:
             for fp in rparams(params):
                 b = re.sub(r'(?<![\w>.])%s\s*\(\s*\)' % fp, 'cr_call(%s)' % fp, b)

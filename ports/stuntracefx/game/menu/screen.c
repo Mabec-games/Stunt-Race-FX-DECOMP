@@ -1090,19 +1090,6 @@ static void menu_screen_start(Carried *cr, uint16_t list, uint8_t p)
     MenuWaitFrame(0x00);
 }
 
-static void menu_screen_start_g(uint16_t list, uint8_t p)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    menu_screen_start(&c, list, p);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 0B:F33C MenuScreenOpen0
  * WHAT IT DOES: Opens the menu screen built from spawn list 0: with the
@@ -1121,17 +1108,17 @@ static void menu_screen_start_g(uint16_t list, uint8_t p)
  * Entry: D = $0000. Exit: A = $0010; X, Y as MenuOamBuild left them; P and
  * DB unchanged.
  */
-void MenuScreenOpen0(void)
+void MenuScreenOpen0(Carried *cr)
 {
     /* cost: LDA # and STA (40) or STZ (24). */
     static const struct { uint32_t reg; uint8_t v; uint8_t cost; } ppu[] = {
         {BGMODE, 0x09, 40}, {BG1SC, 0x60, 40}, {BG2SC, 0x65, 40}, {BG3SC, 0x7C, 40},
         {BG12NBA, 0x20, 40}, {BG34NBA, 0x77, 40}, {CGADSUB, 0x00, 24}, {CGWSEL, 0x00, 24}, {TS, 0x00, 24}};
-    uint8_t p = cpu.p, db = cpu.db;
+    uint8_t p = cr->p, db = cr->db;
     uint16_t x;
     unsigned i;
 
-    cpu.db = 0x00;
+    cr->db = 0x00;
     cyc(306);
     ppu_wr(INIDISP, 0x80);
     cyc(24);
@@ -1180,7 +1167,7 @@ void MenuScreenOpen0(void)
     wr16(0x0011ED, 0x0000);
     cyc(24);
     wr16(0x0011EF, 0x0000);
-    menu_screen_start_g(0x0000, p);
+    menu_screen_start(cr, 0x0000, p);
     cyc(100);
     SoundPort0QueuePush(0x39);
     cyc(46);
@@ -1193,14 +1180,22 @@ void MenuScreenOpen0(void)
     wr8(0x0011DB, 0x0F);
     cyc(40);
     ppu_wr(TM, 0x10);
-    cpu.a = 0x0010;
-    cpu.db = db;
-    cpu.p = p;
+    cr->a = 0x0010;
+    cr->db = db;
+    set_p(cr, p);
 }
 
 void abi_MenuScreenOpen0(void)
 {
-    MenuScreenOpen0();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuScreenOpen0(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 
