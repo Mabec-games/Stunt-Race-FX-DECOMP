@@ -557,19 +557,33 @@ void WindowEdgesFillOnes(void)
     } while (y);
 }
 
-void abi_WindowEdgesFillOnes(void)
+/* WindowEdgesFillOnes on carried registers. */
+void WindowEdgesFillOnes_cr(Carried *cr)
 {
     WindowEdgesFillOnes();
-    cpu.a = 0x0001;
-    cpu.x = 0x1000;
-    cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z | P_C);
-    /* The RTS, through the return address the fill left on the stack. */
+    cr->a = 0x0001;
+    cr->x = 0x1000;
+    cr->y = 0;
+    set_p(cr, (uint8_t)((cr->p & ~(P_M | P_X | P_N)) | P_Z | P_C));
+    /* The RTS, through the return address the fill left on the stack,
+       in the program bank $09. */
     cyc(102);
-    cpu.pc = (cpu.pc & 0xFF0000) | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
+    cpu_leave_to(0x090000 | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1));
     cpu.s = (uint16_t)(cpu.s + 2);
     cyc(6);                             /* the RTS's last cycle */
-    cpu.unwound = 1;
+}
+
+void abi_WindowEdgesFillOnes(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    WindowEdgesFillOnes_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

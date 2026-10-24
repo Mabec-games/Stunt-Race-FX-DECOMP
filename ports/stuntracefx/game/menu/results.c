@@ -14,7 +14,7 @@
 #include "carried.h"
 
 uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p);
-uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p);
+uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p);
 int MenuActorFindA(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *a);
 void MenuActorFind8(uint8_t bank, uint8_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint8_t *a);
 uint16_t MenuActorFree(uint8_t bank, uint16_t rec, uint16_t slot);
@@ -422,7 +422,7 @@ void abi_ResultsOpenBottom(void)
  * $11F9; A = $DA33; N, Z from it; otherwise as MenuWaitThenAnimate.
  * From C: *x, *a, *y, *p the registers in and out.
  */
-void ResultsPlaceWait(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsPlaceWait(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     byte_of(a, p, 0x000FAC);
     cmp(*a, p, rd16(cyc_then(40, fld(*x, 0x22))));
@@ -432,7 +432,7 @@ void ResultsPlaceWait(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
         cmp(*a, p, 0x0008);
         if (*p & P_Z) {
             cyc(104);
-            *a = MenuActorCopyGroup(bank, x, p);
+            *a = MenuActorCopyGroup(cr, bank, x, p);
             *x = rd16(cyc_then(24, abs_db(bank, 0x11F9)));
             *p = nz16(*p, *x);
             set_field(*x, a, p, 0x08, 0xDA33);
@@ -446,12 +446,26 @@ void ResultsPlaceWait(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     *a = MenuWaitThenAnimate(bank, *a, x, p);
 }
 
+/* ResultsPlaceWait on carried registers. */
+void ResultsPlaceWait_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlaceWait(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPlaceWait(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlaceWait(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlaceWait_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -693,10 +707,10 @@ void abi_ResultsLeaderBlink(void)
  * ResultsLeaderBlink.
  * From C: *x, *a, *y, *p the registers in and out.
  */
-void ResultsLeaderBlinkResume(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
+void ResultsLeaderBlinkResume(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
     cyc(46);
-    *a = MenuActorCopyGroup(bank, x, p);
+    *a = MenuActorCopyGroup(cr, bank, x, p);
     cyc(32);
     lda(a, p, rd16(0x00190F));
     wr16(fld(*x, 0x0A), cyc_then(22, *a));
@@ -707,12 +721,26 @@ void ResultsLeaderBlinkResume(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *
     ResultsLeaderBlink(bank, x, a, y, p);
 }
 
+/* ResultsLeaderBlinkResume on carried registers. */
+void ResultsLeaderBlinkResume_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsLeaderBlinkResume(cr, cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsLeaderBlinkResume(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsLeaderBlinkResume(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsLeaderBlinkResume_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Y = the A, B or Start presses ($118B AND $9000), with N, Z (TYA, AND). */
@@ -1216,13 +1244,13 @@ void abi_ResultsBcdPair(void)
  * = $DF7B; N set, Z clear.
  * From C: *x, *a, *y, *p the registers in and out.
  */
-void ResultsTimeDigits(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsTimeDigits(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     byte_of(a, p, 0x000DD6);
     cmp(*a, p, 0x0008);
     if (*p & P_Z) {
         cyc(104);
-        *a = MenuActorCopyGroup(bank, x, p);
+        *a = MenuActorCopyGroup(cr, bank, x, p);
         lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
         lda(a, p, (uint16_t)(*a + 2));
         wr16(abs_db(bank, 0x11E1), cyc_then(52, *a));
@@ -1246,12 +1274,26 @@ void ResultsTimeDigits(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsTimeDigits on carried registers. */
+void ResultsTimeDigits_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsTimeDigits(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsTimeDigits(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsTimeDigits(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsTimeDigits_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The leader's place test of ResultsInitials and ResultsLapTimes: when
@@ -1294,12 +1336,12 @@ static void leader_or_stop(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, u
  * A and the flags from the last step.
  * From C: *x, *a, *y, *p the registers in and out.
  */
-void ResultsInitials(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsInitials(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     unsigned i;
 
     cyc(46);
-    *a = MenuActorCopyGroup(bank, x, p);
+    *a = MenuActorCopyGroup(cr, bank, x, p);
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
     lda(a, p, (uint16_t)(*a + 2));
     wr16(abs_db(bank, 0x11E5), cyc_then(52, *a));
@@ -1324,12 +1366,26 @@ void ResultsInitials(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     leader_or_stop(bank, x, a, p, 0x22);
 }
 
+/* ResultsInitials on carried registers. */
+void ResultsInitials_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsInitials(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsInitials(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsInitials(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsInitials_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1457,12 +1513,12 @@ void abi_ResultsNoTime(void)
  * A and the flags from the last step.
  * From C: *x, *a, *y, *p the registers in and out.
  */
-void ResultsLapTimes(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
+void ResultsLapTimes(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
     uint16_t place, first;
 
     cyc(46);
-    *a = MenuActorCopyGroup(bank, x, p);
+    *a = MenuActorCopyGroup(cr, bank, x, p);
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
     lda(a, p, (uint16_t)(*a + 2));
     wr16(abs_db(bank, 0x11E1), cyc_then(52, *a));
@@ -1488,12 +1544,26 @@ void ResultsLapTimes(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_
     leader_or_stop(bank, x, a, p, 0x20);
 }
 
+/* ResultsLapTimes on carried registers. */
+void ResultsLapTimes_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsLapTimes(cr, cr->db, &cr->x, &cr->a, &cr->y, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsLapTimes(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsLapTimes(cpu.db, &cpu.x, &cpu.a, &cpu.y, &p);
-    cpu.p = p;
+    ResultsLapTimes_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1594,12 +1664,12 @@ void abi_ResultsPointsPair(void)
  * X = $11F9, N, Z from it; A and C, V from the last step.
  * From C: *x, *a, *y, *p the registers in and out.
  */
-void ResultsPoints(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsPoints(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     uint16_t car = *a, at;
 
     cyc(76);
-    *a = MenuActorCopyGroup(bank, x, p);
+    *a = MenuActorCopyGroup(cr, bank, x, p);
     lda(a, p, car);
     wr16(abs_db(bank, 0x11DF), cyc_then(60, car));
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
@@ -1625,12 +1695,26 @@ void ResultsPoints(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     cyc(42);
 }
 
+/* ResultsPoints on carried registers. */
+void ResultsPoints_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPoints(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
+}
+
 void abi_ResultsPoints(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPoints(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPoints_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1698,7 +1782,7 @@ void abi_ResultsPhaseAnim(void)
    (ResultsPhaseAnim); before it, it hides again. The $0D48 cases are
    reached by unit tests (unit_menus), except place 0's hiding: $0D48 is
    never below 0, so the BCC after CMP #0 never branches. */
-static void place_points(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t n, uint16_t handler)
+static void place_points(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t n, uint16_t handler)
 {
     if (!(dec_fld(*x, p, 0x0A) & 0x8000))
         { cyc(64); return; }
@@ -1724,7 +1808,7 @@ static void place_points(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uin
     } else { cyc(18); }
     cyc(78);
     lda_imm(a, p, n);
-    ResultsPoints(bank, x, a, p);
+    ResultsPoints(cr, bank, x, a, p);
     set_field(*x, a, p, 0x08, 0xE0DF);
     cyc(42);
 }
@@ -1740,17 +1824,31 @@ static void place_points(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uin
  * Z from the count; else as ResultsPoints, ResultsPhaseAnim or the hiding
  * store (A = $FFFF).
  */
-void ResultsPlace0(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsPlace0(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    place_points(bank, x, a, p, 0x0000, 0xE018);
+    place_points(cr, bank, x, a, p, 0x0000, 0xE018);
+}
+
+/* ResultsPlace0 on carried registers. */
+void ResultsPlace0_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlace0(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
 }
 
 void abi_ResultsPlace0(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlace0(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlace0_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1795,17 +1893,31 @@ void abi_ResultsPlace0Hide(void)
  * HOW: As ResultsPlace0, with 1.
  * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
  */
-void ResultsPlace1(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsPlace1(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    place_points(bank, x, a, p, 0x0001, 0xE059);
+    place_points(cr, bank, x, a, p, 0x0001, 0xE059);
+}
+
+/* ResultsPlace1 on carried registers. */
+void ResultsPlace1_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlace1(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
 }
 
 void abi_ResultsPlace1(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlace1(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlace1_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1814,17 +1926,31 @@ void abi_ResultsPlace1(void)
  * HOW: As ResultsPlace0, with 2.
  * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
  */
-void ResultsPlace2(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsPlace2(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    place_points(bank, x, a, p, 0x0002, 0xE09A);
+    place_points(cr, bank, x, a, p, 0x0002, 0xE09A);
+}
+
+/* ResultsPlace2 on carried registers. */
+void ResultsPlace2_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlace2(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
 }
 
 void abi_ResultsPlace2(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlace2(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlace2_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1833,17 +1959,31 @@ void abi_ResultsPlace2(void)
  * HOW: As ResultsPlace0, with 3.
  * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
  */
-void ResultsPlace3(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
+void ResultsPlace3(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    place_points(bank, x, a, p, 0x0003, 0xE0DB);
+    place_points(cr, bank, x, a, p, 0x0003, 0xE0DB);
+}
+
+/* ResultsPlace3 on carried registers. */
+void ResultsPlace3_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    ResultsPlace3(cr, cr->db, &cr->x, &cr->a, &p);
+    set_p(cr, p);
 }
 
 void abi_ResultsPlace3(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    ResultsPlace3(cpu.db, &cpu.x, &cpu.a, &p);
-    cpu.p = p;
+    ResultsPlace3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

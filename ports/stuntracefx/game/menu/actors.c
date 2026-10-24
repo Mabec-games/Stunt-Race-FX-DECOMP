@@ -2180,7 +2180,7 @@ void abi_MenuChoiceObject12Start(void)
     cpu.db = r.db;
 }
 
-void Hang(void);
+void Hang(Carried *cr);
 
 /*
  * @routine 0B:E1C5 MenuActorCopyGroup
@@ -2196,7 +2196,7 @@ void Hang(void);
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the last word copied; X =
  * $11F9; N, Z from X; C clear; V from the add of the size.
  */
-uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p)
+uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(24);
@@ -2221,8 +2221,14 @@ uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p)
     cyc(38);
     s = (unsigned)dst + rd16(b | 0x11DF);
     *p = (uint8_t)((*p & ~P_V) | ((~(dst ^ size) & (dst ^ (uint16_t)s) & 0x8000) ? P_V : 0));
-    if ((uint16_t)s >= 0x2C81)
-        Hang();
+    if ((uint16_t)s >= 0x2C81) {
+        /* the stop, with A the sum and X the object as the ADC and the
+           reload left them */
+        cr->a = (uint16_t)s;
+        cr->x = x;
+        set_p(cr, *p);
+        Hang(cr);
+    }
     *p &= (uint8_t)~P_C;
     cyc(64);
     wr16(b | 0x120B, (uint16_t)s);
@@ -2249,7 +2255,7 @@ void MenuActorCopyGroup_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    cr->a = MenuActorCopyGroup(cr->db, &cr->x, &p);
+    cr->a = MenuActorCopyGroup(cr, cr->db, &cr->x, &p);
     set_p(cr, p);
 }
 
@@ -2495,10 +2501,10 @@ void abi_MenuFadeOutHandler(void)
 
 /* A choice object's first frame: its own sprite group (MenuActorCopyGroup)
    and the handler `next`. */
-static void choice_start(uint8_t bank, uint16_t next, uint16_t *x, uint8_t *p)
+static void choice_start(Carried *cr, uint8_t bank, uint16_t next, uint16_t *x, uint8_t *p)
 {
     cyc(46);
-    MenuActorCopyGroup(bank, x, p);
+    MenuActorCopyGroup(cr, bank, x, p);
     cyc(46);
     wr16((uint16_t)(*x + 0x08), next);
     *p = nz16(*p, next);
@@ -2512,9 +2518,9 @@ static void choice_start(uint8_t bank, uint16_t next, uint16_t *x, uint8_t *p)
  * HOW: +$08 = $CAEE, then falls through into MenuChoiceObject00.
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuChoiceObject00.
  */
-uint16_t MenuChoiceObject00Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+uint16_t MenuChoiceObject00Start(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    choice_start(bank, 0xCAEE, x, p);
+    choice_start(cr, bank, 0xCAEE, x, p);
     return MenuChoiceObject00(bank, x, y, p);
 }
 
@@ -2522,7 +2528,7 @@ void MenuChoiceObject00Start_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    cr->a = MenuChoiceObject00Start(cr->db, &cr->x, &cr->y, &p);
+    cr->a = MenuChoiceObject00Start(cr, cr->db, &cr->x, &cr->y, &p);
     set_p(cr, p);
 }
 
@@ -2548,9 +2554,9 @@ void abi_MenuChoiceObject00Start(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $CB01; X = $11F9; N set,
  * Z clear; C clear.
  */
-void MenuChoiceObject12Copy(uint8_t bank, uint16_t *x, uint8_t *p)
+void MenuChoiceObject12Copy(Carried *cr, uint8_t bank, uint16_t *x, uint8_t *p)
 {
-    choice_start(bank, 0xCB01, x, p);
+    choice_start(cr, bank, 0xCB01, x, p);
     cyc(42);
 }
 
@@ -2558,7 +2564,7 @@ void MenuChoiceObject12Copy_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    MenuChoiceObject12Copy(cr->db, &cr->x, &p);
+    MenuChoiceObject12Copy(cr, cr->db, &cr->x, &p);
     cr->a = 0xCB01;
     set_p(cr, p);
 }
@@ -2583,9 +2589,9 @@ void abi_MenuChoiceObject12Copy(void)
  * HOW: +$08 = $CB1B, then falls through into MenuChoiceObject24.
  * Entry: as MenuChoiceObject00Start. Exit: as MenuChoiceObject24.
  */
-uint16_t MenuChoiceObject24Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+uint16_t MenuChoiceObject24Start(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    choice_start(bank, 0xCB1B, x, p);
+    choice_start(cr, bank, 0xCB1B, x, p);
     return MenuChoiceObject24(bank, x, y, p);
 }
 
@@ -2593,7 +2599,7 @@ void MenuChoiceObject24Start_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    cr->a = MenuChoiceObject24Start(cr->db, &cr->x, &cr->y, &p);
+    cr->a = MenuChoiceObject24Start(cr, cr->db, &cr->x, &cr->y, &p);
     set_p(cr, p);
 }
 
@@ -2620,10 +2626,10 @@ void abi_MenuChoiceObject24Start(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $C47B; X = $11F9; Y =
  * $000A; N set, Z clear; C, V as MenuRowBlinkSettings left them.
  */
-void MenuRowStart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+void MenuRowStart(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(46);
-    MenuActorCopyGroup(bank, x, p);
+    MenuActorCopyGroup(cr, bank, x, p);
     cyc(0);
     MenuRowBlinkSettings(bank, x, y, p);
     *x = rd16(cyc_then(24, dbw(bank, CURRENT)));
@@ -2637,7 +2643,7 @@ void MenuRowStart_cr(Carried *cr)
 {
     uint8_t p = cr->p;
 
-    MenuRowStart(cr->db, &cr->x, &cr->y, &p);
+    MenuRowStart(cr, cr->db, &cr->x, &cr->y, &p);
     cr->a = 0xC47B;
     set_p(cr, p);
 }

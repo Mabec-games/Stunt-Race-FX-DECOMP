@@ -295,7 +295,7 @@ void abi_MenuWaitThenSequence(void)
     cpu.db = r.db;
 }
 
-uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p);
+uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p);
 uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint16_t *xo, uint8_t *p);
 void SoundPort0QueuePushRaw(uint8_t command);
 
@@ -408,14 +408,14 @@ void abi_MenuChoiceObject38Start(void)
  * handler; N set, Z clear; X = $11F9. Locked: Y = $FFFF; C, V as
  * MenuActorUploadFrames. Open: Y unchanged; C, V as MenuActorCopyGroup.
  */
-uint16_t MenuChoiceObject48Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+uint16_t MenuChoiceObject48Start(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(32);
     uint16_t a = rd16(0x70FC0B) & 0x00FF;
 
     if (a) {
         cyc(110);
-        MenuActorCopyGroup(bank, x, p);
+        MenuActorCopyGroup(cr, bank, x, p);
         a = 0xCB3D;
         cyc(46);
         wr16((uint16_t)(*x + 0x08), a);
@@ -433,7 +433,7 @@ uint16_t MenuChoiceObject48Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
         wr16((uint16_t)(*x + 0x18), 0x0000);
     }
     cyc(46);
-    MenuActorCopyGroup(bank, x, p);
+    MenuActorCopyGroup(cr, bank, x, p);
     wr16(dbw(bank, 0x11E3), cyc_then(48, 0x0048));
     cyc(70);
     MenuActorUploadFrames(bank, *x, 0x0000, x, p);
@@ -445,13 +445,27 @@ uint16_t MenuChoiceObject48Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
     return a;
 }
 
+/* MenuChoiceObject48Start on carried registers. */
+void MenuChoiceObject48Start_cr(Carried *cr)
+{
+    uint8_t p = cr->p;
+
+    cr->a = MenuChoiceObject48Start(cr, cr->db, &cr->x, &cr->y, &p);
+    set_p(cr, p);
+    cyc(42);
+}
+
 void abi_MenuChoiceObject48Start(void)
 {
-    uint8_t p = cpu.p;
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
 
-    cpu.a = MenuChoiceObject48Start(cpu.db, &cpu.x, &cpu.y, &p);
-    cpu.p = p;
-    cyc(42);
+    MenuChoiceObject48Start_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

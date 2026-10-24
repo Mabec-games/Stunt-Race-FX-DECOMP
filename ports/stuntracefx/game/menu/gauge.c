@@ -269,15 +269,29 @@ uint16_t GaugeFromSpeedZero(uint8_t bank, uint16_t *x)
 }
 
 /* The tail pulls the P the routine's start pushed. */
-void abi_GaugeFromSpeedZero(void)
+/* GaugeFromSpeedZero on carried registers. */
+void GaugeFromSpeedZero_cr(Carried *cr)
 {
     uint16_t x;
 
-    cpu.a = GaugeFromSpeedZero(cpu.db, &x);
-    cpu.x = x;
+    cr->a = GaugeFromSpeedZero(cr->db, &x);
+    cr->x = x;
     cpu.s++;
     cyc(20);
-    op_plp(rd8((uint16_t)cpu.s));
+    r_plp(cr, rd8((uint16_t)cpu.s));
+}
+
+void abi_GaugeFromSpeedZero(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    GaugeFromSpeedZero_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

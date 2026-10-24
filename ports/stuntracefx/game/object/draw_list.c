@@ -289,22 +289,36 @@ ObjectDrawListEnd ObjectDrawListClear08(uint16_t y, uint16_t x)
     return e;
 }
 
-void abi_ObjectDrawListClear08(void)
+/* ObjectDrawListClear08 on carried registers. */
+void ObjectDrawListClear08_cr(Carried *cr)
 {
     uint8_t db, p;
-    ObjectDrawListEnd e = ObjectDrawListClear08(cpu.y, cpu.x);
+    ObjectDrawListEnd e = ObjectDrawListClear08(cr->y, cr->x);
 
-    cpu.a = 0;
-    cpu.x = e.x;
-    cpu.y = e.y;
+    cr->a = 0;
+    cr->x = e.x;
+    cr->y = e.y;
     db = rd8((uint16_t)(cpu.s + 1));
     cyc(20);
     p = rd8((uint16_t)(cpu.s + 2));
-    cpu.db = db;
-    cpu.p = p;
+    cr->db = db;
+    set_p(cr, p);
     if (p & P_X) {
         cyc(42);
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
+}
+
+void abi_ObjectDrawListClear08(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectDrawListClear08_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

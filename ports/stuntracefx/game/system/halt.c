@@ -82,17 +82,25 @@ void abi_SystemHaltSpawn(void)
 /*
  * @routine 0B:E21F Hang
  * WHAT IT DOES: Stops the game: a branch to itself, for ever.
- * HOW: BRA to its own address (cpu_loop_forever). Never returns.
+ * HOW: BRA to its own address (carried_loop_forever). Never returns.
  * Entry: any. Exit: does not return.
  */
-void Hang(void)
+void Hang(Carried *cr)
 {
-    cpu_loop_forever(0x0BE21F);
+    carried_loop_forever(cr, 0x0BE21F);
 }
 
 void abi_Hang(void)
 {
-    Hang();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Hang(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
