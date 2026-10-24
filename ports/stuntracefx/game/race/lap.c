@@ -57,7 +57,6 @@ static uint8_t adc_bcd8(uint8_t a, uint8_t m, uint8_t *p)
  */
 uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t frac, secs, mins, v;
 
     cyc(38);
@@ -156,7 +155,6 @@ void abi_LapSplit(void)
  */
 uint8_t RaceTimeKeep(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
 
     cyc(46);

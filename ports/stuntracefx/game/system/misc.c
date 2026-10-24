@@ -238,7 +238,6 @@ void abi_ReadTable9022(void)
  */
 uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(68);
@@ -314,7 +313,6 @@ void abi_Set7EBC2BTrio(void)
  */
 uint8_t Countdown0DF8(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(52);
     uint8_t v = rd8(0x7E0000 | W(wram_0DF8));
 
@@ -371,7 +369,6 @@ void abi_SoftResetToBootWarm(void);
  */
 void ChampionshipFinish(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -458,7 +455,6 @@ void abi_Set7EFFA6Sequence(void)
  */
 uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t n;
 
     cyc(46);

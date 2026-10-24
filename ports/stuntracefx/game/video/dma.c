@@ -722,7 +722,6 @@ uint16_t VramDmaQueueAddA(uint16_t a);
  */
 uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t off;
     uint8_t f;
 

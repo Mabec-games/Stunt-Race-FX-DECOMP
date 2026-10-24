@@ -663,7 +663,6 @@ void abi_OamAttr38x7(void)
  */
 void OamHideEntries3And9(uint8_t bank, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(54);
     wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + 12 + y), 0xF000);
@@ -700,7 +699,6 @@ void abi_OamHideEntries3And9(void)
  */
 void OamHideEntries0To2(uint8_t bank, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(54);
     wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + y), 0xF000);
@@ -743,7 +741,6 @@ void abi_OamHideEntries0To2(void)
  */
 uint8_t OamSetPalette(uint8_t bank, uint8_t bits, uint16_t count, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v = 0;
 
     cyc(38);
@@ -787,7 +784,6 @@ void abi_OamSetPalette(void)
    it on by 7 and 71 sprites): two X positions and three attribute bytes. */
 static uint8_t oam_block(uint8_t bank, uint16_t x, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     unsigned s = (unsigned)x0 + dx;
 
     cyc(92);
@@ -1035,7 +1031,6 @@ void abi_OamBlock52Right(void)
  */
 uint16_t OamColumn8(uint8_t bank, uint16_t *x, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v = 0, s;
     unsigned i;
 
@@ -1095,7 +1090,6 @@ void abi_OamColumn8(void)
 uint8_t OamHighBits58(uint8_t bank)
 {
     static const uint8_t bits[4] = {0x40, 0x55, 0x55, 0x15};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v = 0;
     unsigned i;
 
@@ -1175,7 +1169,6 @@ void abi_OamBufferHideLargeLong(void)
  */
 uint8_t OamPaletteFromTableE30F(uint8_t bank, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
     *y = (uint16_t)(rd16(0x7E0000 | W(wram_0D79)) << 2);
@@ -1212,7 +1205,6 @@ void abi_OamPaletteFromTableE30F(void)
  */
 uint8_t OamPaletteFromTableE26A(uint8_t bank, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(68);
     *y = (uint16_t)((uint16_t)(rd16(0x7E0000 | W(wram_0D7B)) + 0x0D) << 2);
     cyc(104);
@@ -1252,7 +1244,6 @@ void abi_OamPaletteFromTableE26A(void)
  */
 uint8_t OamPaletteFromTableE26AByMode(uint8_t bank, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
     *y = (uint16_t)(rd16(0x7E0000 | W(wram_0D79)) << 2);
@@ -1291,7 +1282,6 @@ void abi_OamPaletteFromTableE26AByMode(void)
  */
 uint8_t OamPalettesE28D(uint8_t bank, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
     *y = (uint16_t)(rd16(0x7E0000 | W(wram_0D75)) << 2);
@@ -1337,7 +1327,6 @@ void abi_OamPalettesE28D(void)
 uint8_t OamHighBits18(uint8_t bank)
 {
     static const uint8_t bits[4] = {0x40, 0x55, 0x55, 0x15};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v = 0;
     unsigned i;
 
@@ -1384,7 +1373,6 @@ void abi_OamHighBits18(void)
  */
 void OamHighBits58Park112(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
     OamHighBits58(bank);
@@ -1426,7 +1414,6 @@ void abi_OamHighBits58Park112(void)
  */
 void OamHide36And96(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
 
     cyc(160);
@@ -1471,7 +1458,6 @@ void abi_OamHide36And96(void)
  */
 void OamHide75Up(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(106);
     wr8(0x7E0000 | W(wram_0E0C), 0xF8);
@@ -1638,7 +1624,6 @@ void abi_OamPlaceRows75And112(void)
 static uint16_t bar_marker(uint8_t bank, uint16_t v, uint16_t y, uint16_t span,
                            uint16_t tile_far, uint16_t tile_near, uint32_t in)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(in);                            /* from the strip's last store: each bar's own */
     uint16_t tile, pos = rd16(W(dp_02));
 
@@ -1889,7 +1874,6 @@ static uint8_t cycled_attr(uint8_t attr, uint8_t phase)
    entry's own way in: 78 falling in, 102 with a JMP). */
 static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x, uint16_t *y, uint32_t first)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t i, ph;
     uint8_t n, a = 0, phase;
 
@@ -2172,7 +2156,6 @@ void abi_OamAttr36x7(void)
  */
 void OamHighBits18Park48(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
     OamHighBits18(bank);
@@ -2221,7 +2204,6 @@ void abi_OamHighBits18Park48(void)
  */
 uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *set)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t i;
     uint8_t attr = 0, n;
     unsigned t;
@@ -2310,7 +2292,6 @@ static uint16_t pieces3(uint8_t bank, uint16_t slot)
 
 static uint16_t pieces_at(uint8_t bank, uint16_t set, uint16_t x, uint16_t slot)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
 
     cyc(24);
@@ -2400,7 +2381,6 @@ void abi_SpritePiecesAtRight(void)
    overwrite. */
 static uint16_t pieces_xy(uint8_t bank, uint16_t x, uint16_t y, int y_first, uint16_t slot)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
 
     if (y_first) {
@@ -2621,7 +2601,6 @@ void abi_SpritePiecesAt62Y95(void)
  */
 uint16_t SpritePiecesCarAt51(uint8_t bank, uint16_t car, uint16_t slot)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(24);
@@ -3477,7 +3456,6 @@ static uint16_t hud_x;                  /* OamHideForHudMode's X at the end */
  */
 uint8_t OamHideForHudMode(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
 
     cyc(22 + 84);
@@ -3628,7 +3606,6 @@ void abi_OamStagePause2Loop(void)
    1. */
 static void overlay_state0(void)
 {
-    const uint32_t b = 0x040000;
 
     cyc(22 + 48);
     wr16(0x7E0000 | W(wram_10A4), 0x009A);
@@ -3647,7 +3624,6 @@ static uint16_t ov_x;                   /* X after the draw; Y is $C0 */
    placed (or off screen), their high bits $AA. Returns A. */
 static uint16_t overlay_draw(unsigned lead)
 {
-    const uint32_t b = 0x040000;
     uint8_t v, bob, step;
     uint16_t a, pic, x, y;
     uint32_t in, off;
@@ -3744,7 +3720,6 @@ static uint16_t overlay_draw(unsigned lead)
  */
 uint16_t OverlaySpritesStep(void)
 {
-    const uint32_t b = 0x040000;
     uint16_t a;
     unsigned lead = 68;                 /* 46 when the draw is entered by falling into it */
 

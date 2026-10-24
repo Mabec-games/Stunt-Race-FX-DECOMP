@@ -772,7 +772,6 @@ void abi_RaceStartTimerSteps(void)
  */
 void PanelDelayCount(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_0D5F));
@@ -1072,7 +1071,6 @@ void abi_CarFinishSound(void)
  */
 void CarFinishSoundP2(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p;
 
     r_sep(cr, P_M | P_X);
@@ -1113,7 +1111,6 @@ void abi_CarFinishSoundP2(void)
  */
 void RaceFinishSounds(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p;
     int worse;
 
@@ -2148,7 +2145,6 @@ void abi_PhaseGlyphsSix(void)
    (RaceEndCountdownFade); before, draw() for the frame. */
 static void race_end_wait(Carried *cr, void (*draw)(Carried *))
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(32);
     r_lda8(cr, W(slide_out));

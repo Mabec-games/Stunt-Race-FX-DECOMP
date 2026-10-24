@@ -1096,7 +1096,6 @@ void abi_UnusedScreenSetup(void)
  */
 void UnusedScreenStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     r_rep(cr, P_X);

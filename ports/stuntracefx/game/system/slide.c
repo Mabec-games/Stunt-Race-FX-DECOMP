@@ -109,7 +109,6 @@ static uint8_t wobble_add(uint8_t a, uint8_t m)
  */
 uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t a, m;
 
     wobble_v = -1;

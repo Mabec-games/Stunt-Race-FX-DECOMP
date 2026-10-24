@@ -89,7 +89,6 @@ static void digit_exit(Carried *cr, uint16_t a)
    mode value. */
 static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8, uint32_t lead)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(lead);                          /* 72 more after a setter, whose return is not stated */
@@ -546,7 +545,6 @@ typedef struct {
 /* From C: returns A; *p as the compares leave P. */
 uint16_t TimeDigitBytes(uint8_t bank, uint16_t a, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(24);
     uint16_t v = rd16(0x7E0000 | W(digit62_override));
 
@@ -1753,7 +1751,6 @@ static void run_f15b(uint8_t bank, TbRegs *r)
  */
 void GsuDigitPair0E74At(uint8_t bank, TbRegs *r)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(32);
     wr16(0x70020A, r->a);

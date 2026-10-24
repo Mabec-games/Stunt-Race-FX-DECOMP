@@ -734,7 +734,6 @@ void abi_WindowEdgesFromList(void)
  */
 uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t w;
     uint8_t n;
 
@@ -865,7 +864,6 @@ void abi_WindowLayoutStepForScreen(void)
    $19AC-$19AE = $20, $40, the position. */
 static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, uint8_t *pos)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(164);
     uint8_t v = (uint8_t)(rd8(W(window_slide_pos)) + step);
 
@@ -1056,7 +1054,6 @@ void abi_WindowSlideStep(void)
  */
 uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int *keep_hi)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(54);
     uint8_t req = rd8(W(layout_request)), v;
     uint16_t y = y8, s, m, pos, lim, a;
@@ -1468,7 +1465,6 @@ static void cmp16(uint16_t v, uint16_t m, uint8_t *p)
 WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0)
 {
     uint8_t v, pp = p0;
-    uint32_t b = 0x7E0000;
     uint16_t a, m;
 
     index8(&r);
@@ -1704,7 +1700,6 @@ void abi_WindowHdmaFFD9(void)
 WindowRegs WindowSplitAnimate(WindowRegs r, uint8_t p0)
 {
     uint8_t v, h, pp = p0, pj = 0;
-    uint32_t b = 0x7E0000;
     uint16_t a, m;
     unsigned i;
 
@@ -1947,7 +1942,6 @@ static uint16_t band_step(uint16_t a, uint32_t at, uint32_t step, uint32_t limit
  */
 WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     *p |= P_M | P_X;
     index8(&r);
@@ -2260,7 +2254,6 @@ static WindowRegs window_slide_check_step(WindowRegs r, uint8_t p0, uint16_t dp)
 
 WindowRegs WindowSlideCheck(WindowRegs r, uint8_t p0, uint16_t dp)
 {
-    const uint32_t b = 0x7E0000;
     uint8_t v;
 
     cyc(140);

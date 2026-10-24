@@ -278,7 +278,7 @@ static void sta16_imm(Carried *cr, uint32_t addr, uint16_t v)
 /* The handler pointer of object `obj`: +$1A = `h`, +$1C = $08. */
 static void set_handler(Carried *cr, uint16_t obj, uint16_t h)
 {
-    uint32_t b = (cyc(28), db(cr));
+    cyc(28);
 
     sta16_imm(cr, 0x7E0000 | (uint16_t)(W(obj_1a_w) + obj), h);
     lda8(cr, 0x08);
@@ -368,7 +368,6 @@ static void sync_36(Carried *cr)
    down (DEC +$48,X). */
 static int count_down(Carried *cr)
 {
-    uint32_t b = db(cr);
     cyc(30);
     uint8_t v = rd8(0x7E0000 | (uint16_t)(W(obj_48) + cr->x));
 
@@ -517,7 +516,6 @@ void abi_ObjectBurstPieceStep(void)
  */
 void ObjectBurstPieceStart(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t w;
 
     set_handler(cr, cr->x, 0xEDB6);
@@ -633,7 +631,6 @@ void abi_ObjectBlinkerFade(void);
  */
 void ObjectBlinkerRise(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     if (!count_down(cr)) {
         blinker_show(cr);
@@ -673,7 +670,6 @@ void abi_ObjectBlinkerRise(void)
  */
 void ObjectBlinkerFade(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x;
     uint8_t v, p;
 
@@ -754,7 +750,7 @@ void abi_ObjectBlinkerFade(void)
  */
 void ObjectBlinkerStart(Carried *cr)
 {
-    uint32_t b = (cyc(22), db(cr));
+    cyc(22);
 
     if (spawn(cr, 0xA91C)) {
         cyc(62);
@@ -813,7 +809,6 @@ void abi_ObjectBlinkerStart(void)
  */
 void ObjectPaceCarStep(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x, w;
     uint8_t v;
 
@@ -958,7 +953,6 @@ void abi_ObjectPaceCarStart(void)
  */
 void ObjectSignalStep(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v, p;
 
     cyc(24);
@@ -1039,7 +1033,6 @@ void abi_ObjectSignalStep(void)
  */
 void ObjectPaceCarSetup(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(hud_mode));
@@ -1385,7 +1378,6 @@ void abi_ObjectApplyVelocity(void);
  */
 void ObjectChildrenSpawn(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t obj = cr->x, rec, t;
 
     cyc(24);
@@ -1500,7 +1492,6 @@ void abi_ObjectChildrenSpawn(void)
    +$36 = 3. */
 static void child_flags(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v, pv;
 
     cyc(30);
@@ -1548,7 +1539,7 @@ static void child_flags(Carried *cr)
  */
 void ObjectChildStep(Carried *cr)
 {
-    uint32_t b = (cyc(46), db(cr));
+    cyc(46);
 
     ObjectChildFollow(cr);
     cyc(30);
@@ -1583,7 +1574,6 @@ void abi_ObjectChildStep(void)
  */
 void ObjectChildStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     set_handler(cr, cr->x, 0xBB2E);
     cyc(30);
@@ -1613,7 +1603,6 @@ void abi_ObjectChildStart(void)
    $08:BB2E (ObjectChildStep), then the flags. */
 static void child_back(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(60);
@@ -1650,7 +1639,6 @@ static uint16_t child_y(Carried *cr, uint16_t f5, uint16_t a)
  */
 void ObjectChildReturn(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t obj, w;
 
     cyc(30);
@@ -1752,7 +1740,7 @@ void abi_ObjectChildReturn(void)
  */
 void ObjectChildFlying(Carried *cr)
 {
-    uint32_t b = (cyc(62), db(cr));
+    cyc(62);
     uint16_t x;
     uint8_t v;
 
@@ -1855,7 +1843,6 @@ void abi_ObjectChildFlying(void)
  */
 void ObjectChildLoose(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x, w;
     uint8_t v;
 
@@ -1966,7 +1953,6 @@ void abi_RotateXZ(void);
  */
 void ObjectBreakOffChance(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x = cr->x;
 
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -2017,7 +2003,7 @@ void abi_ObjectBreakOffChance(void)
  */
 void ObjectPieceFall(Carried *cr)
 {
-    uint32_t b = (cyc(62), db(cr));
+    cyc(62);
     uint8_t v;
 
     ObjectRebucket_cr(cr);
@@ -2075,7 +2061,6 @@ void abi_ObjectPieceFall(void)
 /* Handler $08:D549 (ObjectPieceFall), count +$48 = 0, end +$49. */
 static void piece_handler(Carried *cr, uint8_t end)
 {
-    uint32_t b = db(cr);
 
     set_handler(cr, cr->x, 0xD549);
     lda8(cr, 0x00);
@@ -2096,7 +2081,7 @@ static void piece_handler(Carried *cr, uint8_t end)
    +$24 bit 3, +$3A = 0, +$5F = `f5`. */
 static void piece_look(Carried *cr, uint16_t look, int adv, uint8_t f5)
 {
-    uint32_t b = (cyc(28), db(cr));
+    cyc(28);
 
     sta16_imm(cr, 0x7E0000 | (uint16_t)(W(obj_5d) + cr->x), look);
     if (adv)
@@ -2116,7 +2101,6 @@ static void piece_look(Carried *cr, uint16_t look, int adv, uint8_t f5)
 /* +$0E (Y) + $28. */
 static void piece_drop(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(52);
@@ -2280,7 +2264,7 @@ void abi_ObjectBreakOffE(void)
 /* $08:D36D: look $9B63 (advanced), +$5F = $1F58, $28 lower, falls. */
 static void break_off_f(Carried *cr)
 {
-    uint32_t b = (cyc(28), db(cr));
+    cyc(28);
 
     sta16_imm(cr, 0x7E0000 | (uint16_t)(W(obj_5d) + cr->x), 0x9B63);
     (cyc(68), ObjectAdvance5DIfFlag(cr));
@@ -2335,7 +2319,6 @@ void abi_ObjectBreakOffContact(void)
  */
 void ObjectBreakOffF(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x = cr->x, w;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -2437,7 +2420,6 @@ void abi_ObjectBreakOffH(void)
  */
 void ObjectPieceFallStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     piece_handler(cr, 0x06);
     lda8(cr, 0x06);
@@ -2478,7 +2460,6 @@ void abi_ObjectPieceFallStart(void)
 
 void ObjectPieceSpray(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     piece_handler(cr, 0x06);
@@ -2543,7 +2524,6 @@ static void spray_from_y(Carried *cr)
    page $94 and $05F2 with its sign byte $05F3) on. */
 static void spray_from_z(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     cyc(24);
@@ -2569,7 +2549,6 @@ static void spray_from_z(Carried *cr)
    velocity, Y - $14, ObjectAdvance5DIfFlag, the first fall. */
 static void spray_turn(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t w;
 
     cyc(30);
@@ -2763,7 +2742,6 @@ static uint32_t rom_n(uint32_t a, uint32_t n)
 /* $08:E13C: +$24 bit 5 (hidden), +$36 = 3. */
 static void attach_hide(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(54);
     lda8(cr, (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(obj_24) + cr->x)) | 0x20));
@@ -2778,7 +2756,6 @@ static void attach_hide(Carried *cr)
 /* $08:E14A: +$24 bit 6, +$36 = 3. */
 static void attach_bit6(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(64);
     lda8(cr, (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(obj_24) + cr->x)) | 0x40));
@@ -2794,7 +2771,6 @@ static void attach_bit6(Carried *cr)
    bit 2): then the object hides ($08:E13C). */
 static int attach_parent_gone(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -2830,7 +2806,6 @@ static void offset_on_parent(Carried *cr, int sh)
    `with14` is 0. */
 static void offset_on_parent_ex(Carried *cr, int sh, int with14)
 {
-    uint32_t b = db(cr);
     uint8_t v;
     int i;
 
@@ -2982,7 +2957,6 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
  */
 void ObjectAttachSpawn(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t t, i;
     uint8_t n;
     int made = 0;
@@ -3100,7 +3074,6 @@ void abi_ObjectAttachSpawn(void)
  */
 void ObjectAttachFollow(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t obj = cr->x;
 
     if (attach_parent_gone(cr))
@@ -3186,7 +3159,6 @@ void abi_ObjectAttachFollow(void)
  */
 void ObjectAttachStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     set_handler(cr, cr->x, 0xDDB4);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -3224,7 +3196,6 @@ void abi_ObjectAttachStart(void)
  */
 void ObjectAttachTurned(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x, y;
     uint8_t p;
 
@@ -3287,7 +3258,7 @@ static void set_child_of_x(Carried *cr)
    (vx, $0A, vz); none when the spawn fails. */
 static void spark(Carried *cr, uint16_t vx, uint16_t vz)
 {
-    uint32_t b = (cyc(22), db(cr));
+    cyc(22);
 
     if (!spawn(cr, 0xA1E4))
         { cyc(26); return; }
@@ -3345,7 +3316,6 @@ void abi_ObjectSparksStart(void)
  */
 void ObjectSparkStep(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -3384,7 +3354,6 @@ void abi_ObjectSparkStep(void)
  */
 void ObjectSparkStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     lda8(cr, (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(obj_24) + cr->x)) | 0x08));
@@ -3457,7 +3426,6 @@ void abi_ObjectCarAttachedStep(void)
  */
 void ObjectCarAttachedStart(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t obj = cr->x, par;
 
     cyc(30);
@@ -3531,7 +3499,6 @@ void abi_ObjectCarAttachedStart(void)
  */
 void ObjectParentRecordBit8(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x = cr->x;
 
     cyc(30);
@@ -3826,7 +3793,6 @@ void abi_ObjectExhaustStep(void)
  */
 void ObjectExhaustStart(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x = cr->x;
     uint8_t v;
 
@@ -3915,7 +3881,6 @@ void abi_ObjectSpawnD460UnlessFlag(void);
    $1A60 for player 2, $1A5E for player 1. */
 static uint16_t latch_addr(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(64);
     r_lda16(cr, 0x7E0000 | W(current_player));
@@ -4423,7 +4388,6 @@ void abi_ObjectCountStep5F(void);
  */
 void ObjectOffsetOnParent2(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -4472,7 +4436,6 @@ void abi_ObjectOffsetOnParent2(void)
    parent has it ($08:E14A); +$36 = 3. */
 static void lamp_place(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(38);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -4512,7 +4475,6 @@ void abi_ObjectLampDropBStart(void);
    $08:E6DE (ObjectLampDrop), +$49 = 0, and its first frame. */
 static void lamp_drop_start(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(52);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -4543,7 +4505,6 @@ static void lamp_drop_start(Carried *cr)
  */
 void ObjectLampOnParent(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -4598,7 +4559,6 @@ void abi_ObjectLampOnParent(void)
    $08:table (X 8-bit for the index). */
 static void lamp_look_step(Carried *cr, uint16_t table)
 {
-    uint32_t b = db(cr);
     uint8_t n;
     uint16_t x = cr->x;
 
@@ -4633,7 +4593,6 @@ static void lamp_look_step(Carried *cr, uint16_t table)
  */
 void ObjectLampAnimate(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     cyc(24);
@@ -4682,7 +4641,6 @@ void abi_ObjectLampAnimate(void)
  */
 void ObjectLampWait(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_1A5B));
@@ -4723,7 +4681,6 @@ void abi_ObjectLampWait(void)
  */
 void ObjectLampStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_06) + cr->x));
@@ -4759,7 +4716,6 @@ void abi_ObjectLampStart(void)
  */
 void ObjectLampDrop(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t p, v;
 
     cyc(30);
@@ -4815,7 +4771,6 @@ void abi_ObjectLampDrop(void)
  */
 void ObjectLampDropB(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     lda8(cr, 0x03);
     cyc(10);
@@ -4862,7 +4817,6 @@ void abi_ObjectLampDropB(void)
  */
 void ObjectLampDropBStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     set_handler(cr, cr->x, 0xE72C);
     cyc(30);
@@ -5115,7 +5069,6 @@ static const uint16_t ring_vx[4] = {0xFF90, 0xFFDB, 0x0025, 0x0070};
    +$36 = 3 unless it went idle. */
 static void ring_spawn(Carried *cr, unsigned lead)
 {
-    uint32_t b = db(cr);
     uint16_t x = cr->x;
     unsigned i;
     uint8_t v, p;
@@ -5217,7 +5170,6 @@ done:
 static void ring_start(Carried *cr, uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz,
                        unsigned lead)
 {
-    uint32_t b = db(cr);
 
     lda8(cr, h);
     cyc(30);
@@ -5372,7 +5324,7 @@ void abi_ObjectRingIdle(void)
  */
 void ObjectRingSpin(Carried *cr)
 {
-    uint32_t b = (cyc(62), db(cr));
+    cyc(62);
     uint8_t v, p;
 
     ObjectApplyVelocity_cr(cr);
@@ -5430,7 +5382,6 @@ void abi_ObjectRingSpin(void)
  */
 void ObjectRingPartStep(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     cyc(30);
@@ -5486,7 +5437,6 @@ void abi_ObjectRingPartStep(void)
  */
 void ObjectRingPartStart(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     lda8(cr, 0x28);
     cyc(16);
@@ -5547,7 +5497,6 @@ void abi_ObjectHandlerEmptyC(void)
  */
 void ObjectMarkerFollow(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
@@ -5655,7 +5604,6 @@ void abi_ObjectMarkerStart(void)
  */
 void ObjectDemoCarStep(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t x;
     uint8_t v;
 
@@ -5749,7 +5697,7 @@ static void camera_on(Carried *cr, uint16_t car, uint16_t y, uint16_t z, int by_
  */
 void ObjectDemoCarStart(Carried *cr)
 {
-    uint32_t b = (cyc(70), db(cr));
+    cyc(70);
     uint16_t x = cr->x, n;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -6066,7 +6014,6 @@ static void director_mode(Carried *cr, uint16_t v)
    times: an entry of the course's camera table. */
 static void director_entry(Carried *cr, unsigned n)
 {
-    uint32_t b = db(cr);
     uint16_t x = cr->x;
 
     cyc(60);
@@ -6086,7 +6033,6 @@ static void director_entry(Carried *cr, unsigned n)
    $1F4C/$1F4E/$1F50 plus (dx, dy, dz). */
 static void director_place(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz)
 {
-    uint32_t b = db(cr);
 
     cyc(24);
     wr16(0x7E0000 | W(wram_1F2B), cr->a);
@@ -6115,7 +6061,7 @@ static void director_place(Carried *cr, uint16_t dx, uint16_t dy, uint16_t dz)
 /* +$27 and the velocity cleared (four 16-bit stores). */
 static void director_still(Carried *cr)
 {
-    uint32_t b = (cyc(50), db(cr));
+    cyc(50);
 
     sta16_imm(cr, 0x7E0000 | (uint16_t)(W(obj_27) + cr->x), 0x0000);
     cyc(50);
@@ -6154,7 +6100,6 @@ static uint16_t director_slope(Carried *cr, uint16_t a)
  */
 void CameraDirectorTrack(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint16_t e;
 
     director_entry(cr, 0);
@@ -6328,7 +6273,6 @@ void abi_CameraDirectorSkip3(void)
  */
 void CameraDirectorSkip5(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     director_entry(cr, 5);
     cyc(24);
@@ -6440,7 +6384,6 @@ void abi_CameraDirectorTable(void);
 
 static void director_table_start(Carried *cr, uint32_t lead)
 {
-    uint32_t b = db(cr);
 
     cyc(lead);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_link_w) + cr->x));
@@ -6562,7 +6505,6 @@ void abi_CameraDirectorPathStart(void)
  */
 void CameraDirectorWait(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     cyc(30);
@@ -6603,7 +6545,6 @@ void abi_CameraDirectorWait(void)
  */
 void CameraDirectorBehind(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     director_mode(cr, 0x0021);
     cyc(52);
@@ -6699,7 +6640,6 @@ void abi_CameraDirectorFixedStart(void)
  */
 void CameraDirectorFixed(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     cyc(30);
     cr->y = rd16(0x7E0000 | (uint16_t)(W(obj_link_w) + cr->x));

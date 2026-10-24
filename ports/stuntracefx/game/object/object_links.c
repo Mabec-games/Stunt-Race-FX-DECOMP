@@ -32,7 +32,6 @@ void ObjectFreeLong_cr(Carried *cr);
    in turn, reading the next link before the free rewrites it. */
 static void free_list(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x = cr->x, obj, next;
     int first = 1;
 
@@ -73,7 +72,6 @@ static void free_list(Carried *cr)
  */
 void ObjectListTableFirst(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p = cr->p;
     uint16_t x, a = cr->a, at, v, t = 132;
 
@@ -215,7 +213,6 @@ void abi_ObjectListFreeAllCopy(void)
  */
 void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t at = parent, next;
 
     cyc(24);
@@ -271,7 +268,6 @@ void abi_ObjectLinkChild(void)
    flags are those of the last compare, then N, Z from the pulled index. */
 static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t at = from, next;
     uint8_t t, want;
 

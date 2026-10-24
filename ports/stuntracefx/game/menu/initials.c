@@ -17,11 +17,6 @@ uint16_t MenuRowPalette5(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 uint16_t MenuRowBlinkSettings(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* Compare as CMP does: C when a >= b; N, Z from a - b. */
 static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
 {
@@ -343,7 +338,6 @@ static void kind_anim(Carried *cr, uint16_t k, uint16_t n)
 void MenuInitialsFrame(Carried *cr)
 {
     cyc(46);
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t pad;
     unsigned k;
 
@@ -481,7 +475,6 @@ static void kinds67_anim(Carried *cr)
  */
 void MenuSettingsFrame(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t pad, v;
     unsigned k;
 

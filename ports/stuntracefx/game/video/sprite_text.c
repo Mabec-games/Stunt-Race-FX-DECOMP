@@ -151,7 +151,6 @@ void abi_OamTextLineLong(void)
    the data bank. Returns X and Y as OamTextLine leaves them. */
 static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp, uint16_t *yp)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
     unsigned i;
 

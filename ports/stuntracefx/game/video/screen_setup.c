@@ -126,7 +126,6 @@ void RaceScreenSetup(uint8_t bank)
     static const uint16_t ones[10] = {0x3411, 0x3414, 0x3416, 0x3419, 0x341C, 0x3425, 0x3428, 0x342B, 0x342E, 0x342F};
     static const uint16_t zeros[4] = {0x3412, 0x3415, 0x3430, 0x3431};
     static const uint32_t scroll[6] = {BG1HOFS, BG1VOFS, BG2HOFS, BG2VOFS, BG3HOFS, BG3VOFS};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t lo, hi;
     unsigned i;
 
@@ -707,7 +706,6 @@ static uint8_t rvi_v;                   /* RaceVideoInit's $0D24 */
  */
 int RaceVideoInit(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
 {
-    const uint32_t b = 0x030000;
     int r;
 
     cyc(118);

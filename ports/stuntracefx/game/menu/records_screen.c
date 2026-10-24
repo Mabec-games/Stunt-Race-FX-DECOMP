@@ -208,7 +208,6 @@ static void sound8(Carried *cr, uint8_t v)
 /* SEP #$30, then the metasprites' origin ($0D3B, $0D3C) and REP #$30. */
 static void origin(Carried *cr, uint8_t x, uint8_t y)
 {
-    uint32_t b = db(cr);
 
     r_sep(cr, P_M | P_X);
     lda8(cr, x);
@@ -443,7 +442,6 @@ void abi_RecordsMenuAllTop(void)
  */
 void RecordsMenuAllMiddle(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     r_sep(cr, P_M);
@@ -527,7 +525,6 @@ void abi_RecordsMenuAllBottom(void)
    else (returns 0). */
 static int menu_wait(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     r_sep(cr, P_M);
@@ -713,7 +710,6 @@ void abi_RecordsMenuSpeed(void)
    the large sprites and set $0E92 to $F0. */
 static void speed_alt_leave(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v;
 
     r_sep(cr, P_M);
@@ -1162,7 +1158,6 @@ static uint8_t page_mark_y(Carried *cr)
    attributes ORA #$40 (flipped across), PLP. */
 static void page_mark_flip(Carried *cr, uint8_t p)
 {
-    uint32_t b = db(cr);
     unsigned i;
     uint8_t v;
 
@@ -1191,7 +1186,6 @@ static void page_mark_flip(Carried *cr, uint8_t p)
  */
 void RecordsPageMarkFlipHide(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t p = page_mark_y(cr);
 
     lda8(cr, 0xF0);
@@ -1262,7 +1256,6 @@ void abi_RecordsPageMarkFlip(void)
  */
 void SpeedRecordsPage(Carried *cr)
 {
-    uint32_t b = db(cr);
     uint8_t v, old, p;
     uint16_t h;
     uint32_t join = 68;
@@ -1405,7 +1398,6 @@ void abi_SpeedRecordsPage(void)
  */
 void SpeedRecordsScreen(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     r_sep(cr, P_M | P_X);
     cyc(24);
@@ -1496,7 +1488,6 @@ void abi_SpeedRecordsScreen(void)
  */
 void SpeedRecordsLeaveCar(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     lda8(cr, 0x04);
     cyc(40);
@@ -1530,7 +1521,6 @@ void abi_SpeedRecordsLeaveCar(void)
    car, or the hidden sprites). */
 static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, int d_rest)
 {
-    uint32_t b = db(cr);
     uint16_t x;
     uint8_t p;
 
@@ -1638,7 +1628,6 @@ static void special_row(Carried *cr, uint16_t slot, uint16_t k, int stunt, Carri
  */
 void StuntRecordsScreen(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     r_sep(cr, P_M | P_X);
     cyc(24);
@@ -1717,7 +1706,7 @@ void abi_StuntRecordsScreen(void)
  */
 void BattleRecordsScreen(Carried *cr)
 {
-    uint32_t b = (cyc(6), db(cr));
+    cyc(6);
     uint8_t p;
 
     origin(cr, 0x81, 0x89);
@@ -1784,7 +1773,6 @@ void abi_BattleRecordsScreen(void)
  */
 void AllRecordsScreen(Carried *cr)
 {
-    uint32_t b = db(cr);
 
     r_sep(cr, P_M | P_X);
     cyc(24);

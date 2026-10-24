@@ -223,7 +223,6 @@ static void heading_regs(Carried *cr, uint8_t v)
  */
 uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t i, v;
 
     head_v = -1;
@@ -269,7 +268,6 @@ void abi_HeadingFlat(void)
  */
 uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t i, v;
 
     head_v = -1;
@@ -318,7 +316,6 @@ void abi_HeadingFlatMirrored(void)
  */
 uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t h, pitch, v;
 
     head_v = -1;
@@ -392,7 +389,6 @@ static uint8_t pitched_1f7c(uint16_t x, uint16_t y)
  */
 uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     head_v = -1;
     cyc(30);
@@ -464,7 +460,6 @@ void abi_HeadingPitchedFrom1F7C(void)
  */
 uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t i, v;
 
     head_v = -1;
@@ -510,7 +505,6 @@ void abi_HeadingFlatQuarterTurn(void)
  */
 uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t i, v;
 
     head_v = -1;
@@ -563,7 +557,6 @@ static uint16_t add16(uint16_t a, uint16_t m)
    $94, in that order; returns the new +$10. */
 static uint16_t move_by(uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(52);
@@ -726,7 +719,6 @@ static int vel_carry;
 static uint16_t velocity_from_vector(uint8_t bank, uint16_t x, uint16_t y, int shift)
 {
     static const uint32_t from[3] = {W(dp_02), W(dp_08), W(dp_94)};
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v = 0;
     unsigned i;
     int k;
@@ -898,7 +890,6 @@ void abi_ObjectVelocityFromHeadingTimes8(void)
  */
 uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(16);

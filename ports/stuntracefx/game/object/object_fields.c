@@ -94,7 +94,6 @@ void abi_ObjectStubZeroCopy(void)
  */
 uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(30);
@@ -158,7 +157,6 @@ void abi_ObjectPlaceAtOffset(void)
  */
 uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v, d, s;
 
     cyc(16);
@@ -305,7 +303,6 @@ void abi_ObjectStubSwapTwice(void)
  */
 void ObjectStopX(uint8_t bank, uint16_t obj)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(52);
     wr16(0x7E0000 | (uint16_t)(W(obj_vel_x) + obj), 0x0000);
@@ -346,7 +343,6 @@ void abi_ObjectStopX(void)
  */
 void ObjectStopY(uint8_t bank, uint16_t obj)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(76);
     wr16(0x7E0000 | (uint16_t)(W(obj_vel_x) + obj), 0x0000);

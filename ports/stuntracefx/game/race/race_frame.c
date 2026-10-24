@@ -955,7 +955,6 @@ void abi_ViewParamsBobLong(void)
  */
 void LoopLeaveWhenEnded(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t lo;
     uint8_t p;
 
@@ -1278,7 +1277,6 @@ static void frame_lda8_imm(Carried *cr, uint8_t v)
    the last ($0306) taken into $06D4, and $00 = 2. */
 static void frame_start(Carried *cr)
 {
-    uint32_t b = 0x020000;
 
     r_sep(cr, P_M);
     r_rep(cr, P_X);
@@ -1337,7 +1335,6 @@ static void frame_side0(Carried *cr)
    bank and P put back. */
 static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(46);
@@ -1801,7 +1798,6 @@ void abi_ViewParamsByPlayers(void);
  */
 void AttractViewStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t pushed[1] = {cr->p};
 
     r_rep(cr, P_M);

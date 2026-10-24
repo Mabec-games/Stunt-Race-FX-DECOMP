@@ -932,7 +932,6 @@ static uint8_t unpack_high, unpack_y, unpack_x;   /* the adapter's: A's high byt
 
 uint8_t RecordsUnpackCourse(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x, a, min = 0, sec, hund = 0;
     uint8_t c, p;
     unsigned i;
@@ -1330,7 +1329,6 @@ static uint8_t dp_high_nibble(uint16_t d, uint8_t a)
  */
 uint8_t RecordTimeDigitsSmall(uint8_t bank, uint16_t d, uint16_t packed, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t min, sec;
     uint8_t v;
 
@@ -1392,7 +1390,6 @@ void abi_RecordTimeDigitsSmall(void)
 uint8_t RecordScoreDigits(uint8_t bank, uint16_t d, uint16_t s, uint16_t y)
 {
     static const uint16_t perfect[7] = {0x3619, 0x360E, 0x361B, 0x360F, 0x360E, 0x360C, 0x361D};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
     unsigned i;
 
@@ -1713,7 +1710,6 @@ void abi_RecordRowDraw(void)
    ($7C + n * $11) to $10BF, then RecordRowDraw from sprite $0D75 + n * 2. */
 static uint16_t record_row(uint8_t bank, uint16_t d, unsigned n)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
     unsigned i;
 
@@ -2133,7 +2129,6 @@ static uint16_t mode_seen;
 
 static void record_compare_by_mode(Carried *cr, uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(68);
     mode_seen = rd16(0x7E0000 | W(hud_mode));
@@ -2663,7 +2658,6 @@ static uint8_t special_add8(uint16_t d, uint8_t a)
  */
 uint8_t SpecialRecordsChecksum(uint8_t bank, uint16_t d)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, x, y;
     uint8_t s;
     int i;
@@ -2974,7 +2968,6 @@ static uint8_t car12_flags;             /* N, Z, C, V as RecordCarTimes12 leaves
 
 uint16_t RecordCarTimes12(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, m, r;
 
     cyc(24);
@@ -3202,7 +3195,6 @@ static uint16_t up_t, up_x, up_y, up_high;
 
 uint8_t TimeUpRecordUpdate(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, sec, min, k, m, x, r, w;
     uint8_t v, p = 0;
 
@@ -3348,7 +3340,6 @@ static uint8_t stunt_flags, stunt_v;
 
 uint8_t StuntRecordTime(Carried *cr, uint8_t bank, uint16_t d)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t t, a, x, y, n, m, r, sum_at, e;
     uint8_t h, lo, sum = 0, f;
 
@@ -3553,7 +3544,6 @@ static uint16_t rc_add(uint16_t a, uint16_t m)
 
 static uint16_t records_char_offset(uint8_t bank, uint32_t row_table, uint32_t char_table)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, x;
 
     cyc(232);
@@ -3663,7 +3653,6 @@ void abi_RecordsCharOffsetAll(void)
  */
 uint16_t RecordsEntryLoad(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, v;
 
     cyc(126);

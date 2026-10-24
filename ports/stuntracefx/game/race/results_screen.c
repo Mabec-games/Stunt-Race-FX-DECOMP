@@ -514,7 +514,6 @@ void abi_TimedRecordsWait(void)
  */
 void ResultsNext(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     cyc(46);
@@ -829,7 +828,6 @@ static void panel(Carried *cr, uint16_t x, uint16_t pic)
  */
 void StuntRecordsDraw(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     unsigned n;
 
     int broke = 0;
@@ -910,7 +908,6 @@ void abi_ResultsPanelFAB5(void)
  */
 void TimedRecordsDraw(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     unsigned n;
 
     int broke = 0;
@@ -1091,7 +1088,6 @@ void abi_TimedRecordsChoice(void)
  */
 void ResultsPanelFB99(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     lda8_imm(cr, 0x00);
@@ -1134,7 +1130,6 @@ void abi_ResultsPanelFB99(void)
  */
 void ResultsPanelFA39(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     panel(cr, 0x001F, 0xFA39);
     int total, record;
@@ -1179,7 +1174,6 @@ void abi_ResultsPanelFA39(void)
 void ResultsPicture4000(Carried *cr)
 {
     cyc(72);
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M | P_X);
     cr->x = 0x0018;
@@ -1609,7 +1603,6 @@ void abi_ResultsChampionScreen(void)
  */
 void ResultsWaitWindow(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(window_hdma_off));
@@ -1861,7 +1854,6 @@ void abi_StuntResultsCount(void)
    lap's) with sound $3F at the end ($0D59 = $B) and the step on. */
 static void lap_char(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t y = cr->y, at;
     uint8_t v;
     unsigned tail = 86;
@@ -2002,7 +1994,6 @@ static void lap_chars(Carried *cr, uint16_t y)
  */
 void LapCharsLap1(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     r_rep(cr, P_X);
@@ -2110,7 +2101,6 @@ void abi_LapCharsTotal(void)
  */
 void RaceTimeTiles(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t d;
 
     r_sep(cr, P_M);
@@ -2192,7 +2182,6 @@ static void palette_fill(Carried *cr, uint16_t x, uint16_t y, uint8_t f, unsigne
  */
 void ResultsBlinkWait(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     inc8_mem(cr, 0x7E0000 | W(wram_0E3F));
     cyc(24);
@@ -2278,7 +2267,6 @@ static void minutes_tile(Carried *cr, uint8_t mins, uint32_t at)
  */
 void ResultsTotalTiles(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);

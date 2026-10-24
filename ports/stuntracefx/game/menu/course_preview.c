@@ -890,7 +890,6 @@ void abi_MenuSlideToPreview(void)
    (MenuRunFrames). */
 static void preview_menu_loop(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     do {
         cyc(68);

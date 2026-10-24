@@ -36,7 +36,6 @@ static uint16_t asr3(uint16_t v)
 uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
 {
     cyc(30);
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t i, obj, sx, v;
 
     for (i = 0;; i = (uint16_t)(i + 2)) {
@@ -126,7 +125,6 @@ static void map_origin(uint32_t x_at, uint16_t step)
  */
 uint16_t MapMarkersPanelA(uint8_t bank, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x;
 
     cyc(46);
@@ -182,7 +180,6 @@ void abi_MapMarkersPanelA(void)
  */
 int MapMarkersPanelB(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
 
     cyc(54);

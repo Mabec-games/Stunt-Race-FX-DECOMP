@@ -330,7 +330,6 @@ static uint16_t sub16(uint16_t a, uint16_t b, uint8_t *p)
 
 uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t m, s;
 
     cyc(16);
@@ -1105,7 +1104,6 @@ void abi_GsuF15BThree(void)
  */
 int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t y = rd16(0x7E0000 | W(wram_0D6F)), s = (uint16_t)(y + 8), x, v;
 
     GsuBytes200_BFBCBD();
@@ -1492,7 +1490,6 @@ void abi_GsuF15BFive(void)
  */
 uint8_t GsuFA5AThree(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t y;
 
     cyc(56);
@@ -1594,7 +1591,6 @@ static uint8_t fa5a(uint16_t x, uint16_t y, uint16_t piece)
  */
 uint8_t GsuFA5AFromTables(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(24);
     uint16_t i = rd16(0x7E0000 | W(wram_0D6B)), y;
 
@@ -1679,7 +1675,6 @@ uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
 {
     static const uint16_t dy[6] = {0x0000, 0x0008, 0x0010, 0x0018, 0x0008, 0x0010};
     static const uint16_t piece[6] = {0x1A0E, 0x1A16, 0x1B16, 0x1B0E, 0x1A0E, 0x1B0E};
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x, y;
     uint8_t mode = 0;
     unsigned i;
@@ -2450,7 +2445,6 @@ static uint8_t object_cv;               /* the adapters': C and V of the last su
  */
 uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t p = 0;
     uint16_t v;
 
@@ -2497,7 +2491,6 @@ void abi_ObjectGsu80BCThen81E3(void)
  */
 uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t m, s, v;
 
     object_cv = 0;
@@ -2561,7 +2554,6 @@ static void fa5a_unit_scale(void)
  */
 uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x;
 
     fa5a_unit_scale();
@@ -2638,7 +2630,6 @@ uint8_t GsuFA5ASixLeft(uint8_t bank, uint8_t *p)
     static const uint16_t dy[6] = {0x0000, 0x0008, 0x0010, 0x0018, 0x0008, 0x0010};
     static const uint16_t dx[6] = {0xFFF8, 0xFFF8, 0xFFF8, 0xFFF8, 0xFFF0, 0xFFF0};
     static const uint16_t piece[6] = {0x1A0C, 0x1A14, 0x1B14, 0x1B0C, 0x1A0C, 0x1B0C};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t mode = 0;
     unsigned i;
 
@@ -2697,7 +2688,6 @@ void abi_GsuFA5ASixLeft(void)
  */
 int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x, v;
 
     GsuBytes200_BFBCBD();
@@ -2862,7 +2852,6 @@ uint8_t BigSpritesCountDraw(uint8_t bank)
 {
     static const uint16_t near_[4] = {0xA018, 0xA000, 0xA518, 0xA00C}, far_[4] = {0xAA06, 0xB00C, 0xA00C, 0xAA12};
     static const uint8_t need_far[3] = {7, 8, 9};
-    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
     uint8_t v;
 
@@ -3439,7 +3428,6 @@ static uint8_t list_flags;              /* N, Z, C from the last compare */
 
 uint16_t GlyphListDraw(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0x0000, v, lim;
 
     cyc(48);
@@ -3524,7 +3512,6 @@ static uint16_t sprite_glyph;           /* the adapters': the glyph word drawn *
 
 static uint8_t sprite_at(uint8_t bank, uint16_t x, uint16_t at)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(32);
@@ -3579,7 +3566,6 @@ void abi_GlyphSpriteDraw(void)
  */
 void GlyphSpritesInit(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0x0000;
 
     cyc(22);
@@ -4437,7 +4423,6 @@ static uint16_t slide_glyph;            /* the adapter's: the last glyph word */
 
 uint8_t GlyphSlideThree(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0x0000, a, m;
     uint8_t mode = 0;
 
@@ -4912,7 +4897,6 @@ void abi_HudTimesDrawEven(void)
  */
 void TimeDigitsStore(uint8_t bank, uint8_t min, uint8_t sec, uint8_t hund)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(22);
     cyc(70);

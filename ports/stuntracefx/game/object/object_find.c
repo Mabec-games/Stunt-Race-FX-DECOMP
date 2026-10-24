@@ -21,11 +21,6 @@ static uint32_t f(uint8_t bank, uint16_t obj, uint16_t off)
     return 0x7E0000 | (uint16_t)(W(obj_base) + off + obj);
 }
 
-static uint32_t w(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* LDA/LDX/LDY: N, Z from the 16-bit value. */
 /* The flags the searches leave for their adapters: C and V of the last
    compare, subtract or add, with which of them were set (fcv_set: bit 0

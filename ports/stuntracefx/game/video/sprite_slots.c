@@ -11,11 +11,6 @@
 #include "wram_names.h"
 
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /*
  * @routine 02:D932 SpriteSlotFirst
  * WHAT IT DOES: Sets $06D8 to the address of the first record in use (the

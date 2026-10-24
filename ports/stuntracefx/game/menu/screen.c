@@ -635,7 +635,6 @@ static uint16_t raise_tile(uint16_t x)
  */
 uint16_t MenuPictureInsetGrid(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0, a = 0, rows, w;
     int i;
 
@@ -782,7 +781,6 @@ void abi_MenuCourseGraphics(void)
  */
 uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0x01A0, y = 0x0007;
 
     cyc(24);
@@ -824,7 +822,6 @@ void abi_MenuSpritePalettesScale(void)
    the last colour; *factor = the second factor. */
 static uint16_t cross_fade(uint8_t bank, uint16_t n, uint16_t *factor)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0x0080, y = 0x003F;
 
     cyc(114);

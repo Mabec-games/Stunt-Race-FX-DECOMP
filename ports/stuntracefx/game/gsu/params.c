@@ -229,7 +229,7 @@ void abi_GsuParam216B(void)
  */
 uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16, t;
+    uint32_t t;
     uint16_t a, base, s, v = 0;
     unsigned i;
 

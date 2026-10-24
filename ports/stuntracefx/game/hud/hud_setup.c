@@ -294,7 +294,6 @@ void abi_HudBestTimeDigits(void)
  */
 void RecordOffsetAllCourses(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p;
 
     cyc(86);

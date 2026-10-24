@@ -118,7 +118,6 @@ void abi_WaitHBlank(void)
  */
 void WaitScanline(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t lo;
 
     cyc(150);

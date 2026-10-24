@@ -383,7 +383,6 @@ void abi_SpeedGaugeUpdate(void)
  */
 uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x, g, t, v;
 
     cyc(60);

@@ -20,11 +20,6 @@ uint16_t MenuChoiceRepeat(uint16_t *x, uint8_t *p);
 #define CHOICE_RIGHT 0x0BC827u
 #define SAVE_PROGRESS 0x70FC0Bu
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* MenuSet1A66 and MenuSetPairAnimations for choice c, with the registers
    MenuSet1A66 leaves (X = c * 2, Y = $1A64) before the second call. */
 static uint16_t show_choice(uint8_t bank, uint16_t c, uint16_t *x, uint16_t *y, uint8_t *p)

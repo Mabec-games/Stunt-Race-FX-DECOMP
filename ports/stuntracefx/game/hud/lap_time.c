@@ -471,7 +471,6 @@ void abi_TimeAddToNext(void)
  */
 uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t p = p0 | P_M | P_X | P_D, v = 0;
     unsigned g, i;
 
@@ -594,7 +593,6 @@ static uint8_t exit_x;
 /* LDA $0D4A, ASL x3, CLC, ADC $0D4A (8-bit): the course times nine. */
 static uint8_t course_times_9(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t a;
     int i;
 
@@ -712,7 +710,6 @@ void abi_RecordSlotCopy3(void)
 /* LDA $0D4A, ASL, CLC, ADC $0D4A, ASL x3 (8-bit): the course times 24. */
 static uint8_t course_times_24(uint8_t bank, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t a;
     int i;
 
@@ -842,7 +839,6 @@ void abi_RecordShiftFrom1(void)
    byte on exit); exit_x = the entry's offset. */
 static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t a, x, v;
     int i;
 
@@ -1230,7 +1226,6 @@ static uint8_t sum_into_f1(uint32_t addr, uint8_t x, unsigned n, uint8_t *p)
  */
 uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t p0)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t p = p0 | P_M | P_X, place, page, v, sum;
     uint16_t w, xx, yy, aa;
     unsigned i;

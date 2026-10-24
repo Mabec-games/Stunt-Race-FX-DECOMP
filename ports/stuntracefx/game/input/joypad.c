@@ -368,7 +368,6 @@ void abi_JoypadRead(void);
  */
 void FrameSoundAndJoypads(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     unsigned i;
 
     (cyc(46), SoundPortsSend_cr(cr));

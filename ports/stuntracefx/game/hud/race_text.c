@@ -7,11 +7,6 @@
 #include "carried.h"
 #include "wram_names.h"
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* "MASTER" and "EXPERT" in the sprite font, six tiles each. */
 #define CLASS_NAMES 0x02EFD6u
 

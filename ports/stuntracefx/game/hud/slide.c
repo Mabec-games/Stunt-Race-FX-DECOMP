@@ -251,7 +251,6 @@ static uint8_t out_cv, out_nz;          /* the adapter's: C and V, and the value
 
 uint8_t HudSlideOut(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v = lda8(0x7E0000 | W(hud_slide)), r;
 
     r = sbc8i(v, 0x04);

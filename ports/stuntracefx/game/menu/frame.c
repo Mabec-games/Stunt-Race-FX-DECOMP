@@ -78,7 +78,6 @@ void abi_MenuFramesTarget7(void)
  */
 uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
 
     cyc(68);
@@ -229,7 +228,6 @@ static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_
  */
 uint16_t MenuRunFrames(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
     uint8_t m;
 
@@ -300,7 +298,6 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
    updates 0-3. */
 static void menu_frame(Carried *cr, uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t f;
 
     cyc(46);

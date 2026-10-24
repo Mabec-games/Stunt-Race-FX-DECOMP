@@ -29,12 +29,6 @@ void DebugPrint(uint8_t bank);
 #define FX_TRAFFIC_DIST 0x70263Au
 #define TIMER_LIST 0x08FE5Eu
 
-/* A data-bank address. */
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* The printers a panel uses. */
 enum { DEC_WORD, HEX_WORD, DEC_BYTE };
 

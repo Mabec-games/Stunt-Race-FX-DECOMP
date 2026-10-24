@@ -360,7 +360,6 @@ void abi_GsuRecordWord58(void)
  */
 uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec, w;
 
     cyc(30);
@@ -422,7 +421,6 @@ void abi_GsuRecordFlag4(void)
  */
 uint16_t GsuRecordVelocity(uint8_t bank, uint16_t obj, int *has, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(6);
     uint16_t rec = record_of(bank, obj), v = 0, w;
     unsigned i;
@@ -538,7 +536,6 @@ void abi_GsuRecordWords88(void)
  */
 uint16_t GsuRecordStep6A(uint8_t bank, uint16_t obj, int *ran, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec, f, step, a, s;
 
     cyc(24);
@@ -615,7 +612,6 @@ static uint16_t asr3(uint16_t v, uint8_t *p)
  */
 uint16_t ObjectVelocityFromRecordOf(uint8_t bank, uint16_t obj, uint16_t from, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(66);
     uint16_t rec = record_of(bank, from), v = 0;
     unsigned i;
@@ -775,7 +771,6 @@ static uint16_t three_quarters(uint16_t v, uint8_t *p)
  */
 uint16_t ObjectVelocityFromRecordScaled(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(30);
     uint16_t rec = record_of(bank, cyc_then(6, rd16(0x7E0000 | (uint16_t)(W(obj_27) + obj)))), v;
 
@@ -868,7 +863,6 @@ uint8_t GsuRun(uint8_t bank, uint16_t start);
    fills it from the object. */
 static uint8_t record_new(uint8_t bank, uint16_t obj, uint16_t program, uint16_t word0a, uint16_t join)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec;
 
     cyc(100);
@@ -1336,7 +1330,6 @@ uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p);
  */
 uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t a, sum, t;
     uint16_t w;
 
@@ -1480,7 +1473,6 @@ static uint16_t sync_start(uint8_t bank, uint16_t obj)
  */
 uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec, a;
     uint8_t f;
     int has;
@@ -1557,7 +1549,6 @@ void abi_ObjectSyncFromRecord(void)
  */
 uint16_t ObjectSyncToRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(0);
     uint16_t rec = sync_start(bank, obj), a;
 
@@ -1617,7 +1608,6 @@ void abi_ObjectSyncToRecord(void)
  */
 uint16_t RecordContactFlags(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(24);
     uint16_t c = rd16(0x7E0000 | W(wram_1F3A)), f;
 
@@ -1744,7 +1734,6 @@ void abi_GsuRecordLand(void)
  */
 uint16_t ObjectSyncAngles(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec = sync_start(bank, obj), a;
 
     if (!rec) {
@@ -1801,7 +1790,6 @@ void abi_ObjectSyncAngles(void)
  */
 int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(46);
     uint16_t e = rd16(0x7E0000 | W(wram_1F3C)), r;
 
@@ -1878,7 +1866,7 @@ void abi_RecordNextContact(void)
  */
 uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16, t;
+    uint32_t t;
     cyc(6);
     uint16_t rec = record_of(bank, obj), e, r, f;
 
@@ -2416,7 +2404,6 @@ void abi_PlayerControlsFrame(void)
 uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
 {
     static const uint16_t press[3] = {0x0040, 0x0080, 0x4000};
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t n, s, in;
 
     cyc(24);
@@ -2531,7 +2518,6 @@ void abi_RecordButtonSequence(void)
  */
 uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec, z;
     uint8_t s, v;
 
@@ -2652,7 +2638,6 @@ void abi_ObjectRebucket(void);
    immediate stores). */
 static void set_handler08(Carried *cr, uint16_t h)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cr->a = h;
@@ -2750,7 +2735,6 @@ void abi_ObjectRecordMarkSetup(void)
  */
 uint16_t ObjectSyncFromRecordFall(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t rec, v;
     int has;
 
@@ -2850,7 +2834,6 @@ void abi_ObjectSyncFallStep(void)
  */
 void ObjectSpinStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t obj = cr->x, rec, v;
     uint8_t h;
 
@@ -2928,7 +2911,6 @@ void abi_ObjectSpinRecord(void)
  */
 void ObjectSpinSetup(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cr->a = 0xCDD0;
@@ -3019,7 +3001,6 @@ void abi_GsuRecordNew424B(void)
  */
 void GsuRecordListFlag80(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x0 = cr->x, v;
     int first;
 
@@ -3133,7 +3114,6 @@ static void lda_m(Carried *cr, uint32_t addr, int back)
  */
 void ObjectRecordChildrenMark(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x0 = cr->x, v;
     uint8_t f;
     int back;

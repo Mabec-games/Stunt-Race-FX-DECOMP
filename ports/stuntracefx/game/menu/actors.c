@@ -591,7 +591,6 @@ void abi_MenuActorBlink(void)
  */
 uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(22);
     uint16_t anim = rd16((uint16_t)(rec + W(actor_anim))), t, pos, i, d, g, m;
     unsigned s;
@@ -832,7 +831,6 @@ void abi_MenuSinePosition7F(void)
  */
 uint16_t MenuActorSetTiles(uint8_t bank, uint16_t rec, uint16_t i, uint16_t off, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(156);
     uint16_t e = (uint16_t)(off + rd16((uint16_t)(rec + W(actor_12)))), t, w, r;
 
@@ -2221,7 +2219,6 @@ void Hang(Carried *cr);
  */
 uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(24);
     uint16_t x = rd16(0x7E0000 | W(actor_current)), src, dst, size, a = 0;
     unsigned s;

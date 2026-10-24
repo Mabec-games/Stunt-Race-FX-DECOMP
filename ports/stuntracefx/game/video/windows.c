@@ -640,7 +640,6 @@ void abi_WindowSweep(void)
 void WindowSweepIfOn(Carried *cr)
 {
     uint8_t p0 = cr->p, db0 = cr->db, v;
-    uint32_t b = 0x7E0000;
 
     cr->db = 0x7E;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -696,7 +695,6 @@ void abi_WindowSweepIfOn(void)
  */
 void OscillatorStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, a, c;
 
     r_sep(cr, P_M | P_X);
@@ -795,7 +793,6 @@ void abi_OscillatorStep(void)
  */
 void OscillatorWindow(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     r_sep(cr, P_M | P_X);

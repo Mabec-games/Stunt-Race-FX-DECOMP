@@ -306,7 +306,6 @@ uint8_t SaveChecksum(void);
  */
 uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(76);
@@ -372,7 +371,6 @@ static uint16_t save_mode;              /* the mode save_selection last saw */
 
 static uint16_t save_selection(uint8_t bank, uint16_t *x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(32);
     uint16_t mode = rd16(W(wram_18C3)), v;
 

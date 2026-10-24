@@ -419,7 +419,6 @@ void abi_PauseStageQuit(void)
  */
 void PauseStageLeave(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     cyc(46);

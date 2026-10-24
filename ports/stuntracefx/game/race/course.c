@@ -20,11 +20,6 @@ void abi_StuntRecordsScreen(void);
 void abi_TimeUpCursorStep(void);
 void abi_TimeUpSelectDraw(void);
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /*
  * @routine 02:EB51 CourseFromSelection
  * WHAT IT DOES: Sets the course number $0E3D: $0D4A * 4 + $0D48, or $0D4A
@@ -465,7 +460,6 @@ void abi_CourseCursorAt3Open(void)
  */
 void CourseCursorStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     if (cr->p & P_M) {
         uint8_t v = rd8(0x7E0000 | W(wram_0D48));
@@ -515,7 +509,6 @@ void abi_CourseCursorStep(void)
 void CourseZoomInStep(Carried *cr)
 {
     cyc(62);
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t a8, m8;
 
     ColourMathA3Long_cr(cr);
@@ -710,7 +703,6 @@ static uint16_t asl3(Carried *cr, uint16_t a)
 static void course_choose(Carried *cr, uint16_t list, uint16_t y)
 {
     cyc(24);
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t a;
 
     r_rep(cr, P_M | P_X);
@@ -908,7 +900,6 @@ void abi_SoundPort0QueuePush(void);
  */
 void LevelColumnsSet4(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     int i;
 
     cyc(0);
@@ -1361,7 +1352,6 @@ void abi_BattleCourseSelectStep(void)
  */
 void TimeUpSelectDraw(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p;
     uint16_t v;
 
@@ -1516,7 +1506,6 @@ static void time_up_cursor_body(Carried *cr)
  */
 void CourseZoomTimeUp(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t a;
 
     r_rep(cr, P_M | P_X);
@@ -1560,7 +1549,6 @@ void abi_CourseZoomTimeUp(void)
  */
 void CourseZoomTimeUpNext(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t a;
 
     r_rep(cr, P_M | P_X);
@@ -1873,7 +1861,6 @@ void abi_CourseRecordsSelectStep(void)
  */
 void CourseRecordsOpening(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     cyc(24);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D42)) - 1);
 
@@ -1942,7 +1929,6 @@ void abi_CourseRecordsReopen(void)
 /* The body of CourseRecordsReopen, up to its RTS. */
 static void records_reopen_body(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     cyc(24);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D42)) + 1);
 
@@ -2175,7 +2161,6 @@ void abi_CourseScreenWipeOut(void)
 /* The body of CourseScreenWipeOut, up to its RTS. */
 static void wipe_out_body(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, p;
 
     r_sep(cr, P_M);
@@ -2253,7 +2238,6 @@ void abi_CourseScreenWipeIn(void)
 /* The body of CourseScreenWipeIn, up to its RTS. */
 static void wipe_in_body(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, p;
 
     r_sep(cr, P_M);
@@ -2305,7 +2289,6 @@ static void wipe_in_body(Carried *cr)
    then $0FA6 counts to `last` and $0FAA steps. */
 static void preview_rows(Carried *cr, int all, uint16_t last)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t v;
     int first;
 
@@ -2431,7 +2414,6 @@ void abi_CoursePreviewRowsAll(void)
  */
 void CoursePreviewReset(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0, db0;
     unsigned i;
 
@@ -2755,7 +2737,6 @@ static void zoom_in_body(Carried *cr)
 void CourseRecordsDispatch(Carried *cr)
 {
     cyc(46);
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     TilemapLevelColumns_cr(cr);

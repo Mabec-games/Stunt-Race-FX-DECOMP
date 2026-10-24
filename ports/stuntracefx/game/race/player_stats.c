@@ -262,7 +262,6 @@ void abi_SpeedSampleAdd(void)
  */
 void PlayerStatsFromRecord(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x = cr->x, y = cr->y, w;
     uint8_t v;
 
@@ -384,7 +383,6 @@ void abi_PlayerStatsFromRecord(void);
    caller's frame. */
 static void phase_jump(Carried *cr, uint16_t table)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     if (cr->p & P_M)
         { cyc(24); r_lda8(cr, 0x7E0000 | W(wram_0DD6)); }
@@ -998,7 +996,6 @@ void abi_PlayerOnePhaseRace(void)
  */
 void PlayerOnePhaseTally(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M | P_X);
     cr->x = 0x0002;
@@ -1083,7 +1080,6 @@ void abi_PlayerOnePhaseTally(void)
  */
 void PlayerOnePhaseEnd(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_0E58));
@@ -1188,7 +1184,6 @@ void abi_PlayerOnePhaseReturn(void)
  */
 void PlayerOnePhaseStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t h;
 
     r_rep(cr, P_M | P_X);
@@ -1299,7 +1294,6 @@ static void stunt_count_down(Carried *cr, uint32_t b, uint32_t lead)
  */
 void StuntCourseMark(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, bit;
 
     r_sep(cr, P_M);
@@ -1355,7 +1349,6 @@ void abi_StuntCourseMark(void)
 void StuntPanelWait(Carried *cr)
 {
     cyc(46);
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, m;
 
     PauseOnStart(cr);
@@ -1497,7 +1490,6 @@ void abi_StuntPanelShow(void)
  */
 void StuntPhaseEnd(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     r_sep(cr, P_M | P_X);
@@ -1548,7 +1540,6 @@ void abi_StuntPhaseEnd(void)
  */
 void StuntPanelDone(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     r_rep(cr, P_M | P_X);
@@ -1610,7 +1601,6 @@ void abi_StuntPanelDone(void)
  */
 void StuntPhaseRace(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t w;
 
     r_rep(cr, P_M);
@@ -1708,7 +1698,6 @@ void abi_StuntPhaseRace(void)
  */
 void StuntPhaseStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M | P_X);
     cr->y = 0x0000;
@@ -1794,7 +1783,6 @@ static void hud_car_word(Carried *cr, uint16_t set, uint16_t clear)
    for an inner entry, else as kept. */
 static void hud_end(Carried *cr, int both, int inner, uint8_t p0, uint8_t db0)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M);
     cyc(4);
@@ -1873,7 +1861,6 @@ void abi_RaceHudModeTwo(void)
    the palette cycle; then player 1's presses cleared. */
 static void hud_mode_zero(Carried *cr, uint8_t p0, uint8_t db0)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t db = cr->db, v;
     static const uint8_t pushed_none = 0;
 
@@ -1940,7 +1927,6 @@ void abi_HudBlankDraw(void);
    07:A6DD; then both players' presses cleared. */
 static void hud_mode_one(Carried *cr, uint8_t p0, uint8_t db0)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(46);
     r_lda8(cr, 0x7E0000 | W(hud_blank));
@@ -2033,7 +2019,6 @@ void abi_RaceSoundsAndHud(void)
  */
 void TimeUpPhaseStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t v;
     int i;
 
@@ -2147,7 +2132,6 @@ static int time_cmp8(Carried *cr, uint8_t m)
  */
 void TimeUpPhaseRace(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     (cyc(46), PauseOnStart(cr));
     r_sep(cr, P_M);
@@ -2298,7 +2282,6 @@ void abi_TimeUpPhaseEnd(void)
  */
 void TimeUpPhaseStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M | P_X);
     cr->y = 0x0000;

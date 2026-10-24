@@ -325,7 +325,6 @@ void abi_WindowStep3437By3(void)
 uint8_t WindowEdgesStep(uint8_t db0, uint8_t *p, uint8_t *x)
 {
     uint8_t v, m, a;
-    uint32_t b = 0x7F0000;
 
     cyc(112);
     v = rd8(0x7F0000 | W(wram_340D));

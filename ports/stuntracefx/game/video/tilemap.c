@@ -249,7 +249,6 @@ void abi_VramDmaTileFromGsuRam(void)
  */
 static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     unsigned i, s = 0;
     uint16_t t, mode;
 
@@ -584,7 +583,6 @@ void abi_TilemapPaletteFill(void)
  */
 int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t phase, pal, frame;
     uint16_t mode, table;
 
@@ -975,7 +973,6 @@ uint16_t ObjectLinkFlag4000Step(void);
 /* The body of BackdropRowsUpdate; returns A as the code leaves it. */
 static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(76);
     uint16_t sel = rd16(W(gsu_buffer_select)), x = (uint16_t)(sel << 1), y, h, s, a, end, mb;
     unsigned n;
@@ -1097,7 +1094,6 @@ void abi_BackdropRowsUpdate(void)
  */
 uint16_t BackdropAnglesFromView(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(98);
     uint16_t v = rd16(0x7E0000 | W(wram_0664)), w;
     int i;
@@ -1537,7 +1533,6 @@ void abi_DigitTiles1184(void)
  */
 void TimesKeepAndAdvance(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
 
     cyc(22);
@@ -1588,7 +1583,6 @@ void abi_TimesKeepAndAdvance(void)
  */
 void WindowClosedDigitStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     cyc(46);

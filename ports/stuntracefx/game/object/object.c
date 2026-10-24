@@ -501,7 +501,6 @@ void abi_ObjectLinkFlag4000Step(void)
  */
 int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(54);
     uint16_t m = rd16(0x702476);
 
@@ -562,7 +561,6 @@ static uint8_t add8(uint8_t a, uint8_t b, uint8_t *p)
  */
 uint8_t ObjectTableE8AF(uint8_t bank, uint8_t a, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
 
     cyc(44);
     a = add8(a, rd8(0x7E0000 | (uint16_t)(W(obj_15) + obj)), p);
@@ -604,7 +602,6 @@ void abi_ObjectTableE8AF(void)
  */
 uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(98);
     uint8_t f = rd8(0x7E0000 | (uint16_t)(W(obj_15) + obj)), s = rd8(cyc_then(38, 0x7E0000 | W(wram_1F5A))), d = (uint8_t)(f - s), v;
 
@@ -763,7 +760,6 @@ static uint16_t asr1c(uint16_t v, uint8_t *p)
  */
 uint16_t ObjectVelocityFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(30);
     uint16_t rec = rd16(cyc_then(52, 0x7E0000 | (uint16_t)(W(obj_22) + rd16(0x7E0000 | (uint16_t)(W(obj_27) + obj))))), v;
 
@@ -1130,7 +1126,6 @@ void abi_ObjectInit(void)
  */
 uint16_t ObjectPlaceAll(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(136);
     uint16_t n = rd16(W(object_list_b_len)), i = 0, a = 0, x, y;
 
@@ -1195,7 +1190,7 @@ void abi_ObjectPlaceAll(void)
  */
 int ObjectCountStep5F(uint8_t bank, uint16_t obj, uint8_t *a, uint8_t *p)
 {
-    uint32_t c = field(bank, obj, OBJ_OFF(obj_49)), f = field(bank, obj, OBJ_OFF(obj_5f)), b = (uint32_t)bank << 16;
+    uint32_t c = field(bank, obj, OBJ_OFF(obj_49)), f = field(bank, obj, OBJ_OFF(obj_5f));
     uint8_t n, lim, v, d, r;
 
     cyc(30);
@@ -1294,7 +1289,6 @@ static uint16_t magnitude(uint16_t v)
  */
 uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t dx, dz, sum;
     unsigned s;
     uint8_t k;
@@ -1423,7 +1417,6 @@ void CrashWhite(Carried *cr, uint8_t bank);
  */
 uint16_t ObjectRecordFlag70Step(Carried *cr, uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(46);
     uint8_t flag = rd8(0x7E0000 | W(kept_freeze)), n;
     uint16_t rec, w;
@@ -1493,7 +1486,6 @@ static uint8_t cmp8(uint8_t p, uint8_t a, uint8_t m)
    and 4), or -1 when picked by no kind. */
 static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr, int k)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t y = rd16(cyc_then(52, field(bank, obj, OBJ_OFF(obj_link_w))));
 
     if (k >= 0) {
@@ -1526,7 +1518,6 @@ static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr, in
  */
 uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t f = rd8(cyc_then(52, field(bank, obj, OBJ_OFF(obj_25)))), v, k;
     uint16_t rec, w;
 
@@ -2266,7 +2257,6 @@ void abi_ObjectAlloc(void)
  */
 int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t n;
     uint16_t ax, rx = 0, ry = 0;
     int got;
@@ -2337,7 +2327,6 @@ void abi_ObjectSpawn(void)
  */
 uint16_t ObjectFree(uint8_t bank, uint16_t obj)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t prev, next, head;
 
     cyc(144);
@@ -2430,7 +2419,6 @@ void abi_ObjectFreeLong(void)
  */
 uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(24);
     uint16_t m = rd16(0x7E0000 | W(handler_object));
     uint8_t n;
@@ -2484,7 +2472,6 @@ void abi_ObjectRelease(void)
  */
 void ObjectCallHandler(Carried *cr, uint16_t obj)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     cyc(84);
     uint8_t keep = rd8(0x7E0000 | W(wram_1F58)), bank = rd8(cyc_then(262, 0x7E0000 | (uint16_t)(W(obj_1c) + obj)));
     cyc(74);
@@ -2949,7 +2936,6 @@ void abi_ObjectSpawnFromScript(void)
  */
 uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     cyc(30);
     uint8_t v = rd8(0x7E0000 | (uint16_t)(W(obj_48) + obj));
 
@@ -3008,7 +2994,6 @@ void abi_ObjectCopyPositionTo(void);
  */
 void ObjectSpawnChanceD460(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t y;
     uint8_t a;
 
@@ -3068,7 +3053,6 @@ void abi_ObjectSpawnChanceD460(void)
  */
 void ObjectAdvance5DIfFlag(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     uint16_t w;
 
@@ -3237,7 +3221,6 @@ static void add_random(Carried *cr, uint32_t b, uint16_t off, uint16_t mask)
  */
 void ObjectSparkleStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t w;
     uint8_t v;
     unsigned i;
@@ -3380,7 +3363,6 @@ void abi_ObjectSparkleStart(void)
  */
 void ObjectSpawnD460UnlessFlag(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, a;
 
     cyc(24);
@@ -3468,7 +3450,6 @@ static void sign_of_zero(uint32_t at)
 
 void ObjectMoveForward(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x0 = cr->x;
     uint8_t v;
 
@@ -3787,7 +3768,6 @@ static void parent_place(Carried *cr, uint32_t b, int attached)
  */
 void ObjectSpawnTrail(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -4032,7 +4012,6 @@ void abi_ObjectAttachedSignX(void)
  */
 void ObjectSpawnAttached(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -4410,7 +4389,6 @@ void abi_ObjectLinkEventTrigger2(void)
  */
 void ObjectLinkSpeedSet(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     if (cr->p & P_M)
         { cyc(40); wr8(0x7E0000 | W(wram_1A21), (uint8_t)cr->a); }
@@ -4444,7 +4422,6 @@ void abi_ObjectLinkSpeedSet(void)
  */
 void ObjectLinkBobStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(70);
     wr8(0x7E0000 | W(wram_1A1D), (uint8_t)cr->a);
@@ -4635,7 +4612,6 @@ void abi_ObjectBillboardTilt(void)
  */
 void ObjectSpawnPuff(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x = cr->x, v;
     uint8_t a;
 
@@ -5277,7 +5253,6 @@ void abi_ObjectCarRecordSetup(void)
  */
 void ObjectTimedStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     (cyc(62), ObjectRebucket_cr(cr));
@@ -5321,7 +5296,6 @@ void abi_ObjectTimedStep(void)
  */
 void ObjectTimedSetup(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0xEC8B);
@@ -5356,7 +5330,6 @@ void abi_ObjectTimedSetup(void)
    handler, through the data bank. */
 static void set_handler(Carried *cr, uint16_t o, uint16_t h)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16_imm(cr, h);
@@ -5421,7 +5394,6 @@ static void passed_tail(Carried *cr, unsigned extra)
  */
 void ObjectReleaseWhenPassed(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
     cr->y = rd16(0x7E0000 | W(wram_0346));
@@ -5521,7 +5493,6 @@ void abi_ObjectReleaseWhenPassedBehind(void)
  */
 void ObjectListRemove(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t x0 = cr->x, y0 = cr->y, slot;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));

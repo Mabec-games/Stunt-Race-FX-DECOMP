@@ -701,7 +701,6 @@ static void blend_split(uint32_t at, uint32_t dp)
  */
 uint16_t ColourBlend(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t r, g, bl, m, s, t, f, a;
     uint8_t cv = 0;
 
@@ -819,7 +818,6 @@ static int kept_v;
  */
 uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y, uint16_t *xo, int *stepped)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t t, step = 0, v, d;
     unsigned s;
     int up;
@@ -993,7 +991,6 @@ void abi_ColourBlendBy(void)
  */
 uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t t, v;
 
     cyc(16);
@@ -1188,7 +1185,6 @@ static int status_c_kept;
  */
 uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t flags, t = 0, a, x;
     uint8_t v;
     int table = 0;
@@ -1294,7 +1290,6 @@ void abi_StatusColourPick(void)
  */
 uint16_t PalettesStep(uint8_t bank, int *ran, uint16_t *xo)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a = 0, x = 0;
     int stored, stepped;
     uint8_t level;
@@ -1393,7 +1388,6 @@ static uint16_t sub16(uint16_t a, uint16_t m, int *c, int *v)
  */
 uint16_t FadeValueStep(uint16_t a)
 {
-    const uint32_t b = 0x7E0000;
     uint16_t w, m;
     uint8_t v;
 

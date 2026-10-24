@@ -17,11 +17,6 @@ int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 void SoundPort0QueuePush(uint8_t command);
 uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value);
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* Compare as CMP does: C when a >= b; N, Z from a - b. */
 static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
 {
@@ -627,7 +622,6 @@ void SoundPort0QueuePushW(uint8_t command, unsigned wide);
  */
 void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t obj = *x, n, off, sel, v;
 
     n = dec_field(obj, 0x0A);
