@@ -389,7 +389,9 @@ def asm_spellings(cfile):
 def name_indexed(t, names, known, spell):
     """A work-RAM table read at an index, (uint16_t)(0x0375 + y): the base
     as the file's asm spells it (!oam_buffer+1,Y), W(oam_buffer) + 1; a
-    base the asm does not spell, by its own name if it has one."""
+    base the asm does not spell, by its own name if it has one, from $0100
+    (below, a number added to an index is a field's offset from a pointer:
+    (0x0001 + x) with X a ROM string's address is no table at $0001)."""
     left = []
 
     def f(m):
@@ -400,7 +402,7 @@ def name_indexed(t, names, known, spell):
         if len(s) == 1:
             n, k = next(iter(s))
             return '(uint16_t)(W(%s)%s + ' % (n, (' + %d' % k if k > 0 else ' - %d' % -k) if k else '')
-        if v in names and not s:
+        if v in names and not s and v >= 0x100:
             return '(uint16_t)(W(%s) + ' % names[v]
         left.append('$%04X %s' % (v, sorted(s)))
         return m.group(0)

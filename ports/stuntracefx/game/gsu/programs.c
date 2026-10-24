@@ -3705,7 +3705,7 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     cyc(2);
     do {
         cyc(62);
-        v = rd16(b | (uint16_t)(W(slot_01) + x));
+        v = rd16(b | (uint16_t)(0x0001 + x));
         if (v) {
             cyc(52);
             wr16(b | (uint16_t)(W(glyph_list_glyph) + y), v);
