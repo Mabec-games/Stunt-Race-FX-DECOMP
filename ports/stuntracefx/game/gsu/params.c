@@ -100,7 +100,7 @@ uint16_t GsuParamsFromDp(uint8_t bank)
     unsigned i;
 
     cyc(17422);
-    wr8((uint32_t)bank << 16 | W(wram_05EF), 0xFF);
+    wr8(0x7E0000 | W(wram_05EF), 0xFF);
     cyc(22);
     for (i = 0; i < 8; i++) {
         cyc(16);
@@ -234,7 +234,7 @@ uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
     unsigned i;
 
     cyc(24);
-    wr16(b | W(wram_1F4C), entry);
+    wr16(0x7E0000 | W(wram_1F4C), entry);
     cyc(62);
     t = (uint32_t)(rd16(0x701094) & 0x00FF) << 16;
     cyc(156);
@@ -931,7 +931,7 @@ uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
     uint16_t a, last, base;
 
     cyc(24);
-    wr16((uint32_t)bank << 16 | W(wram_1F4C), entry);
+    wr16(0x7E0000 | W(wram_1F4C), entry);
     cyc(62);
     t = (uint32_t)(rd16(0x701094) & 0x00FF) << 16;
     cyc(164);

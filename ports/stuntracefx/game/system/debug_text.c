@@ -52,35 +52,35 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     rows = 6;
     do {
         cyc(rows == 6 ? 76 : 92); /* PHX first, BRL after */
-        v = rd8(b | W(text_half));
+        v = rd8(0x7E0000 | W(text_half));
         f = rd8(b | (uint16_t)(TEXT_FONT + *y));
         cyc((v & 0x04) ? 94 : 100); /* BEQ not taken / taken */
-        wr8(b | W(wram_1F2B), f);
+        wr8(0x7E0000 | W(wram_1F2B), f);
         high = (v & 0x04) ? (cyc(40), (uint8_t)(f >> 4)) : (uint8_t)(f & 0xF0);
         cyc(40);
-        wr8(b | W(text_high), high);
+        wr8(0x7E0000 | W(text_high), high);
         cyc(24);
-        bits = rd8(b | W(wram_1F2B));
+        bits = rd8(0x7E0000 | W(wram_1F2B));
         bits = (v & 0x04) ? (uint8_t)(bits & 0x0F) : (cyc(40), (uint8_t)(bits << 4));
         cyc(40);
-        wr8(b | W(wram_1F2B), bits);
+        wr8(0x7E0000 | W(wram_1F2B), bits);
         cyc(24);
-        high = rd8(b | W(text_high));
+        high = rd8(0x7E0000 | W(text_high));
         cyc(40);
-        wr8(b | W(text_mask), (uint8_t)~(bits | high));
+        wr8(0x7E0000 | W(text_mask), (uint8_t)~(bits | high));
         cyc((v & 0x04) ? 46 : 24); /* BRA */
-        if (!(rd8(b | W(text_half)) & 0x04))
+        if (!(rd8(0x7E0000 | W(text_half)) & 0x04))
             for (i = 0; i < 8; i++)
                 { cyc(i == 0 ? 80 : i == 5 ? 48 : 32); wr8(0x700000 + cell[i].off + *x, cell[i].cleared); } else { cyc(38); }
         for (i = 0; i < 8; i++) {
             cyc(32);
             v = rd8(0x700000 + cell[i].off + *x);
             cyc(24);
-            v = (uint8_t)(v & rd8(b | W(text_mask)));
+            v = (uint8_t)(v & rd8(0x7E0000 | W(text_mask)));
             if (cell[i].high < 2)
-                { cyc(24); v |= rd8(b | W(wram_1F2B)); }
+                { cyc(24); v |= rd8(0x7E0000 | W(wram_1F2B)); }
             if (cell[i].high == 1)
-                { cyc(24); v |= rd8(b | W(text_high)); }
+                { cyc(24); v |= rd8(0x7E0000 | W(text_high)); }
             cyc(32);
             wr8(0x700000 + cell[i].off + *x, v);
         }
@@ -94,9 +94,9 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     cyc(88);
     pos = (uint16_t)(dest - rd16(W(text_base)));
     cyc(54);
-    half = (uint16_t)(rd16(b | W(text_half)) ^ 0x0004);
+    half = (uint16_t)(rd16(0x7E0000 | W(text_half)) ^ 0x0004);
     cyc(48);
-    wr16(b | W(text_half), half);
+    wr16(0x7E0000 | W(text_half), half);
     if (!half) {
         cyc(92);
         pos = (uint16_t)(pos + 0x0400);
@@ -149,7 +149,7 @@ void DebugPrint(uint8_t bank)
     unsigned top;
 
     cyc(242);
-    wr16((uint32_t)bank << 16 | W(text_half), 0x0000);
+    wr16(0x7E0000 | W(text_half), 0x0000);
     for (top = 150;; top = 90) { /* later rounds follow a draw: its tail is stated */
         cyc(top);
         s = rd24(W(dp_54));
@@ -216,7 +216,7 @@ uint16_t DebugShowErrors(uint8_t bank)
         cyc(56);
         wr16(W(text_pos), errors[i].pos);
         cyc(48);
-        wr16((uint32_t)bank << 16 | W(text_half), 0x0000);
+        wr16(0x7E0000 | W(text_half), 0x0000);
         cyc(54);
         wr8(W(dp_56), 0x08);
         cyc(62);

@@ -900,22 +900,22 @@ static void preview_menu_loop(Carried *cr)
         cyc(56);
         wr16(W(wram_18FD), 0x0000);
         cyc(24);
-        wr16(b | W(menu_blink_counter), cyc_then(14, (uint16_t)(rd16(b | W(menu_blink_counter)) + 1)));
+        wr16(0x7E0000 | W(menu_blink_counter), cyc_then(14, (uint16_t)(rd16(0x7E0000 | W(menu_blink_counter)) + 1)));
         (cyc(62), w_MenuActorsRun(cr));
         (cyc(62), MenuOamBuild_cr(cr));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(46);
-        wr16(b | W(menu_joy1_pressed), 0x0000);
+        wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
         cyc(24);
-        wr16(b | W(menu_joy2_pressed), 0x0000);
+        wr16(0x7E0000 | W(menu_joy2_pressed), 0x0000);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(46);
-        cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(b | W(frame_update_flags)) | 0x0F));
+        cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(0x7E0000 | W(frame_update_flags)) | 0x0F));
         cyc(40);
-        wr8(b | W(frame_update_flags), (uint8_t)cr->a);
+        wr8(0x7E0000 | W(frame_update_flags), (uint8_t)cr->a);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cyc(46);
-        cr->a = rd16(b | W(menu_exit));
+        cr->a = rd16(0x7E0000 | W(menu_exit));
     } while (!cr->a);
     cyc(116);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -979,9 +979,9 @@ void MenuPreviewRunFade(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0F);
     cyc(160);
-    wr8(b | W(wram_11DA), 0x0F);
+    wr8(0x7E0000 | W(wram_11DA), 0x0F);
     cyc(24);
-    wr8(b | W(wram_11DB), 0x0F);
+    wr8(0x7E0000 | W(wram_11DB), 0x0F);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     preview_menu_loop(cr);
     cyc(44);                            /* RTL */
@@ -1029,12 +1029,12 @@ void CourseMenuRun(Carried *cr)
     cr->a = (uint16_t)(cr->a & 0xFF00);
     set_p(cr, nz8(cr->p, 0x00));
     cyc(84);
-    wr8(b | W(draw_side), 0x00);
+    wr8(0x7E0000 | W(draw_side), 0x00);
     r_rep(cr, P_M);
     cyc(24);
-    wr16(b | W(wram_18C3), 0x0000);
+    wr16(0x7E0000 | W(wram_18C3), 0x0000);
     cyc(24);
-    wr16(b | W(frame_step), 0x0000);
+    wr16(0x7E0000 | W(frame_step), 0x0000);
     cyc(32);
     r_lda16(cr, W(wram_1917));
     if (!cr->a) {
@@ -1057,7 +1057,7 @@ void CourseMenuRun(Carried *cr)
 chosen:
     r_lda16(cr, W(wram_18C3));
     cyc(24);
-    wr16(b | W(hud_mode), cr->a);
+    wr16(0x7E0000 | W(hud_mode), cr->a);
     r_lda16_imm(cr, 0x0001);
     cyc(18);
     wr16(W(wram_1917), 0x0001);
@@ -1075,7 +1075,7 @@ chosen:
         cyc(32);
         r_lda8(cr, setting[i]);
         cyc(24);
-        wr8(b | (uint16_t)(W(wram_1184) + i), (uint8_t)cr->a);
+        wr8(0x7E0000 | (uint16_t)(W(wram_1184) + i), (uint8_t)cr->a);
         cyc(32);
         wr8(0x70FC08u + i, (uint8_t)cr->a);
     }
@@ -1086,7 +1086,7 @@ chosen:
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x1C);
     set_p(cr, nz8(cr->p, 0x1C));
     cyc(62);
-    wr8(b | W(wram_0D3F), 0x1C);
+    wr8(0x7E0000 | W(wram_0D3F), 0x1C);
     cyc(24);
     hw_wr(b | 0x4200, 0x00);
     cyc(24);
@@ -1131,7 +1131,7 @@ void MenuPreviewBackOut(Carried *cr)
     if (preview_frame(cr, 2))
         { cyc(58); return; }
     cyc(46);
-    x = rd16((uint32_t)cr->db << 16 | W(actor_current));
+    x = rd16(0x7E0000 | W(actor_current));
     cr->x = x;
     cr->a = 0xBE65;
     cyc(46);
@@ -1175,7 +1175,7 @@ void MenuPreviewBackWait(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    v = rd8((uint32_t)cr->db << 16 | W(wram_0357));
+    v = rd8(0x7E0000 | W(wram_0357));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     if (v) {
@@ -1228,7 +1228,7 @@ void MenuPreviewBackEnd(Carried *cr)
     if (preview_frame(cr, 2))
         { cyc(58); return; }
     cyc(46);
-    x = rd16((uint32_t)cr->db << 16 | W(actor_current));
+    x = rd16(0x7E0000 | W(actor_current));
     cr->x = x;
     cyc(46);
     wr16(ACTOR(x, W(actor_handler)), 0xBA4E);

@@ -18,7 +18,7 @@
 
 static uint32_t f(uint8_t bank, uint16_t obj, uint16_t off)
 {
-    return (uint32_t)bank << 16 | (uint16_t)(W(obj_base) + off + obj);
+    return 0x7E0000 | (uint16_t)(W(obj_base) + off + obj);
 }
 
 static uint32_t w(uint8_t bank, uint16_t a)
@@ -100,7 +100,7 @@ uint16_t ObjectAtPoint(uint8_t b)
     uint16_t x, a, m;
 
     ex_set = fcv_set = 0;
-    x = ld16(rd16(cyc_then(24, w(b, W(object_list_0325)))));
+    x = ld16(rd16(cyc_then(24, (0x7E0000 | W(object_list_0325)))));
     if (!x)
         { cyc(8); goto none; }
 loop:
@@ -215,7 +215,7 @@ uint16_t ObjectNextOfKind(uint8_t b, uint16_t a, uint16_t self)
     fcv_set = 0;
     cyc(16);
     wr16(W(dp_3e), self);
-    x = ld16(rd16(cyc_then(24, w(b, W(wram_1F30)))));
+    x = ld16(rd16(cyc_then(24, (0x7E0000 | W(wram_1F30)))));
     if (!x)
         goto ended;
     cmp16(a, 0x0000);
@@ -240,14 +240,14 @@ found:
     if (x == m)
         goto skip;
     y = ld16(rd16(cyc_then(18, f(b, x, 0x00))));
-    wr16(w(b, W(wram_1F30)), cyc_then(8, y));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(8, y));
     y = ld16(x);
     cyc(14);
     ex_x = ld16(cyc_then(28, rd16(W(dp_3e))));
     return y;
 ended:
     y = ld16(0x0000);
-    wr16(w(b, W(wram_1F30)), cyc_then(38, 0x0000));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(38, 0x0000));
     cyc(16);
     ex_x = ld16(cyc_then(28, rd16(W(dp_3e))));
     return y;
@@ -261,7 +261,7 @@ any:
     cmp16(x, m);
     if (x == m)
         goto any;
-    wr16(w(b, W(wram_1F30)), cyc_then(18, x));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(18, x));
     cyc(16);
     ex_x = ld16(cyc_then(28, rd16(W(dp_3e))));
     return y;
@@ -309,7 +309,7 @@ uint16_t ObjectNextFlagged(uint8_t b, uint16_t a, uint16_t self)
         goto any;
     cyc(34);
     wr16(W(dp_3e), self);
-    x = ld16(rd16(cyc_then(24, w(b, W(wram_1F30)))));
+    x = ld16(rd16(cyc_then(24, (0x7E0000 | W(wram_1F30)))));
     if (!x)
         goto ended;
     y = ld16(x);
@@ -329,18 +329,18 @@ match:
     cmp16(x, m);
     if (x == m)
         goto skip;
-    wr16(w(b, W(wram_1F2B)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_1F2B)), cyc_then(18, a));
     v = rd8(cyc_then(52, f(b, x, 0x24)));
     cyc(16);
     m = rd8(W(dp_02));
     v = (uint8_t)(v & m);
     a = (uint16_t)((a & 0xFF00) | v);
     if (!v) {
-        a = ld16(cyc_then(12, rd16(cyc_then(62, w(b, W(wram_1F2B))))));
+        a = ld16(cyc_then(12, rd16(cyc_then(62, (0x7E0000 | W(wram_1F2B))))));
         goto skip;
     }
     y = ld16(rd16(cyc_then(74, f(b, x, 0x00))));
-    wr16(w(b, W(wram_1F30)), cyc_then(8, y));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(8, y));
     y = ld16(x);
     ex_a = a;
     ex_set = 1;
@@ -349,14 +349,14 @@ match:
     return y;
 ended:
     y = ld16(0x0000);
-    wr16(w(b, W(wram_1F30)), cyc_then(38, 0x0000));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(38, 0x0000));
     cyc(16);
     ex_x = ld16(cyc_then(28, rd16(W(dp_3e))));
     return y;
 any:
     cyc(40);
     wr16(W(dp_3e), self);
-    x = ld16(rd16(cyc_then(24, w(b, W(wram_1F30)))));
+    x = ld16(rd16(cyc_then(24, (0x7E0000 | W(wram_1F30)))));
     if (!x)
         goto ended; else { cyc(16); }
     y = ld16(x);
@@ -380,7 +380,7 @@ next:
         goto flagloop;
 found:
     y = ld16(rd16(cyc_then(28, f(b, x, 0x00))));
-    wr16(w(b, W(wram_1F30)), cyc_then(8, y));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(8, y));
     y = ld16(x);
     ex_a = a;
     ex_set = 1 | 4;                     /* 4: M 16-bit at the end (the loop ran 8-bit) */
@@ -422,7 +422,7 @@ static uint16_t distance(uint8_t b, uint16_t x, uint16_t self, int *below_max)
     uint16_t d, m;
 
     (cyc(46), ObjectDistanceApprox(b, x, self));
-    d = ld16(rd16(cyc_then(46, w(b, W(wram_0364)))));
+    d = ld16(rd16(cyc_then(46, (0x7E0000 | W(wram_0364)))));
     m = rd16(W(dp_3e));
     cmp16(d, m);
     *below_max = ((uint16_t)(d - m) & 0x8000) != 0;
@@ -450,7 +450,7 @@ uint16_t ObjectNearestOfKind(uint8_t b, uint16_t a, uint16_t self)
     fcv_set = ex_set = 0;
     cyc(16);
     wr16(W(dp_04), self);
-    x = ld16(rd16(cyc_then(24, w(b, W(wram_1F30)))));
+    x = ld16(rd16(cyc_then(24, (0x7E0000 | W(wram_1F30)))));
     if (!x)
         goto none;
     cmp16(a, 0x0000);
@@ -492,7 +492,7 @@ kind_next:
     if (x)
         { cyc(4); goto kind; }
     y = ld16(rd16(cyc_then(28, f(b, x, 0x00))));
-    wr16(w(b, W(wram_1F30)), cyc_then(8, y));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(8, y));
     goto done;
 none:
     y = ld16(0x0000);
@@ -528,7 +528,7 @@ any_next:
     x = ld16(y);
     if (x)
         { cyc(4); goto any_loop; }
-    wr16(w(b, W(wram_1F30)), cyc_then(22, y));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(22, y));
 done:
     cyc(16);
     y = ld16(rd16(W(dp_40)));
@@ -588,7 +588,7 @@ uint16_t ObjectFirstWithin(uint8_t b, uint16_t a, uint16_t self)
     fcv_set = ex_set = 0;
     cyc(16);
     wr16(W(dp_04), self);
-    x = ld16(rd16(cyc_then(24, w(b, W(wram_1F30)))));
+    x = ld16(rd16(cyc_then(24, (0x7E0000 | W(wram_1F30)))));
     if (!x) {
         y = ld16(0x0000);
         cyc(30);
@@ -654,7 +654,7 @@ any_next:
         goto any;
 done:
     y = ld16(rd16(cyc_then(28, f(b, x, 0x00))));
-    wr16(w(b, W(wram_1F30)), cyc_then(8, y));
+    wr16((0x7E0000 | W(wram_1F30)), cyc_then(8, y));
     y = ld16(x);
     ex_a = a;
     ex_set |= 1;
@@ -693,7 +693,7 @@ uint16_t ObjectFirstOfKind(uint8_t b, uint16_t a)
 {
     uint16_t x, y, m;
 
-    y = rd16(cyc_then(46, w(b, W(object_list_0325))));
+    y = rd16(cyc_then(46, (0x7E0000 | W(object_list_0325))));
     for (;;) {
         x = y;
         m = rd16(cyc_then(44, f(b, x, 0x04)));
@@ -744,20 +744,20 @@ uint16_t ObjectCountOfKind(uint8_t b, uint16_t a)
     uint16_t x, y, m, n;
     int first = 1;
 
-    y = rd16(cyc_then(46, w(b, W(object_list_0325))));
-    wr16(w(b, W(wram_1F2B)), cyc_then(24, 0x0000));
+    y = rd16(cyc_then(46, (0x7E0000 | W(object_list_0325))));
+    wr16((0x7E0000 | W(wram_1F2B)), cyc_then(24, 0x0000));
     do {
         x = y;
         m = rd16(cyc_then(first ? 44 : 66, f(b, x, 0x04)));
         first = 0;
         if (a == m) {
-            n = rd16(cyc_then(40, w(b, W(wram_1F2B))));
-            wr16(w(b, W(wram_1F2B)), cyc_then(14, (uint16_t)(n + 1)));
+            n = rd16(cyc_then(40, (0x7E0000 | W(wram_1F2B))));
+            wr16((0x7E0000 | W(wram_1F2B)), cyc_then(14, (uint16_t)(n + 1)));
         } else { cyc(22); }
         y = rd16(cyc_then(30, f(b, x, 0x00)));
     } while (y);
     ex_x = x;
-    n = rd16(cyc_then(40, w(b, W(wram_1F2B))));
+    n = rd16(cyc_then(40, (0x7E0000 | W(wram_1F2B))));
     cyc(72);                            /* PLP, RTL */
     return n;
 }
@@ -843,7 +843,7 @@ uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y)
     m = rd16(W(dp_02));
     a = add16(a, m);
     a = ld16((uint16_t)(a << 1));
-    wr16(w(b, W(wram_0364)), cyc_then(6, a));
+    wr16((0x7E0000 | W(wram_0364)), cyc_then(6, a));
     cyc(16);
     a = ld16(rd16(W(dp_08)));
     m = rd16(W(dp_02));
@@ -852,7 +852,7 @@ uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y)
         { cyc(16); a = ld16(rd16(W(dp_02))); }
     else
         { cyc(10); a = ld16(cyc_then(22, rd16(W(dp_08)))); }
-    m = rd16(cyc_then(22, w(b, W(wram_0364))));
+    m = rd16(cyc_then(22, (0x7E0000 | W(wram_0364))));
     a = add16(a, m);
     wr16(W(dp_02), a);
     a = (uint16_t)(a << 1);
@@ -868,7 +868,7 @@ uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y)
     a = asr1(a);
     a = asr1(a);
     t = asr1(a);
-    wr16(w(b, W(wram_0364)), cyc_then(122, t));
+    wr16((0x7E0000 | W(wram_0364)), cyc_then(122, t));
     cyc(66);                            /* SEP, RTL */
     return t;
 }
@@ -923,23 +923,23 @@ uint16_t ObjectDistanceXY(uint8_t b, uint16_t x, uint16_t y)
         m = rd16(W(dp_02));
         a = sub16(0x0000, m);
     } else { cyc(28); }
-    wr16(w(b, W(wram_1A62)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_1A62)), cyc_then(18, a));
     a = rd16(cyc_then(30, f(b, y, 0x0E)));
     m = rd16(cyc_then(44, f(b, x, 0x0E)));
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_08), a);
     if (!(a & 0x8000)) {
-        m = rd16(cyc_then(54, w(b, W(wram_1A62))));
+        m = rd16(cyc_then(54, (0x7E0000 | W(wram_1A62))));
         cyc(12);
         a = add16(a, m);
     } else {
-        a = rd16(cyc_then(60, w(b, W(wram_1A62))));
+        a = rd16(cyc_then(60, (0x7E0000 | W(wram_1A62))));
         cyc(16);
         m = rd16(W(dp_08));
         a = sub16(a, m);
     }
-    wr16(w(b, W(wram_1A62)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_1A62)), cyc_then(18, a));
     cyc(66);                            /* SEP, RTL */
     return a;
 }
@@ -983,11 +983,11 @@ static uint16_t fold(uint8_t b, uint16_t a, uint16_t at)
     uint16_t m;
 
     if (!(a & 0x8000)) {
-        m = rd16(cyc_then(54, w(b, W(wram_0364))));
+        m = rd16(cyc_then(54, (0x7E0000 | W(wram_0364))));
         cyc(12);
         return add16(a, m);
     }
-    a = rd16(cyc_then(60, w(b, W(wram_0364))));
+    a = rd16(cyc_then(60, (0x7E0000 | W(wram_0364))));
     cyc(16);
     m = rd16(at);
     return sub16(a, m);
@@ -1015,16 +1015,16 @@ uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y)
     cyc(10);
     wr16(W(dp_02), a);
     a = neg_if(a, W(dp_02));
-    wr16(w(b, W(wram_0364)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_0364)), cyc_then(18, a));
     a = rd16(cyc_then(30, f(b, y, 0x10)));
-    m = rd16(cyc_then(38, w(b, W(wram_05F2))));
+    m = rd16(cyc_then(38, (0x7E0000 | W(wram_05F2))));
     a = add16(a, m);
     m = rd16(cyc_then(28, f(b, x, 0x10)));
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_08), a);
     a = fold(b, a, W(dp_08));
-    wr16(w(b, W(wram_0364)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_0364)), cyc_then(18, a));
     cyc(66);                            /* SEP, RTL */
     return a;
 }
@@ -1060,7 +1060,7 @@ static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t 
     cyc(10);
     wr16(W(dp_02), a);
     a = neg_if(a, W(dp_02));
-    wr16(w(b, W(wram_0364)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_0364)), cyc_then(18, a));
     cyc(second > 0xFFFF ? 24 : 16);     /* LDA abs or dp */
     a = rd16(second);
     m = rd16(cyc_then(44, f(b, x, field2)));
@@ -1068,7 +1068,7 @@ static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t 
     cyc(10);
     wr16(W(dp_08), a);
     a = fold(b, a, W(dp_08));
-    wr16(w(b, W(wram_0364)), cyc_then(18, a));
+    wr16((0x7E0000 | W(wram_0364)), cyc_then(18, a));
     cyc(66);                            /* SEP, RTL */
     return a;
 }
@@ -1085,7 +1085,7 @@ static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t 
  */
 uint16_t ObjectPointDistanceXZ(uint8_t b, uint16_t x)
 {
-    return point_distance(b, x, w(b, W(wram_05F2)), 0x10);
+    return point_distance(b, x, (0x7E0000 | W(wram_05F2)), 0x10);
 }
 
 void ObjectPointDistanceXZ_cr(Carried *cr)
@@ -1307,7 +1307,7 @@ uint16_t ObjectPairPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     uint16_t a, m;
 
     (cyc(122), ObjectDistanceApprox(b, x, y));
-    a = rd16(cyc_then(46, w(b, W(wram_0364))));
+    a = rd16(cyc_then(46, (0x7E0000 | W(wram_0364))));
     cyc(16);
     wr16(W(dp_08), a);
     a = rd16(cyc_then(30, f(b, y, 0x0E)));
@@ -1367,7 +1367,7 @@ uint16_t ObjectPairOffsetGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     wr16(W(dp_02), a);
     cyc(16);
     a = rd16(W(dp_08));
-    m = rd16(cyc_then(38, w(b, W(wram_05F2))));
+    m = rd16(cyc_then(38, (0x7E0000 | W(wram_05F2))));
     a = add16(a, m);
     wr16(W(dp_08), a);
     return gsu_pair_end();
@@ -1406,7 +1406,7 @@ uint16_t ObjectPairOffsetPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     uint16_t a, m;
 
     (cyc(122), ObjectOffsetDistanceXZ(b, x, y));
-    a = rd16(cyc_then(46, w(b, W(wram_0364))));
+    a = rd16(cyc_then(46, (0x7E0000 | W(wram_0364))));
     cyc(16);
     wr16(W(dp_08), a);
     a = rd16(cyc_then(30, f(b, y, 0x0E)));

@@ -51,7 +51,7 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
 static uint16_t expand_list(uint8_t bank, uint16_t *y, uint16_t course, uint16_t special, int *carry)
 {
     cyc(92);
-    uint16_t c = (uint16_t)(rd16((uint32_t)bank << 16 | W(course)) & 0x00FF);
+    uint16_t c = (uint16_t)(rd16(0x7E0000 | W(course)) & 0x00FF);
 
     *carry = c >= course;
     return expand_runs(bank, c == course ? (cyc(16), special) : 0, y);
@@ -386,8 +386,8 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(40);
     dma_wr(b | 0x4337, 0x7F);
     cyc(90);
-    c = rd8(b | W(course));
-    i = (uint16_t)(((uint16_t)(c << 1) + rd8(cyc_then(52, b | W(course)))) & 0x00FF);
+    c = rd8(0x7E0000 | W(course));
+    i = (uint16_t)(((uint16_t)(c << 1) + rd8(cyc_then(52, 0x7E0000 | W(course)))) & 0x00FF);
     /* the rest reads only ROM: 8 a byte read, and the code between */
     cyc(114);
     blk = rd8(0x03F6F3 + i);

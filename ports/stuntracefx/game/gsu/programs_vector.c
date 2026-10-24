@@ -99,7 +99,7 @@ uint16_t VectorGsu81E3(uint8_t bank)
     cyc(16);
     wr16(W(dp_02), (uint16_t)(u - v));
     cyc(24);
-    u = rd16(b | W(wram_05F2));
+    u = rd16(0x7E0000 | W(wram_05F2));
     cyc(30);
     v = rd16(W(dp_94));
     r = (uint16_t)(u - v);
@@ -604,11 +604,11 @@ uint16_t ViewFromAnglesGsu8277(uint8_t bank)
     cyc(16);
     w = rd16(W(dp_c5));
     cyc(182);
-    wr8(b | W(wram_067C), (uint8_t)(w >> 8));
+    wr8(0x7E0000 | W(wram_067C), (uint8_t)(w >> 8));
     cyc(38);
     w = rd16(W(dp_c9));
     cyc(182);
-    wr8(b | W(wram_067D), (uint8_t)(w >> 8));
+    wr8(0x7E0000 | W(wram_067D), (uint8_t)(w >> 8));
     (cyc(62), Gsu8277(0));
     cyc(22);                            /* REP #$20 */
     cyc(16);
@@ -626,10 +626,10 @@ uint16_t ViewFromAnglesGsu8277(uint8_t bank)
     cyc(44);
     for (i = 0; i < 9; i++) {
         cyc(24);
-        w = rd16(b | (uint16_t)(W(view_8325_out) + 2 * i));
+        w = rd16(0x7E0000 | (uint16_t)(W(view_8325_out) + 2 * i));
         w = asr7(w, &p);
         cyc(290);
-        wr16(b | (uint16_t)(W(wram_0668) + 2 + 2 * i), w);
+        wr16(0x7E0000 | (uint16_t)(W(wram_0668) + 2 + 2 * i), w);
     }
     view_c = (uint8_t)(p & P_C);
     cyc(60);
@@ -651,11 +651,11 @@ uint16_t ViewFromAnglesGsu8277(uint8_t bank)
         wr16(0x700154 + 2 * i, w);
     }
     cyc(68);
-    w = (uint16_t)((w & 0xFF00) | rd8(b | W(wram_067C)));
+    w = (uint16_t)((w & 0xFF00) | rd8(0x7E0000 | W(wram_067C)));
     cyc(32);
     wr8(0x700162, (uint8_t)w);
     cyc(24);
-    w = (uint16_t)((w & 0xFF00) | rd8(b | W(wram_067D)));
+    w = (uint16_t)((w & 0xFF00) | rd8(0x7E0000 | W(wram_067D)));
     cyc(32);
     wr8(0x700164, (uint8_t)w);
     cyc(22);                            /* SEP #$30 */
@@ -703,12 +703,12 @@ uint16_t ViewToGsuParams(uint8_t bank)
 
     cyc(22);                            /* REP #$20 */
     cyc(24);
-    w = (uint16_t)(rd16(b | W(wram_1167)) & 0x00FF);
+    w = (uint16_t)(rd16(0x7E0000 | W(wram_1167)) & 0x00FF);
     if (w) {
         cyc(40);
         for (i = 0; i < 3; i++) {
             cyc(24);
-            w = rd16(b | W(frame_step));
+            w = rd16(0x7E0000 | W(frame_step));
             cyc(32);
             wr16(0x7000D8 + 2 * i, w);
         }
@@ -721,7 +721,7 @@ uint16_t ViewToGsuParams(uint8_t bank)
     }
     for (i = 0; i < 9; i++) {
         cyc(24);
-        w = rd16(b | (uint16_t)(W(view_8325_out) + 2 * i));
+        w = rd16(0x7E0000 | (uint16_t)(W(view_8325_out) + 2 * i));
         cyc(32);
         wr16(0x7000E4 + 2 * i, w);
     }

@@ -30,11 +30,11 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
  */
 uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint16_t a = (uint16_t)((uint16_t)(rd16(cyc_then(68, dbw(bank, W(wram_0D7B)))) + 1) << 2);
+    uint16_t a = (uint16_t)((uint16_t)(rd16(cyc_then(68, (0x7E0000 | W(wram_0D7B)))) + 1) << 2);
     uint8_t c, n;
 
     *y = a;
-    c = rd8(cyc_then(102, dbw(bank, W(wram_0D4A))));
+    c = rd8(cyc_then(102, (0x7E0000 | W(wram_0D4A))));
     a = (uint16_t)((a & 0xFF00) | c);
     if (!c)
         { cyc(6); return a; }
@@ -44,7 +44,7 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
     do {
         cyc(70);
         c = rd8(CLASS_NAMES + *x);
-        wr8(dbw(bank, (uint16_t)(W(oam_buffer) + 2 + *y)), c);
+        wr8((0x7E0000 | (uint16_t)(W(oam_buffer) + 2 + *y)), c);
         *x = (uint16_t)(*x + 1);
         *y = (uint16_t)(*y + 4);
         cyc(86);

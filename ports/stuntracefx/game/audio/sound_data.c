@@ -162,7 +162,7 @@ static void upload_entry(uint16_t entry)
  */
 void MusicLoadForCourse(uint8_t bank, uint16_t music)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t i, src, k, v;
     static const struct { uint16_t off, add; } patch[4] = {
         {0x0002, 0x0010}, {0x0004, 0x0D30}, {0x0006, 0x0D30}, {0x0016, 0x0D30}};
@@ -177,7 +177,7 @@ void MusicLoadForCourse(uint8_t bank, uint16_t music)
     (cyc(44), ApuSettleDelay());
     ml_x = i;
     cyc(82);
-    v = (uint16_t)(rd16(b | W(hud_mode)) & 0x00FF);
+    v = (uint16_t)(rd16(0x7E0000 | W(hud_mode)) & 0x00FF);
     cyc(48);
     cyc(42);                            /* CMP #imm */
     if (v != 0x0002) {
@@ -188,7 +188,7 @@ void MusicLoadForCourse(uint8_t bank, uint16_t music)
     } else { cyc(42); }
     ApuPort1Send05();
     cyc(24);
-    i = music_index((uint16_t)(rd16(b | W(wram_0D8A)) & 0x000F));
+    i = music_index((uint16_t)(rd16(0x7E0000 | W(wram_0D8A)) & 0x000F));
     cyc(178);
     src = rd16(0x040000 | (uint16_t)(0xD41E + i));
     for (k = 0; k < 0x1000; k++)
@@ -318,7 +318,7 @@ void CourseSoundLoad(uint8_t bank)
     uint16_t x, a;
 
     cyc(68);
-    v = reg_rd(b | W(wram_10DA));
+    v = reg_rd(0x7E0000 | W(wram_10DA));
     if (v) {
         cyc(16);
         cyc(42);                        /* PLP */
@@ -328,10 +328,10 @@ void CourseSoundLoad(uint8_t bank)
         return;
     }
     cyc(46);
-    v = reg_rd(b | W(wram_10DC));
+    v = reg_rd(0x7E0000 | W(wram_10DC));
     if (v) {
         cyc(46);
-        v = reg_rd(b | W(wram_10DE));
+        v = reg_rd(0x7E0000 | W(wram_10DE));
         if (v) {
             cyc(46);                    /* BEQ, BRL */
             cyc(42);
@@ -341,9 +341,9 @@ void CourseSoundLoad(uint8_t bank)
             return;
         }
         cyc(46);
-        v = (uint8_t)(rd8(b | W(wram_10DE)) - 1);
+        v = (uint8_t)(rd8(0x7E0000 | W(wram_10DE)) - 1);
         cyc(6);
-        wr8(b | W(wram_10DE), v);
+        wr8(0x7E0000 | W(wram_10DE), v);
         (cyc(84), ApuPort1Send05());
         apu_step(0, 0x0019, 0x8D4C);
         delay_4000();
@@ -369,9 +369,9 @@ void CourseSoundLoad(uint8_t bank)
         return;
     }
     cyc(92);
-    a = (uint16_t)(rd16(b | W(course)) << 1);
+    a = (uint16_t)(rd16(0x7E0000 | W(course)) << 1);
     cyc(52);
-    a = (uint16_t)(a + rd16(b | W(course)));
+    a = (uint16_t)(a + rd16(0x7E0000 | W(course)));
     x = (uint16_t)(a & 0x00FF);
     (cyc(152), ApuPort1Send05());
     cyc(196);
@@ -386,15 +386,15 @@ void CourseSoundLoad(uint8_t bank)
     upload_listed(0xD376, x);
     ApuSettleDelay();
     cyc(46);
-    MusicLoadForCourse(bank, rd16(b | W(wram_0D89)));
+    MusicLoadForCourse(bank, rd16(0x7E0000 | W(wram_0D89)));
     (cyc(62), ApuSettleDelay());
     ml_x = x;
     upload_listed(0xD3CA, x);
     ApuSettleDelay();
     cyc(46);
-    if (reg_rd(b | W(hud_mode)) == 0x01) {
+    if (reg_rd(0x7E0000 | W(hud_mode)) == 0x01) {
         cyc(56);
-        if (!reg_rd(b | W(hud_blank)))
+        if (!reg_rd(0x7E0000 | W(hud_blank)))
             { cyc(16); apu_step(1, 0xF9B8, 0x001D); ml_x = 0x0000; }
     } else { cyc(52); }
     do {

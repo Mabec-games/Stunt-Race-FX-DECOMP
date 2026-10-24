@@ -146,7 +146,7 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
 void CrashWhite(Carried *cr, uint8_t bank)
 {
     cyc(70);
-    wr16((uint32_t)bank << 16 | W(crash_colour), 0x7FFF);
+    wr16(0x7E0000 | W(crash_colour), 0x7FFF);
     crash_body(cr, bank, 0x00AA);
 }
 

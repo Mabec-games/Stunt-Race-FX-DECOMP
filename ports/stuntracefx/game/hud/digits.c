@@ -410,9 +410,9 @@ void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p)
     uint32_t b = (uint32_t)bank << 16;
 
     cyc(30);
-    wr8(b | (uint16_t)(W(obj_25) + obj), cyc_then(46, (uint8_t)(rd8(b | (uint16_t)(W(obj_25) + obj)) | 0x01)));
+    wr8(0x7E0000 | (uint16_t)(W(obj_25) + obj), cyc_then(46, (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(obj_25) + obj)) | 0x01)));
     cyc(60);
-    wr8(b | W(hud_digits_19ec), cyc_then(54, adc_bcd8(rd8(b | W(hud_digits_19ec)), 0x01, 0, p)));
+    wr8(0x7E0000 | W(hud_digits_19ec), cyc_then(54, adc_bcd8(rd8(0x7E0000 | W(hud_digits_19ec)), 0x01, 0, p)));
     cyc(92);
     SoundPort0QueuePush(0x3C);
     cyc(42);
@@ -453,13 +453,13 @@ static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(24);
-    uint8_t d = rd8(b | W(digit62_override)) ? (cyc(54), 0x01) : rd8(cyc_then(46, b | W(wram_0DF4)));
+    uint8_t d = rd8(0x7E0000 | W(digit62_override)) ? (cyc(54), 0x01) : rd8(cyc_then(46, 0x7E0000 | W(wram_0DF4)));
 
     *digit = d;
     cyc(38);
-    wr8(b | W(wram_046F), (uint8_t)(d << 1));
+    wr8(0x7E0000 | W(wram_046F), (uint8_t)(d << 1));
     cyc(38);
-    wr8(b | W(wram_0473), (uint8_t)((d << 1) + 1));
+    wr8(0x7E0000 | W(wram_0473), (uint8_t)((d << 1) + 1));
     return (uint8_t)((d << 1) + 1);
 }
 
@@ -519,7 +519,7 @@ uint16_t HudCountMove19EE(uint8_t bank, uint16_t rec, uint16_t x, uint8_t *p)
     uint8_t v;
 
     cyc(46);
-    v = rd8(b | W(wram_0E59));
+    v = rd8(0x7E0000 | W(wram_0E59));
     *p = nz8((uint8_t)(*p | P_M), v);
     hc_skipped = v != 0;
     if (v)
@@ -572,13 +572,13 @@ uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p)
     uint16_t n;
 
     cyc(46);
-    n = rd16(b | W(wram_19EE));
+    n = rd16(0x7E0000 | W(wram_19EE));
     cyc(24);
-    wr16(b | W(wram_19F0), n);
+    wr16(0x7E0000 | W(wram_19F0), n);
     cyc(24);
-    wr16(b | W(wram_19EE), 0x0000);
+    wr16(0x7E0000 | W(wram_19EE), 0x0000);
     cyc(62);
-    wr8(b | W(wram_19F2), 0x01);
+    wr8(0x7E0000 | W(wram_19F2), 0x01);
     *p = (uint8_t)(nz8(*p, 0x01) | P_M);
     cyc(42);
     return (uint16_t)((n & 0xFF00) | 0x01);

@@ -103,20 +103,20 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     cyc(104);
     t = rd16(CAM(r, W(cam_target)));
     cyc(38);
-    wr16(b | W(cam_target_obj), t);
+    wr16(0x7E0000 | W(cam_target_obj), t);
     cyc(58);
-    wr16(b | W(cam_mode), cyc_then(24, rd16(CAM(r, W(cam_flags)))));
+    wr16(0x7E0000 | W(cam_mode), cyc_then(24, rd16(CAM(r, W(cam_flags)))));
     cyc(24);
-    a = (uint16_t)(rd16(b | W(cam_mode)) & 0x0002);
+    a = (uint16_t)(rd16(0x7E0000 | W(cam_mode)) & 0x0002);
     if (a) {
         cyc(150);
         cam_early = 1;
         return a;
     }
     cyc(92);
-    if (rd16(b | W(cam_mode)) & 0x0004) {
+    if (rd16(0x7E0000 | W(cam_mode)) & 0x0004) {
         cyc(100);
-        g = rd16(cyc_then(32, W(obj_22_long) + rd16(b | W(cam_target_obj))));
+        g = rd16(cyc_then(32, W(obj_22_long) + rd16(0x7E0000 | W(cam_target_obj))));
         cyc(46);
         a = rd16(0x70004A + g);
         if (a & 0x8000)
@@ -151,35 +151,35 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     cyc(22);
     wr16(W(cam_tmp_c), cyc_then(16, rd16(CAM(r, W(cam_base) + 4))));
     cyc(24);
-    f = rd16(b | W(cam_mode));
+    f = rd16(0x7E0000 | W(cam_mode));
     if (f & 0x0100) {
         cyc(64);
-        wr16(b | W(view_pitch), 0x0000);
+        wr16(0x7E0000 | W(view_pitch), 0x0000);
         cyc(24);
-        wr16(b | W(view_turn), 0x0000);
+        wr16(0x7E0000 | W(view_turn), 0x0000);
         cyc(24);
-        wr16(b | W(view_roll), 0x0000);
+        wr16(0x7E0000 | W(view_roll), 0x0000);
         cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
     } else if (!(f & 0x1C00)) {
         cyc(110);
-        y = rd16(b | W(cam_target_obj));
+        y = rd16(0x7E0000 | W(cam_target_obj));
         cy = y;
         a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
         cyc(104);
         wr16(CAM(r, W(cam_turn)), a);
         cyc(24);
-        wr16(b | W(view_turn), a);
+        wr16(0x7E0000 | W(view_turn), a);
         a = asr_n(angle_hi(b, y, 0x2014), 2);
         cyc(78);
         wr16(CAM(r, W(cam_pitch)), a);
         cyc(24);
-        wr16(b | W(view_pitch), a);
+        wr16(0x7E0000 | W(view_pitch), a);
         cyc(24);
-        wr16(b | W(view_roll), 0x0000);
+        wr16(0x7E0000 | W(view_roll), 0x0000);
         cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
     } else {
         cyc(116);
-        y = rd16(b | W(cam_target_obj));
+        y = rd16(0x7E0000 | W(cam_target_obj));
         cy = y;
         cyc(62);
         g = rd16(0x70247A);
@@ -187,7 +187,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         uint16_t rec = rd16(0x700042 + g);
         unsigned jmp = 0;
 
-        if ((rec & 0x000C) && !(rd16(cyc_then(100, b | W(cam_mode))) & 0x0200)) {
+        if ((rec & 0x000C) && !(rd16(cyc_then(100, 0x7E0000 | W(cam_mode))) & 0x0200)) {
             jmp = 24; /* ends in JMP .pitch */
             cyc(40);
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
@@ -202,9 +202,9 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
             cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, W(cam_turn))));
             cyc(24);
-            wr16(b | W(cam_lag), a);
+            wr16(0x7E0000 | W(cam_lag), a);
             cyc(24);
-            switch (rd16(b | W(cam_mode)) & 0x1C00) {
+            switch (rd16(0x7E0000 | W(cam_mode)) & 0x1C00) {
             case 0x0400:
                 cyc(172);
                 g = rd16(0x70247A);
@@ -216,15 +216,15 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
                 if (w & 0x8000)
                     w = (uint16_t)(~w + 1);
                 cyc(36 + 24 + (((w - 0x7EF4) & 0x8000) ? 16 : 22) + 24);
-                a = asr_round(rd16(b | W(cam_lag)), cyc_then(22, (w - 0x7EF4) & 0x8000 ? 2 : 1));
+                a = asr_round(rd16(0x7E0000 | W(cam_lag)), cyc_then(22, (w - 0x7EF4) & 0x8000 ? 2 : 1));
                 break;
             case 0x0800:
                 cyc(174);
-                a = asr_round(rd16(b | W(cam_lag)), cyc_then(22, 2));
+                a = asr_round(rd16(0x7E0000 | W(cam_lag)), cyc_then(22, 2));
                 break;
             case 0x0C00:
                 cyc(214);
-                a = rd16(b | W(cam_lag));
+                a = rd16(0x7E0000 | W(cam_lag));
                 sp = 0;
                 a = (cyc(62), ScaleFiveThirtySeconds(bank, a, &sp));
                 cyc(44);                /* its RTL */
@@ -233,7 +233,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
                 break;
             case 0x1000:
                 cyc(254);
-                a = rd16(b | W(cam_lag));
+                a = rd16(0x7E0000 | W(cam_lag));
                 sp = 0;
                 a = (cyc(62), ScaleFiveThirtySeconds(bank, a, &sp));
                 cyc(44);                /* its RTL */
@@ -241,7 +241,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
                 break;
             default:
                 cyc(248);
-                a = rd16(b | W(cam_lag));
+                a = rd16(0x7E0000 | W(cam_lag));
                 cyc(22); /* BRA */
                 break;
             }
@@ -251,43 +251,43 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(22);
         wr16(CAM(r, W(cam_turn)), a);
         cyc(24);
-        wr16(b | W(view_turn), a);
+        wr16(0x7E0000 | W(view_turn), a);
         cyc(jmp);
         a = asr_round(angle_hi(b, y, 0x2014), 2);
         cyc(66);
         wr16(CAM(r, W(cam_pitch)), a);
         cyc(24);
-        wr16(b | W(view_pitch), a);
+        wr16(0x7E0000 | W(view_pitch), a);
         cyc(24);
-        wr16(b | W(view_roll), 0x0000);
+        wr16(0x7E0000 | W(view_roll), 0x0000);
         cyc(54);                        /* falls into .to_super_fx: PHX, LDA */
     }
-    a = rd16(b | W(view_pitch));
+    a = rd16(0x7E0000 | W(view_pitch));
     cyc(36);
     a = (uint16_t)(a + rd16(CAM(r, W(cam_angle_add))));
     cyc(62);
-    wr16(b | W(view_pitch), (uint16_t)(~a + 1));
+    wr16(0x7E0000 | W(view_pitch), (uint16_t)(~a + 1));
     cyc(24);
-    a = rd16(b | W(view_turn));
+    a = rd16(0x7E0000 | W(view_turn));
     cyc(36);
-    wr16(b | W(view_turn), cyc_then(24, (uint16_t)(a + rd16(CAM(r, W(cam_angle_add) + 2)))));
+    wr16(0x7E0000 | W(view_turn), cyc_then(24, (uint16_t)(a + rd16(CAM(r, W(cam_angle_add) + 2)))));
     cyc(24);
-    a = rd16(b | W(view_roll));
+    a = rd16(0x7E0000 | W(view_roll));
     cyc(36);
-    wr16(b | W(view_roll), cyc_then(24, (uint16_t)(a + rd16(CAM(r, W(cam_angle_add) + 4)))));
+    wr16(0x7E0000 | W(view_roll), cyc_then(24, (uint16_t)(a + rd16(CAM(r, W(cam_angle_add) + 4)))));
     (cyc(84), Gsu8325(bank));
     cy &= 0x00FF;                       /* Gsu8325's 8-bit index registers */
     cyc(22);
     for (i = 0; i < 18; i += 2)
-        { cyc(24); wr16(b | (uint16_t)(W(view_matrix_copy) + i), cyc_then(24, rd16(b | (uint16_t)(W(view_matrix_out) + i)))); }
+        { cyc(24); wr16(0x7E0000 | (uint16_t)(W(view_matrix_copy) + i), cyc_then(24, rd16(0x7E0000 | (uint16_t)(W(view_matrix_out) + i)))); }
     cyc(84);
     Gsu82CE();
     cyc(82);
-    f = rd16(b | W(cam_mode));
+    f = rd16(0x7E0000 | W(cam_mode));
     if (f & 0x0008) {
         y = cy;
         cyc(100);
-        a = rd16(b | (uint16_t)(W(obj_pos_x) + y));
+        a = rd16(0x7E0000 | (uint16_t)(W(obj_pos_x) + y));
         cyc(30);
         a = (uint16_t)(a + rd16(W(cam_offset_x)));
         cyc(36);
@@ -297,7 +297,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(22);
         wr16(CAM(r, W(cam_pos)), a);
         cyc(30);
-        a = rd16(b | (uint16_t)(W(obj_pos_y) + y));
+        a = rd16(0x7E0000 | (uint16_t)(W(obj_pos_y) + y));
         cyc(30);
         a = (uint16_t)(a + rd16(W(cam_offset_y)));
         cyc(36);
@@ -307,7 +307,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(22);
         wr16(CAM(r, W(cam_pos) + 2), a);
         cyc(30);
-        a = rd16(b | (uint16_t)(W(obj_pos_z) + y));
+        a = rd16(0x7E0000 | (uint16_t)(W(obj_pos_z) + y));
         cyc(30);
         a = (uint16_t)(a + rd16(W(cam_offset_z)));
         cyc(36);
@@ -318,16 +318,16 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         wr16(CAM(r, W(cam_pos) + 4), a);
     } else {
         cyc((f & 0x0010) ? 116 : 110);    /* BNE taken 22, not 16 */
-        y = rd16(b | W(cam_target_obj));
+        y = rd16(0x7E0000 | W(cam_target_obj));
         cy = y;
         cyc(30);
-        a = rd16(b | (uint16_t)(W(obj_pos_x) + y));
+        a = rd16(0x7E0000 | (uint16_t)(W(obj_pos_x) + y));
         cyc(30);
         a = add16(a, rd16(W(cam_offset_x)), &p);
         cyc(22);
         wr16(CAM(r, W(cam_pos)), a);
         cyc(30);
-        a = rd16(b | (uint16_t)(W(obj_pos_y) + y));
+        a = rd16(0x7E0000 | (uint16_t)(W(obj_pos_y) + y));
         cyc(30);
         a = add16(a, rd16(W(cam_offset_y)), &p);
         if (f & 0x0010) {
@@ -340,7 +340,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(22);
         wr16(CAM(r, W(cam_pos) + 2), a);
         cyc(30);
-        a = rd16(b | (uint16_t)(W(obj_pos_z) + y));
+        a = rd16(0x7E0000 | (uint16_t)(W(obj_pos_z) + y));
         cyc(30);
         a = add16(a, rd16(W(cam_offset_z)), &p);
         cyc(22);

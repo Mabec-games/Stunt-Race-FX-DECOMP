@@ -126,7 +126,7 @@ void abi_MenuChoiceRepeat(void)
 int MenuWaitFor0357(uint8_t bank, uint16_t rec)
 {
     cyc(46);
-    if (!rd8((uint32_t)bank << 16 | W(wram_0357)))
+    if (!rd8(0x7E0000 | W(wram_0357)))
         { cyc(22); return 0; }
     cyc(94);
     wr16(W(menu_1905), 0x0002);
@@ -171,7 +171,7 @@ void abi_MenuWaitFor0357(void)
 void MenuSetExit(uint8_t bank)
 {
     cyc(70);
-    wr16((uint32_t)bank << 16 | W(menu_exit), 0x0001);
+    wr16(0x7E0000 | W(menu_exit), 0x0001);
     cyc(42);
 }
 
@@ -205,7 +205,7 @@ void abi_MenuSetExit(void)
 void MenuSet1A66(uint8_t bank, uint16_t i)
 {
     cyc(134);
-    wr16((uint32_t)bank << 16 | W(wram_1A66), cyc_then(54, rd16(W(table_116c) + (uint16_t)(i << 1))));
+    wr16(0x7E0000 | W(wram_1A66), cyc_then(54, rd16(W(table_116c) + (uint16_t)(i << 1))));
     cyc(106);
 }
 
@@ -314,9 +314,9 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     cyc(32);
     wr16(W(selection_handler_b), cyc_then(32, HandlerTableA(cyc_then(46, rd16(W(selection_prev))))));
     cyc(32);
-    wr16(b | W(scratch_11df), (uint16_t)(rd16(cyc_then(180, 0x03B540 + ((rd16(W(selection_prev)) & 3) << 1))) << 4));
+    wr16(0x7E0000 | W(scratch_11df), (uint16_t)(rd16(cyc_then(180, 0x03B540 + ((rd16(W(selection_prev)) & 3) << 1))) << 4));
     cyc(32);
-    v = (uint16_t)(rd16(cyc_then(124, 0x03B540 + ((rd16(W(selection)) & 3) << 1))) | rd16(b | W(scratch_11df)));
+    v = (uint16_t)(rd16(cyc_then(124, 0x03B540 + ((rd16(W(selection)) & 3) << 1))) | rd16(0x7E0000 | W(scratch_11df)));
     cyc(54);
     wr8(0x70FC0E, (uint8_t)v);
     (cyc(84), SaveChecksum());
@@ -326,7 +326,7 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     wr16(W(selection_out_1), 0x0000);
     cyc(32);
     if (rd16(W(selection)) == rd16(cyc_then(32, W(selection_prev))))
-        { cyc(48); wr16(b | W(selection_out_1), rd16(cyc_then(100, 0x03B464 + (uint16_t)(rd16(W(selection_prev)) << 1)))); } else { cyc(22); }
+        { cyc(48); wr16(0x7E0000 | W(selection_out_1), rd16(cyc_then(100, 0x03B464 + (uint16_t)(rd16(W(selection_prev)) << 1)))); } else { cyc(22); }
     cyc(32);
     *x = (uint16_t)((uint16_t)((uint16_t)(rd16(W(selection)) << 2) + rd16(cyc_then(74, W(selection_out)))) << 1);
     cyc(108);
@@ -387,14 +387,14 @@ static uint16_t save_selection(uint8_t bank, uint16_t *x)
         return v;
     }
     cyc(mode == 1 ? 118 : 112);         /* CMP #, BEQ, CMP #, BEQ, LDA long */
-    wr16(b | W(scratch_11df), cyc_then(48, rd16(0x70FC0C) & (mode == 1 ? 0x0003 : 0x0030)));
+    wr16(0x7E0000 | W(scratch_11df), cyc_then(48, rd16(0x70FC0C) & (mode == 1 ? 0x0003 : 0x0030)));
     cyc(32);
     *x = (uint16_t)(rd16(W(selection)) << 1);
     cyc(100);
     v = rd16(0x03B540 + *x);
     if (mode == 1)
         { cyc(56); v = (uint16_t)(v << 4); }
-    v = (uint16_t)(v | rd16(b | W(scratch_11df)));
+    v = (uint16_t)(v | rd16(0x7E0000 | W(scratch_11df)));
     cyc(54);
     wr8(0x70FC0C, (uint8_t)v);
     return v;
@@ -484,7 +484,7 @@ static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
     cyc(32);
     wr16(W(wram_18C5), a);
     cyc(24);
-    pad = rd16((uint32_t)bank << 16 | W(menu_joy1_pressed));
+    pad = rd16(0x7E0000 | W(menu_joy1_pressed));
     *y = pad;
     if (pad & 0x0800) {
         cyc(154);
@@ -593,7 +593,7 @@ static uint16_t mc_pad;                 /* the pad word pad_bit last read */
 static int pad_bit(uint32_t b, uint16_t bit)
 {
     cyc(62);
-    mc_pad = rd16(b | W(joy1_pressed_copy));
+    mc_pad = rd16(0x7E0000 | W(joy1_pressed_copy));
     if (!(mc_pad & bit))
         { cyc(52); return 0; }
     return 1;
@@ -638,20 +638,20 @@ uint8_t MenuCursorFourWay(uint8_t bank)
     mc_x = -1;
     mc_c = -1;
     cyc(22 + 24);
-    if (rd8(b | W(digit62_override))) {
+    if (rd8(0x7E0000 | W(digit62_override))) {
         if (pad_bit(b, 0x0100)) {
             cyc(102);
-            wr8(b | W(wram_0D48), 0x02);
+            wr8(0x7E0000 | W(wram_0D48), 0x02);
             cyc(24);
-            wr8(b | W(digit62_override), 0x00);
+            wr8(0x7E0000 | W(digit62_override), 0x00);
             cyc(78);
             SoundPort0QueuePushW(0x45, 0);
             cyc(16);
         } else if (pad_bit(b, 0x0200)) {
             cyc(108);
-            wr8(b | W(wram_0D48), 0x01);
+            wr8(0x7E0000 | W(wram_0D48), 0x01);
             cyc(24);
-            wr8(b | W(digit62_override), 0x00);
+            wr8(0x7E0000 | W(digit62_override), 0x00);
             cyc(78);
             SoundPort0QueuePushW(0x45, 0);
             cyc(16);
@@ -659,7 +659,7 @@ uint8_t MenuCursorFourWay(uint8_t bank)
         cyc(24);
     } else {
         cyc(22 + 46);
-        v = rd8(b | W(wram_0D48));
+        v = rd8(0x7E0000 | W(wram_0D48));
         mc_c = v >> 7;                  /* ASL A */
         mc_x = (uint8_t)(v << 1);
         switch (mc_x) {
@@ -693,18 +693,18 @@ uint8_t MenuCursorFourWay(uint8_t bank)
         }
     }
     cyc(8);
-    if (rd8(b | W(digit62_override))) {
+    if (rd8(0x7E0000 | W(digit62_override))) {
         cyc(56);
-        wr8(b | W(wram_0D37), 0x88);
+        wr8(0x7E0000 | W(wram_0D37), 0x88);
         return 0x88;
     }
     cyc(46);
-    mc_x = rd8(b | W(wram_0D48));
+    mc_x = rd8(0x7E0000 | W(wram_0D48));
     cyc(56);
     v = rd8(b | (uint16_t)(0xEB49 + mc_x));
-    wr8(b | W(wram_0E91), v);
+    wr8(0x7E0000 | W(wram_0E91), v);
     cyc(24);
-    wr8(b | W(wram_0D37), v);
+    wr8(0x7E0000 | W(wram_0D37), v);
     return v;
 }
 
@@ -743,7 +743,7 @@ static int fourth_car(uint32_t b)
     uint8_t x;
 
     cyc(30);
-    x = rd8(b | W(hud_mode));
+    x = rd8(0x7E0000 | W(hud_mode));
     cs_c = x >= 0x03;
     if (x == 0x03)
         return 2;
@@ -832,13 +832,13 @@ uint16_t CarSelectTwoPlayers(uint8_t bank, int x16, uint16_t *x)
             cyc(46);
     }
     cyc(22 + 24);
-    i = rd8(b | W(wram_0D8A));
+    i = rd8(0x7E0000 | W(wram_0D8A));
     cyc(72);
     cs_last = rd8(0x07C1BF + (uint32_t)i);
     wr8(W(selection_prev), cs_last);
     (cyc(62), SelectionCommit(bank, x));
     cyc(72 + 24);                       /* SelectionCommit's PLP, RTL; LDX */
-    i = rd8(b | W(wram_0D89));
+    i = rd8(0x7E0000 | W(wram_0D89));
     cyc(72);
     cs_last = rd8(0x07C1BF + (uint32_t)i);
     wr8(W(selection), cs_last);

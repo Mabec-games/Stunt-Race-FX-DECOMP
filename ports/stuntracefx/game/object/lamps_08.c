@@ -224,7 +224,7 @@ static void l_RecordNextContact(uint8_t bank, LRegs *r)
 }
 
 /* Object field `f` ($20xx) of object `o`, through the data bank. */
-#define F(f, o) ((uint32_t)bank << 16 | (uint16_t)((f) + (o)))
+#define F(f, o) (0x7E0000 | (uint16_t)((f) + (o)))
 
 /* LDA #v with M 8-bit. */
 static void lda8(uint8_t bank, LRegs *r, uint8_t v)
@@ -301,7 +301,7 @@ static void handler_none(uint8_t bank, LRegs *r, uint16_t o)
    set), Y = it. */
 static int spawn(uint8_t bank, LRegs *r, uint16_t kind)
 {
-    st16i(bank, r, ((uint32_t)bank << 16) | W(wram_1F2B), kind);
+    st16i(bank, r, 0x7E0000 | W(wram_1F2B), kind);
     (cyc(84), l_ObjectSpawn(bank, r));
     return (r->p & P_C) != 0;
 }
@@ -959,7 +959,7 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     r->p = nz8(r->p, v);
     if (v)
         { cyc(108); return; }
-    r->y = rd16(cyc_then(62, ((uint32_t)bank << 16) | W(wram_0346)));
+    r->y = rd16(cyc_then(62, 0x7E0000 | W(wram_0346)));
     r->p = nz16(r->p, r->y);
     r->p &= (uint8_t)~P_M;
     lr_lda(r, cyc_then(52, F(W(obj_pos_z), r->y)));
@@ -1197,7 +1197,7 @@ void abi_ObjectCameraPadB(void)
    ObjectContactsCameraPoint. */
 static void camera_pad_step(uint8_t bank, LRegs *r)
 {
-    st16i(bank, r, ((uint32_t)bank << 16) | W(wram_1F4C), 0x0000);
+    st16i(bank, r, 0x7E0000 | W(wram_1F4C), 0x0000);
     st16i(bank, r, (cyc(22), ((uint32_t)bank << 16)) | 0x1F4E, 0x0000);
     st16i(bank, r, (cyc(22), ((uint32_t)bank << 16)) | 0x1F50, 0x0000);
     (cyc(146), ObjectContactsCameraPoint(bank, r));
@@ -1320,13 +1320,13 @@ void ObjectContactsCameraPoint(uint8_t bank, LRegs *r)
         r->p = (uint8_t)((r->p & ~P_Z) | ((f & 0x01) ? 0 : P_Z));
         if (f & 0x01) {
             /* BIT, BEQ not taken, LDX; BRA */
-            r->x = rd16(cyc_then(56, ((uint32_t)bank << 16) | W(wram_0346)));
+            r->x = rd16(cyc_then(56, 0x7E0000 | W(wram_0346)));
             cyc(22);
         } else {
             r->p = (uint8_t)((r->p & ~P_Z) | ((f & 0x02) ? 0 : (cyc(76), P_Z)));
             if (!(f & 0x02))
                 goto next;
-            r->x = rd16(cyc_then(94, ((uint32_t)bank << 16) | W(wram_034A)));
+            r->x = rd16(cyc_then(94, 0x7E0000 | W(wram_034A)));
         }
         r->p = nz16(r->p, r->x);
         cyc(30);
@@ -1604,7 +1604,7 @@ static void record_match_step(uint8_t bank, LRegs *r)
     wr8(F(W(obj_24), r->x), cyc_then(46, f));
     r->y = r->x;
     r->p = nz16(r->p, r->y);
-    r->x = rd16(cyc_then(38, ((uint32_t)bank << 16) | W(wram_0346)));
+    r->x = rd16(cyc_then(38, 0x7E0000 | W(wram_0346)));
     r->p = nz16(r->p, r->x);
     r->p &= (uint8_t)~P_M;
     lr_lda(r, cyc_then(52, F(W(obj_22), r->x)));
@@ -1629,9 +1629,9 @@ static void record_match_step(uint8_t bank, LRegs *r)
         }
         r->a = v;
         r->p = nz16(r->p, v);
-        wr16(((uint32_t)bank << 16) | W(wram_1F41), cyc_then(252, v));
+        wr16(0x7E0000 | W(wram_1F41), cyc_then(252, v));
         lr_lda(r, cyc_then(30, F(W(obj_29), r->y)));
-        wr16(((uint32_t)bank << 16) | W(wram_1F43), cyc_then(24, r->a));
+        wr16(0x7E0000 | W(wram_1F43), cyc_then(24, r->a));
         r->p |= P_M;
     } else { cyc(22); }
     cyc(80);

@@ -28,7 +28,7 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
     cyc(60);
     uint16_t y = (uint16_t)((rd16(W(dp_f2)) & 0xFF) << 2);
     cyc(90);
-    uint16_t x = rd16(cyc_then(190, 0x078000 + ((rd16(b | W(course)) << 1) & 0x00FF)));
+    uint16_t x = rd16(cyc_then(190, 0x078000 + ((rd16(0x7E0000 | W(course)) << 1) & 0x00FF)));
     uint8_t c, pen, attr = 0;
 
     *ap = x;
@@ -49,20 +49,20 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
             continue;
         }
         cyc(6);
-        wr8(b | (uint16_t)(W(oam_buffer) + 2 + y), cyc_then(30, (uint8_t)(c + rd8(W(dp_f1)))));
+        wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 2 + y), cyc_then(30, (uint8_t)(c + rd8(W(dp_f1)))));
         x++;
         cyc(30);
         pen = rd8(W(dp_f3));
         cyc(30);
-        wr8(b | (uint16_t)(W(oam_buffer) + y), pen);
+        wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + y), pen);
         cyc(46);
         wr8(W(dp_f3), (uint8_t)(pen + 8));
         cyc(16);
-        wr8(b | (uint16_t)(W(oam_buffer) + 1 + y), cyc_then(30, rd8(W(dp_f4))));
+        wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 1 + y), cyc_then(30, rd8(W(dp_f4))));
         cyc(16);
         attr = rd8(W(dp_f5));
         cyc(30);
-        wr8(b | (uint16_t)(W(oam_buffer) + 3 + y), attr);
+        wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 3 + y), attr);
         y += 4;
         cyc(72);
         c = (uint8_t)(rd8(W(dp_f2)) - 1);
@@ -168,7 +168,7 @@ static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp
     OamTextLineLong(xp, yp, &a);
     cyc(254);
     for (i = 0; i < 8; i += 2)
-        { cyc(24); wr16(b | (uint16_t)(W(oam_buffer_high) + 25 + i), 0x0000); }
+        { cyc(24); wr16(0x7E0000 | (uint16_t)(W(oam_buffer_high) + 25 + i), 0x0000); }
     cyc(42);
 }
 

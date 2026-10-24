@@ -260,9 +260,9 @@ static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
     cyc(18);
     for (i = 0; i < 0x23; i++) {
         cyc(48);
-        mode = rd16(b | W(hud_mode)) & 0x00FF;
+        mode = rd16(0x7E0000 | W(hud_mode)) & 0x00FF;
         t = 0x2002;
-        if ((mode == 1 || (cyc(mode == 3 ? 40 : 58), mode == 3)) && !(rd16(cyc_then(94, b | W(wram_10CD))) & 0x00FF))
+        if ((mode == 1 || (cyc(mode == 3 ? 40 : 58), mode == 3)) && !(rd16(cyc_then(94, 0x7E0000 | W(wram_10CD))) & 0x00FF))
             t = 0x2010; else { cyc(28); }
         s = (unsigned)t + base;
         cyc(134);
@@ -589,20 +589,20 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     uint16_t mode, table;
 
     cyc(46);
-    frame = rd8(b | W(frame_count));
+    frame = rd8(0x7E0000 | W(frame_count));
     if (frame & 0x03) {
         cyc(74);
         *a = (uint16_t)((*a & 0xFF00) | (frame & 0x03));
         return 0;
     }
     cyc(62);
-    phase = (uint8_t)(rd8(b | W(palette_phase)) + 1);
+    phase = (uint8_t)(rd8(0x7E0000 | W(palette_phase)) + 1);
     if (phase >= 6)
         { cyc(10); phase = 0; }
     cyc(76);
-    wr8(b | W(palette_phase), phase);
+    wr8(0x7E0000 | W(palette_phase), phase);
     cyc(114);
-    mode = rd16(b | W(hud_mode));
+    mode = rd16(0x7E0000 | W(hud_mode));
     table = mode == 2 ? 0xCF2C : (cyc(16), 0xCF26);
     cyc(132);
     pal = rd8(0x070000 | (uint16_t)(table + phase));
@@ -720,7 +720,7 @@ uint16_t VramNoiseTiles(uint8_t bank)
         cyc(86);
         RandomWordStep(bank);
         cyc(24);
-        v = (uint16_t)((rd16(b | W(random_word)) & 0x001F) | 0x0020);
+        v = (uint16_t)((rd16(0x7E0000 | W(random_word)) & 0x001F) | 0x0020);
         cyc(72);
         ppu_wr16(b | 0x2118, v);
         cyc(12);
@@ -985,11 +985,11 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     h = rd16(W(wram_06CD));
     s = (uint16_t)((h << 1) + 0x42 + (h >> 15));
     cyc(138);
-    wr16(b | W(wram_0D96), s < 0x0300 ? s : (cyc(18), 0x0300));
+    wr16(0x7E0000 | W(wram_0D96), s < 0x0300 ? s : (cyc(18), 0x0300));
     cyc(144);
-    wr16(b | (uint16_t)(W(bg2_scroll_y) + x), cyc_then(30, (uint16_t)((h & 0x0007) - 0x20 + rd16(W(backdrop_scroll_base) + x))));
+    wr16(0x7E0000 | (uint16_t)(W(bg2_scroll_y) + x), cyc_then(30, (uint16_t)((h & 0x0007) - 0x20 + rd16(W(backdrop_scroll_base) + x))));
     cyc(24);
-    wr16(b | (uint16_t)(W(bg2_scroll_x) + x), cyc_then(106, (uint16_t)(((rd16(b | W(view_06cf)) >> 1) & 0x0007) - 0x18)));
+    wr16(0x7E0000 | (uint16_t)(W(bg2_scroll_x) + x), cyc_then(106, (uint16_t)(((rd16(0x7E0000 | W(view_06cf)) >> 1) & 0x0007) - 0x18)));
     cyc(70);
     io_wr8(0x00211B, 0x40);
     cyc(48);
@@ -997,11 +997,11 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     ppu_mul_factor = 0x0140;
     cyc(46);
     /* M7B, then M7C (no part here) */
-    io_wr16(0x00211C, mb = cyc_then(98, (uint16_t)(((uint16_t)(rd16(b | W(wram_06CD)) + rd16(cyc_then(38, b | W(view_0da2)))) >> 3) & 0x003F)));
+    io_wr16(0x00211C, mb = cyc_then(98, (uint16_t)(((uint16_t)(rd16(0x7E0000 | W(wram_06CD)) + rd16(cyc_then(38, 0x7E0000 | W(view_0da2)))) >> 3) & 0x003F)));
     cyc(32);
     wr16(W(dp_f1), cyc_then(16, io_rd16(0x002134, (uint16_t)ppu_mul((uint8_t)mb))));
     cyc(24);
-    x = (uint16_t)(((rd16(b | W(view_06cf)) >> 3) & 0x00FE) + rd16(cyc_then(96, W(dp_f1))));
+    x = (uint16_t)(((rd16(0x7E0000 | W(view_06cf)) >> 3) & 0x00FE) + rd16(cyc_then(96, W(dp_f1))));
     cyc(186);
     wr16(W(dp_f1), 0x0011);
     cyc(32);
@@ -1099,7 +1099,7 @@ uint16_t BackdropAnglesFromView(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(98);
-    uint16_t v = rd16(b | W(wram_0664)), w;
+    uint16_t v = rd16(0x7E0000 | W(wram_0664)), w;
     int i;
 
     for (i = 0; i < 6; i++)
@@ -1110,14 +1110,14 @@ uint16_t BackdropAnglesFromView(uint8_t bank)
     if ((uint16_t)(v - 0xFFC8) & 0x8000)
         { cyc(18); v = 0xFFC8; }
     cyc(444);
-    wr16(b | W(wram_06CD), (uint16_t)((v + 0x0098) & 0x01FF));
+    wr16(0x7E0000 | W(wram_06CD), (uint16_t)((v + 0x0098) & 0x01FF));
     cyc(24);
-    w = rd16(b | W(wram_0666));
+    w = rd16(0x7E0000 | W(wram_0666));
     for (i = 0; i < 5; i++)
         w = (uint16_t)((w >> 1) | (w & 0x8000));
     w &= 0x07FF;
     cyc(238);
-    wr16(b | W(view_06cf), w);
+    wr16(0x7E0000 | W(view_06cf), w);
     return w;
 }
 
@@ -1542,17 +1542,17 @@ void TimesKeepAndAdvance(uint8_t bank)
 
     cyc(22);
     for (i = 0; i < 3; i++)
-        { cyc(24); wr8(b | (uint16_t)(W(wram_0EEA) + i), cyc_then(24, rd8(b | (uint16_t)(W(wram_0EE7) + i)))); }
+        { cyc(24); wr8(0x7E0000 | (uint16_t)(W(wram_0EEA) + i), cyc_then(24, rd8(0x7E0000 | (uint16_t)(W(wram_0EE7) + i)))); }
     cyc(40);
-    wr8(b | W(wram_0E3F), 0x00);
+    wr8(0x7E0000 | W(wram_0E3F), 0x00);
     cyc(24);
-    wr8(b | W(wram_0D59), cyc_then(6, (uint8_t)(rd8(b | W(wram_0D59)) + 1)));
+    wr8(0x7E0000 | W(wram_0D59), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(wram_0D59)) + 1)));
     cyc(40);
-    wr8(b | W(wram_0D23), 0x02);
+    wr8(0x7E0000 | W(wram_0D23), 0x02);
     cyc(46);
-    wr8(b | W(wram_19DF), 0x00);
+    wr8(0x7E0000 | W(wram_19DF), 0x00);
     cyc(40);
-    wr8(b | W(window_hdma_off), 0x02);
+    wr8(0x7E0000 | W(window_hdma_off), 0x02);
     cyc(42);
 }
 
@@ -1592,23 +1592,23 @@ void WindowClosedDigitStep(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | W(window_hdma_off));
+    r_lda8(cr, 0x7E0000 | W(window_hdma_off));
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)((uint8_t)cr->a - 0x05)) & ~P_C) | ((uint8_t)cr->a >= 0x05 ? P_C : (cyc(122), 0))));
     if ((uint8_t)cr->a != 0x05)
         return;
     cyc(56);
-    r_lda8(cr, b | W(digit62_override));
+    r_lda8(cr, 0x7E0000 | W(digit62_override));
     if (!(uint8_t)cr->a) {
         cyc(46);
         RaceEndLeave(cr);
         return;
     }
     cyc(40);
-    wr8(b | W(digit62_override), 0x00);
+    wr8(0x7E0000 | W(digit62_override), 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     set_p(cr, nz8(cr->p, 0x02));
     cyc(40);
-    wr8(b | W(wram_0D48), 0x02);
+    wr8(0x7E0000 | W(wram_0D48), 0x02);
     cyc(24);
     RaceRestart(cr);
 }
@@ -1637,20 +1637,20 @@ static void bg2_scroll_corner(Carried *cr, uint32_t b)
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0xFFE0);
     cyc(10);
-    wr16(b | W(bg2_scroll_y), 0xFFE0);
+    wr16(0x7E0000 | W(bg2_scroll_y), 0xFFE0);
     r_lda16_imm(cr, 0xFFE8);
     cyc(10);
-    wr16(b | W(bg2_scroll_x), 0xFFE8);
+    wr16(0x7E0000 | W(bg2_scroll_x), 0xFFE8);
 }
 
 /* INC $0D59 (8-bit). */
 static void stage_next(Carried *cr, uint32_t b)
 {
     cyc(24);
-    uint8_t v = (uint8_t)(rd8(b | W(wram_0D59)) + 1);
+    uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D59)) + 1);
 
     cyc(6);
-    wr8(b | W(wram_0D59), v);
+    wr8(0x7E0000 | W(wram_0D59), v);
     set_p(cr, nz8(cr->p, v));
 }
 
@@ -1681,14 +1681,14 @@ void ChampionshipScreenStep(Carried *cr)
     int i;
 
     cyc(24);
-    r_lda8(cr, b | W(hud_mode));
+    r_lda8(cr, 0x7E0000 | W(hud_mode));
     if (!(uint8_t)cr->a) {
         cyc(62);
         WindowClosedDigitStep(cr);
         return;
     }
     cyc(46);
-    r_lda8(cr, b | W(wram_0D59));
+    r_lda8(cr, 0x7E0000 | W(wram_0D59));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
@@ -1700,18 +1700,18 @@ void ChampionshipScreenStep(Carried *cr)
     switch (t) {
     case 0xBA71:
         cyc(24);
-        wr8(b | W(palette_animate), 0x00);
+        wr8(0x7E0000 | W(palette_animate), 0x00);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
         cyc(40);
-        wr8(b | W(wram_0D22), 0x06);
+        wr8(0x7E0000 | W(wram_0D22), 0x06);
         cr->a = (uint16_t)(cr->a & 0xFF00);
         set_p(cr, nz8(cr->p, 0));
         cyc(40);
-        wr8(b | W(wram_0D23), 0x00);
+        wr8(0x7E0000 | W(wram_0D23), 0x00);
         cyc(24);
-        wr8(b | W(wram_19DF), 0x00);
+        wr8(0x7E0000 | W(wram_19DF), 0x00);
         cyc(24);
-        wr8(b | W(wram_10A2), 0x00);
+        wr8(0x7E0000 | W(wram_10A2), 0x00);
         (cyc(62), WindowSlideUpSound_cr(cr));
         stage_next(cr, b);
         (cyc(46), OamHide36And96_cr(cr));
@@ -1719,7 +1719,7 @@ void ChampionshipScreenStep(Carried *cr)
     case 0xBA56:
         r_sep(cr, P_M);
         cyc(46);
-        r_lda8(cr, b | W(window_hdma_off));
+        r_lda8(cr, 0x7E0000 | W(window_hdma_off));
         v = (uint8_t)cr->a;
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? (cyc(32), P_C) : (cyc(38), 0))));
         if (v != 0x05)
@@ -1736,12 +1736,12 @@ void ChampionshipScreenStep(Carried *cr)
         ppu_wr(b | 0x2108, 0x5C);
         stage_next(cr, b);
         cyc(24);
-        wr8(b | W(wram_19DF), 0x00);
+        wr8(0x7E0000 | W(wram_19DF), 0x00);
         break;
     case 0xBA8F:
         r_sep(cr, P_M);
         cyc(46);
-        r_lda8(cr, b | W(window_hdma_off));
+        r_lda8(cr, 0x7E0000 | W(window_hdma_off));
         if (!(uint8_t)cr->a)
             { cyc(16); stage_next(cr, b); } else { cyc(22); }
         break;
@@ -1752,9 +1752,9 @@ void ChampionshipScreenStep(Carried *cr)
         cr->a = (uint16_t)(cr->a & 0xFF00);
         set_p(cr, nz8(cr->p, 0));
         cyc(62);
-        wr8(b | W(wram_0DD4), 0x00);
+        wr8(0x7E0000 | W(wram_0DD4), 0x00);
         cyc(24);
-        wr8(b | W(palette_phase), 0x00);
+        wr8(0x7E0000 | W(palette_phase), 0x00);
         r_rep(cr, P_M | P_X);
         cr->x = 0x001F;
         r_lda16_imm(cr, 0xFB99);
@@ -1778,12 +1778,12 @@ void ChampionshipScreenStep(Carried *cr)
         stage_next(cr, (uint32_t)cr->db << 16);
         b = (uint32_t)cr->db << 16;
         cyc(24);
-        r_lda8(cr, b | W(wram_0D45));
+        r_lda8(cr, 0x7E0000 | W(wram_0D45));
         v = (uint8_t)((cr->a | 0x02) & 0xF3);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         set_p(cr, nz8(cr->p, v));
         cyc(56);
-        wr8(b | W(wram_0D45), v);
+        wr8(0x7E0000 | W(wram_0D45), v);
         r_rep(cr, P_M | P_X);
         cr->x = 0x01FE;
         do {
@@ -1842,25 +1842,25 @@ void ChampionshipScreenLoop(Carried *cr)
         r_sep(cr, P_M | P_X);
         b = (uint32_t)cr->db << 16;
         do
-            { cyc(24); r_lda8(cr, b | W(wram_0D52)); }
+            { cyc(24); r_lda8(cr, 0x7E0000 | W(wram_0D52)); }
         while (cyc_loop(22, !(uint8_t)cr->a));
         cyc(40);
-        wr8(b | W(wram_0D52), 0x00);
+        wr8(0x7E0000 | W(wram_0D52), 0x00);
         (cyc(46), ChampionshipScreenStep(cr));
         (cyc(62), OverlaySpritesStep_cr(cr));
         b = (uint32_t)cr->db << 16;
         r_rep(cr, P_M);
         cyc(24);
-        wr16(b | W(joy1_pressed_copy), 0x0000);
+        wr16(0x7E0000 | W(joy1_pressed_copy), 0x0000);
         cyc(24);
-        wr16(b | W(joy2_pressed_copy), 0x0000);
+        wr16(0x7E0000 | W(joy2_pressed_copy), 0x0000);
         cyc(24);
-        wr16(b | W(joy1_held), 0x0000);
+        wr16(0x7E0000 | W(joy1_held), 0x0000);
         cyc(24);
-        wr16(b | W(joy2_held), 0x0000);
+        wr16(0x7E0000 | W(joy2_held), 0x0000);
         r_sep(cr, P_M);
         cyc(46);
-        r_lda8(cr, b | W(fade_level_hi));
+        r_lda8(cr, 0x7E0000 | W(fade_level_hi));
     } while (cyc_loop(22, !(cr->a & 0x80)));
     cyc(58);
 }

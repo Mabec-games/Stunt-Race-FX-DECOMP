@@ -37,7 +37,7 @@ static uint16_t upload_rows(uint8_t bank, uint16_t next, uint8_t rows_less_one, 
     uint8_t mode;
     uint16_t end;
 
-    wr16(dbw(bank, W(gsu_buffer_offset)), cyc_then(116, next));
+    wr16((0x7E0000 | W(gsu_buffer_offset)), cyc_then(116, next));
     mode = VramDmaWideRowsFromGsuRam(rows_less_one, src, vram, &end);
     return (uint16_t)((end & 0xFF00) | mode);
 }
@@ -48,10 +48,10 @@ static uint8_t upload_done(uint8_t bank, uint8_t sc)
 {
     uint8_t f;
 
-    wr8(dbw(bank, W(wram_0357)), cyc_then(62, 0x01));
+    wr8((0x7E0000 | W(wram_0357)), cyc_then(62, 0x01));
     ppu_wr(dbw(bank, BG1SC), cyc_then(40, sc));
-    f = (uint8_t)(rd8(cyc_then(24, dbw(bank, W(frame_update_flags)))) | 0x20);
-    wr8(dbw(bank, W(frame_update_flags)), cyc_then(40, f));
+    f = (uint8_t)(rd8(cyc_then(24, (0x7E0000 | W(frame_update_flags)))) | 0x20);
+    wr8((0x7E0000 | W(frame_update_flags)), cyc_then(40, f));
     return f;
 }
 
@@ -73,7 +73,7 @@ static uint8_t upload_done(uint8_t bank, uint8_t sc)
  */
 uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
 {
-    uint16_t stage = rd16(cyc_then(68, dbw(bank, W(gsu_buffer_offset)))), a = 0;
+    uint16_t stage = rd16(cyc_then(68, (0x7E0000 | W(gsu_buffer_offset)))), a = 0;
 
     *copied = 1;
     switch (stage) {
@@ -306,7 +306,7 @@ static uint8_t vblank_end(uint8_t bank)
 {
     uint8_t v;
 
-    wr8(dbw(bank, W(frame_update_flags)), cyc_then(40, (uint8_t)(rd8(cyc_then(46, dbw(bank, W(frame_update_flags)))) & 0xDF)));
+    wr8((0x7E0000 | W(frame_update_flags)), cyc_then(40, (uint8_t)(rd8(cyc_then(46, (0x7E0000 | W(frame_update_flags)))) & 0xDF)));
     do
         v = (uint8_t)(hw_rd(cyc_then(24, dbw(bank, HVBJOY))) & 0x01);
     while (cyc_loop(38, v));
@@ -336,10 +336,10 @@ void VblankUpdates(uint8_t bank)
     int copied;
     uint8_t p = 0;
 
-    wr16(dbw(bank, W(menu_frame_wait)), 0x0000);
+    wr16((0x7E0000 | W(menu_frame_wait)), 0x0000);
     GsuPictureUploadStep(bank, &copied);
     WindowOpenCloseStep(bank, &p);
-    if (!(rd8(dbw(bank, W(frame_update_flags))) & 0x20)) {
+    if (!(rd8((0x7E0000 | W(frame_update_flags))) & 0x20)) {
         CgramDmaIfPending();
         VramDmaQueueFlush();
         OamDmaIfPending();
@@ -360,11 +360,11 @@ void VblankUpdates_cr(Carried *cr)
     uint16_t v;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
-    wr16(dbw(cr->db, W(menu_frame_wait)), cyc_then(68, 0x0000));
+    wr16((0x7E0000 | W(menu_frame_wait)), cyc_then(68, 0x0000));
     (cyc(46), GsuPictureUploadStep_cr(cr));
     (cyc(46), WindowOpenCloseStep_cr(cr));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
-    v = rd8(cyc_then(46, dbw(cr->db, W(frame_update_flags)))) & 0x20;
+    v = rd8(cyc_then(46, (0x7E0000 | W(frame_update_flags)))) & 0x20;
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, (uint8_t)v));
     if (!v) {

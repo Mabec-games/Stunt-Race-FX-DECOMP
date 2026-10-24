@@ -660,7 +660,7 @@ void abi_DmaFromDescriptor(void)
 uint16_t CoursePictureToVram(uint8_t bank)
 {
     cyc(108);
-    uint16_t w = rd16(cyc_then(106, W(course_picture_offsets) + 2 * (unsigned)rd8((uint32_t)bank << 16 | W(course))));
+    uint16_t w = rd16(cyc_then(106, W(course_picture_offsets) + 2 * (unsigned)rd8(0x7E0000 | W(course))));
     uint16_t t = (uint16_t)(w & 0xFFFC);
 
     t = (uint16_t)((uint16_t)(t >> 8 | t << 8) << 1);
@@ -732,19 +732,19 @@ uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
     cyc(94);
     wr16(W(wram_18F7), off);
     cyc(84);
-    wr16(b | W(wram_16B3), (uint16_t)(off + 0xA7D7));
+    wr16(0x7E0000 | W(wram_16B3), (uint16_t)(off + 0xA7D7));
     cyc(48);
-    wr16(b | W(vram_queue_staged), 0x0400);
+    wr16(0x7E0000 | W(vram_queue_staged), 0x0400);
     cyc(48);
-    wr16(b | W(wram_16B5), 0x007F);
+    wr16(0x7E0000 | W(wram_16B5), 0x007F);
     cyc(48);
-    wr16(b | W(wram_16B7), 0x2000);
+    wr16(0x7E0000 | W(wram_16B7), 0x2000);
     cyc(62);
     *a = VramDmaQueueAddA(0x2000);
     cyc(198);
-    f = (uint8_t)(rd8(b | W(frame_update_flags)) | 0x02);
+    f = (uint8_t)(rd8(0x7E0000 | W(frame_update_flags)) | 0x02);
     cyc(40);
-    wr8(b | W(frame_update_flags), f);
+    wr8(0x7E0000 | W(frame_update_flags), f);
     cyc(72);
     return f;
 }
@@ -781,7 +781,7 @@ void abi_AnimTilesQueueNext(void)
 void CgramUploadAll(uint8_t bank, int x8)
 {
     cyc(92);
-    wr16((uint32_t)bank << 16 | W(player_pal_offset), 0xFD65);
+    wr16(0x7E0000 | W(player_pal_offset), 0xFD65);
     (cyc(94), CgramDma(0xFD65, 0x00, 0x0200));
     cyc(42);                            /* its RTS */
     if (!x8)
@@ -870,7 +870,7 @@ static void next_stage(uint32_t b, uint16_t n)
 {
     set_x(n);
     cyc(64);
-    wr16(b | W(gsu_buffer_offset), n);
+    wr16(0x7E0000 | W(gsu_buffer_offset), n);
 }
 
 /* SEP #$20, STZ $00, DEC $0D28. */
@@ -881,9 +881,9 @@ static void frame_done(uint32_t b)
     cyc(38);
     wr8(W(dp_00), 0x00);
     cyc(24);
-    v = (uint8_t)(rd8(b | W(wram_0D28)) - 1);
+    v = (uint8_t)(rd8(0x7E0000 | W(wram_0D28)) - 1);
     cyc(6);
-    wr8(b | W(wram_0D28), v);
+    wr8(0x7E0000 | W(wram_0D28), v);
 }
 
 /* SEP #$20, $0357 = 1 (and STZ $00 when z). */
@@ -891,7 +891,7 @@ static void flag_0357(uint32_t b, int z)
 {
     set_a8(0x01);
     cyc(62);
-    wr8(b | W(wram_0357), 0x01);
+    wr8(0x7E0000 | W(wram_0357), 0x01);
     if (z)
         { cyc(16); wr8(W(dp_00), 0x00); }
 }
@@ -925,13 +925,13 @@ static void upload_sprites_palette(uint32_t b)
     cyc(92);
     delay_turns(1);
     set_x(0x0000);
-    v = rd8(b | W(wram_0D28));
+    v = rd8(0x7E0000 | W(wram_0D28));
     set_a8(v);
     if (v) {
         cyc(40);
-        wr8(b | W(wram_0D28), 0x00);
+        wr8(0x7E0000 | W(wram_0D28), 0x00);
         cyc(24);
-        v = rd8(b | W(wram_0D54));
+        v = rd8(0x7E0000 | W(wram_0D54));
         set_a8(v);
         if (!v) {
             cyc(110);
@@ -957,7 +957,7 @@ static void upload_rows(uint32_t b, int want, uint16_t n, uint16_t src,
     uint16_t sel;
 
     cyc(24);
-    sel = rd16(b | W(gsu_buffer_select));
+    sel = rd16(0x7E0000 | W(gsu_buffer_select));
     set_a(sel);
     if (!sel != !want)
         { cyc(22); return; }
@@ -991,17 +991,17 @@ static void split_picture(uint32_t b, uint16_t x)
     put8(A1B0, 0x7F);
     put8(VMAIN, 0x80);
     cyc(24);
-    set_a8((uint8_t)(rd8(b | W(gsu_scmr_shadow)) & 0xF7));
+    set_a8((uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) & 0xF7));
     cyc(40);
     hw_wr(GSU_SCMR, (uint8_t)u_a);
     put8(MDMAEN, 0x01);
     cyc(24);
-    set_a8((uint8_t)(rd8(b | W(gsu_scmr_shadow)) | 0x18));
+    set_a8((uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) | 0x18));
     cyc(40);
     hw_wr(GSU_SCMR, (uint8_t)u_a);
     cyc(22);
     put8(BG12NBA, 0x70);
-    put8(b | W(wram_0D23), 0x10);
+    put8(0x7E0000 | W(wram_0D23), 0x10);
     put8(CGADD, 0x00);
     for (i = 1; i < 7; i++)
         { cyc(24); ppu_wr(CGADD, 0x00); }
@@ -1012,7 +1012,7 @@ static void split_picture(uint32_t b, uint16_t x)
     cyc(32);
     wr8(W(wram_7EFD66), 0x1C);
     cyc(24);
-    wr8(b | W(palette_animate), 0x00);
+    wr8(0x7E0000 | W(palette_animate), 0x00);
 }
 
 /* The split screen's stages, by $0D23 (the table at $AA4B). */
@@ -1023,7 +1023,7 @@ static void split_stage(uint32_t b)
     u_y &= 0x00FF;                      /* SEP #$30 */
     u_set |= 4;
     cyc(46);
-    s = rd8(b | W(wram_0D23));
+    s = rd8(0x7E0000 | W(wram_0D23));
     set_x(s);
     cyc(30);
     switch (rd16(W(wram_bank_7e) | (uint16_t)(0xAA4B + s))) {
@@ -1052,7 +1052,7 @@ static void split_stage(uint32_t b)
         dma_from_gsu();
         ld3(0x0140, 0x4800, 0x6340);
         dma_from_gsu();
-        wr8(b | W(wram_0D23), 0x00);
+        wr8(0x7E0000 | W(wram_0D23), 0x00);
         break;
     case 0xAB4C:
         cyc(90);
@@ -1087,12 +1087,12 @@ static void split_stage(uint32_t b)
         put8(A1B0, 0x7F);
         put8(VMAIN, 0x80);
         cyc(24);
-        set_a8((uint8_t)(rd8(b | W(gsu_scmr_shadow)) & 0xF7));
+        set_a8((uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) & 0xF7));
         cyc(40);
         hw_wr(GSU_SCMR, (uint8_t)u_a);
         put8(MDMAEN, 0x01);
         cyc(24);
-        set_a8((uint8_t)(rd8(b | W(gsu_scmr_shadow)) | 0x18));
+        set_a8((uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) | 0x18));
         cyc(40);
         hw_wr(GSU_SCMR, (uint8_t)u_a);
         break;
@@ -1100,7 +1100,7 @@ static void split_stage(uint32_t b)
         uint16_t src;
 
         cyc(68);
-        src = rd16(b | W(wram_10A0));
+        src = rd16(0x7E0000 | W(wram_10A0));
         set_x(src);
         cyc(24);
         dma_wr16(A1T0L, src);
@@ -1114,7 +1114,7 @@ static void split_stage(uint32_t b)
         dma_wr16(DMAP0, 0x1801);
         put8(VMAIN, 0x80);
         put8(MDMAEN, 0x01);
-        put8(b | W(wram_0D23), 0x02);
+        put8(0x7E0000 | W(wram_0D23), 0x02);
         break;
     }
     }
@@ -1146,7 +1146,7 @@ void NmiFrameUpload(uint8_t bank)
     uint8_t v;
 
     cyc(68);
-    v = rd8(b | W(wram_0D22));
+    v = rd8(0x7E0000 | W(wram_0D22));
     set_a8(v);
     if (v) {
         cyc(40);
@@ -1210,13 +1210,13 @@ static int race_stage(uint32_t b)
     uint16_t sel;
 
     cyc(46);
-    set_x(race_x = rd16(b | W(gsu_buffer_offset)));
+    set_x(race_x = rd16(0x7E0000 | W(gsu_buffer_offset)));
     cyc(30);
     switch (rd16(W(wram_bank_7e) | (uint16_t)(0xA7D1 + u_x))) {
     case 0xA82D:
         delay_a(1);
         cyc(62);
-        sel = rd16(b | W(gsu_buffer_select));
+        sel = rd16(0x7E0000 | W(gsu_buffer_select));
         set_a(sel);
         if (!sel) {
             cyc(22);
@@ -1250,7 +1250,7 @@ static int race_stage(uint32_t b)
         delay_a(4);
         next_stage(b, 0x0006);
         cyc(24);
-        set_a(rd16(b | W(wram_0D9A)));
+        set_a(rd16(0x7E0000 | W(wram_0D9A)));
         cyc(32);
         wr16(W(gradient_ptr_a), u_a);
         ld3(0x2400, 0x7000, 0x2200);
@@ -1260,10 +1260,10 @@ static int race_stage(uint32_t b)
         cyc(22);
         put8(BG12NBA, 0x60);
         put8(BG1SC, 0x78);
-        copy8(BG2HOFS, b | W(bg2_scroll_x));
-        copy8(BG2HOFS, b | W(wram_0D93));
-        copy8(BG2VOFS, b | W(bg2_scroll_y));
-        copy8(BG2VOFS, b | W(wram_0D8F));
+        copy8(BG2HOFS, 0x7E0000 | W(bg2_scroll_x));
+        copy8(BG2HOFS, 0x7E0000 | W(wram_0D93));
+        copy8(BG2VOFS, 0x7E0000 | W(bg2_scroll_y));
+        copy8(BG2VOFS, 0x7E0000 | W(wram_0D8F));
         set_a(0xFFFF);
         cyc(78);
         wr16(W(wram_0D81), 0xFFFF);
@@ -1271,7 +1271,7 @@ static int race_stage(uint32_t b)
         break;
     case 0xA8FA:
         cyc(46);
-        sel = rd16(b | W(gsu_buffer_select));
+        sel = rd16(0x7E0000 | W(gsu_buffer_select));
         cyc(22);
         set_a(sel);
         if (sel) {
@@ -1304,9 +1304,9 @@ static int race_stage(uint32_t b)
     case 0xA95B:
         delay_a(4);
         cyc(86);
-        wr16(b | W(gsu_buffer_offset), 0x0000);
+        wr16(0x7E0000 | W(gsu_buffer_offset), 0x0000);
         cyc(24);
-        set_a(rd16(b | W(wram_0D9C)));
+        set_a(rd16(0x7E0000 | W(wram_0D9C)));
         cyc(32);
         wr16(W(gradient_ptr_a), u_a);
         ld3(0x2400, 0x9400, 0x2200);
@@ -1314,15 +1314,15 @@ static int race_stage(uint32_t b)
         dma_from_gsu();
         fx_op_upload(0);
         cyc(22);
-        copy8(BG2HOFS, b | W(wram_0D94));
-        copy8(BG2HOFS, b | W(wram_0D95));
-        copy8(BG2VOFS, b | W(wram_0D90));
-        copy8(BG2VOFS, b | W(wram_0D91));
+        copy8(BG2HOFS, 0x7E0000 | W(wram_0D94));
+        copy8(BG2HOFS, 0x7E0000 | W(wram_0D95));
+        copy8(BG2VOFS, 0x7E0000 | W(wram_0D90));
+        copy8(BG2VOFS, 0x7E0000 | W(wram_0D91));
         put8(BG12NBA, 0x62);
         put8(BG1SC, 0x7C);
         set_a(0x0001);
         cyc(70);
-        wr16(b | W(wram_0D81), 0x0001);
+        wr16(0x7E0000 | W(wram_0D81), 0x0001);
         frame_done(b);
         break;
     case 0xA9B1:

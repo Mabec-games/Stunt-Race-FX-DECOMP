@@ -107,40 +107,40 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
     int fresh = 0;
 
     cyc(68);
-    if (!rd8(b | W(wram_0D51))) {
+    if (!rd8(0x7E0000 | W(wram_0D51))) {
         cyc(22 + 40);
-        *a = rd16(b | W(joy1_held)) & 0x3030;
+        *a = rd16(0x7E0000 | W(joy1_held)) & 0x3030;
         cyc(2);
         if (*a != 0x3030)
             { cyc(120 + 42); return 0; }
         cyc(92);
-        *a = rd16(b | W(joy1_held)) & 0xCFCF;
+        *a = rd16(0x7E0000 | W(joy1_held)) & 0xCFCF;
         cyc(2);
         if (*a)
             { cyc(96 + 42); return 0; }
         cyc(90);
-        v = (uint8_t)(rd8(b | W(wram_0D51)) - 1);
+        v = (uint8_t)(rd8(0x7E0000 | W(wram_0D51)) - 1);
         cyc(6);
-        wr8(b | W(wram_0D51), v);
+        wr8(0x7E0000 | W(wram_0D51), v);
         cyc(38 + 40);
         SoundPort1QueuePushW(0x04, x16 ? 16 : 0);
         cyc(40);
-        wr8(b | W(fade_out), 0x01);
+        wr8(0x7E0000 | W(fade_out), 0x01);
         cyc(40);
-        wr8(b | W(wram_0D5F), 0x70);
+        wr8(0x7E0000 | W(wram_0D5F), 0x70);
         fresh = 1;
     }
     int started = fresh;
     do {
         do
             { cyc(fresh ? 24 : 46); fresh = 0; }
-        while (!rd8(b | W(wram_0D52)));
+        while (!rd8(0x7E0000 | W(wram_0D52)));
         cyc(40);
-        wr8(b | W(wram_0D52), 0x00);
+        wr8(0x7E0000 | W(wram_0D52), 0x00);
         cyc(24);
-        v = (uint8_t)(rd8(b | W(wram_0D5F)) - 1);
+        v = (uint8_t)(rd8(0x7E0000 | W(wram_0D5F)) - 1);
         cyc(6);
-        wr8(b | W(wram_0D5F), v);
+        wr8(0x7E0000 | W(wram_0D5F), v);
     } while (v);
     cyc(40 + 16);
     ppu_wr(b | INIDISP, 0x80);
@@ -151,12 +151,12 @@ int SoftResetCheck(Carried *cr, uint8_t bank, int x16, uint16_t *a)
     cyc(24);
     hdmaen_wr(b | HDMAEN, 0x00);
     cyc(24);
-    wr8(b | W(wram_0D51), 0x00);
+    wr8(0x7E0000 | W(wram_0D51), 0x00);
     SoftResetApu();
     cyc(22 + 24);                       /* SEP */
-    wr8(b | W(hud_mode), 0x00);
+    wr8(0x7E0000 | W(hud_mode), 0x00);
     cyc(24);
-    wr8(b | W(wram_0D62), 0x00);
+    wr8(0x7E0000 | W(wram_0D62), 0x00);
     cyc(22);                            /* REP #$10 */
     reset_fill(0x00, 0x0300, 0x2100, 108);
     reset_fill(0x7E, 0x2000, 0xE000, 86);

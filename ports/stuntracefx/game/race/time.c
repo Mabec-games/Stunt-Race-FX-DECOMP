@@ -158,23 +158,23 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
     cyc(22);
     cyc(16);
     for (i = 0; i < 4; i++)
-        { cyc(24); wr8(b | (uint16_t)(W(countdown_fraction) + i), 0x99); }
+        { cyc(24); wr8(0x7E0000 | (uint16_t)(W(countdown_fraction) + i), 0x99); }
     cyc(24);
-    v = rd8(b | W(hud_mode));
+    v = rd8(0x7E0000 | W(hud_mode));
     *p = nz8(*p, v);
     if (v == 0) {
         cyc(46);
-        v = rd8(b | W(digit62_override));
+        v = rd8(0x7E0000 | W(digit62_override));
         *p = nz8(*p, v);
         if (v == 0) {
             cyc(40);
-            v = rd8(b | W(wram_0D89));
+            v = rd8(0x7E0000 | W(wram_0D89));
             *x = CourseIndex12(v, p);
             cyc(0);
             v = rd8((uint32_t)(0x03D813 + *x));
         } else {
             cyc(46);
-            *x = rd8(b | W(wram_0D4A));
+            *x = rd8(0x7E0000 | W(wram_0D4A));
             v = rd8((uint32_t)(0x03D810 + *x));
         }
     } else {
@@ -182,17 +182,17 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
         *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
         if (v >= 0x02)
             v = 0x00;
-        else { cyc(64); if (rd8(b | W(hud_blank)) != 0)
+        else { cyc(64); if (rd8(0x7E0000 | W(hud_blank)) != 0)
             v = 0x00;
         else {
             cyc(40);
-            v = rd8(b | W(course));
+            v = rd8(0x7E0000 | W(course));
             *p |= P_C;
             v = alu_sbc8(v, 0x0C, p);
             v = asl8(asl8(v, p), p);
             *p &= (uint8_t)~P_C;
             cyc(80);
-            v = alu_adc8(v, rd8(b | W(wram_0D89)), p);
+            v = alu_adc8(v, rd8(0x7E0000 | W(wram_0D89)), p);
             *x = v;
             cyc(14);
             v = rd8((uint32_t)(0x03D8A3 + *x));
@@ -200,9 +200,9 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
     }
     *p = nz8(*p, v);
     cyc(86);
-    wr8(b | W(race_time_bcd), v);
+    wr8(0x7E0000 | W(race_time_bcd), v);
     cyc(24);
-    wr8(b | W(wram_0E71), 0x00);
+    wr8(0x7E0000 | W(wram_0E71), 0x00);
     cyc(42);
     return v;
 }
@@ -263,60 +263,60 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
     }
     p = (uint8_t)((p & ~P_M) | P_D);
     cyc(82);
-    a = rd16(b | W(wram_0E62));
+    a = rd16(0x7E0000 | W(wram_0E62));
     p &= (uint8_t)~P_C;
     cyc(38);
-    a = alu_adc16(a, rd16(b | W(wram_0D29)), &p);
+    a = alu_adc16(a, rd16(0x7E0000 | W(wram_0D29)), &p);
     cyc(24);
-    wr16(b | W(wram_0E62), a);
+    wr16(0x7E0000 | W(wram_0E62), a);
     cyc(24);
-    a = alu_adc16(rd16(b | W(race_time_seconds)), 0x0000, &p);
+    a = alu_adc16(rd16(0x7E0000 | W(race_time_seconds)), 0x0000, &p);
     cyc(48);
-    wr16(b | W(race_time_seconds), a);
+    wr16(0x7E0000 | W(race_time_seconds), a);
     acc = a;
     cyc(0);                                     /* CMP #$0060 */
     if (a >= 0x0060) {
         cyc(64);
-        wr16(b | W(race_time_seconds), 0x0000);
+        wr16(0x7E0000 | W(race_time_seconds), 0x0000);
         p &= (uint8_t)~P_C;
         cyc(24);
-        a = alu_adc16(rd16(b | W(race_time_minutes)), 0x0001, &p);
+        a = alu_adc16(rd16(0x7E0000 | W(race_time_minutes)), 0x0001, &p);
         cyc(62);
-        wr16(b | W(race_time_minutes), a);
+        wr16(0x7E0000 | W(race_time_minutes), a);
         acc = a;
         cyc(0);                                 /* CMP #$0010 */
         if (a >= 0x0010) {
             cyc(88);
-            wr16(b | W(race_time_minutes), 0x0009);
+            wr16(0x7E0000 | W(race_time_minutes), 0x0009);
             cyc(48);
-            wr16(b | W(race_time_seconds), 0x0059);
+            wr16(0x7E0000 | W(race_time_seconds), 0x0059);
             cyc(48);
-            wr16(b | W(wram_0E62), 0x9999);
+            wr16(0x7E0000 | W(wram_0E62), 0x9999);
             acc = 0x9999;
         }
     } else { cyc(46); }
     cyc(38);
-    a = rd16(b | W(countdown_fraction));
+    a = rd16(0x7E0000 | W(countdown_fraction));
     p |= P_C;
     cyc(38);
-    a = alu_sbc16(a, rd16(b | W(wram_0D29)), &p);
+    a = alu_sbc16(a, rd16(0x7E0000 | W(wram_0D29)), &p);
     acc = a;
     cyc(40);
-    wr16(b | W(countdown_fraction), a);
+    wr16(0x7E0000 | W(countdown_fraction), a);
     if (!(p & P_C)) {
         cyc(24);
-        a = rd16(b | W(race_time_bcd));
+        a = rd16(0x7E0000 | W(race_time_bcd));
         acc = a;
         if (a) {
             p |= P_C;
             acc = alu_sbc16(a, 0x0001, &p);
             cyc(72);
-            wr16(b | W(race_time_bcd), acc);
+            wr16(0x7E0000 | W(race_time_bcd), acc);
         } else {
             cyc(46);
-            wr16(b | W(countdown_fraction), 0x0000);
+            wr16(0x7E0000 | W(countdown_fraction), 0x0000);
             cyc(24);
-            wr16(b | W(race_time_bcd), 0x0000);
+            wr16(0x7E0000 | W(race_time_bcd), 0x0000);
         }
         cyc(22);
     }

@@ -150,13 +150,13 @@ int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
         cyc(12);
         return 0;
     }
-    split = rd8(b | W(wram_0D62)) != 0;
+    split = rd8(0x7E0000 | W(wram_0D62)) != 0;
     if (split)
         cyc(50);                        /* LDY # and the BRA's other arm */
     g = gauge_of(b, W(gauge_b4_x), W(gauge_b4_y), W(gauge_b4_value));
     bar4(bank, g, split ? 0x0040 : 0x0100, split ? 86 : 108);
     cyc(40);
-    split = rd8(b | W(wram_0D62)) != 0;
+    split = rd8(0x7E0000 | W(wram_0D62)) != 0;
     if (split)
         cyc(50);
     g = gauge_of(b, W(gauge_b6_x), W(wram_0E14), W(wram_0E05));
@@ -213,9 +213,9 @@ static uint8_t gauge6_place(uint8_t bank, uint16_t at, uint8_t y, uint8_t x)
     cyc(x ? 16 : 38);                   /* LDX #imm; panel B's also BRAs to the shared tail */
     for (i = 0; i < 4; i++) {
         cyc(24);
-        v = (uint8_t)(rd8(b | (uint16_t)(W(oam_buffer_high) + 6 + i + x)) & keep[i]);
+        v = (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(oam_buffer_high) + 6 + i + x)) & keep[i]);
         cyc(46);
-        wr8(b | (uint16_t)(W(oam_buffer_high) + 6 + i + x), v);
+        wr8(0x7E0000 | (uint16_t)(W(oam_buffer_high) + 6 + i + x), v);
     }
     cyc(70);
     return v;

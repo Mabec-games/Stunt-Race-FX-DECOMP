@@ -275,7 +275,7 @@ void ColoursClear(uint8_t bank)
 
     cyc(56);
     for (x = 0xDF; x >= 0; x--)
-        wr8(dbw(bank, (uint16_t)(W(colour_list) + x)), cyc_then(66, 0x00));
+        wr8((0x7E0000 | (uint16_t)(W(colour_list) + x)), cyc_then(66, 0x00));
     cyc(110);
 }
 
@@ -351,10 +351,10 @@ void ScreenBlankAndWait(uint8_t bank)
     ppu_wr(dbw(bank, 0x2100), cyc_then(40, 0x80));
     cyc(62); /* JSL */
     Set7EBC2BTrio(0x80);
-    wr8(dbw(bank, W(scanline_wait)), cyc_then(40, 0x96));
+    wr8((0x7E0000 | W(scanline_wait)), cyc_then(40, 0x96));
     cyc(62); /* JSL */
     WaitScanline(bank);
-    wr8(dbw(bank, W(scanline_wait)), cyc_then(84, 0x8C));
+    wr8((0x7E0000 | W(scanline_wait)), cyc_then(84, 0x8C));
     cyc(62); /* JSL */
     WaitScanline(bank);
     cyc(116); /* SEP, REP, PLP, RTL */
@@ -506,14 +506,14 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     int back;
 
     *p &= (uint8_t)~(P_M | P_X);
-    wr16(dbw(bank, W(tile_row_built)), cyc_then(46, 0x0000));
-    a = (uint16_t)(rd16(cyc_then(24, dbw(bank, W(tile_row_on)))) & 0x00FF);
+    wr16((0x7E0000 | W(tile_row_built)), cyc_then(46, 0x0000));
+    a = (uint16_t)(rd16(cyc_then(24, (0x7E0000 | W(tile_row_on)))) & 0x00FF);
     if (!a) {
         cyc(40 + 42); /* AND, BNE; RTS */
         *p = nz16(*p, a);
         return a;
     }
-    a = rd16(cyc_then(116, dbw(bank, W(tile_row_level))));
+    a = rd16(cyc_then(116, (0x7E0000 | W(tile_row_level))));
     back = (a & 0x8000) != 0;
     if (back)
         { cyc(44); a = (uint16_t)-a; }
@@ -529,26 +529,26 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
     *x = (uint16_t)((a >> 8 & 0x0007) << 1);
     cyc(160);
     t = rd16(0x008BAEu + *x);
-    if (t == rd16(dbw(bank, W(tile_row_source)))) {
+    if (t == rd16((0x7E0000 | W(tile_row_source)))) {
         cyc(16 + 42); /* BNE; RTS */
         *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
         return t;
     }
-    wr16(dbw(bank, W(tile_row_source)), cyc_then(46, t));
+    wr16((0x7E0000 | W(tile_row_source)), cyc_then(46, t));
     i = back ? (cyc(38), (uint16_t)(t + 0x3E)) : t;
     for (*y = 0; *y != 0x40; *y = (uint16_t)(*y + 2)) {
         unsigned s;
 
         cyc(114);
         w = rd16((uint16_t)i);
-        a = rd16(dbw(bank, W(tile_row_add)));
+        a = rd16((0x7E0000 | W(tile_row_add)));
         s = (unsigned)w + a;
         *p = (uint8_t)((*p & ~P_V) | ((~(w ^ a) & (w ^ s) & 0x8000) ? P_V : 0));
-        wr16(dbw(bank, (uint16_t)(W(tile_row) + *y)), cyc_then(30, (uint16_t)s));
+        wr16((0x7E0000 | (uint16_t)(W(tile_row) + *y)), cyc_then(30, (uint16_t)s));
         i = back ? (cyc(64), (uint16_t)(i - 2)) : (cyc(64), (uint16_t)(i + 2));
     }
     *x = i;
-    wr16(dbw(bank, W(tile_row_built)), cyc_then(80, 0x0001));
+    wr16((0x7E0000 | W(tile_row_built)), cyc_then(80, 0x0001));
     cyc(42); /* RTS */
     *p = (uint8_t)((*p & ~(P_N | P_Z)) | P_C);
     return 0x0001;
@@ -878,14 +878,14 @@ void UnusedScreenSetup(Carried *cr)
     cyc(16);
     wr8(W(dp_00), 0x00);
     cyc(24);
-    wr8(b | W(wram_084C), 0x00);
+    wr8(0x7E0000 | W(wram_084C), 0x00);
     cyc(24);
     hw_rd(b | 0x4211);
     r_rep(cr, P_M);
     cyc(32);
     hw_rd16(0x003030);
     cyc(48);
-    wr16(b | W(gsu_scmr_shadow), 0x0021);
+    wr16(0x7E0000 | W(gsu_scmr_shadow), 0x0021);
     (cyc(62), ScreenBlankAndWait_cr(cr));
     cyc(24);
     ppu_wr16(b | 0x2121, 0x0000);
@@ -1025,17 +1025,17 @@ void UnusedScreenSetup(Carried *cr)
     cyc(24);
     dma_wr(b | 0x4347, 0x00);
     cyc(40);
-    wr8(b | W(wram_0316), 0x1E);
+    wr8(0x7E0000 | W(wram_0316), 0x1E);
     cyc(48);
-    wr16(b | W(wram_084D), 0xBC50);
+    wr16(0x7E0000 | W(wram_084D), 0xBC50);
     cyc(48);
-    wr16(b | W(wram_084F), 0xBF3F);
+    wr16(0x7E0000 | W(wram_084F), 0xBF3F);
     cyc(48);
-    wr16(b | W(wram_083E), 0xB7A0);
+    wr16(0x7E0000 | W(wram_083E), 0xB7A0);
     cyc(48);
-    wr16(b | W(wram_0840), 0xB9E4);
+    wr16(0x7E0000 | W(wram_0840), 0xB9E4);
     cyc(24);
-    wr8(b | W(wram_0842), 0x00);
+    wr8(0x7E0000 | W(wram_0842), 0x00);
     (cyc(62), ScrollRegsClear_cr(cr));
     r_sep(cr, P_M);
     cyc(70);
@@ -1047,21 +1047,21 @@ void UnusedScreenSetup(Carried *cr)
     cyc(24);
     ppu_wr(b | 0x2100, 0x80);
     cyc(24);
-    wr8(b | W(wram_084C), 0x00);
+    wr8(0x7E0000 | W(wram_084C), 0x00);
     cyc(40);
     hdmaen_wr(b | 0x420C, 0x02);
     cyc(40);
-    wr8(b | W(scanline_wait), 0xBE);
+    wr8(0x7E0000 | W(scanline_wait), 0xBE);
     (cyc(62), WaitScanline_cr(cr));
     cyc(84);
-    wr8(b | W(scanline_wait), 0x64);
+    wr8(0x7E0000 | W(scanline_wait), 0x64);
     (cyc(62), WaitScanline_cr(cr));
     cyc(68);
     hw_rd(b | 0x4210);
     cyc(40);
     hw_wr(b | 0x4200, 0x31);
     cyc(40);
-    wr8(b | W(wram_05D9), 0xFF);
+    wr8(0x7E0000 | W(wram_05D9), 0xFF);
     cyc(32);
     v = hw_rd(TIMEUP);
     a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -1105,15 +1105,15 @@ void UnusedScreenStart(Carried *cr)
     cyc(48);
     wr8(W(dp_00), 0x02);
     cyc(24);
-    wr8(b | W(frames_since_tick), 0x00);
-    while (!rd8(cyc_then(24, b | W(wram_0854))))
+    wr8(0x7E0000 | W(frames_since_tick), 0x00);
+    while (!rd8(cyc_then(24, 0x7E0000 | W(wram_0854))))
         ;
     cyc(78);
     GsuClearScreenIfSet_cr(cr);
-    while (rd8(cyc_then(24, b | W(wram_0854))) != 0x02)
+    while (rd8(cyc_then(24, 0x7E0000 | W(wram_0854))) != 0x02)
         cyc(38); /* CMP, BNE taken */
     cyc(56);
-    wr8(b | W(wram_0854), 0x00);
+    wr8(0x7E0000 | W(wram_0854), 0x00);
     (cyc(62), w_SpriteSlotFirstLong(cr));
     (cyc(62), CrashWhite(cr, cr->db));
 }

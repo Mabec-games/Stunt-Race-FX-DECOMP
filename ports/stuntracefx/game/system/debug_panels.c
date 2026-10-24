@@ -48,7 +48,7 @@ static uint16_t print16(uint8_t bank, int printer, uint16_t v, uint16_t pos, uin
 {
     cyc(70);
     wr16(W(dp_46), pos);
-    wr16(dbw(bank, W(text_half)), cyc_then(48, 0x0000));
+    wr16((0x7E0000 | W(text_half)), cyc_then(48, 0x0000));
     cyc(98);
     if (printer == DEC_WORD)
         DebugPrintDecimalWord(v);
@@ -67,7 +67,7 @@ static uint16_t print8(uint8_t bank, int printer, uint16_t a, uint8_t v, uint16_
     wr8(W(dp_46), (uint8_t)pos);
     cyc(32);
     wr8(W(dp_46) + 1, (uint8_t)(pos >> 8));
-    wr8(dbw(bank, W(text_half)), cyc_then(40, 0x00));
+    wr8((0x7E0000 | W(text_half)), cyc_then(40, 0x00));
     a = (uint16_t)((a & 0xFF00) | v);
     cyc(90);
     if (printer == HEX_WORD) {
@@ -167,7 +167,7 @@ uint16_t DebugTimersPanel(uint8_t bank, uint16_t a)
     wr8(W(dp_46), 0x00);
     cyc(32);
     wr8(W(dp_46) + 1, 0x00);
-    wr8(dbw(bank, W(text_half)), cyc_then(40, 0x00));
+    wr8((0x7E0000 | W(text_half)), cyc_then(40, 0x00));
     cyc(54);
     wr8(W(dp_54) + 2, 0x08);
     cyc(2);
@@ -370,8 +370,8 @@ uint16_t DebugCarsPanel(uint8_t bank)
     uint16_t x, row;
 
     pn_cv = 0;
-    print16(bank, DEC_WORD, rd16(cyc_then(24, dbw(bank, W(gsu_wait_polls)))), 0x5040, 0);
-    print16(bank, DEC_WORD, rd16(cyc_then(24, dbw(bank, W(gsu_ab13_polls)))), 0x5080, 0);
+    print16(bank, DEC_WORD, rd16(cyc_then(24, (0x7E0000 | W(gsu_wait_polls)))), 0x5040, 0);
+    print16(bank, DEC_WORD, rd16(cyc_then(24, (0x7E0000 | W(gsu_ab13_polls)))), 0x5080, 0);
     cyc(32);
     x = rd16(FX_CARS);
     pn_a = car_row(bank, x, 0x0040);
@@ -466,7 +466,7 @@ void DebugModelNamesPanel(uint8_t bank)
     x = fx_field(0x003E, x);
     cyc(84);
     wr16(W(dp_46), 0x0840);
-    wr16(dbw(bank, W(text_half)), cyc_then(48, 0x0000));
+    wr16((0x7E0000 | W(text_half)), cyc_then(48, 0x0000));
     cyc(16);
     wr16(W(dp_54) + 1, 0x0000);
     do {
@@ -542,7 +542,7 @@ uint16_t DebugModelChainPanel(uint8_t bank)
     }
     cyc(16);
     fx_field(0x0034, x);
-    x = rd16(cyc_then(24, dbw(bank, W(wram_0346))));
+    x = rd16(cyc_then(24, (0x7E0000 | W(wram_0346))));
     cyc(32);
     x = rd16(W(obj_22_long) + x);
     cyc(30);
@@ -606,7 +606,7 @@ uint8_t DebugLastCarMotionPanel(uint8_t bank)
     print16(bank, DEC_WORD, rd16(FX_TRAFFIC_CLOSE), 0x1C40, 0);
     cyc(32);
     a = print16(bank, DEC_WORD, rd16(FX_TRAFFIC_DIST), 0x1C80, 0);
-    b = rd8(cyc_then(46, dbw(bank, W(wram_1F41))));
+    b = rd8(cyc_then(46, (0x7E0000 | W(wram_1F41))));
     pn_a = (uint16_t)((a & 0xFF00) | b);
     pn_x = x;
     pn_x_set = 1;
@@ -641,7 +641,7 @@ static uint16_t view_record8(uint8_t bank, uint16_t a)
     uint16_t x;
     uint8_t b;
 
-    x = rd16(cyc_then(24, dbw(bank, W(wram_0346))));
+    x = rd16(cyc_then(24, (0x7E0000 | W(wram_0346))));
     cyc(32);
     b = rd8(W(obj_22_long) + x);
     return (uint16_t)((a & 0xFF00) | b);
@@ -717,7 +717,7 @@ uint16_t DebugWorkBytesPanel(uint8_t bank, uint16_t a, uint8_t p)
     int i;
 
     pn_cv = pn_x_set = 0;
-    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, W(wram_1F41)))), 0x4940, p);
+    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, (0x7E0000 | W(wram_1F41)))), 0x4940, p);
     cyc(32);
     v = rd8(FX_PART_Z_SPEED);
     v = (uint8_t)((v ^ 0xFF) + 1);
@@ -729,9 +729,9 @@ uint16_t DebugWorkBytesPanel(uint8_t bank, uint16_t a, uint8_t p)
     pn_c = c;
     pn_cv = 1;
     a = print8(bank, HEX_WORD, a, v, 0x4980, p);
-    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, W(wram_1F43)))), 0x49C0, p);
-    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, W(wram_1F41)))), 0x0940, p);
-    pn_a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, W(wram_1F43)))), 0x0980, p);
+    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, (0x7E0000 | W(wram_1F43)))), 0x49C0, p);
+    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, (0x7E0000 | W(wram_1F41)))), 0x0940, p);
+    pn_a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, (0x7E0000 | W(wram_1F43)))), 0x0980, p);
     cyc(44);                            /* RTL */
     return pn_a;
 }
@@ -818,7 +818,7 @@ uint16_t DebugViewSpeedPanel(uint8_t bank, uint16_t a, uint8_t p)
     a = print8(bank, HEX_WORD, a, rd8(GSU_RAM + 0x004A + x), 0x4B00, p);
     cyc(32);
     a = print8(bank, HEX_WORD, a, rd8(FX_RECORD_READY), 0x4440, p);
-    pn_a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, W(wram_1F64)))), 0x44C0, p);
+    pn_a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, (0x7E0000 | W(wram_1F64)))), 0x44C0, p);
     pn_x = x;
     pn_x_set = 1;
     cyc(44);                            /* RTL */
@@ -890,22 +890,22 @@ uint16_t DebugBucketsPanel(uint8_t bank, uint8_t p)
 {
     uint16_t v, x;
 
-    v = (uint16_t)(rd16(cyc_then(46, dbw(bank, W(view_pos_y_hi)))) & 0x00FF);
+    v = (uint16_t)(rd16(cyc_then(46, (0x7E0000 | W(view_pos_y_hi)))) & 0x00FF);
     pn_c = (uint8_t)(v >> 3 & 1);
     pn_cv = 1;
     v = (uint16_t)(((v >> 4) + 1) & 0x00FE);
     cyc(118);
     print16(bank, HEX_WORD, v, 0x1C40, (uint8_t)(p & P_X));
     print16(bank, HEX_WORD, rd16(cyc_then(32, FX_PUSH_TURN)), 0x3040, (uint8_t)(p & P_X));
-    x = rd16(cyc_then(46, dbw(bank, W(wram_0346))));
+    x = rd16(cyc_then(46, (0x7E0000 | W(wram_0346))));
     cyc(32);
     print16(bank, HEX_WORD, rd16(W(obj_bucket_long) + x), 0x1E80, 0);
-    print16(bank, HEX_WORD, rd16(cyc_then(24, dbw(bank, W(view_area_origin)))), 0x1EC0, 0);
-    x = rd16(cyc_then(46, dbw(bank, W(wram_0346))));
+    print16(bank, HEX_WORD, rd16(cyc_then(24, (0x7E0000 | W(view_area_origin)))), 0x1EC0, 0);
+    x = rd16(cyc_then(46, (0x7E0000 | W(wram_0346))));
     cyc(32);
     v = rd16(W(obj_bucket_long) + x);
     bucket_row(bank, v, 0x0900);
-    v = rd16(dbw(bank, W(view_area_origin)));
+    v = rd16((0x7E0000 | W(view_area_origin)));
     pn_x = v;
     bucket_row(bank, v, 0x0940);
     pn_x_set = 1;
@@ -996,9 +996,9 @@ uint16_t DebugCounterPanel(uint8_t bank, uint16_t a, uint8_t p)
     pn_cv = 0;
     cyc(54);
     print8(bank, DEC_BYTE, a, rd8(FX_GSU_108E), 0x0440, (uint8_t)(P_M | xw));
-    print16(bank, HEX_WORD, rd16(cyc_then(46, dbw(bank, W(gsu_wait_polls)))), 0x0480, xw);
-    a = print16(bank, HEX_WORD, rd16(cyc_then(24, dbw(bank, W(gsu_ab13_polls)))), 0x04C0, xw);
-    x = rd16(cyc_then(46, dbw(bank, W(wram_0346))));
+    print16(bank, HEX_WORD, rd16(cyc_then(46, (0x7E0000 | W(gsu_wait_polls)))), 0x0480, xw);
+    a = print16(bank, HEX_WORD, rd16(cyc_then(24, (0x7E0000 | W(gsu_ab13_polls)))), 0x04C0, xw);
+    x = rd16(cyc_then(46, (0x7E0000 | W(wram_0346))));
     cyc(54);
     a = print8(bank, DEC_BYTE, a, rd8(W(wram_7E204C) + x), 0x0500, P_M);
     cyc(32);
@@ -1080,7 +1080,7 @@ void abi_DebugPanelSep(void)
 uint16_t DebugFxTestWordPanel(uint8_t bank)
 {
     pn_cv = pn_x_set = 0;
-    rd16(cyc_then(46, dbw(bank, W(wram_1F1B))));
+    rd16(cyc_then(46, (0x7E0000 | W(wram_1F1B))));
     cyc(32);
     pn_a = print16(bank, HEX_WORD, rd16(FX_RAM_TEST), 0x5040, 0);
     cyc(44);                            /* RTL */

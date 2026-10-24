@@ -391,22 +391,22 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
 
     cyc(22);                            /* SEP #$30 */
     cyc(46);
-    a = v = rd8(b | W(sound_direct0));
+    a = v = rd8(0x7E0000 | W(sound_direct0));
     if (v) {
         cyc(40);
         hw_wr(b | 0x2140, v);
         cyc(24);
-        wr8(b | W(sound_direct0), 0x00);
+        wr8(0x7E0000 | W(sound_direct0), 0x00);
         cyc(28);                        /* PLP; the plp's 42 states the RTS */
         goto done;
     }
     cyc(46);
-    a = v = rd8(b | W(sound_direct1));
+    a = v = rd8(0x7E0000 | W(sound_direct1));
     if (v) {
         cyc(40);
         hw_wr(b | 0x2141, v);
         cyc(24);
-        wr8(b | W(sound_direct1), 0x00);
+        wr8(0x7E0000 | W(sound_direct1), 0x00);
         cyc(28);
         goto done;
     } else { cyc(6); }
@@ -424,16 +424,16 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
         }
     }
     cyc(40);
-    a = v = rd8(b | W(frame_count));
+    a = v = rd8(0x7E0000 | W(frame_count));
     if (!(v & 0x01)) {
         cyc(60);
         goto done;
     } else { cyc(38); }
     ring_send(b, 0x2140, W(sound_port0_count), W(sound_port0_head), W(sound_port0_queue), &a, &x);
     if (ring_send(b, 0x2141, W(sound_port1_count), W(sound_port1_head), W(sound_port1_queue), &a, &x))
-        { cyc(24); wr8(b | W(sound_port1_last), a); }
+        { cyc(24); wr8(0x7E0000 | W(sound_port1_last), a); }
     cyc(24);
-    a = v = rd8(b | W(wram_0E4B));
+    a = v = rd8(0x7E0000 | W(wram_0E4B));
     if (v) {
         a = 0x00;
         cyc(62);
@@ -442,11 +442,11 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
         hw_wr(b | 0x2143, 0x00);
     } else {
         cyc(40);
-        v = rd8(b | W(near_car_pos));
+        v = rd8(0x7E0000 | W(near_car_pos));
         cyc(24);
         hw_wr(b | 0x2142, v);
         cyc(24);
-        v = rd8(b | W(wram_0E49));
+        v = rd8(0x7E0000 | W(wram_0E49));
         cyc(24);
         hw_wr(b | 0x2143, v);
         a = v;

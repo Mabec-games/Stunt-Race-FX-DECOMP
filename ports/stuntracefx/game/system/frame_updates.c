@@ -529,7 +529,7 @@ uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(182);
-    uint16_t x = rd16(b | (uint16_t)W(byte_writes_size));
+    uint16_t x = rd16(0x7E0000 | (uint16_t)W(byte_writes_size));
 
     if (x == 0x0080)
         SystemHalt();
@@ -538,7 +538,7 @@ uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
     cyc(68);
     wr16(W(byte_writes) + x, addr);
     cyc(76);
-    wr16(b | (uint16_t)W(byte_writes_size), (uint16_t)(x + 4));
+    wr16(0x7E0000 | (uint16_t)W(byte_writes_size), (uint16_t)(x + 4));
     return x;
 }
 
@@ -576,20 +576,20 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     cyc(32);
     wr16(W(menu_pos_18bd), w);
     cyc(24);
-    w = rd16(b | W(joy1_pressed));
+    w = rd16(0x7E0000 | W(joy1_pressed));
     word_list_append(W(word_list_a_size), W(word_list_a), w);
     cyc(94);
-    w = rd16(b | W(joy2_pressed));
+    w = rd16(0x7E0000 | W(joy2_pressed));
     *hi = (uint16_t)(w & 0xFF00);
     *x = word_list_append(W(word_list_b_size), W(word_list_b), w);
     cyc(116);
-    wr8(b | W(frame_count), cyc_then(6, (uint8_t)(rd8(b | W(frame_count)) + 1)));
+    wr8(0x7E0000 | W(frame_count), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frame_count)) + 1)));
     cyc(24);
-    wr8(b | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(b | W(frames_since_tick)) + 1)));
+    wr8(0x7E0000 | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frames_since_tick)) + 1)));
     cyc(16);
     wr8(W(dp_06), cyc_then(6, (uint8_t)(rd8(W(dp_06)) + 1)));
     cyc(24);
-    v = rd8(b | W(wram_11DA));
+    v = rd8(0x7E0000 | W(wram_11DA));
     cyc(24);
     ppu_wr(b | 0x2100, v);
     return v;
@@ -662,9 +662,9 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     cyc(38);
     wr8(W(dp_06), cyc_then(6, (uint8_t)(rd8(W(dp_06)) + 1)));
     cyc(24);
-    wr8(b | W(frame_count), cyc_then(6, (uint8_t)(rd8(b | W(frame_count)) + 1)));
+    wr8(0x7E0000 | W(frame_count), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frame_count)) + 1)));
     cyc(24);
-    wr8(b | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(b | W(frames_since_tick)) + 1)));
+    wr8(0x7E0000 | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frames_since_tick)) + 1)));
     cyc(78);
     wr16(W(wram_18FB), 0x0000);
     cyc(32);
@@ -681,7 +681,7 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
         *checked = 1;
     }
     cyc(68);
-    lum = rd8(b | W(wram_11DA));
+    lum = rd8(0x7E0000 | W(wram_11DA));
     cyc(24);
     ppu_wr(b | INIDISP, lum);
     return lum;

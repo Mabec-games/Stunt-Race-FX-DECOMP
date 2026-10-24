@@ -83,7 +83,7 @@ void abi_RandomStep(void)
  */
 uint16_t RandomWordStep(uint8_t bank)
 {
-    uint32_t at = (uint32_t)bank << 16 | W(random_word);
+    uint32_t at = 0x7E0000 | W(random_word);
     cyc(68);
     uint16_t x = rd16(at), t, y, v;
 

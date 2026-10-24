@@ -185,7 +185,7 @@ static void lda8(Carried *cr, uint8_t v)
    them is pressed. */
 static int pressed(Carried *cr, uint16_t mask)
 {
-    r_lda16(cr, cyc_then(24, db(cr) | W(joy1_pressed_copy)));
+    r_lda16(cr, cyc_then(24, 0x7E0000 | W(joy1_pressed_copy)));
     set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(50), 0) : (cyc(16), P_Z))));
     return (cr->a & mask) != 0;
 }
@@ -213,10 +213,10 @@ static void origin(Carried *cr, uint8_t x, uint8_t y)
     r_sep(cr, P_M | P_X);
     lda8(cr, x);
     cyc(34);
-    wr8(b | W(metasprite_origin_x), x);
+    wr8(0x7E0000 | W(metasprite_origin_x), x);
     lda8(cr, y);
     cyc(40);
-    wr8(b | W(metasprite_origin_y), y);
+    wr8(0x7E0000 | W(metasprite_origin_y), y);
     r_rep(cr, P_M | P_X);
 }
 
@@ -227,7 +227,7 @@ static void md_first(Carried *cr, uint16_t id, uint8_t bra)
     cr->y = 0x0000;
     cr->x = id;
     set_p(cr, nz16(cr->p, id));
-    wr16(db(cr) | W(wram_0D71), cyc_then(72, 0x0000));
+    wr16(0x7E0000 | W(wram_0D71), cyc_then(72, 0x0000));
     (cyc(46), MetaspriteDraw_cr(cr));
     if (bra)
         cyc(bra);
@@ -319,7 +319,7 @@ void RecordsMenuGo(Carried *cr)
     cyc(26);
     sound8(cr, 0x46);
     lda8(cr, 0x0A);
-    wr8(db(cr) | W(wram_0D40), cyc_then(40, 0x0A));
+    wr8(0x7E0000 | W(wram_0D40), cyc_then(40, 0x0A));
     (cyc(62), ColourMathA7Start_cr(cr));
     (cyc(106), OamBufferHideLargeLong_cr(cr));
     cyc(42);
@@ -345,7 +345,7 @@ static void choice_show_at(Carried *cr, int entry, uint8_t choice, CarriedFn f1,
 {
     r_sep(cr, P_M);
     lda8(cr, choice);
-    wr8(db(cr) | W(wram_0D50), cyc_then(entry, choice));
+    wr8(0x7E0000 | W(wram_0D50), cyc_then(entry, choice));
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x0001);
     (cyc(32), f1(cr));
@@ -372,7 +372,7 @@ static void choice_show(Carried *cr, int pushed, uint8_t choice, CarriedFn f1, C
 static void records_view(Carried *cr)
 {
     r_lda16_imm(cr, 0x000C);
-    wr16(db(cr) | W(wram_0D40), 0x000C);
+    wr16(0x7E0000 | W(wram_0D40), 0x000C);
     cyc(10);
     sound16(cr, 0x0024);
     cyc(42);                            /* RTS */
@@ -448,7 +448,7 @@ void RecordsMenuAllMiddle(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | W(wram_0D24));
+    r_lda8(cr, 0x7E0000 | W(wram_0D24));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : (cyc(32), 0))));
     if (v != 0x03) {
@@ -532,13 +532,13 @@ static int menu_wait(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(22);
-    r_lda8(cr, b | W(wram_0D41));
+    r_lda8(cr, 0x7E0000 | W(wram_0D41));
     if (!(uint8_t)cr->a)
         { cyc(22); return 1; }
     cyc(40);
-    v = (uint8_t)(rd8(b | W(wram_0D41)) - 1);
+    v = (uint8_t)(rd8(0x7E0000 | W(wram_0D41)) - 1);
     cyc(6);
-    wr8(b | W(wram_0D41), v);
+    wr8(0x7E0000 | W(wram_0D41), v);
     set_p(cr, nz8(cr->p, v));
     cyc(42);
     return 0;
@@ -558,7 +558,7 @@ static int menu_back(Carried *cr)
 /* LDX $0D50 (8-bit), the menu's JMP (table,X): the handler's address. */
 static uint16_t menu_handler(Carried *cr, uint16_t table)
 {
-    uint8_t x = rd8(cyc_then(24, db(cr) | W(wram_0D50)));
+    uint8_t x = rd8(cyc_then(24, 0x7E0000 | W(wram_0D50)));
 
     cr->x = x;
     set_p(cr, nz8(cr->p, x));
@@ -718,18 +718,18 @@ static void speed_alt_leave(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(36);
-    wr8(b | W(digit62_override), 0x00);
+    wr8(0x7E0000 | W(digit62_override), 0x00);
     r_rep(cr, P_M | P_X);
     cyc(10);
     sound16(cr, 0x002F);
     r_sep(cr, P_M);
     lda8(cr, 0x0E);
     cyc(62);
-    wr8(b | W(wram_0D40), 0x0E);
+    wr8(0x7E0000 | W(wram_0D40), 0x0E);
     cyc(24);
-    v = (uint8_t)(rd8(b | W(wram_0D48)) + 1);
+    v = (uint8_t)(rd8(0x7E0000 | W(wram_0D48)) + 1);
     cyc(6);
-    wr8(b | W(wram_0D48), v);
+    wr8(0x7E0000 | W(wram_0D48), v);
     set_p(cr, nz8(cr->p, v));
     (cyc(62), OamBufferHideLargeLong_cr(cr));
     lda8(cr, 0xF0);
@@ -1149,7 +1149,7 @@ static uint8_t page_mark_y(Carried *cr)
     uint8_t p = cr->p;
 
     r_rep(cr, P_M | P_X);
-    r_lda16(cr, cyc_then(46, db(cr) | W(wram_0D73)));
+    r_lda16(cr, cyc_then(46, 0x7E0000 | W(wram_0D73)));
     r_and16(cr, 0x00FF);
     r_asl16(cr);
     r_asl16(cr);
@@ -1169,13 +1169,13 @@ static void page_mark_flip(Carried *cr, uint8_t p)
     lda8(cr, 0xF0);
     cyc(38);
     for (i = 0; i < 3; i++)
-        { cyc(30); wr8(b | (uint16_t)(W(oam_buffer) + 2 + i * 8 + cr->y), 0xF0); }
+        { cyc(30); wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 2 + i * 8 + cr->y), 0xF0); }
     for (i = 0; i < 3; i++) {
         cyc(30);
-        v = (uint8_t)(rd8(b | (uint16_t)(W(oam_buffer) + 3 + i * 8 + cr->y)) | 0x40);
+        v = (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(oam_buffer) + 3 + i * 8 + cr->y)) | 0x40);
         lda8(cr, v);
         cyc(46);
-        wr8(b | (uint16_t)(W(oam_buffer) + 3 + i * 8 + cr->y), v);
+        wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 3 + i * 8 + cr->y), v);
     }
     cyc(28);
     r_plp(cr, p);
@@ -1196,11 +1196,11 @@ void RecordsPageMarkFlipHide(Carried *cr)
 
     lda8(cr, 0xF0);
     cyc(132);
-    wr8(b | (uint16_t)(W(oam_buffer) + 5 + cr->y), 0xF0);
+    wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 5 + cr->y), 0xF0);
     cyc(30);
-    wr8(b | (uint16_t)(W(oam_buffer) + 13 + cr->y), 0xF0);
+    wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 13 + cr->y), 0xF0);
     cyc(30);
-    wr8(b | (uint16_t)(W(oam_buffer) + 21 + cr->y), 0xF0);
+    wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 21 + cr->y), 0xF0);
     page_mark_flip(cr, p);
 }
 
@@ -1271,42 +1271,42 @@ void SpeedRecordsPage(Carried *cr)
     if (pressed(cr, 0x0100)) {
         r_sep(cr, P_M);
         cyc(42);
-        r_lda8(cr, b | W(wram_10D8));
+        r_lda8(cr, 0x7E0000 | W(wram_10D8));
         v = (uint8_t)cr->a;
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x04)) & ~P_C) | (v >= 0x04 ? P_C : (cyc(58), 0))));
         if (v < 0x04) {
             sound8(cr, 0x45);
             cyc(24);
-            v = (uint8_t)(rd8(b | W(wram_10D8)) + 1);
+            v = (uint8_t)(rd8(0x7E0000 | W(wram_10D8)) + 1);
             cyc(6);
-            wr8(b | W(wram_10D8), v);
+            wr8(0x7E0000 | W(wram_10D8), v);
             set_p(cr, nz8(cr->p, v));
         }
     } else { cyc(24); if (pressed(cr, 0x0200)) {
         r_sep(cr, P_M);
         cyc(36);
-        r_lda8(cr, b | W(wram_10D8));
+        r_lda8(cr, 0x7E0000 | W(wram_10D8));
         if ((uint8_t)cr->a) {
             cyc(42);
             sound8(cr, 0x45);
             cyc(24);
-            v = (uint8_t)(rd8(b | W(wram_10D8)) - 1);
+            v = (uint8_t)(rd8(0x7E0000 | W(wram_10D8)) - 1);
             cyc(6);
-            wr8(b | W(wram_10D8), v);
+            wr8(0x7E0000 | W(wram_10D8), v);
             set_p(cr, nz8(cr->p, v));
         }
     cyc(22);
         } else { cyc(30); } }
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | W(wram_10D8));
+    r_lda8(cr, 0x7E0000 | W(wram_10D8));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(38), 0))));
     if (v >= 0x05) {
         v = 0x00;
         lda8(cr, 0x00);
         cyc(72);
-        wr8(b | W(wram_10D8), 0x00);
+        wr8(0x7E0000 | W(wram_10D8), 0x00);
     }
     v = (uint8_t)(v << 1);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -1344,15 +1344,15 @@ void SpeedRecordsPage(Carried *cr)
     }
     r_sep(cr, P_M);
     cyc(join);
-    r_lda8(cr, b | W(course));
+    r_lda8(cr, 0x7E0000 | W(course));
     old = (uint8_t)cr->a;
     cyc(46);
-    r_lda8(cr, b | W(wram_10D8));
+    r_lda8(cr, 0x7E0000 | W(wram_10D8));
     if ((uint8_t)cr->a) {
         v = (uint8_t)(cr->a - 1);
         wr8(dp(cr, 0xF1), cyc_then(46, v));
         cyc(24);
-        r_lda8(cr, b | W(wram_0D4A));
+        r_lda8(cr, 0x7E0000 | W(wram_0D4A));
         p = (uint8_t)(cr->p & ~P_C);
         v = alu_adc8((uint8_t)(cr->a << 2), rd8(cyc_then(58, dp(cr, 0xF1))), &p);
         set_p(cr, p);
@@ -1362,12 +1362,12 @@ void SpeedRecordsPage(Carried *cr)
         lda8(cr, 0x1C);
     }
     cyc(46);
-    wr8(b | W(course), (uint8_t)cr->a);
+    wr8(0x7E0000 | W(course), (uint8_t)cr->a);
     (cyc(46), w_SpriteTextAt895E(cr));
     r_sep(cr, P_M);
     lda8(cr, old);
     cyc(74);
-    wr8(b | W(course), old);
+    wr8(0x7E0000 | W(course), old);
     cyc(42);
 }
 
@@ -1409,16 +1409,16 @@ void SpeedRecordsScreen(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | W(digit62_override));
+    r_lda8(cr, 0x7E0000 | W(digit62_override));
     if ((uint8_t)cr->a) {
         origin(cr, 0x89, 0x89);
         md_first(cr, 0x001A, 0);
         md_next(cr, 0x04EE35, 0, W(wram_0D73), 0x0019);
         md_next(cr, 0x04EE31, W(wram_0D73), W(wram_0D75), 0x0000);
         cyc(24);
-        r_lda16(cr, b | W(wram_0D75));
+        r_lda16(cr, 0x7E0000 | W(wram_0D75));
         cyc(24);
-        wr16(b | W(wram_0D7B), cr->a);
+        wr16(0x7E0000 | W(wram_0D7B), cr->a);
         (cyc(46), w_OamClassName(cr));
         (cyc(46), w_SpriteTextAt895E(cr));
         (cyc(62), OamPaletteForD75_cr(cr));
@@ -1427,7 +1427,7 @@ void SpeedRecordsScreen(Carried *cr)
     } else { cyc(6); }
     origin(cr, 0x89, 0x89);
     cyc(24);
-    r_lda16(cr, b | W(wram_0D48));
+    r_lda16(cr, 0x7E0000 | W(wram_0D48));
     r_and16(cr, 0x00FF);
     if (cr->a)
         { cyc(44); md_first(cr, 0x001B, 0); }
@@ -1442,7 +1442,7 @@ void SpeedRecordsScreen(Carried *cr)
     (cyc(62), OamPaletteFromTableE26A_cr(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | W(wram_0D48));
+    r_lda8(cr, 0x7E0000 | W(wram_0D48));
     if (!(uint8_t)cr->a) {
         cyc(40);
         RecordsMenuSpeed(cr);
@@ -1450,7 +1450,7 @@ void SpeedRecordsScreen(Carried *cr)
     }
     lda8(cr, 0xF0);
     cyc(62);
-    wr8(b | W(wram_0E92), 0xF0);
+    wr8(0x7E0000 | W(wram_0E92), 0xF0);
     r_rep(cr, P_M);
     if (!pressed(cr, 0x9000))
         { cyc(72); return; }
@@ -1459,9 +1459,9 @@ void SpeedRecordsScreen(Carried *cr)
     sound8(cr, 0x46);
     lda8(cr, 0x0A);
     cyc(40);
-    wr8(b | W(wram_0D40), 0x0A);
+    wr8(0x7E0000 | W(wram_0D40), 0x0A);
     cyc(24);
-    r_lda8(cr, b | W(digit62_override));
+    r_lda8(cr, 0x7E0000 | W(digit62_override));
     if ((uint8_t)cr->a) {
         SpeedRecordsLeaveCar(cr);
         return;
@@ -1500,7 +1500,7 @@ void SpeedRecordsLeaveCar(Carried *cr)
 
     lda8(cr, 0x04);
     cyc(40);
-    wr8(b | W(wram_0D89), 0x04);
+    wr8(0x7E0000 | W(wram_0D89), 0x04);
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x8669);
     cyc(18);
@@ -1536,7 +1536,7 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
 
     slot_to_y(cr, W(wram_0D75), d_time);
     cyc(66);
-    r_lda16(cr, b | W(course));
+    r_lda16(cr, 0x7E0000 | W(course));
     r_sub16(cr, first);
     wr16(dp(cr, 0xF1), cyc_then(48, cr->a));
     r_asl16(cr);
@@ -1570,11 +1570,11 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
     r_sep(cr, P_M);
     lda8(cr, 0x0F);
     cyc(110);
-    wr8(b | (uint16_t)(W(oam_buffer) + 1 + cr->y), 0x0F);
+    wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 1 + cr->y), 0x0F);
     cyc(30);
-    wr8(b | (uint16_t)(W(oam_buffer) + 5 + cr->y), 0x0F);
+    wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 5 + cr->y), 0x0F);
     cyc(30);
-    wr8(b | (uint16_t)(W(oam_buffer) + 9 + cr->y), 0x0F);
+    wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 9 + cr->y), 0x0F);
     cyc(46);
 }
 
@@ -1642,30 +1642,30 @@ void StuntRecordsScreen(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | W(hud_blank));
+    r_lda8(cr, 0x7E0000 | W(hud_blank));
     if ((uint8_t)cr->a) {
         cyc(28);
         origin(cr, 0x81, 0x89);
         if (pressed(cr, 0x0100)) {
             sound16(cr, 0x0045);
             cyc(24);
-            r_lda16(cr, b | W(course));
+            r_lda16(cr, 0x7E0000 | W(course));
             cr->a = (uint16_t)(cr->a + 1);
             r_cmp16(cr, 0x001B);
             if (cr->a >= 0x001B)
                 { r_lda16_imm(cr, 0x0017); cyc(4); }
             cyc(82);
-            wr16(b | W(course), cr->a);
+            wr16(0x7E0000 | W(course), cr->a);
         } else { cyc(30); if (pressed(cr, 0x0200)) {
             sound16(cr, 0x0045);
             cyc(24);
-            r_lda16(cr, b | W(course));
+            r_lda16(cr, 0x7E0000 | W(course));
             cr->a = (uint16_t)(cr->a - 1);
             r_cmp16(cr, 0x0017);
             if (cr->a < 0x0017)
                 { r_lda16_imm(cr, 0x001A); cyc(4); }
             cyc(60);
-            wr16(b | W(course), cr->a);
+            wr16(0x7E0000 | W(course), cr->a);
         } else { cyc(30); } }
         md_first(cr, 0x0015, 0);
         md_next(cr, 0x04EE21, 0, W(wram_0D73), 0x0013);
@@ -1726,26 +1726,26 @@ void BattleRecordsScreen(Carried *cr)
     md_next(cr, 0x04EDFD, W(wram_0D73), W(wram_0D75), 0x000B);
     slot_to_y(cr, W(wram_0D73), 0);
     cyc(66);
-    r_lda16(cr, b | W(wram_0D89));
+    r_lda16(cr, 0x7E0000 | W(wram_0D89));
     r_asl16(cr);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(52);
-    cr->a = alu_adc16(cr->a, rd16(b | W(wram_0D89)), &p);
+    cr->a = alu_adc16(cr->a, rd16(0x7E0000 | W(wram_0D89)), &p);
     set_p(cr, p);
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtLeft_cr(cr));
     cyc(24);
-    r_lda16(cr, b | W(wram_0D73));
+    r_lda16(cr, 0x7E0000 | W(wram_0D73));
     r_add16(cr, 0x0003);
     r_asl16(cr);
     r_asl16(cr);
     r_tay16(cr);
     cyc(104);
-    r_lda16(cr, b | W(wram_0D8A));
+    r_lda16(cr, 0x7E0000 | W(wram_0D8A));
     r_asl16(cr);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(52);
-    cr->a = alu_adc16(cr->a, rd16(b | W(wram_0D8A)), &p);
+    cr->a = alu_adc16(cr->a, rd16(0x7E0000 | W(wram_0D8A)), &p);
     set_p(cr, p);
     r_and16(cr, 0x00FF);
     (cyc(68), SpritePiecesAtRight_cr(cr));
@@ -1788,7 +1788,7 @@ void AllRecordsScreen(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, b | W(digit62_override));
+    r_lda8(cr, 0x7E0000 | W(digit62_override));
     if ((uint8_t)cr->a) {
         cyc(6);
         origin(cr, 0x89, 0x89);

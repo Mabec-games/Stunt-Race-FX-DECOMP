@@ -351,7 +351,7 @@ static void boot_run(Carried *cr, int from)
     r_sep(cr, P_M);
     boot_lda8(cr, 0x1C);
     cyc(130);
-    wr8(b | W(wram_0D3F), 0x1C);
+    wr8(0x7E0000 | W(wram_0D3F), 0x1C);
     (cyc(62), HardwareRegsInit(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
     r_sep(cr, P_M);
@@ -393,7 +393,7 @@ start:
     r_sep(cr, P_M);
     boot_lda8(cr, 0x01);
     cyc(22);
-    wr8(b | W(gsu_scmr_shadow), 0x01);
+    wr8(0x7E0000 | W(gsu_scmr_shadow), 0x01);
     boot_lda8(cr, 0x01);
     hw_wr(b | 0x3039, 0x01);
     boot_lda8(cr, 0x20);
@@ -413,11 +413,11 @@ warm:
     boot_stack(cr);
     r_sep(cr, P_M);
     cyc(36);
-    wr8(b | W(sound_muted), 0x00);
+    wr8(0x7E0000 | W(sound_muted), 0x00);
     boot_lda8(cr, 0x02);
-    wr8(b | W(wram_117A), 0x02);
+    wr8(0x7E0000 | W(wram_117A), 0x02);
     boot_lda8(cr, 0x01);
-    wr8(b | W(wram_117B), 0x01);
+    wr8(0x7E0000 | W(wram_117B), 0x01);
     (cyc(62), CourseMenuRun(cr));
     RaceModeSetup(cr);
     Set7EFFA6Sequence_cr(cr);
@@ -426,7 +426,7 @@ race:
     boot_blank(cr, b);
     boot_stack(cr);
     r_sep(cr, P_M);
-    wr8(b | W(sound_muted), 0x00);
+    wr8(0x7E0000 | W(sound_muted), 0x00);
     /* JSL RaceLoop: its return address (03:8BE8) on the stack, which
        RaceLoop leaves by (LoopLeaveWhenEnded). */
     cyc(24);
@@ -475,11 +475,11 @@ attract:
     cyc(8);
     wr8(0x70023A, 0x00);
     cyc(24);
-    wr8(b | W(wram_1A32), 0x00);
+    wr8(0x7E0000 | W(wram_1A32), 0x00);
     cyc(24);
-    wr8(b | W(wram_05E9), 0x00);
+    wr8(0x7E0000 | W(wram_05E9), 0x00);
     boot_lda8(cr, 0x01);
-    wr8(b | W(wram_0713), 0x01);
+    wr8(0x7E0000 | W(wram_0713), 0x01);
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cyc(62);
@@ -490,7 +490,7 @@ attract:
     b = (uint32_t)cr->db << 16;
     boot_lda8(cr, 0x01);
     cyc(22);
-    wr8(b | W(wram_0357), 0x01);
+    wr8(0x7E0000 | W(wram_0357), 0x01);
     cyc(32);
     r_lda8(cr, TIMEUP);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
@@ -500,7 +500,7 @@ attract:
         r_sep(cr, P_M);
         b = (uint32_t)cr->db << 16;
         cyc(46);
-        r_lda8(cr, b | W(wram_0D62));
+        r_lda8(cr, 0x7E0000 | W(wram_0D62));
         if ((uint8_t)cr->a)
             RaceFrameRunTwoPlayers(cr);
         else
@@ -508,18 +508,18 @@ attract:
         r_sep(cr, P_M);
         b = (uint32_t)cr->db << 16;
         cyc(46);
-        r_lda8(cr, b | W(wram_05E9));
+        r_lda8(cr, 0x7E0000 | W(wram_05E9));
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(cr->a - 0x1E)) & ~P_C) | ((uint8_t)cr->a >= 0x1E ? P_C : (cyc(24), 0))));
         if (cr->p & P_C)
-            wr8(b | W(wram_0713), 0x00);
+            wr8(0x7E0000 | W(wram_0713), 0x00);
     }
 soft:
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0xFFFF);
     cyc(10);
-    wr16(b | W(wram_10DC), 0xFFFF);
+    wr16(0x7E0000 | W(wram_10DC), 0xFFFF);
     cyc(24);
-    wr16(b | W(wram_10DE), 0x0000);
+    wr16(0x7E0000 | W(wram_10DE), 0x0000);
     (cyc(62), DemoRunThird(cr));
 soft_rest:
     r_sep(cr, P_M);

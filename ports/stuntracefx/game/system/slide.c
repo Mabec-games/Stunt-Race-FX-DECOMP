@@ -114,25 +114,25 @@ uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
 
     wobble_v = -1;
     cyc(46);
-    a = rd8(b | W(wram_19F7));
+    a = rd8(0x7E0000 | W(wram_19F7));
     wobble_c = a >= 0x0F;
     if (!wobble_c)
         cyc(38);
     if (a == 0x0F) {
         cyc(56);
-        a = wobble_add(rd8(b | W(slide_wobble_count)), 0x01);
+        a = wobble_add(rd8(0x7E0000 | W(slide_wobble_count)), 0x01);
         cyc(54);
-        wr8(b | W(slide_wobble_count), a);
+        wr8(0x7E0000 | W(slide_wobble_count), a);
         wobble_c = a >= 0x02;
         if (!wobble_c)
             cyc(38);
         if (a == 0x02) {
             cyc(56);
-            wr8(b | W(slide_wobble_count), 0x00);
+            wr8(0x7E0000 | W(slide_wobble_count), 0x00);
             cyc(32);
             a = rd8(W(slide_out));
             cyc(38);
-            a = wobble_add(a, rd8(b | W(wram_1A04)));
+            a = wobble_add(a, rd8(0x7E0000 | W(wram_1A04)));
             cyc(32);
             wr8(W(slide_out), a);
             m = a == 0x0F ? 0x0F : (cyc(32), 0x0B);
@@ -141,9 +141,9 @@ uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
                 cyc(56);
             if (a == 0x0F || a == 0x0B) {
                 cyc(6);
-                a = (uint8_t)((rd8(b | W(wram_1A04)) ^ 0xFF) + 1);
+                a = (uint8_t)((rd8(0x7E0000 | W(wram_1A04)) ^ 0xFF) + 1);
                 cyc(54);
-                wr8(b | W(wram_1A04), a);
+                wr8(0x7E0000 | W(wram_1A04), a);
             }
         }
     }

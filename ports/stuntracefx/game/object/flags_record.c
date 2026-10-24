@@ -18,9 +18,9 @@ uint8_t GsuRecordNew422(uint8_t bank, uint16_t obj);
 uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has);
 
 /* Object field `f` ($20xx) of object `o`, through the data bank. */
-#define F(f, o) ((uint32_t)b << 16 | (uint16_t)((f) + (o)))
+#define F(f, o) (0x7E0000 | (uint16_t)((f) + (o)))
 /* A work RAM byte through the data bank. */
-#define DB_ADDR(a) ((uint32_t)b << 16 | (a))
+#define DB_ADDR(a) (0x7E0000 | (a))
 
 /* How these routines end, for the adapters: no room in the record pool
    (A = $00FF), GsuRecordFlag4 with a record (A = fr_a, Y = the object) or

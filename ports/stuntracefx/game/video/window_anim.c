@@ -328,15 +328,15 @@ uint8_t WindowEdgesStep(uint8_t db0, uint8_t *p, uint8_t *x)
     uint32_t b = 0x7F0000;
 
     cyc(112);
-    v = rd8(b | W(wram_340D));
+    v = rd8(0x7F0000 | W(wram_340D));
     *p = (uint8_t)((*p & ~P_C) | (v >= 0x1F ? (cyc(38), P_C) : 0));
     if (v < 0x1F)
-        { cyc(56); wr8(b | W(wram_340D), cyc_then(6, (uint8_t)(rd8(b | W(wram_340D)) + 1))); }
+        { cyc(56); wr8(0x7F0000 | W(wram_340D), cyc_then(6, (uint8_t)(rd8(0x7F0000 | W(wram_340D)) + 1))); }
     *x = 0x00;
     cyc(40);
-    v = (uint8_t)((rd8(b | W(wram_3437)) ^ 0xFF) + 1);
+    v = (uint8_t)((rd8(0x7F0000 | W(wram_3437)) ^ 0xFF) + 1);
     cyc(54);
-    m = rd8(b | W(wram_3433));
+    m = rd8(0x7F0000 | W(wram_3433));
     *p = (uint8_t)((nz8(*p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(84), 0)));
     if (v == m) {
         (cyc(68), WindowStep3437(0x7F, x, p));
