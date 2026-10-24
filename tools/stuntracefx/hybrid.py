@@ -170,9 +170,12 @@ def main(src=None, lib=None):
         # Code the C reaches with call_routine, jump_routine or
         # cpu_loop_forever or cpu_restart that the original enters by a jump (a BRL or
         # JML tail jump, as BigSpritesRow6 to 07:9EE9), not as a
-        # catalogued routine: the lockstep run marks those entries too.
+        # catalogued routine: the lockstep run marks those entries too. The
+        # port's carried code reaches them through carried_call, carried_jump,
+        # carried_jump_pushed, carried_loop_forever and carried_restart, whose
+        # first argument is the carried register copy.
         known = {int(a, 16) for a in entries}
-        jumps = sorted({int(m, 16) for f in files for m in re.findall(r'(?:call_routine|jump_routine|jump_routine_pushed|cpu_loop_forever|cpu_restart)\(0x([0-9A-Fa-f]{6})', open(f).read())} - known)
+        jumps = sorted({int(m, 16) for f in files for m in re.findall(r'(?:(?:call_routine|jump_routine|jump_routine_pushed|cpu_loop_forever|cpu_restart)\(|carried_(?:call|jump|jump_pushed|loop_forever|restart)\(\w+,\s*)0x([0-9A-Fa-f]{6})', open(f).read())} - known)
         t.write('const uint32_t sfx_jump_entries[] = {%s0};\nconst int sfx_jump_entry_count = %d;\n'
                 % (''.join('0x%06X, ' % a for a in jumps), len(jumps)))
         # SPC700 code the C ends at (spc_restart, spc_boot_rom at $FFC0):
