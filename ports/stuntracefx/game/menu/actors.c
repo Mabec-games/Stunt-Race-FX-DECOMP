@@ -50,9 +50,9 @@ void MenuActorPoolInit(uint8_t bank)
     }
     wr16(dbw(bank, W(actor_free_depth)), cyc_then(134, 0x0000));
     wr16(dbw(bank, W(actor_list_len)), cyc_then(24, 0x0000));
-    wr16(dbw(bank, 0x1201), cyc_then(48, 0x0200));
-    wr16(dbw(bank, 0x1203), cyc_then(48, 0x0020));
-    wr16(dbw(bank, 0x120B), cyc_then(48, 0x2881));
+    wr16(dbw(bank, W(menu_1201)), cyc_then(48, 0x0200));
+    wr16(dbw(bank, W(menu_1203)), cyc_then(48, 0x0020));
+    wr16(dbw(bank, W(menu_120b)), cyc_then(48, 0x2881));
     ppu_wr(dbw(bank, 0x2101), cyc_then(62, 0x02));
     cyc(94);
 }
@@ -261,13 +261,13 @@ int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t
     int walked = 0;
 
     find_last_kind = kind;
-    wr16(dbw(bank, 0x11E1), cyc_then(24, kind));
+    wr16(dbw(bank, W(scratch_11e1)), cyc_then(24, kind));
     i = (uint16_t)(rd16(cyc_then(24, dbw(bank, W(actor_list_len)))) - 2);
     while (!(i & 0x8000)) {
         *x = rd16(cyc_then(74, dbw(bank, (uint16_t)(W(actor_list) + i))));
         cyc(22);
         find_last_kind = rd16((uint16_t)(*x + W(actor_kind)));
-        *p = cmp16(*p, find_last_kind, cyc_then(16, rd16(cyc_then(24, dbw(bank, 0x11E1)))));
+        *p = cmp16(*p, find_last_kind, cyc_then(16, rd16(cyc_then(24, dbw(bank, W(scratch_11e1))))));
         if (*p & P_Z) {
             cyc(42);
             *y = i;
@@ -290,14 +290,14 @@ void MenuActorFind8(uint8_t bank, uint8_t kind, uint16_t *x, uint16_t *y, uint8_
     uint8_t v = 0, m;
     uint16_t i;
 
-    wr8(dbw(bank, 0x11E1), kind);
+    wr8(dbw(bank, W(scratch_11e1)), kind);
     i = (uint16_t)(rd16(dbw(bank, W(actor_list_len))) - 2);
     *p = nz16(*p, i);
     while (!(i & 0x8000)) {
         *x = rd16(dbw(bank, (uint16_t)(W(actor_list) + i)));
         v = rd8((uint16_t)(*x + W(actor_kind)));
         *a = v;
-        m = rd8(dbw(bank, 0x11E1));
+        m = rd8(dbw(bank, W(scratch_11e1)));
         *p = (uint8_t)((nz8(*p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
         if (v == m) {
             *y = i;
@@ -363,15 +363,15 @@ uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p
 {
     uint16_t i, rec, a = kind;
 
-    wr16(dbw(bank, 0x11DF), cyc_then(24, value));
-    wr16(dbw(bank, 0x11E1), cyc_then(24, kind));
+    wr16(dbw(bank, W(scratch_11df)), cyc_then(24, value));
+    wr16(dbw(bank, W(scratch_11e1)), cyc_then(24, kind));
     for (i = (uint16_t)(rd16(cyc_then(54, dbw(bank, W(actor_list_len)))) - 2); !(i & 0x8000); i = (uint16_t)(i - 2)) {
         rec = rd16(cyc_then(74, dbw(bank, (uint16_t)(W(actor_list) + i))));
         cyc(22);
         a = rd16((uint16_t)(rec + W(actor_kind)));
-        *p = cmp16(*p, a, rd16(cyc_then(24, dbw(bank, 0x11E1))));
+        *p = cmp16(*p, a, rd16(cyc_then(24, dbw(bank, W(scratch_11e1)))));
         if (*p & P_Z) {
-            a = rd16(cyc_then(40, dbw(bank, 0x11DF)));
+            a = rd16(cyc_then(40, dbw(bank, W(scratch_11df))));
             cyc(22);
             wr16((uint16_t)(rec + W(actor_10)), a);
         } else { cyc(22); }
@@ -425,7 +425,7 @@ uint16_t MenuActorApplyPalette(uint8_t bank, uint16_t rec, uint16_t *y, uint8_t 
         *p = (uint8_t)((*p & ~P_N) | P_Z);
         return 0;
     }
-    wr16(dbw(bank, 0x11DF), cyc_then(40, pal));
+    wr16(dbw(bank, W(scratch_11df)), cyc_then(40, pal));
     cyc(52);
     i = rd16((uint16_t)(rec + W(actor_12)));
     cyc(46);
@@ -433,7 +433,7 @@ uint16_t MenuActorApplyPalette(uint8_t bank, uint16_t rec, uint16_t *y, uint8_t 
     i = (uint16_t)(i + 2);
     do {
         cyc(74);
-        wr16(W(menu_sprite_attr) + i, cyc_then(32, (uint16_t)((rd16(W(menu_sprite_attr) + i) & 0xF1FF) | rd16(cyc_then(48, dbw(bank, 0x11DF))))));
+        wr16(W(menu_sprite_attr) + i, cyc_then(32, (uint16_t)((rd16(W(menu_sprite_attr) + i) & 0xF1FF) | rd16(cyc_then(48, dbw(bank, W(scratch_11df)))))));
         s = (unsigned)i + 8;
         *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : (cyc(60), 0)) | ((~(i ^ 8) & (i ^ (uint16_t)s) & 0x8000) ? P_V : 0));
         a = i = (uint16_t)s;
@@ -541,12 +541,12 @@ void abi_MenuActorIdleCE89(void)
 uint16_t MenuActorBlink(uint8_t bank, uint16_t *x)
 {
     cyc(70);
-    uint16_t a = rd16((uint32_t)bank << 16 | 0x11DD) & 0x0003;
+    uint16_t a = rd16((uint32_t)bank << 16 | W(menu_blink_counter)) & 0x0003;
 
     if (a)
         { cyc(88); return a; }
     cyc(64);
-    *x = rd16((uint32_t)bank << 16 | 0x11E7);
+    *x = rd16((uint32_t)bank << 16 | W(menu_blink_entry));
     cyc(32);
     a = (uint16_t)(rd16(W(menu_sprite_attr) + *x) ^ 0x0800);
     cyc(56);
@@ -741,7 +741,7 @@ static uint16_t sine_position(uint8_t bank, uint16_t *x, uint16_t step, uint8_t 
     cyc(78);
     wr16(W(menu_sine_y_min), v);
     cyc(24);
-    *x = rd16((uint32_t)bank << 16 | 0x11F9);
+    *x = rd16((uint32_t)bank << 16 | W(actor_current));
     *p = nz16(*p, *x);
     cyc(42);
     return v;
@@ -992,7 +992,7 @@ void abi_MenuActorAddY(void)
  */
 void MenuActorsKind2Lower(uint8_t bank, uint16_t *x, uint16_t *y_out, uint16_t *a, uint8_t *p)
 {
-    uint16_t yy = (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x11F7))) - 2);
+    uint16_t yy = (uint16_t)(rd16(cyc_then(24, dbw(bank, W(actor_list_len)))) - 2);
     int first = 1;
 
     *p = nz16(*p, yy);
@@ -1182,21 +1182,21 @@ uint16_t MenuChoiceAnimations(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
 
     cyc(0);
     for (i = 0; i != 6; i = (uint16_t)(i + 2)) {
-        wr16(dbw(bank, 0x11E3), cyc_then(124, i));
-        wr16(dbw(bank, 0x11E5), cyc_then(24, 0x0000));
+        wr16(dbw(bank, W(scratch_11e3)), cyc_then(124, i));
+        wr16(dbw(bank, W(scratch_11e5)), cyc_then(24, 0x0000));
         cyc(32);
         a = (uint16_t)(rd16(W(selection_1) + i) << 3);
-        wr16(dbw(bank, 0x11E5), cyc_then(24, (uint16_t)(a + rd16(cyc_then(80, dbw(bank, 0x11E5))))));
+        wr16(dbw(bank, W(scratch_11e5)), cyc_then(24, (uint16_t)(a + rd16(cyc_then(80, dbw(bank, W(scratch_11e5)))))));
         cyc(32);
         a = (uint16_t)(rd16(W(wram_18E5) + i) << 1);
-        s = rd16(cyc_then(52, dbw(bank, 0x11E5)));
+        s = rd16(cyc_then(52, dbw(bank, W(scratch_11e5))));
         sum = (unsigned)a + s;
         *p = (uint8_t)((*p & ~P_V) | ((~(a ^ s) & (a ^ (uint16_t)sum) & 0x8000) ? P_V : 0));
         cyc(86);
         anim = rd16(0x0BC1B0 + (uint16_t)sum);
-        wr16(dbw(bank, 0x11E5), anim);
-        MenuActorFind(bank, rd16(cyc_then(94, 0x0BC15E + rd16(cyc_then(24, dbw(bank, 0x11E3))))), x, y, p);
-        anim = rd16(cyc_then(24, dbw(bank, 0x11E5)));
+        wr16(dbw(bank, W(scratch_11e5)), anim);
+        MenuActorFind(bank, rd16(cyc_then(94, 0x0BC15E + rd16(cyc_then(24, dbw(bank, W(scratch_11e3)))))), x, y, p);
+        anim = rd16(cyc_then(24, dbw(bank, W(scratch_11e5))));
         start_animation(*x, anim, p);
         cyc(40);
     }
@@ -1274,7 +1274,7 @@ int MenuSlideInDone(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *y, uint8_
     cyc(70);
     MenuActorFind(bank, 0x0007, &x, y, p);
     start_animation_rev(x, 0x00B8, p);
-    *y = rd16(cyc_then(60, dbw(bank, 0x11FB)));
+    *y = rd16(cyc_then(60, dbw(bank, W(actor_current_slot))));
     cyc(46);
     *a = MenuActorFree(bank, rec, *y);
     *p = (uint8_t)((*p & ~P_Z) | P_N);
@@ -1481,9 +1481,9 @@ uint16_t MenuRowBlinkSettings(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     cyc(46);
     uint16_t pos = MenuRowPosition(*x, p), a;
 
-    wr16(dbw(bank, 0x11E7), cyc_then(24, pos));
+    wr16(dbw(bank, W(menu_blink_entry)), cyc_then(24, pos));
     MenuActorBlink(bank, x);
-    wr16(dbw(bank, 0x11E7), cyc_then(62, (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x11E7))) + 8)));
+    wr16(dbw(bank, W(menu_blink_entry)), cyc_then(62, (uint16_t)(rd16(cyc_then(24, dbw(bank, W(menu_blink_entry)))) + 8)));
     MenuActorBlink(bank, x);
     cyc(70);
     MenuActorFind(bank, 0x0009, x, y, p);
@@ -1768,7 +1768,7 @@ uint16_t MenuActorAnimateThenExit(uint8_t bank, uint16_t *x, uint8_t *p)
     if (!(c & 0x8000))
         { cyc(22); return a; }
     a = 0x0001;
-    wr16(dbw(bank, 0x11EB), cyc_then(64, a));
+    wr16(dbw(bank, W(menu_exit)), cyc_then(64, a));
     *p = nz16(*p, a);
     return a;
 }
@@ -2034,7 +2034,7 @@ static uint16_t choice_object(uint8_t bank, uint16_t first, uint16_t *x, uint16_
         a = first;
         *p = nz16(*p, a);
     }
-    wr16(dbw(bank, 0x11E3), cyc_then(24, first));
+    wr16(dbw(bank, W(scratch_11e3)), cyc_then(24, first));
     return cyc_then(42, MenuChoiceObjectFrames(bank, a, x, y, p));
 }
 
@@ -2482,7 +2482,7 @@ uint16_t MenuFadeOutHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     a = rd16((uint16_t)(*x + W(actor_0a)));
     *p = cmp16(*p, a, 0x0020);
     if (*p & P_Z) {
-        *y = rd16(cyc_then(70, dbw(bank, 0x11FB)));
+        *y = rd16(cyc_then(70, dbw(bank, W(actor_current_slot))));
         cyc(46);
         a = MenuActorFree(bank, *x, *y);
         *x = 0xFFFF;
@@ -3139,7 +3139,7 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
     } else { cyc(46); }
     cyc(22);
     pos = rd16((uint16_t)(rec + W(actor_22)));
-    wr16(dbw(bank, 0x11ED), cyc_then(54, pos));
+    wr16(dbw(bank, W(menu_slide_pos)), cyc_then(54, pos));
     cyc(32);
     wr16(W(menu_sine_y), pos);
     cyc(70);
@@ -3257,19 +3257,19 @@ uint16_t MenuActorSpawn(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y, u
         return rec;
     }
     *p &= (uint8_t)~P_C;
-    wr16(dbw(bank, 0x1209), cyc_then(70, rec));
+    wr16(dbw(bank, W(menu_spawn_record)), cyc_then(70, rec));
     for (x = list;; x = n) {
         cyc(108);
         f = rd16(0x0BE547 + x);
         if (f & 0x8000)
             break;
-        *y = (uint16_t)(f + rd16(cyc_then(8, dbw(bank, 0x1209))));
+        *y = (uint16_t)(f + rd16(cyc_then(8, dbw(bank, W(menu_spawn_record)))));
         wr16(dbw(bank, *y), rd16(cyc_then(92, 0x0BE549 + x)));
         n = (uint16_t)(x + 4);
         *p = (uint8_t)((*p & ~(P_C | P_V)) | (n < x ? P_C : (cyc(74), 0)) | ((~(x ^ 4) & (x ^ n) & 0x8000) ? P_V : 0));
     }
     *a = f;
-    rec = rd16(dbw(bank, 0x1209));
+    rec = rd16(dbw(bank, W(menu_spawn_record)));
     *p = nz16(*p, rec);
     cyc(42);
     return rec;
@@ -3314,19 +3314,19 @@ uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *
     uint16_t x, e;
     uint8_t p = 0;  /* the flags it leaves are discarded by the PLP */
 
-    wr16(dbw(bank, 0x11FD), cyc_then(68, list));
+    wr16(dbw(bank, W(menu_spawn_pos)), cyc_then(68, list));
     for (;;) {
-        x = rd16(cyc_then(24, dbw(bank, 0x11FD)));
+        x = rd16(cyc_then(24, dbw(bank, W(menu_spawn_pos))));
         cyc(124);
         e = rd16(0x0BE4E7 + x);
         if (e & 0x8000)
             { cyc(18); break; }
         if (MenuActorSpawn(bank, e, a, y, &p) == 0xFFFF)
             SystemHaltSpawn();
-        x = rd16(cyc_then(64, dbw(bank, 0x11FD)));
-        wr16(dbw(bank, 0x11FD), cyc_then(14, (uint16_t)(x + 1)));
-        x = rd16(cyc_then(24, dbw(bank, 0x11FD)));
-        wr16(dbw(bank, 0x11FD), cyc_then(14, (uint16_t)(x + 1)));
+        x = rd16(cyc_then(64, dbw(bank, W(menu_spawn_pos))));
+        wr16(dbw(bank, W(menu_spawn_pos)), cyc_then(14, (uint16_t)(x + 1)));
+        x = rd16(cyc_then(24, dbw(bank, W(menu_spawn_pos))));
+        wr16(dbw(bank, W(menu_spawn_pos)), cyc_then(14, (uint16_t)(x + 1)));
         cyc(22);
     }
     *a = e;
@@ -3364,7 +3364,7 @@ void abi_MenuActorSpawnList(void)
  */
 int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint16_t pressed = rd16(cyc_then(70, dbw(bank, 0x118B))) & 0x9000;
+    uint16_t pressed = rd16(cyc_then(70, dbw(bank, W(menu_joy1_pressed)))) & 0x9000;
 
     if (!pressed) {
         cyc(112);

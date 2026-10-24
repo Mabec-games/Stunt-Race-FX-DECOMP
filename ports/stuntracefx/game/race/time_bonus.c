@@ -175,7 +175,7 @@ void abi_GsuTimeDigits(void)
 uint16_t GsuTimeDigitsGrow(uint8_t bank, int x8)
 {
     cyc(24);
-    uint16_t x = rd16((uint32_t)bank << 16 | 0x0D6B);
+    uint16_t x = rd16((uint32_t)bank << 16 | W(wram_0D6B));
 
     cyc(102);
     wr16(GSU_SIZE, rd16(SIZE_GROW + x));
@@ -248,7 +248,7 @@ static uint16_t bonus_digits(uint8_t bank, uint16_t size)
     wr16(GSU_SIZE, size);
     cyc(24);
     bd_drawn = 0;
-    if (!rd16((uint32_t)bank << 16 | 0x0E6C))
+    if (!rd16((uint32_t)bank << 16 | W(wram_0E6C)))
         { cyc(58); return 0; }
     cyc(84);
     GsuBytes200_BFB7B6();
@@ -287,7 +287,7 @@ static uint16_t bd_x;                   /* the step $0D6B the size came by */
 uint16_t GsuBonusDigitsGrow(uint8_t bank)
 {
     cyc(24);
-    bd_x = rd16((uint32_t)bank << 16 | 0x0D6B);
+    bd_x = rd16((uint32_t)bank << 16 | W(wram_0D6B));
     cyc(46);
     return bonus_digits(bank, rd16(SIZE_GROW + bd_x));
 }
@@ -323,7 +323,7 @@ void abi_GsuBonusDigitsGrow(void)
 uint16_t GsuBonusDigitsBounce(uint8_t bank)
 {
     cyc(24);
-    bd_x = rd16((uint32_t)bank << 16 | 0x0D6B);
+    bd_x = rd16((uint32_t)bank << 16 | W(wram_0D6B));
     cyc(46);
     return bonus_digits(bank, rd16(SIZE_BOUNCE + bd_x));
 }

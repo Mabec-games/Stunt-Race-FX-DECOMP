@@ -319,7 +319,7 @@ void PlaceFrameFromValue(Carried *cr)
     }
     lda8_imm(cr, f);
     cyc(146);
-    wr8(((uint32_t)cr->db << 16) | 0x10C3, f);
+    wr8(((uint32_t)cr->db << 16) | W(sprite_piece_frame), f);
     r_rep(cr, P_M);
 }
 
@@ -882,7 +882,7 @@ void ResultsPanelFAB5(Carried *cr)
     panel(cr, 0x001F, 0xFAB5);
     r_sep(cr, P_M);
     cyc(22);
-    inc8_mem(cr, ((uint32_t)cr->db << 16) | 0x0D59);
+    inc8_mem(cr, ((uint32_t)cr->db << 16) | W(wram_0D59));
     cyc(42);
 }
 
@@ -967,7 +967,7 @@ void ResultsPanelF38E(Carried *cr)
     panel(cr, 0x001C, 0xF38E);
     r_sep(cr, P_M);
     cyc(22);
-    inc8_mem(cr, ((uint32_t)cr->db << 16) | 0x0D59);
+    inc8_mem(cr, ((uint32_t)cr->db << 16) | W(wram_0D59));
     cyc(42);
 }
 

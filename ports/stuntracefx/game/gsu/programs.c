@@ -594,7 +594,7 @@ static uint8_t f441(uint8_t kind)
 uint8_t GsuF441Player1(uint8_t bank)
 {
     cyc(68);
-    return cyc_then(114, f441(rd8((uint32_t)bank << 16 | 0x0DF4)));
+    return cyc_then(114, f441(rd8((uint32_t)bank << 16 | W(wram_0DF4))));
 }
 
 void GsuF441Player1_cr(Carried *cr)
@@ -629,7 +629,7 @@ void abi_GsuF441Player1(void)
 uint8_t GsuF441Player2(uint8_t bank)
 {
     cyc(68);
-    return f441(rd8((uint32_t)bank << 16 | 0x0DF5));
+    return f441(rd8((uint32_t)bank << 16 | W(wram_0DF5)));
 }
 
 void GsuF441Player2_cr(Carried *cr)
@@ -824,7 +824,7 @@ uint16_t ViewDefaults(uint8_t bank)
     cyc(54);
     wr8(W(dp_a0), 0x80);
     cyc(40);
-    wr8((uint32_t)bank << 16 | 0x05EF, 0xFF);
+    wr8((uint32_t)bank << 16 | W(wram_05EF), 0xFF);
     cyc(16);
     wr8(W(dp_00), 0x00);
     cyc(22);
@@ -873,7 +873,7 @@ uint8_t GsuF0A5OrF0B4(uint8_t bank, uint16_t input, uint8_t *set)
 {
     wr16(0x70020C, input);
     cyc(24);
-    *set = rd8((uint32_t)bank << 16 | 0x0D62);
+    *set = rd8((uint32_t)bank << 16 | W(wram_0D62));
     if (*set) {
         cyc(110);
         GsuBytes200_0F090A();
@@ -924,7 +924,7 @@ uint8_t GsuEEF5OrEFCD(uint8_t bank, uint16_t input, uint8_t *set)
 {
     wr16(0x70020C, input);
     cyc(46);
-    *set = rd8((uint32_t)bank << 16 | 0x0D62);
+    *set = rd8((uint32_t)bank << 16 | W(wram_0D62));
     if (*set) {
         cyc(110);
         GsuBytes200_0F0405();
@@ -990,12 +990,12 @@ static uint8_t gsu_digit_pair_0e74(uint8_t bank, uint16_t *index)
     cyc(80);
     wr16(0x70020C, 0x0008);
     cyc(24);
-    v = rd16((uint32_t)bank << 16 | 0x0E74);
+    v = rd16((uint32_t)bank << 16 | W(wram_0E74));
     cyc(126);
     GsuParam216A(bank, (uint16_t)(((v >> 4) & 0x000F) << 1));
     (cyc(42), f15b());
     cyc(162);
-    v = rd16((uint32_t)bank << 16 | 0x0E74);
+    v = rd16((uint32_t)bank << 16 | W(wram_0E74));
     *index = (uint16_t)((v & 0x000F) << 1);
     cyc(70);
     GsuParam216A(bank, *index);
@@ -2834,7 +2834,7 @@ static int count_at_least(uint8_t bank, uint8_t n)
     uint8_t v;
 
     cyc(46);
-    v = rd8((uint32_t)bank << 16 | 0x1160);
+    v = rd8((uint32_t)bank << 16 | W(wram_1160));
     if (v >= n)
         cyc(32);
     return v >= n;
@@ -2944,7 +2944,7 @@ static int big_sprites_start(uint8_t bank, void (*setter)(void))
     cyc(68);
     setter();
     cyc(118);                           /* SEP, LDA */
-    if (rd8((uint32_t)bank << 16 | 0x0E5C)) {
+    if (rd8((uint32_t)bank << 16 | W(wram_0E5C))) {
         cyc(46);
         rows_counted = 1;
         rows_count = BigSpritesCountDraw(bank);
@@ -3104,7 +3104,7 @@ int HudHoldDraw(uint8_t bank)
 
     cyc(22);
     cyc(46);
-    if (!rd16((uint32_t)bank << 16 | 0x0E5D)) {
+    if (!rd16((uint32_t)bank << 16 | W(hud_hold))) {
         cyc(44);
         cyc(42);                        /* PLP */
         hold_a = 0x0000;
@@ -4597,7 +4597,7 @@ uint8_t GlyphSpritesDrawAll(uint8_t bank)
         cyc(128);
     }
     cyc(24);
-    if (!rd16((uint32_t)bank << 16 | 0x0FAE)) {
+    if (!rd16((uint32_t)bank << 16 | W(wram_0FAE))) {
         (cyc(78), GsuBytes200_BFB3BE());          /* BNE, JSL */
         for (i = 0; i < 4; i++) {
             if (i)
@@ -5283,7 +5283,7 @@ void HudBlankDraw(uint8_t bank)
     cyc(90);
     wr16(0x700216, 0x0E08);
     cyc(24);
-    n = (uint16_t)(rd16((uint32_t)bank << 16 | 0x1F71) & 0x000F);
+    n = (uint16_t)(rd16((uint32_t)bank << 16 | W(script_byte_1f71)) & 0x000F);
     cyc(2);
     if (n) {
         if (n < 2)

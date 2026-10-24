@@ -7,6 +7,7 @@
 #include "native.h"
 #include "hw.h"
 #include "carried.h"
+#include "wram_names.h"
 
 uint8_t SoundPairFromTable(void);
 void MenuOamFromList(uint8_t bank, uint16_t *x, uint16_t *y);
@@ -72,8 +73,8 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     cyc(62);
     CoursePictureToVram(bank);
     ppu_wr(dbw(bank, 0x2101), cyc_then(62, 0x03));
-    wr8(dbw(bank, 0x0D3F), cyc_then(62, 0x08));
-    wr8(dbw(bank, 0x0D7D), cyc_then(40, 0x0C));
+    wr8(dbw(bank, W(wram_0D3F)), cyc_then(62, 0x08));
+    wr8(dbw(bank, W(gsu_buffer_offset)), cyc_then(40, 0x0C));
     for (i = 0; i < sizeof course_params / sizeof course_params[0]; i++)
         wr8(dbw(bank, course_params[i].addr), cyc_then(40, course_params[i].v));
     uint16_t a = GradientSetup(bank);

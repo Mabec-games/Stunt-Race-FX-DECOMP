@@ -379,7 +379,7 @@ void abi_PaletteLoad16(void)
 uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
 {
     cyc(90);
-    uint8_t v = rd8((uint32_t)bank << 16 | 0x0D22);
+    uint8_t v = rd8((uint32_t)bank << 16 | W(wram_0D22));
 
     *ran = !v;
     if (v)

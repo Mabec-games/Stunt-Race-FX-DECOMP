@@ -2496,7 +2496,7 @@ void ObjectCallHandler(Carried *cr, uint16_t obj)
     cyc(110);
     carried_call(cr, (uint32_t)bank << 16 | addr, 1);
     cyc(124);
-    wr8((uint32_t)cr->db << 16 | 0x1F58, keep);
+    wr8((uint32_t)cr->db << 16 | W(wram_1F58), keep);
     cr->a = (uint16_t)((cr->a & 0xFF00) | keep);
 }
 
@@ -4756,7 +4756,7 @@ void ObjectCarFrame(Carried *cr)
     uint8_t v;
 
     cyc(24);
-    cr->y = rd16(((uint32_t)cr->db << 16) | 0x0346);
+    cr->y = rd16(((uint32_t)cr->db << 16) | W(wram_0346));
     set_p(cr, nz16(cr->p, cr->y));
     cyc(30);
     v = (uint8_t)(rd8(((uint32_t)cr->db << 16) + 0x2025 + cr->y) & 0x08);
@@ -4977,9 +4977,9 @@ void ObjectCarRecordTake(Carried *cr)
     cyc(54);
     r_lda8(cr, 0x702394);
     cyc(24);
-    wr8(((uint32_t)cr->db << 16) | 0x1F58, (uint8_t)cr->a);
+    wr8(((uint32_t)cr->db << 16) | W(wram_1F58), (uint8_t)cr->a);
     cyc(24);
-    r_lda8(cr, ((uint32_t)cr->db << 16) | 0x1F58);
+    r_lda8(cr, ((uint32_t)cr->db << 16) | W(wram_1F58));
     v = (uint8_t)(cr->a | 0x80);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));

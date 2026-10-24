@@ -37,19 +37,19 @@ uint8_t CourseFromSelection(uint8_t bank, uint8_t *p)
     uint8_t a, b;
     unsigned s;
 
-    if (rd8(dbw(bank, 0x0D4C))) {
-        a = rd8(cyc_then(40, dbw(bank, 0x0D4A)));
+    if (rd8(dbw(bank, W(digit62_override)))) {
+        a = rd8(cyc_then(40, dbw(bank, W(wram_0D4A))));
         b = 0x14;
         cyc(30);                        /* CLC, ADC # */
     } else {
-        a = rd8(cyc_then(46, dbw(bank, 0x0D4A)));
+        a = rd8(cyc_then(46, dbw(bank, W(wram_0D4A))));
         a = (uint8_t)(a << 2);
-        b = rd8(cyc_then(66, dbw(bank, 0x0D48)));
+        b = rd8(cyc_then(66, dbw(bank, W(wram_0D48))));
     }
     s = (unsigned)a + b;
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(a ^ b) & (a ^ s) & 0x80) ? P_V : 0));
-    wr8(dbw(bank, 0x0E3D), cyc_then(24, (uint8_t)s));
+    wr8(dbw(bank, W(course)), cyc_then(24, (uint8_t)s));
     cyc(42);
     return (uint8_t)s;
 }
@@ -573,7 +573,7 @@ void RaceFadeStageDispatch(Carried *cr)
     uint8_t v;
 
     cyc(24);
-    r_lda8(cr, (uint32_t)cr->db << 16 | 0x0D48);
+    r_lda8(cr, (uint32_t)cr->db << 16 | W(wram_0D48));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
@@ -787,7 +787,7 @@ void abi_CourseZoomBattle(void)
 static void course_zoom_race(Carried *cr, uint16_t a)
 {
     a = asl3(cr, a);
-    cr->x = rd16(((uint32_t)cr->db << 16) | 0x0D2B);
+    cr->x = rd16(((uint32_t)cr->db << 16) | W(hud_mode));
     set_p(cr, nz16(cr->p, cr->x));
     if (cr->x)
         course_zoom(cr, box_offset_in(cr, a, 0x0040, 256), 0x0018);   /* BEQ not taken */
@@ -2667,7 +2667,7 @@ static void zoom_out_body(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0E);
     set_p(cr, nz8(cr->p, 0x0E));
     cyc(102);
-    wr8(((uint32_t)cr->db << 16) | 0x0D40, 0x0E);
+    wr8(((uint32_t)cr->db << 16) | W(wram_0D40), 0x0E);
     (cyc(62), ColourMathOffLong_cr(cr));
     (cyc(46), CoursePreviewReset(cr));
 }
@@ -2738,7 +2738,7 @@ static void zoom_in_body(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
     set_p(cr, nz8(cr->p, 0x06));
     cyc(62);
-    wr8(((uint32_t)cr->db << 16) | 0x0D40, 0x06);
+    wr8(((uint32_t)cr->db << 16) | W(wram_0D40), 0x06);
 }
 
 /*
@@ -2984,7 +2984,7 @@ void CourseScreenState8(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     set_p(cr, nz8(cr->p, 0x08));
     cyc(62);
-    wr8(((uint32_t)cr->db << 16) | 0x0D40, 0x08);
+    wr8(((uint32_t)cr->db << 16) | W(wram_0D40), 0x08);
     cyc(42);
 }
 

@@ -1131,7 +1131,7 @@ void MenuPreviewBackOut(Carried *cr)
     if (preview_frame(cr, 2))
         { cyc(58); return; }
     cyc(46);
-    x = rd16((uint32_t)cr->db << 16 | 0x11F9);
+    x = rd16((uint32_t)cr->db << 16 | W(actor_current));
     cr->x = x;
     cr->a = 0xBE65;
     cyc(46);
@@ -1175,7 +1175,7 @@ void MenuPreviewBackWait(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    v = rd8((uint32_t)cr->db << 16 | 0x0357);
+    v = rd8((uint32_t)cr->db << 16 | W(wram_0357));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     if (v) {
@@ -1228,7 +1228,7 @@ void MenuPreviewBackEnd(Carried *cr)
     if (preview_frame(cr, 2))
         { cyc(58); return; }
     cyc(46);
-    x = rd16((uint32_t)cr->db << 16 | 0x11F9);
+    x = rd16((uint32_t)cr->db << 16 | W(actor_current));
     cr->x = x;
     cyc(46);
     wr16(ACTOR(x, W(actor_handler)), 0xBA4E);

@@ -567,7 +567,7 @@ void DemoRunFirst(Carried *cr)
     cr->a = 0x0000;
     set_p(cr, nz16(cr->p, 0));
     cyc(48);
-    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x0000);
+    wr16((uint32_t)cr->db << 16 | W(wram_1A57), 0x0000);
     cyc(24);
     DemoRun(cr);
 }
@@ -624,7 +624,7 @@ void DemoRunSecond(Carried *cr)
     cr->a = 0x006B;
     set_p(cr, nz16(cr->p, cr->a));
     cyc(48);
-    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x006B);
+    wr16((uint32_t)cr->db << 16 | W(wram_1A57), 0x006B);
     cyc(24);
     DemoRun(cr);
 }
@@ -655,7 +655,7 @@ void DemoRunThird(Carried *cr)
     cr->a = 0x0159;
     set_p(cr, nz16(cr->p, cr->a));
     cyc(48);
-    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x0159);
+    wr16((uint32_t)cr->db << 16 | W(wram_1A57), 0x0159);
     cyc(62);
     DemoRun(cr);
     DemoRunThirdRest(cr);
@@ -691,14 +691,14 @@ void DemoRunThirdRest(Carried *cr)
     cr->a = 0x01FA;
     set_p(cr, nz16(cr->p, cr->a));
     cyc(48);
-    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x01FA);
+    wr16((uint32_t)cr->db << 16 | W(wram_1A57), 0x01FA);
     cyc(62);
     DemoRun(cr);
     r_rep(cr, P_M | P_X);
     cr->a = 0x0287;
     set_p(cr, nz16(cr->p, cr->a));
     cyc(48);
-    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x0287);
+    wr16((uint32_t)cr->db << 16 | W(wram_1A57), 0x0287);
     cyc(62);
     DemoRun(cr);
     cyc(44);
@@ -729,7 +729,7 @@ void DemoRunFourth(Carried *cr)
     r_rep(cr, P_M | P_X);
     cr->a = 0x00FC;
     set_p(cr, nz16(cr->p, cr->a));
-    wr16((uint32_t)cr->db << 16 | 0x1A57, 0x00FC);
+    wr16((uint32_t)cr->db << 16 | W(wram_1A57), 0x00FC);
     DemoRun(cr);
 }
 

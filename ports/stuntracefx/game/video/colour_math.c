@@ -216,7 +216,7 @@ void abi_ColourMathA3Long(void)
 void ColourMathOff(uint8_t bank)
 {
     cyc(62);
-    wr8((uint32_t)bank << 16 | 0x0D47, 0x00);
+    wr8((uint32_t)bank << 16 | W(colour_math_mode), 0x00);
     cyc(42);
 }
 

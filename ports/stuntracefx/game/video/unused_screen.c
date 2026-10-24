@@ -351,10 +351,10 @@ void ScreenBlankAndWait(uint8_t bank)
     ppu_wr(dbw(bank, 0x2100), cyc_then(40, 0x80));
     cyc(62); /* JSL */
     Set7EBC2BTrio(0x80);
-    wr8(dbw(bank, 0x06E3), cyc_then(40, 0x96));
+    wr8(dbw(bank, W(scanline_wait)), cyc_then(40, 0x96));
     cyc(62); /* JSL */
     WaitScanline(bank);
-    wr8(dbw(bank, 0x06E3), cyc_then(84, 0x8C));
+    wr8(dbw(bank, W(scanline_wait)), cyc_then(84, 0x8C));
     cyc(62); /* JSL */
     WaitScanline(bank);
     cyc(116); /* SEP, REP, PLP, RTL */
@@ -506,14 +506,14 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     int back;
 
     *p &= (uint8_t)~(P_M | P_X);
-    wr16(dbw(bank, 0x08EA), cyc_then(46, 0x0000));
-    a = (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x08ED))) & 0x00FF);
+    wr16(dbw(bank, W(tile_row_built)), cyc_then(46, 0x0000));
+    a = (uint16_t)(rd16(cyc_then(24, dbw(bank, W(tile_row_on)))) & 0x00FF);
     if (!a) {
         cyc(40 + 42); /* AND, BNE; RTS */
         *p = nz16(*p, a);
         return a;
     }
-    a = rd16(cyc_then(116, dbw(bank, 0x0342)));
+    a = rd16(cyc_then(116, dbw(bank, W(tile_row_level))));
     back = (a & 0x8000) != 0;
     if (back)
         { cyc(44); a = (uint16_t)-a; }
@@ -529,26 +529,26 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
     *x = (uint16_t)((a >> 8 & 0x0007) << 1);
     cyc(160);
     t = rd16(0x008BAEu + *x);
-    if (t == rd16(dbw(bank, 0x08E8))) {
+    if (t == rd16(dbw(bank, W(tile_row_source)))) {
         cyc(16 + 42); /* BNE; RTS */
         *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
         return t;
     }
-    wr16(dbw(bank, 0x08E8), cyc_then(46, t));
+    wr16(dbw(bank, W(tile_row_source)), cyc_then(46, t));
     i = back ? (cyc(38), (uint16_t)(t + 0x3E)) : t;
     for (*y = 0; *y != 0x40; *y = (uint16_t)(*y + 2)) {
         unsigned s;
 
         cyc(114);
         w = rd16((uint16_t)i);
-        a = rd16(dbw(bank, 0x08E6));
+        a = rd16(dbw(bank, W(tile_row_add)));
         s = (unsigned)w + a;
         *p = (uint8_t)((*p & ~P_V) | ((~(w ^ a) & (w ^ s) & 0x8000) ? P_V : 0));
         wr16(dbw(bank, (uint16_t)(W(tile_row) + *y)), cyc_then(30, (uint16_t)s));
         i = back ? (cyc(64), (uint16_t)(i - 2)) : (cyc(64), (uint16_t)(i + 2));
     }
     *x = i;
-    wr16(dbw(bank, 0x08EA), cyc_then(80, 0x0001));
+    wr16(dbw(bank, W(tile_row_built)), cyc_then(80, 0x0001));
     cyc(42); /* RTS */
     *p = (uint8_t)((*p & ~(P_N | P_Z)) | P_C);
     return 0x0001;

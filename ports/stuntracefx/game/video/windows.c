@@ -428,7 +428,7 @@ void BobWindow0(Carried *cr)
     if (!bob_window(cr, 0, 0x19AC))
         { cyc(42); return; }
     cyc(24);
-    v = rd8((uint32_t)cr->db << 16 | 0x0D62);
+    v = rd8((uint32_t)cr->db << 16 | W(wram_0D62));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(68); WindowHdmaFFD5_cr(cr); cyc(42); }
@@ -605,7 +605,7 @@ void WindowSweep(Carried *cr)
     cyc(32);
     wr8(W(wram_19AD), v);
     cyc(24);
-    v = rd8((uint32_t)cr->db << 16 | 0x0D62);
+    v = rd8((uint32_t)cr->db << 16 | W(wram_0D62));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(68); WindowHdmaFFD5_cr(cr); }

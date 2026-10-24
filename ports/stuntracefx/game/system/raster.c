@@ -952,7 +952,7 @@ void TimeMarkEnd(Carried *cr)
         a = rd16(W(time_now));
         a = (uint16_t)(a & 0xFF00);
         cyc(62);
-        m = rd16((uint32_t)cr->db << 16 | 0x1A39);
+        m = rd16((uint32_t)cr->db << 16 | W(time_marks));
         set_p(cr, (uint8_t)(cr->p | (P_C)));
         a = alu_sbc16(a, m, &cr->p);
         a = (uint16_t)((a >> 8) | (a << 8));

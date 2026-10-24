@@ -359,7 +359,7 @@ void PlayerStatsAndPaletteAnimate(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     cyc(62);
-    wr8(((uint32_t)cr->db << 16) | 0x0E5F, 0xFF);
+    wr8(((uint32_t)cr->db << 16) | W(palette_animate), 0xFF);
     set_p(cr, p);
     cyc(72);                            /* its return */
 }

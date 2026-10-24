@@ -923,23 +923,23 @@ uint16_t ObjectDistanceXY(uint8_t b, uint16_t x, uint16_t y)
         m = rd16(W(dp_02));
         a = sub16(0x0000, m);
     } else { cyc(28); }
-    wr16(w(b, 0x1A62), cyc_then(18, a));
+    wr16(w(b, W(wram_1A62)), cyc_then(18, a));
     a = rd16(cyc_then(30, f(b, y, 0x0E)));
     m = rd16(cyc_then(44, f(b, x, 0x0E)));
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_08), a);
     if (!(a & 0x8000)) {
-        m = rd16(cyc_then(54, w(b, 0x1A62)));
+        m = rd16(cyc_then(54, w(b, W(wram_1A62))));
         cyc(12);
         a = add16(a, m);
     } else {
-        a = rd16(cyc_then(60, w(b, 0x1A62)));
+        a = rd16(cyc_then(60, w(b, W(wram_1A62))));
         cyc(16);
         m = rd16(W(dp_08));
         a = sub16(a, m);
     }
-    wr16(w(b, 0x1A62), cyc_then(18, a));
+    wr16(w(b, W(wram_1A62)), cyc_then(18, a));
     cyc(66);                            /* SEP, RTL */
     return a;
 }
@@ -1017,7 +1017,7 @@ uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y)
     a = neg_if(a, 0x0002);
     wr16(w(b, W(wram_0364)), cyc_then(18, a));
     a = rd16(cyc_then(30, f(b, y, 0x10)));
-    m = rd16(cyc_then(38, w(b, 0x05F2)));
+    m = rd16(cyc_then(38, w(b, W(wram_05F2))));
     a = add16(a, m);
     m = rd16(cyc_then(28, f(b, x, 0x10)));
     a = sub16(a, m);
@@ -1085,7 +1085,7 @@ static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t 
  */
 uint16_t ObjectPointDistanceXZ(uint8_t b, uint16_t x)
 {
-    return point_distance(b, x, w(b, 0x05F2), 0x10);
+    return point_distance(b, x, w(b, W(wram_05F2)), 0x10);
 }
 
 void ObjectPointDistanceXZ_cr(Carried *cr)
@@ -1367,7 +1367,7 @@ uint16_t ObjectPairOffsetGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     wr16(W(dp_02), a);
     cyc(16);
     a = rd16(W(dp_08));
-    m = rd16(cyc_then(38, w(b, 0x05F2)));
+    m = rd16(cyc_then(38, w(b, W(wram_05F2))));
     a = add16(a, m);
     wr16(W(dp_08), a);
     return gsu_pair_end();

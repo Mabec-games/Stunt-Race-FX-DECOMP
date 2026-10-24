@@ -502,7 +502,7 @@ void abi_OamFromList(void)
  */
 uint8_t OamSprite0AddY(uint8_t bank, uint8_t lines, uint8_t *p)
 {
-    uint32_t a = (uint32_t)bank << 16 | 0x0376;
+    uint32_t a = (uint32_t)bank << 16 | W(wram_0376);
     cyc(38);
     uint8_t y = rd8(a);
     unsigned s = (unsigned)lines + y;
@@ -2050,7 +2050,7 @@ void abi_FlashingMetaspriteDraw0(void)
 uint16_t FlashingMetaspriteDrawByMode(uint8_t bank, uint16_t *x, uint16_t *y)
 {
     cyc(68);
-    uint16_t set = (rd16(((uint32_t)bank << 16) | 0x0D4C) & 0x00FF) ? 0x0014 : (cyc(6), 0x000E);
+    uint16_t set = (rd16(((uint32_t)bank << 16) | W(digit62_override)) & 0x00FF) ? 0x0014 : (cyc(6), 0x000E);
 
     return flashing_metasprite_draw(bank, set, x, y, 102);
 }
@@ -2423,7 +2423,7 @@ static uint16_t pieces_xy(uint8_t bank, uint16_t x, uint16_t y, int y_first, uin
 static uint16_t pieces_at_xy(uint8_t bank, uint16_t set, uint16_t x, uint16_t y, int y_first, uint16_t slot)
 {
     cyc(24);
-    wr16(((uint32_t)bank << 16) | 0x10C3, set);
+    wr16(((uint32_t)bank << 16) | W(sprite_piece_frame), set);
     return pieces_xy(bank, x, y, y_first, slot);
 }
 
@@ -3031,7 +3031,7 @@ static void oam_stage_dispatch(Carried *cr, uint32_t table)
 {
     r_sep(cr, P_M | P_X);
     cyc(24);
-    cr->x = rd8((uint32_t)cr->db << 16 | 0x0D2F);
+    cr->x = rd8((uint32_t)cr->db << 16 | W(wram_0D2F));
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(46);
     carried_jump(cr, (uint32_t)0x070000 | rd16(table + cr->x));
@@ -3101,7 +3101,7 @@ uint8_t OamPaletteForD75(uint8_t bank, uint16_t *y)
     uint8_t v;
 
     cyc(22 + 46);
-    *y = (uint16_t)((rd16((uint32_t)bank << 16 | 0x0D75) + 0x000D) << 2);
+    *y = (uint16_t)((rd16((uint32_t)bank << 16 | W(wram_0D75)) + 0x000D) << 2);
     cyc(38 + 136);                      /* LDA #, LDX #, JSR */
     v = OamSetPalette(bank, 0x0A, 0x0016, y);
     cyc(42 + 30);                       /* PLP, RTL */

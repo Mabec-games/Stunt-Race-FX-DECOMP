@@ -278,7 +278,7 @@ void abi_ScaleSevenEighths(void)
  */
 uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
 {
-    uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
+    uint32_t eighth_at = (uint32_t)bank << 16 | W(wram_1F2B);
     uint16_t half = asr1(v), quarter, eighth, r;
 
     cyc(8);
@@ -512,7 +512,7 @@ void abi_ScaleDp02Dp94Long(void)
  */
 uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
 {
-    uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
+    uint32_t eighth_at = (uint32_t)bank << 16 | W(wram_1F2B);
     uint16_t e = asr1(asr1(asr1(v))), t;
 
     cyc(0);

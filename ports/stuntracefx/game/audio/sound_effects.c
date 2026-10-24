@@ -609,7 +609,7 @@ uint16_t SoundAtRateForLevel(uint8_t bank, uint16_t level, int *queued, uint8_t 
     d = (uint16_t)(level - 0xA0);
     *p = (uint8_t)((*p & ~P_C) | (level >= 0xA0 ? (cyc(6), P_C) : 0));
     cyc(172);
-    m = rd16((uint32_t)bank << 16 | 0x05E9) & (d & 0x8000 ? 0x0003 : 0x0001);
+    m = rd16((uint32_t)bank << 16 | W(wram_05E9)) & (d & 0x8000 ? 0x0003 : 0x0001);
     if (m) {
         *p = nz16(*p, m);
         return m;

@@ -167,7 +167,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t pressed, step, mask, a;
 
     MenuActorAnimateFrame(bank, x, p);
-    pressed = rd16(cyc_then(24, dbw(bank, 0x118B)));
+    pressed = rd16(cyc_then(24, dbw(bank, W(menu_joy1_pressed))));
     if (!pressed) {
         cyc(64);
         *p = nz16(*p, pressed);
@@ -179,21 +179,21 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         cyc(56);
         wr16(W(wram_1913), 0x0000);
     } else { cyc(62); }
-    rd16(cyc_then(24, dbw(bank, 0x118B)));
+    rd16(cyc_then(24, dbw(bank, W(menu_joy1_pressed))));
     cyc(22);
     step = rd16((uint16_t)(*x + W(actor_0a)));
     cyc(100);
     mask = rd16(BUTTON_SEQUENCE + (uint16_t)(step << 1));
-    wr16(dbw(bank, 0x11DF), mask);
-    *x = rd16(cyc_then(24, dbw(bank, 0x11F9)));
-    pressed = rd16(cyc_then(24, dbw(bank, 0x118B)));
-    mask = rd16(cyc_then(24, dbw(bank, 0x11DF)));
+    wr16(dbw(bank, W(scratch_11df)), mask);
+    *x = rd16(cyc_then(24, dbw(bank, W(actor_current))));
+    pressed = rd16(cyc_then(24, dbw(bank, W(menu_joy1_pressed))));
+    mask = rd16(cyc_then(24, dbw(bank, W(scratch_11df))));
     if (!(pressed & mask)) {
         cyc(38);
         wr16((uint16_t)(*x + W(actor_0a)), 0x0000);
         return MenuSelectConfirm(bank, x, y, p) ? (cyc(42), 0xFF46) : (cyc(42), 0x0000);
     }
-    wr16(dbw(bank, 0x118B), cyc_then(46, 0x0000));
+    wr16(dbw(bank, W(menu_joy1_pressed)), cyc_then(46, 0x0000));
     cyc(22);
     step = (uint16_t)(rd16((uint16_t)(*x + W(actor_0a))) + 1);
     cyc(36);
@@ -332,7 +332,7 @@ uint16_t MenuChoiceObject38(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     MenuChoiceObjectUpdate(*x, p);
     a = 0x0038;
     *p = nz16(*p, a);
-    wr16(dbw(bank, 0x11E3), cyc_then(48, a));
+    wr16(dbw(bank, W(scratch_11e3)), cyc_then(48, a));
     return cyc_then(42, MenuChoiceObjectFrames(bank, a, x, y, p));
 }
 
@@ -435,7 +435,7 @@ uint16_t MenuChoiceObject48Start(Carried *cr, uint8_t bank, uint16_t *x, uint16_
     }
     cyc(46);
     MenuActorCopyGroup(cr, bank, x, p);
-    wr16(dbw(bank, 0x11E3), cyc_then(48, 0x0048));
+    wr16(dbw(bank, W(scratch_11e3)), cyc_then(48, 0x0048));
     cyc(70);
     MenuActorUploadFrames(bank, *x, 0x0000, x, p);
     *y = 0xFFFF;
@@ -723,7 +723,7 @@ static void menu_anim(uint16_t x, uint16_t *a, uint8_t *p, uint16_t n)
 /* LDA $118B, AND #mask: the buttons newly pressed under mask. */
 static uint16_t menu_pressed(uint8_t bank, uint16_t *a, uint8_t *p, uint16_t mask)
 {
-    *a = (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x118B))) & mask);
+    *a = (uint16_t)(rd16(cyc_then(24, dbw(bank, W(menu_joy1_pressed)))) & mask);
     *p = nz16(*p, *a);
     return *a;
 }
@@ -965,7 +965,7 @@ void MenuEraseConfirm2(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a, uint
         return;
     } else { cyc(62); }
     *a = MenuEraseSave(x, y, p);
-    *x = rd16(cyc_then(24, dbw(bank, 0x11F9)));
+    *x = rd16(cyc_then(24, dbw(bank, W(actor_current))));
     *p = nz16(*p, *x);
     menu_anim(*x, a, p, 0x0170);
     menu_sound(bank, a, p, 0x36);

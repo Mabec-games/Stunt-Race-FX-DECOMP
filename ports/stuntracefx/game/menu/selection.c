@@ -126,7 +126,7 @@ void abi_MenuChoiceRepeat(void)
 int MenuWaitFor0357(uint8_t bank, uint16_t rec)
 {
     cyc(46);
-    if (!rd8((uint32_t)bank << 16 | 0x0357))
+    if (!rd8((uint32_t)bank << 16 | W(wram_0357)))
         { cyc(22); return 0; }
     cyc(94);
     wr16(W(menu_1905), 0x0002);
@@ -171,7 +171,7 @@ void abi_MenuWaitFor0357(void)
 void MenuSetExit(uint8_t bank)
 {
     cyc(70);
-    wr16((uint32_t)bank << 16 | 0x11EB, 0x0001);
+    wr16((uint32_t)bank << 16 | W(menu_exit), 0x0001);
     cyc(42);
 }
 
@@ -205,7 +205,7 @@ void abi_MenuSetExit(void)
 void MenuSet1A66(uint8_t bank, uint16_t i)
 {
     cyc(134);
-    wr16((uint32_t)bank << 16 | 0x1A66, cyc_then(54, rd16(W(table_116c) + (uint16_t)(i << 1))));
+    wr16((uint32_t)bank << 16 | W(wram_1A66), cyc_then(54, rd16(W(table_116c) + (uint16_t)(i << 1))));
     cyc(106);
 }
 
@@ -484,7 +484,7 @@ static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
     cyc(32);
     wr16(W(wram_18C5), a);
     cyc(24);
-    pad = rd16((uint32_t)bank << 16 | 0x118B);
+    pad = rd16((uint32_t)bank << 16 | W(menu_joy1_pressed));
     *y = pad;
     if (pad & 0x0800) {
         cyc(154);

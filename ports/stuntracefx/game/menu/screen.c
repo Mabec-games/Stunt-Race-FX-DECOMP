@@ -264,7 +264,7 @@ uint16_t MenuPictureToVram(uint8_t bank, uint16_t in68, uint16_t in6a, uint16_t 
         cyc(24);
         ppu_wr16(VMDATAL, w);
         *x = (uint16_t)(*x + 2);
-    } while (*x != rd16(cyc_then(52, (uint32_t)bank << 16 | 0x11D5)));
+    } while (*x != rd16(cyc_then(52, (uint32_t)bank << 16 | W(menu_picture_size))));
     cyc(86);
     return w;
 }
@@ -718,7 +718,7 @@ static uint16_t picture_to_vram(uint8_t bank, uint16_t in68, uint16_t in6a, uint
 static void course_picture(uint8_t bank, uint32_t table, uint16_t *in68, uint16_t *in6a)
 {
     cyc(64);
-    uint16_t c = rd16((uint32_t)bank << 16 | 0x0E3D), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
+    uint16_t c = rd16((uint32_t)bank << 16 | W(course)), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
 
     cyc(168);
     *in68 = rd16(table + i);
@@ -800,7 +800,7 @@ uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor)
 void MenuSpritePalettesScale_cr(Carried *cr)
 {
     cr->a = MenuSpritePalettesScale(cr->db, cr->a);
-    cr->x = rd16((uint32_t)cr->db << 16 | 0x11F9);
+    cr->x = rd16((uint32_t)cr->db << 16 | W(actor_current));
     cr->y = 0xFFFF;
     set_p(cr, nz16(cr->p, cr->x));
 }
@@ -905,7 +905,7 @@ static uint16_t picture_dc8c_grid(uint8_t bank, uint16_t first)
     cyc(154);
     GsuCF42To3000(0xDC8C, 0x001C);
     cyc(88);
-    wr16((uint32_t)bank << 16 | 0x11E1, first);
+    wr16((uint32_t)bank << 16 | W(scratch_11e1), first);
     cyc(46);
     return cyc_then(70, MenuPictureInsetGrid(bank));
 }

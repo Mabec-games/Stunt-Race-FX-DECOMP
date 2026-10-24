@@ -1423,6 +1423,7 @@
 #define WRAM_wram_0D58 0x000D58u
 #define WRAM_wram_0D5E 0x000D5Eu
 #define WRAM_wram_0D5F 0x000D5Fu
+#define WRAM_wram_0D71 0x000D71u
 #define WRAM_wram_0D73 0x000D73u
 #define WRAM_wram_0D8F 0x000D8Fu
 #define WRAM_wram_0D90 0x000D90u
@@ -1433,6 +1434,7 @@
 #define WRAM_wram_0D96 0x000D96u
 #define WRAM_wram_0D9A 0x000D9Au
 #define WRAM_wram_0D9C 0x000D9Cu
+#define WRAM_wram_0DA7 0x000DA7u
 #define WRAM_wram_0DD4 0x000DD4u
 #define WRAM_wram_0DF4 0x000DF4u
 #define WRAM_wram_0E18 0x000E18u
@@ -1549,14 +1551,18 @@
 #define WRAM_wram_19BD 0x0019BDu
 #define WRAM_wram_19C4 0x0019C4u
 #define WRAM_wram_19D5 0x0019D5u
+#define WRAM_wram_19E7 0x0019E7u
 #define WRAM_wram_19EF 0x0019EFu
 #define WRAM_wram_19F7 0x0019F7u
 #define WRAM_wram_1A14 0x001A14u
 #define WRAM_wram_1A28 0x001A28u
+#define WRAM_wram_1A29 0x001A29u
 #define WRAM_wram_1A32 0x001A32u
 #define WRAM_wram_1A57 0x001A57u
 #define WRAM_wram_1A59 0x001A59u
 #define WRAM_wram_1A5B 0x001A5Bu
+#define WRAM_wram_1A5E 0x001A5Eu
+#define WRAM_wram_1A62 0x001A62u
 #define WRAM_wram_1A66 0x001A66u
 #define WRAM_wram_1A70 0x001A70u
 #define WRAM_wram_1A75 0x001A75u
@@ -1567,6 +1573,10 @@
 #define WRAM_wram_1AF2 0x001AF2u
 #define WRAM_wram_1AF4 0x001AF4u
 #define WRAM_wram_1AF7 0x001AF7u
+#define WRAM_wram_1EF7 0x001EF7u
+#define WRAM_wram_1EF9 0x001EF9u
+#define WRAM_wram_1EFD 0x001EFDu
+#define WRAM_wram_1EFF 0x001EFFu
 #define WRAM_wram_1F18 0x001F18u
 #define WRAM_wram_1F1A 0x001F1Au
 #define WRAM_wram_1F1B 0x001F1Bu

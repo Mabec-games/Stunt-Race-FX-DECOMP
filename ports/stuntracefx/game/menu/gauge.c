@@ -154,7 +154,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
     cyc(90);
     wr16(W(scratch_11df), value);
     cyc(24);
-    obj = rd16((uint32_t)bank << 16 | 0x0346);
+    obj = rd16((uint32_t)bank << 16 | W(wram_0346));
     cyc(32);
     kind = rd16(0x7E0000 | W(obj_27) + obj);
     for (i = 0; i < 5; i++)
@@ -328,7 +328,7 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
         cyc(124);
         if (rd8(W(wram_0DD6)) < 0x06) {
             cyc(78);
-            a = rd16((uint32_t)bank << 16 | 0x117E);
+            a = rd16((uint32_t)bank << 16 | W(menu_gauge));
             if (!(a & 0x8000))
                 { cyc(62); a = MenuGaugeSlideToTarget(); } else { cyc(22); }
         } else { cyc(38); }

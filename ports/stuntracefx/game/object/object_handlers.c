@@ -290,7 +290,7 @@ static void set_handler(Carried *cr, uint16_t obj, uint16_t h)
    made (C), Y = it. */
 static int spawn(Carried *cr, uint16_t kind)
 {
-    sta16_imm(cr, db(cr) | 0x1F2B, kind);
+    sta16_imm(cr, db(cr) | W(wram_1F2B), kind);
     (cyc(84), ObjectSpawn_cr(cr));
     cyc(22);
     return (cr->p & P_C) != 0;
@@ -2309,7 +2309,7 @@ static void break_off_f(Carried *cr)
 void ObjectBreakOffContact(Carried *cr)
 {
     lda8(cr, 0x6E);
-    wr8(db(cr) | 0x1F58, cyc_then(10, 0x6E));
+    wr8(db(cr) | W(wram_1F58), cyc_then(10, 0x6E));
     (cyc(24), break_off_f(cr));
 }
 
@@ -2712,7 +2712,7 @@ void abi_ObjectPieceSprayYSign(void)
  */
 void ObjectPieceSprayZSign(Carried *cr)
 {
-    wr8(db(cr) | 0x05F3, cyc_then(24, 0x00));
+    wr8(db(cr) | W(rot_z_high), cyc_then(24, 0x00));
     spray_turn(cr);
 }
 
@@ -5853,7 +5853,7 @@ void CameraOnMarkedCar(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cr->x = 0x1A64;
-    cr->y = rd16(cyc_then(70, db(cr) | 0x1176));
+    cr->y = rd16(cyc_then(70, db(cr) | W(wram_1176)));
     camera_on(cr, cr->y, 0xFF38, 0x02BC, 1);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     lda8(cr, 0x01);

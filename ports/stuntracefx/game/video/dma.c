@@ -660,7 +660,7 @@ void abi_DmaFromDescriptor(void)
 uint16_t CoursePictureToVram(uint8_t bank)
 {
     cyc(108);
-    uint16_t w = rd16(cyc_then(106, W(course_picture_offsets) + 2 * (unsigned)rd8((uint32_t)bank << 16 | 0x0E3D)));
+    uint16_t w = rd16(cyc_then(106, W(course_picture_offsets) + 2 * (unsigned)rd8((uint32_t)bank << 16 | W(course))));
     uint16_t t = (uint16_t)(w & 0xFFFC);
 
     t = (uint16_t)((uint16_t)(t >> 8 | t << 8) << 1);
@@ -781,7 +781,7 @@ void abi_AnimTilesQueueNext(void)
 void CgramUploadAll(uint8_t bank, int x8)
 {
     cyc(92);
-    wr16((uint32_t)bank << 16 | 0x0D83, 0xFD65);
+    wr16((uint32_t)bank << 16 | W(player_pal_offset), 0xFD65);
     (cyc(94), CgramDma(0xFD65, 0x00, 0x0200));
     cyc(42);                            /* its RTS */
     if (!x8)

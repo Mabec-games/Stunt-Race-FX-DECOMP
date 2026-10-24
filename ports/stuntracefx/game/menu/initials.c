@@ -225,7 +225,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint16_t i, v, a;
 
-    wr16(dbw(bank, 0x118B), cyc_then(24, 0x0000));
+    wr16(dbw(bank, W(menu_joy1_pressed)), cyc_then(24, 0x0000));
     cyc(32);
     i = (uint16_t)(rd16(W(word_list_a_size)) - 2);
     if (!(i & 0x8000)) {
@@ -234,8 +234,8 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             cyc(90);
             v = rd16(W(word_list_a) + i);
             wr16(dbw(bank, W(wram_118F)), cyc_then(24, v));
-            v |= rd16(cyc_then(24, dbw(bank, 0x118B)));
-            wr16(dbw(bank, 0x118B), cyc_then(24, v));
+            v |= rd16(cyc_then(24, dbw(bank, W(menu_joy1_pressed))));
+            wr16(dbw(bank, W(menu_joy1_pressed)), cyc_then(24, v));
             cyc(76);
             MenuInitialsStep(bank, x, y, p);
             i = (uint16_t)(i - 2);
@@ -246,7 +246,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(70);
     MenuActorFind(bank, 0x0009, x, y, p);
     a = MenuRowBlinkSettings(bank, x, y, p);
-    *x = rd16(cyc_then(24, dbw(bank, 0x11F9)));
+    *x = rd16(cyc_then(24, dbw(bank, W(actor_current))));
     *p = nz16(*p, *x);
     cyc(42);
     return a;

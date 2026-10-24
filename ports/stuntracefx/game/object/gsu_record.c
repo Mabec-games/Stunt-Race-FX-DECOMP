@@ -1428,7 +1428,7 @@ uint16_t ObjectRebucket(uint16_t obj);
 static uint16_t sync_tail(uint8_t bank, uint16_t a, uint16_t *y, uint8_t *p)
 {
     cyc(24);
-    *y = rd16((uint32_t)bank << 16 | 0x1F3C);
+    *y = rd16((uint32_t)bank << 16 | W(wram_1F3C));
     if (!*y) {
         *p = nz16(*p, 0);
         cyc(80);                        /* BEQ taken, CLC, RTL */
@@ -1443,7 +1443,7 @@ static uint16_t sync_tail(uint8_t bank, uint16_t a, uint16_t *y, uint8_t *p)
 static uint16_t sync_none(uint8_t bank, uint8_t *p)
 {
     cyc(92);
-    wr16((uint32_t)bank << 16 | 0x1F3C, 0x0000);
+    wr16((uint32_t)bank << 16 | W(wram_1F3C), 0x0000);
     *p = (uint8_t)(nz8(*p, 0) | P_C);
     cyc(118);                           /* SEP, SEP, LDA #0, SEC, RTL */
     return 0x0000;
@@ -2611,7 +2611,7 @@ uint16_t GsuRecordSet2AHigh(uint8_t bank, uint16_t obj, uint8_t value, uint8_t *
     uint16_t w = (uint16_t)(value << 8), rec;
 
     cyc(90);
-    wr16((uint32_t)bank << 16 | 0x1F36, w);
+    wr16((uint32_t)bank << 16 | W(wram_1F36), w);
     cyc(6);
     rec = record_of(bank, obj);
     if (!rec) {

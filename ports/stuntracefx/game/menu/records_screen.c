@@ -185,7 +185,7 @@ static void lda8(Carried *cr, uint8_t v)
    them is pressed. */
 static int pressed(Carried *cr, uint16_t mask)
 {
-    r_lda16(cr, cyc_then(24, db(cr) | 0x0D1A));
+    r_lda16(cr, cyc_then(24, db(cr) | W(joy1_pressed_copy)));
     set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(50), 0) : (cyc(16), P_Z))));
     return (cr->a & mask) != 0;
 }
@@ -227,7 +227,7 @@ static void md_first(Carried *cr, uint16_t id, uint8_t bra)
     cr->y = 0x0000;
     cr->x = id;
     set_p(cr, nz16(cr->p, id));
-    wr16(db(cr) | 0x0D71, cyc_then(72, 0x0000));
+    wr16(db(cr) | W(wram_0D71), cyc_then(72, 0x0000));
     (cyc(46), MetaspriteDraw_cr(cr));
     if (bra)
         cyc(bra);
@@ -319,7 +319,7 @@ void RecordsMenuGo(Carried *cr)
     cyc(26);
     sound8(cr, 0x46);
     lda8(cr, 0x0A);
-    wr8(db(cr) | 0x0D40, cyc_then(40, 0x0A));
+    wr8(db(cr) | W(wram_0D40), cyc_then(40, 0x0A));
     (cyc(62), ColourMathA7Start_cr(cr));
     (cyc(106), OamBufferHideLargeLong_cr(cr));
     cyc(42);
@@ -345,7 +345,7 @@ static void choice_show_at(Carried *cr, int entry, uint8_t choice, CarriedFn f1,
 {
     r_sep(cr, P_M);
     lda8(cr, choice);
-    wr8(db(cr) | 0x0D50, cyc_then(entry, choice));
+    wr8(db(cr) | W(wram_0D50), cyc_then(entry, choice));
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x0001);
     (cyc(32), f1(cr));
@@ -372,7 +372,7 @@ static void choice_show(Carried *cr, int pushed, uint8_t choice, CarriedFn f1, C
 static void records_view(Carried *cr)
 {
     r_lda16_imm(cr, 0x000C);
-    wr16(db(cr) | 0x0D40, 0x000C);
+    wr16(db(cr) | W(wram_0D40), 0x000C);
     cyc(10);
     sound16(cr, 0x0024);
     cyc(42);                            /* RTS */
@@ -558,7 +558,7 @@ static int menu_back(Carried *cr)
 /* LDX $0D50 (8-bit), the menu's JMP (table,X): the handler's address. */
 static uint16_t menu_handler(Carried *cr, uint16_t table)
 {
-    uint8_t x = rd8(cyc_then(24, db(cr) | 0x0D50));
+    uint8_t x = rd8(cyc_then(24, db(cr) | W(wram_0D50)));
 
     cr->x = x;
     set_p(cr, nz8(cr->p, x));
@@ -1149,7 +1149,7 @@ static uint8_t page_mark_y(Carried *cr)
     uint8_t p = cr->p;
 
     r_rep(cr, P_M | P_X);
-    r_lda16(cr, cyc_then(46, db(cr) | 0x0D73));
+    r_lda16(cr, cyc_then(46, db(cr) | W(wram_0D73)));
     r_and16(cr, 0x00FF);
     r_asl16(cr);
     r_asl16(cr);

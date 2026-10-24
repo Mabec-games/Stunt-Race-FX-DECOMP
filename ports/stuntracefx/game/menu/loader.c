@@ -40,7 +40,7 @@ static void queue_from_gsu_ram(uint16_t size, uint16_t src, uint16_t vram)
 static uint16_t next_step(uint8_t bank, uint16_t next)
 {
     cyc(0);
-    uint16_t x = rd16((uint32_t)bank << 16 | 0x11F9);
+    uint16_t x = rd16((uint32_t)bank << 16 | W(actor_current));
 
     cyc(46);
     wr16((uint16_t)(x + W(actor_handler)), next);

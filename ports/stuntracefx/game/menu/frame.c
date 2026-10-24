@@ -24,7 +24,7 @@ void abi_MenuActorsRun(void);
 uint8_t MenuFramesTarget7(uint8_t bank)
 {
     cyc(84);
-    wr8((uint32_t)bank << 16 | 0x11DB, 0x07);
+    wr8((uint32_t)bank << 16 | W(wram_11DB), 0x07);
     cyc(70);                            /* PLP, RTS */
     return 0x07;
 }
@@ -131,7 +131,7 @@ uint16_t MenuDimOnL(uint8_t bank)
     uint16_t a;
 
     cyc(24);
-    a = (uint16_t)(rd16((uint32_t)bank << 16 | 0x118F) & 0x0020);
+    a = (uint16_t)(rd16((uint32_t)bank << 16 | W(menu_press)) & 0x0020);
     if (!a)
         { cyc(88); return 0x0000; }    /* AND, BEQ taken, RTS */
     cyc(110);
@@ -169,7 +169,7 @@ void abi_MenuDimOnL(void)
  */
 void MenuWaitFrame(uint8_t bank)
 {
-    uint32_t a = (uint32_t)bank << 16 | 0x11D8;
+    uint32_t a = (uint32_t)bank << 16 | W(menu_frame_wait);
 
     cyc(68);
     wr16(a, cyc_then(48, (uint16_t)(rd16(a) | 0x0001)));

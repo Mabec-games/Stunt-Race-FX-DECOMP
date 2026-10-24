@@ -1000,7 +1000,7 @@ uint8_t WindowSlideStep(uint8_t bank, uint8_t *p, int *moved)
     *moved = 0;
     *p |= P_M;
     cyc(92);
-    v = (uint8_t)(rd8(((uint32_t)bank << 16) | 0x0DA5) & 0x06);
+    v = (uint8_t)(rd8(((uint32_t)bank << 16) | W(slide_flags)) & 0x06);
     *p = nz8(*p, v);
     if (!v)
         return v;
@@ -2096,7 +2096,7 @@ WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p)
     r.a = rd16(W(wram_19C3));
     *p &= (uint8_t)~P_C;
     cyc(38);
-    r.a = alu_adc16(r.a, rd16((uint32_t)bank << 16 | 0x19C5), p);
+    r.a = alu_adc16(r.a, rd16((uint32_t)bank << 16 | W(wram_19C5)), p);
     cmp16(r.a, 0xE000, p);
     if (*p & P_Z)
         { cyc(8); return r; }

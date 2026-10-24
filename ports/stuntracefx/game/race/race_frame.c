@@ -867,7 +867,7 @@ void ViewParamsByPlayers(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    v = rd8((uint32_t)cr->db << 16 | 0x0D62);
+    v = rd8((uint32_t)cr->db << 16 | W(wram_0D62));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     view_params(cr, v ? (cyc(16), two) : one);
 }
@@ -1317,7 +1317,7 @@ static void frame_side0(Carried *cr)
 {
     r_sep(cr, P_M);
     cyc(46);
-    wr8((uint32_t)cr->db << 16 | 0x1F07, 0x00);
+    wr8((uint32_t)cr->db << 16 | W(draw_side), 0x00);
     frame_lda8_imm(cr, 0xFF);
     cyc(48);
     wr8(0x70246C, 0xFF);
@@ -1555,7 +1555,7 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     (cyc(46), w_GsuScreenFlipMenu(cr));
     r_sep(cr, P_M);
     cyc(46);
-    wr8((uint32_t)cr->db << 16 | 0x0357, 0x00);
+    wr8((uint32_t)cr->db << 16 | W(wram_0357), 0x00);
     (cyc(62), ViewUpdateAndGsuAEF8_cr(cr));
     (cyc(62), BackdropAnglesFromView_cr(cr));
     r_rep(cr, P_M);
@@ -1578,7 +1578,7 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     (cyc(68), w_GsuScreenFlipMenu(cr));
     r_sep(cr, P_M);
     cyc(46);
-    wr8((uint32_t)cr->db << 16 | 0x0357, 0x00);
+    wr8((uint32_t)cr->db << 16 | W(wram_0357), 0x00);
     frame_time(cr, db, p0);
     cyc(58);                            /* its return */
 }

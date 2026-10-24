@@ -1135,7 +1135,7 @@ void PauseReplayStages(Carried *cr)
 {
     r_sep(cr, P_M | P_X);
     cyc(24);
-    cr->x = rd8(((uint32_t)cr->db << 16) | 0x0D2F);
+    cr->x = rd8(((uint32_t)cr->db << 16) | W(wram_0D2F));
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(46);
     carried_jump(cr, 0x070000 | rd16(0x07BC24 + cr->x));
@@ -1192,7 +1192,7 @@ void PauseQuitMenuCursor0(Carried *cr)
 {
     lda8_imm(cr, 0x00);
     cyc(16);
-    wr8((uint32_t)cr->db << 16 | 0x0D50, 0x00);
+    wr8((uint32_t)cr->db << 16 | W(wram_0D50), 0x00);
     cyc(42);
 }
 
@@ -1224,7 +1224,7 @@ void PauseQuitMenuBack(Carried *cr)
     lda8_imm(cr, 0x46);
     SoundPort0QueuePush_cr(cr);
     cyc(24);
-    wr8((uint32_t)cr->db << 16 | 0x0D50, 0x00);
+    wr8((uint32_t)cr->db << 16 | W(wram_0D50), 0x00);
     cyc(42);
 }
 

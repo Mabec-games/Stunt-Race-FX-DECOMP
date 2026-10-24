@@ -69,6 +69,9 @@ def auto_name(v):
 
 
 NUM_DB = re.compile(r'\bb \| 0x([0-9A-Fa-f]{4})\b(?!u)')
+# the same through the data bank's other spellings: db(cr) | 0x0D2B,
+# (uint32_t)bank << 16 | 0x0D2B, a file's dbw(bank, 0x0D2B) helper
+NUM_DBX = re.compile(r'(\bdb\(cr\)\)? \| |\(uint32_t\)(?:bank|cr->db) << 16\)? \| |\b(?:dbw|w|abs_db)\([^,()]+, *)0x([0-9A-Fa-f]{4})\b(?!u)')
 # (not a bank's base, $xx0000: a base an offset or pointer is added to)
 NUM_LONG = re.compile(r'(\(|, )0x((?:00|7E|7F)(?!0000)[0-9A-Fa-f]{4})u?\b(?! *[*<>]| \| W\()')
 
@@ -79,6 +82,10 @@ def numbers(t):
     out = []
     for m in NUM_DB.finditer(t):
         v = int(m.group(1), 16)
+        if is_wram(v, True):
+            out.append(v)
+    for m in NUM_DBX.finditer(t):
+        v = int(m.group(2), 16)
         if is_wram(v, True):
             out.append(v)
     for m in NUM_LONG.finditer(t):
@@ -174,6 +181,12 @@ def name_text(t, names, known):
         n = pick(v) if is_wram(v, True) else None
         return 'b | W(%s)' % n if n else m.group(0)
     t = NUM_DB.sub(db, t)
+
+    def dbx(m):
+        v = int(m.group(2), 16)
+        n = pick(v) if is_wram(v, True) else None
+        return m.group(1) + 'W(%s)' % n if n else m.group(0)
+    t = NUM_DBX.sub(dbx, t)
 
     def lg(m):
         v = int(m.group(2), 16)

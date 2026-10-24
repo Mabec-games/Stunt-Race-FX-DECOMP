@@ -51,7 +51,7 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
 static uint16_t expand_list(uint8_t bank, uint16_t *y, uint16_t course, uint16_t special, int *carry)
 {
     cyc(92);
-    uint16_t c = (uint16_t)(rd16((uint32_t)bank << 16 | 0x0E3D) & 0x00FF);
+    uint16_t c = (uint16_t)(rd16((uint32_t)bank << 16 | W(course)) & 0x00FF);
 
     *carry = c >= course;
     return expand_runs(bank, c == course ? (cyc(16), special) : 0, y);

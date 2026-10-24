@@ -239,7 +239,7 @@ void PlayerTwoFrameWork(Carried *cr)
 {
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, ((uint32_t)cr->db << 16) | 0x0DD7);
+    r_lda8(cr, ((uint32_t)cr->db << 16) | W(engine_phase_p2));
     cr->x = (uint16_t)(cr->a & 0x00FF);
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(60);
@@ -1043,7 +1043,7 @@ void CarFinishSound(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(46);
-    r_lda8(cr, ((uint32_t)cr->db << 16) | 0x0D89);
+    r_lda8(cr, ((uint32_t)cr->db << 16) | W(wram_0D89));
     finish_sound(cr, (uint8_t)cr->a);
     r_plp(cr, p0);
 }
@@ -2991,7 +2991,7 @@ void abi_RaceEndVideoReset(void)
 void RaceEndLeave(Carried *cr)
 {
     cyc(24);
-    r_lda8(cr, ((uint32_t)cr->db << 16) | 0x0E5C);
+    r_lda8(cr, ((uint32_t)cr->db << 16) | W(wram_0E5C));
     if (!(uint8_t)cr->a) {
         cyc(46);
         RaceEndToAttract(cr);

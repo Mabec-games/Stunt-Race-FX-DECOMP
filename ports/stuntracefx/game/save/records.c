@@ -3023,7 +3023,7 @@ static uint16_t record_tag(uint8_t bank, uint16_t extra)
     }
     /* BRA, STA; CLC, ADC, BRA, STA for +4; CLC, ADC, STA for +8 */
     cyc(extra == 0x0004 ? 84 : extra ? 62 : 46);
-    wr16((uint32_t)bank << 16 | 0x10C7, a);
+    wr16((uint32_t)bank << 16 | W(player_tag), a);
     cyc(42);
     return a;
 }
@@ -3731,7 +3731,7 @@ static uint16_t records_char_index(uint8_t bank)
     uint16_t v;
 
     cyc(128);
-    v = rd16(((uint32_t)bank << 16) | 0x0FA6);
+    v = rd16(((uint32_t)bank << 16) | W(records_char));
     rc_c = (uint8_t)(v >> 15);          /* the ASL */
     cyc(30);                            /* TAX */
     rc_x = (uint16_t)(v << 1);
