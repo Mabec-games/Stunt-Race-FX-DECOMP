@@ -73,6 +73,8 @@ void ScaleQuarter_cr(Carried *cr);
 void ScaleSevenEighths_cr(Carried *cr);
 void ScaleThreeQuarters_cr(Carried *cr);
 static void blend_regs(Carried *cr, uint16_t a);
+void BlendStepUp_cr(Carried *cr);
+void BlendStepDown_cr(Carried *cr);
 
 void ScaleThreeQuarters_cr(Carried *cr)
 {
@@ -586,19 +588,6 @@ static void blend_regs(Carried *cr, uint16_t a)
     set_p(cr, (uint8_t)((cr->p & ~(P_M | P_X | blend_mask)) | blend_flags));
 }
 
-static void blend_regs_g(uint16_t a)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    blend_regs(&c, a);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /*
  * @routine 03:FD32 BlendStepUp
  * WHAT IT DOES: Unless the factor $7F:3408 has reached $7F:340A, steps it
@@ -633,7 +622,15 @@ uint16_t BlendStepUp(void)
 
 void abi_BlendStepUp(void)
 {
-    blend_regs_g(BlendStepUp());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BlendStepUp_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* BlendStepUp on carried registers, as abi_BlendStepUp leaves them. */
@@ -671,7 +668,15 @@ uint16_t BlendStepDown(void)
 
 void abi_BlendStepDown(void)
 {
-    blend_regs_g(BlendStepDown());
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    BlendStepDown_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* BlendStepDown on carried registers, as abi_BlendStepDown leaves them. */

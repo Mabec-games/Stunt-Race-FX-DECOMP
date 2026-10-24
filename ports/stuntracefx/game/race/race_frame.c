@@ -952,45 +952,59 @@ void abi_ViewParamsBobLong(void)
  * Entry: D = $0000. Exit: M 8-bit; on the way out as the loop's caller
  * left P and the data bank, A = this routine's return address.
  */
-void abi_LoopLeaveWhenEnded(void)
+void LoopLeaveWhenEnded(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t lo;
+    uint8_t p;
 
-    op_sep(P_M);
+    r_sep(cr, P_M);
     cyc(46);
-    op_lda8(b | 0x0E3A);
-    if (!(uint8_t)cpu.a)
+    r_lda8(cr, b | 0x0E3A);
+    if (!(uint8_t)cr->a)
         { cyc(64); return; }
     cyc(40);
-    op_lda8(b | 0x0D61);
-    if (!(cpu.a & 0x80))
+    r_lda8(cr, b | 0x0D61);
+    if (!(cr->a & 0x80))
         return;
-    op_rep(P_M);
+    r_rep(cr, P_M);
     cyc(42);
-    cpu.a = rd16((uint16_t)(cpu.s + 1));
-    cpu.p = nz16(cpu.p, cpu.a);
+    cr->a = rd16((uint16_t)(cpu.s + 1));
+    cr->p = nz16(cr->p, cr->a);
     cpu.s = (uint16_t)(cpu.s + 2);
-    op_sep(P_M | P_X);
+    r_sep(cr, P_M | P_X);
     cyc(24);
     hw_wr(NMITIMEN, 0x00);
-    cpu.p |= P_I;
+    set_p(cr, (uint8_t)(cr->p | P_I));
     cyc(34);
-    cpu.db = rd8((uint16_t)(cpu.s + 1));
+    cr->db = rd8((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 1);
-    cpu.p = nz8(cpu.p, cpu.db);
+    cr->p = nz8(cr->p, cr->db);
     cyc(20);
-    cpu.p = rd8((uint16_t)(cpu.s + 1));       /* PLP; RTL's fetch follows at once */
-    if (cpu.p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+    p = rd8((uint16_t)(cpu.s + 1));      /* PLP; RTL's fetch follows at once */
+    set_p(cr, p);
+    if (p & P_X) {
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
     cpu.s = (uint16_t)(cpu.s + 1);
     cyc(20);
     lo = (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
-    cpu.pc = (uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo;
+    cpu_leave_to((uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo);
     cpu.s = (uint16_t)(cpu.s + 3);
-    cpu.unwound = 1;
+}
+
+void abi_LoopLeaveWhenEnded(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LoopLeaveWhenEnded(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_VideoRegsReset(void);
@@ -1999,23 +2013,10 @@ static void w_SpeedGauge2Update(Carried *cr)
     cyc(72);
 }
 
-/* LoopLeaveWhenEnded, still in registers: its call with the registers loaded and taken
-   back. */
+/* LoopLeaveWhenEnded on the carried registers. */
 static void w_LoopLeaveWhenEnded(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_LoopLeaveWhenEnded();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    LoopLeaveWhenEnded(cr);
 }
 
 /* SpriteSlotFirstLong as its adapter leaves the registers. */

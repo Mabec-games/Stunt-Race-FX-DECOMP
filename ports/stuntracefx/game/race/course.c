@@ -1653,20 +1653,6 @@ static int records_key(Carried *cr, uint32_t b)
     return 1;
 }
 
-static int records_key_g(uint32_t b)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    int ret_ = records_key(&c, b);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 /*
  * @routine 02:E60D CourseRecordsKey
  * WHAT IT DOES: The course select's records key: $0E91 = $30; with the
@@ -1680,21 +1666,33 @@ static int records_key_g(uint32_t b)
  * FlashingMetaspriteDraw0; or at the caller's return with A low byte its
  * return address's high byte.
  */
-void abi_CourseRecordsKey(void)
+void CourseRecordsKey(Carried *cr)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
-    if (!records_key_g(b))
+    if (!records_key(cr, b))
         { cyc(42); return; }
     cpu.s = (uint16_t)(cpu.s + 1);
     cpu.s = (uint16_t)(cpu.s + 1);
     v = rd8((uint16_t)cpu.s);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    cpu.pc = 0x020000 | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
+    cr->a = (uint16_t)((cr->a & 0xFF00) | v);
+    cr->p = nz8(cr->p, v);
+    cpu_leave_to(0x020000 | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1));
     cpu.s = (uint16_t)(cpu.s + 2);
-    cpu.unwound = 1;
+}
+
+void abi_CourseRecordsKey(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseRecordsKey(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* C-to-C: CourseRecordsKey from a routine of this file, its leaving being

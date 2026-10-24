@@ -116,47 +116,6 @@ void ApproachSixtyFourthMin64_cr(Carried *cr);
 void ApproachSixtyFourthMin64Byte_cr(Carried *cr);
 void ApproachThirtySecondMin32_cr(Carried *cr);
 void ApproachThirtySecondMin32Byte_cr(Carried *cr);
-static void approach_exit(Carried *cr, uint16_t v, int wide, int moved);
-
-static void approach_exit(Carried *cr, uint16_t v, int wide, int moved)
-{
-    set_p(cr, ApproachExitP(cr->p, v, wide, moved));
-}
-
-static void approach_exit_g(uint16_t v, int wide, int moved)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    approach_exit(&c, v, wide, moved);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
-
-/* A call by name from C that still works in registers: A in, the new $3E
-   in A (its low byte for the byte forms), the flags as the routine leaves
-   them. */
-void approach_regs(uint16_t (*f)(uint16_t, int *))
-{
-    int moved;
-
-    cpu.a = f(cpu.a, &moved);
-    approach_exit_g(cpu.a, 1, moved);
-}
-
-void approach_regs_byte(uint8_t (*f)(uint8_t, int *))
-{
-    int moved;
-    uint8_t v = f((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit_g(v, 0, moved);
-}
-
 /*
  * @routine 03:CDC1 ApproachHalfMin2
  * WHAT IT DOES: Moves $3E half of the way toward A, by at least 1.

@@ -3223,34 +3223,16 @@ static void stage_loop(Carried *cr, uint32_t b, void (*dispatch)(Carried *))
 }
 
 /* PLP, RTS through the stack as it is: P, then the return address in the
-   program bank $07; the caller's frame is left (cpu.unwound). */
-static void plp_rts(void)
+   program bank $07; the caller's frame is left (cpu_leave_to). */
+static void plp_rts(Carried *cr)
 {
     uint16_t ret;
 
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    r_plp(cr, rd8((uint16_t)(cpu.s + 1)));
     cpu.s = (uint16_t)(cpu.s + 1);
     ret = rd16((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 2);
-    cpu.pc = 0x070000u | (uint16_t)(ret + 1);
-    cpu.unwound = 1;
-}
-
-static void plp_rts_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    plp_rts();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    cpu_leave_to(0x070000u | (uint16_t)(ret + 1));
 }
 
 /*
@@ -3342,7 +3324,7 @@ void abi_OamStagePause(void)
 void OamStagePauseLoop(Carried *cr)
 {
     stage_loop(cr, (uint32_t)cr->db << 16, OamStageDispatchBB3C);
-    plp_rts_c(cr);
+    plp_rts(cr);
 }
 
 void abi_OamStagePauseLoop(void)
@@ -3626,7 +3608,7 @@ void abi_OamStagePause2(void)
 void OamStagePause2Loop(Carried *cr)
 {
     stage_loop(cr, (uint32_t)cr->db << 16, OamStageDispatchBBA2);
-    plp_rts_c(cr);
+    plp_rts(cr);
 }
 
 void abi_OamStagePause2Loop(void)

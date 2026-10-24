@@ -201,7 +201,8 @@ static inline void r_plp(Carried *cr, uint8_t p)
 }
 
 /* P as an approach (approach.c) leaves it; an approach of $3E toward A
-   on the carried registers, as approach_regs does on the register file. */
+   on the carried registers: A in, the new $3E in A (its low byte for the
+   byte forms), the flags as the routine leaves them. */
 uint8_t ApproachExitP(uint8_t p, uint16_t v, int wide, int moved);
 
 static inline void r_approach(Carried *cr, uint16_t (*f)(uint16_t, int *))

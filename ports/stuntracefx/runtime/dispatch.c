@@ -265,6 +265,7 @@ static int irq_masked(void) { return (cpu.p & P_I) != 0; }
 
 uint8_t cpu_mode(void) { return cpu.e; }
 void cpu_mode_set(uint8_t e) { cpu.e = e; }
+void cpu_leave_to(uint32_t pc) { cpu.pc = pc; cpu.unwound = 1; }
 
 void irq_mask_set(int masked)
 {

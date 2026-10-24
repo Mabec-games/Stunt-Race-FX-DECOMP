@@ -888,45 +888,27 @@ static void race_hud_setup_two(Carried *cr)
 /* PLB, PLP (the data bank and P RaceHudLoad pushed), RTL: for an entry
    from original code, both pulled from the stack and the return taken
    through it. */
-static void hud_leave_stack(void)
+static void hud_leave_stack(Carried *cr)
 {
     uint16_t lo;
     uint8_t p;
 
     cyc(34);                            /* SEP and PLB, after hud_end's 8 */
-    cpu.db = rd8((uint16_t)(cpu.s + 1));
+    cr->db = rd8((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 1);
-    cpu.p = nz8(cpu.p, cpu.db);
+    cr->p = nz8(cr->p, cr->db);
     cyc(20);
     p = rd8((uint16_t)(cpu.s + 1));
-    cpu.p = p;
+    set_p(cr, p);
     if (p & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
+        cr->x &= 0x00FF;
+        cr->y &= 0x00FF;
     }
     cpu.s = (uint16_t)(cpu.s + 1);
     cyc(20);                            /* RTL */
     lo = (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
-    cpu.pc = (uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo;
+    cpu_leave_to((uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo);
     cpu.s = (uint16_t)(cpu.s + 3);
-    cpu.unwound = 1;
-}
-
-static void hud_leave_stack_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    hud_leave_stack();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
 }
 
 /*
@@ -961,7 +943,7 @@ void RaceHudSetup(Carried *cr, uint8_t p, uint8_t db)
 void RaceHudSetup_cr(Carried *cr)
 {
     race_hud_setup(cr);
-    hud_leave_stack_c(cr);
+    hud_leave_stack(cr);
 }
 
 void abi_RaceHudSetup(void)
@@ -999,7 +981,7 @@ void RaceHudSetupTwoPlayers(Carried *cr, uint8_t p, uint8_t db)
 void RaceHudSetupTwoPlayers_cr(Carried *cr)
 {
     race_hud_setup_two(cr);
-    hud_leave_stack_c(cr);
+    hud_leave_stack(cr);
 }
 
 void abi_RaceHudSetupTwoPlayers(void)

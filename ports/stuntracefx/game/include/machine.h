@@ -67,6 +67,11 @@ void irq_mask_set(int masked);
 uint8_t cpu_mode(void);
 void cpu_mode_set(uint8_t e);
 
+/* C that leaves through its caller's frame (a return taken through what
+   the stack holds, the frame's registers pulled into its carried copy):
+   pc is where that return lands. */
+void cpu_leave_to(uint32_t pc);
+
 /* N and Z as a 16-bit load sets them. */
 static inline uint8_t nz16(uint8_t p, uint16_t v)
 {
