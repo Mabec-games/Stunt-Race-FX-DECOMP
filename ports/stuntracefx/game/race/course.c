@@ -719,7 +719,7 @@ static void course_choose(Carried *cr, uint16_t list, uint16_t y)
     a = (uint16_t)(rd16(0x030000 + list + cr->x) & 0x00FF);
     cr->a = a;
     set_p(cr, nz16(cr->p, a));
-    wr16(b | 0x0E3D, a);
+    wr16(b | W(course), a);
     cyc(list == 0xFB86 ? 48 : 24);      /* the stunt list: AND #$00FF before the LDA */
     a = asl3(cr, rd16(b | W(wram_0D48)));
     /* TAX, LDY #, then the stunt list's BRA to the zoom (the battle list falls into it) */
@@ -1526,7 +1526,7 @@ void CourseZoomTimeUp(Carried *cr)
     a = (uint16_t)(rd16(0x03FB86 + cr->x) & 0x00FF);
     cr->a = a;
     set_p(cr, nz16(cr->p, a));
-    wr16(b | 0x0E3D, a);
+    wr16(b | W(course), a);
     cyc(48);
     r_lda16(cr, b | W(wram_0D48));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
@@ -1565,7 +1565,7 @@ void CourseZoomTimeUpNext(Carried *cr)
 
     r_rep(cr, P_M | P_X);
     cyc(24);
-    r_lda16(cr, b | 0x0E3D);
+    r_lda16(cr, b | W(course));
     a = cr->a;
     cyc(24);
     r_cmp16(cr, 0x0017);
@@ -1586,7 +1586,7 @@ void CourseZoomTimeUpNext(Carried *cr)
     cyc(24);                            /* LDA # */
 store:
     cyc(24);
-    wr16(b | 0x0E3D, a);
+    wr16(b | W(course), a);
     cr->a = 0x0000;
     set_p(cr, nz16(cr->p, 0x0000));
     course_zoom(cr, box_offset_in(cr, 0x0000, 0x00A0, 264), 0x0008);

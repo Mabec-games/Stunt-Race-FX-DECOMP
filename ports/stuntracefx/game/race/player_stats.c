@@ -562,7 +562,7 @@ static void race_x_block(Carried *cr, uint32_t b, uint8_t stage, void (*flag)(Ca
     cr->a = 0x1CC4;
     set_p(cr, nz16(cr->p, cr->a));
     cyc(56);
-    wr16(0x7EFD65, 0x1CC4);
+    wr16(W(wram_7EFD65), 0x1CC4);
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | stage);
     set_p(cr, nz8(cr->p, stage));
@@ -1124,7 +1124,7 @@ void PlayerOnePhaseEnd(Carried *cr)
             cyc(24);
             r_lda16(cr, b | W(wram_0D8C));
             cyc(32);
-            wr16(0x0018DB, cr->a);
+            wr16(W(wram_18DB), cr->a);
             cyc(24);
             RaceRestart(cr);
             return;
@@ -1304,7 +1304,7 @@ void StuntCourseMark(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, b | 0x0E3D);
+    r_lda8(cr, b | W(course));
     switch ((uint8_t)cr->a) {
     case 0x0C: bit = 0x01; break;
     case 0x0D: cyc(54); bit = 0x02; break;
@@ -1772,7 +1772,7 @@ static void hud_car_word(Carried *cr, uint16_t set, uint16_t clear)
 
     r_rep(cr, P_M | P_X);
     cyc(134);
-    x = rd16((0x7E0000 | W(dp_00)) | W(wram_0346));
+    x = rd16(0x7E0000 | W(wram_0346));
     cyc(30);
     y = rd16(W(wram_bank_7e) | (uint16_t)(0x204F + x));
     cyc(30);

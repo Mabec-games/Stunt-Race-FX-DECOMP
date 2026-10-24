@@ -831,7 +831,7 @@ uint16_t WindowLayoutStepForScreen(uint16_t a_in, uint16_t *x, uint16_t *y)
     cyc(48);
     wr8(W(wram_0D45), v);
     cyc(24);
-    v = rd8((0x7E0000 | W(dp_00)) | W(wram_0D62));
+    v = rd8(0x7E0000 | W(wram_0D62));
     *y = v ? (cyc(114), 0x0002) : (cyc(108), 0x0000);
     a = WindowLayoutStep(0x7E, (uint8_t)*y, x, &p, &keep);
     cyc(v ? 100 : 124);                 /* (JMP,) PLB, PLP, RTL */

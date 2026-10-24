@@ -170,7 +170,7 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
         w = rd16(PALETTES + o);
         wr16(W(palette_buffer_e997) + y, w);
         cyc(30);
-        wr16((0x7E0000 | W(dp_00)) | W(palette_buffer_0802) + y, w);
+        wr16(0x7E0000 | W(palette_buffer_0802) + y, w);
         o = (uint16_t)(o + 2);
     }
     *x = o;
@@ -917,19 +917,19 @@ void UnusedScreenSetup(Carried *cr)
     r_sep(cr, P_M);
     UnusedScreenTiles_cr(cr);
     cyc(62);
-    wr16(W(wram_004E), 0x0000);
+    wr16(W(dp_4e), 0x0000);
     cyc(40);
     wr16(W(fxpart_50), 0x3000);
     cyc(40);
-    wr16(0x000048, 0x2C00);
+    wr16(W(dp_48), 0x2C00);
     cyc(40);
     wr16(W(fxrec_speed), 0x2C00);
     cyc(16);
-    v = rd8(W(wram_0049));
+    v = rd8(W(dp_49));
     cyc(52);
     hw_wr(b | 0x3038, (uint8_t)(v >> 2));
     cyc(16);
-    v = rd8(W(wram_004F));
+    v = rd8(W(dp_4f));
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (v & 0x08 ? P_C : 0)));
     cyc(96);
     ppu_wr(b | 0x210B, (uint8_t)(v >> 4 | 0x50));

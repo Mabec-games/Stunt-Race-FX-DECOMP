@@ -386,8 +386,8 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(40);
     dma_wr(b | 0x4337, 0x7F);
     cyc(90);
-    c = rd8(b | 0x0E3D);
-    i = (uint16_t)(((uint16_t)(c << 1) + rd8(cyc_then(52, b | 0x0E3D))) & 0x00FF);
+    c = rd8(b | W(course));
+    i = (uint16_t)(((uint16_t)(c << 1) + rd8(cyc_then(52, b | W(course)))) & 0x00FF);
     /* the rest reads only ROM: 8 a byte read, and the code between */
     cyc(114);
     blk = rd8(0x03F6F3 + i);

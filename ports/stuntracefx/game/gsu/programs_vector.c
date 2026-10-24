@@ -99,7 +99,7 @@ uint16_t VectorGsu81E3(uint8_t bank)
     cyc(16);
     wr16(W(dp_02), (uint16_t)(u - v));
     cyc(24);
-    u = rd16(b | 0x05F2);
+    u = rd16(b | W(wram_05F2));
     cyc(30);
     v = rd16(W(dp_94));
     r = (uint16_t)(u - v);
@@ -241,7 +241,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
 
     *p = nz8(*p, x);
     cyc(32);
-    a = rd8(W(wram_008B));
+    a = rd8(W(dp_8b));
     *p = nz8(*p, a);
     if (a) {
         cyc(10);
@@ -256,12 +256,12 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         ror_dp(0x8A, p);
     } else { cyc(22); }
     cyc(16);
-    wr8(W(wram_0096), x);
+    wr8(W(dp_96), x);
     x = 0;
     cyc(32);
-    a = rd8(W(wram_0089));
+    a = rd8(W(dp_89));
     cyc(16);
-    wr8(W(wram_008F), a);
+    wr8(W(dp_8f), a);
     *p = nz8(*p, a);
     if (a & 0x80) {
         *p |= P_C;
@@ -270,9 +270,9 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         a = sbc8(0x00, v, p);
         wr8(W(fxrec_rank), a);
         cyc(32);
-        v = rd8(W(wram_0089));
+        v = rd8(W(dp_89));
         a = sbc8(0x00, v, p);
-        wr8(W(wram_0089), a);
+        wr8(W(dp_89), a);
     } else { cyc(22); }
     cyc(16);
     if (a) {
@@ -303,9 +303,9 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
                 cyc(16);
                 wr8(W(fxcar_8c), a);
                 cyc(16);
-                a = rd8(W(wram_00CF));
+                a = rd8(W(dp_cf));
                 cyc(16);
-                wr8(W(wram_008D), a);
+                wr8(W(dp_8d), a);
                 *p = nz8(*p, a);
                 cyc(24);                /* JMP */
                 *ra = a;
@@ -322,7 +322,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         }
     }
     cyc(pre);
-    a = rd8(W(wram_008A));
+    a = rd8(W(dp_8a));
     cyc(16);
     v = rd8(W(fxrec_rank));
     cmp8(a, v, p);
@@ -335,18 +335,18 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
             cmp8(a, v, p);
         } while (*p & P_C);
         cyc(32);
-        wr8(W(wram_008A), a);
+        wr8(W(dp_8a), a);
     } else { cyc(22); }
     *p |= P_C;
     cyc(44);
-    v = rd8(W(wram_0096));
+    v = rd8(W(dp_96));
     a = sbc8(x, v, p);
-    wr8(W(wram_008E), a);
+    wr8(W(dp_8e), a);
     cyc(16);
     x = rd8(W(fxrec_rank));
     cyc(48 + (x > 0x97 ? 6 : 0));       /* LDA table,x (a page crossing costs 6), LDX */
     a = rd8(b | (uint16_t)(0x8368 + x));
-    x = rd8(W(wram_008A));
+    x = rd8(W(dp_8a));
     *p |= P_C;
     cyc(92 + (x > 0x97 ? 6 : 0));
     v = rd8(b | (uint16_t)(0x8368 + x));
@@ -354,10 +354,10 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     x = a;
     cyc(x > 0x97 ? 6 : 0);
     a = rd8(b | (uint16_t)(0x8268 + x));
-    wr8(W(wram_008D), a);
+    wr8(W(dp_8d), a);
     cyc(48 + (x > 0x97 ? 6 : 0));
     a = rd8(b | (uint16_t)(0x8168 + x));
-    x = rd8(W(wram_008E));
+    x = rd8(W(dp_8e));
     if (x & 0x80) {
         do {
             lsr_dp(0x8D, p);
@@ -383,7 +383,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     cyc(32);
     wr8(W(fxcar_8c), a);
     cyc(16);
-    v = rd8(W(wram_008F));
+    v = rd8(W(dp_8f));
     *p = (uint8_t)((*p & ~(P_N | P_V | P_Z)) | (v & 0xC0) | ((a & v) ? 0 : P_Z));
     if (v & 0x80) {
         *p |= P_C;
@@ -394,11 +394,11 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         a = sbc8(a, v, p);
         wr8(W(fxcar_8c), a);
         cyc(16);
-        a = rd8(W(wram_00CF));
+        a = rd8(W(dp_cf));
         cyc(16);
-        v = rd8(W(wram_008D));
+        v = rd8(W(dp_8d));
         a = sbc8(a, v, p);
-        wr8(W(wram_008D), a);
+        wr8(W(dp_8d), a);
         cyc(24);                        /* JMP */
     } else {
         *p &= (uint8_t)~P_C;
@@ -410,12 +410,12 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         cyc(16);
         wr8(W(fxcar_8c), a);
         cyc(16);
-        a = rd8(W(wram_008D));
+        a = rd8(W(dp_8d));
         cyc(16);
-        v = rd8(W(wram_00CF));
+        v = rd8(W(dp_cf));
         a = adc8(a, v, p);
         cyc(16);
-        wr8(W(wram_008D), a);
+        wr8(W(dp_8d), a);
     }
     *ra = a;
     *rx = x;
@@ -471,15 +471,15 @@ void ScaledOffsetPair(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         cyc(16);
         a = rd8((uint16_t)(in[i] + 1));
         cyc(16);
-        wr8(W(wram_0089), a);
+        wr8(W(dp_89), a);
         cyc(16);
         a = rd8(W(dp_94));
         cyc(16);
-        wr8(W(wram_008A), a);
+        wr8(W(dp_8a), a);
         cyc(16);
         a = rd8(W(dp_95));
         cyc(16);
-        wr8(W(wram_008B), a);
+        wr8(W(dp_8b), a);
         (cyc(62), ScaledOffset(bank, &a, rx, p));
         cyc(44);                        /* its RTL */
         cyc(16);
@@ -487,7 +487,7 @@ void ScaledOffsetPair(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         cyc(16);
         wr8(out[i], a);
         cyc(16);
-        a = rd8(W(wram_008D));
+        a = rd8(W(dp_8d));
         cyc(16);
         wr8((uint16_t)(out[i] + 1), a);
     }
@@ -495,30 +495,30 @@ void ScaledOffsetPair(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     cyc(30);
     a = rd8(W(dp_d0));
     cyc(16);
-    v = rd8(W(wram_0078));
+    v = rd8(W(dp_78));
     a = adc8(a, v, p);
     cyc(16);
-    wr8(W(wram_0078), a);
+    wr8(W(dp_78), a);
     cyc(16);
-    a = rd8(W(wram_00D1));
+    a = rd8(W(dp_d1));
     cyc(16);
-    v = rd8(W(wram_0079));
+    v = rd8(W(dp_79));
     a = adc8(a, v, p);
     cyc(16);
-    wr8(W(wram_0079), a);
+    wr8(W(dp_79), a);
     *p |= P_C;
     cyc(30);
-    a = rd8(W(wram_0078));
+    a = rd8(W(dp_78));
     cyc(16);
     v = rd8(W(dp_ce));
     a = sbc8(a, v, p);
-    wr8(W(wram_0078), a);
+    wr8(W(dp_78), a);
     cyc(16);
-    a = rd8(W(wram_0079));
+    a = rd8(W(dp_79));
     cyc(16);
-    v = rd8(W(wram_00CF));
+    v = rd8(W(dp_cf));
     a = sbc8(a, v, p);
-    wr8(W(wram_0079), a);
+    wr8(W(dp_79), a);
     *ra = a;
     cyc(44);                            /* RTL */
 }

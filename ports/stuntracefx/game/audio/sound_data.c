@@ -369,9 +369,9 @@ void CourseSoundLoad(uint8_t bank)
         return;
     }
     cyc(92);
-    a = (uint16_t)(rd16(b | 0x0E3D) << 1);
+    a = (uint16_t)(rd16(b | W(course)) << 1);
     cyc(52);
-    a = (uint16_t)(a + rd16(b | 0x0E3D));
+    a = (uint16_t)(a + rd16(b | W(course)));
     x = (uint16_t)(a & 0x00FF);
     (cyc(152), ApuPort1Send05());
     cyc(196);

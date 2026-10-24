@@ -186,7 +186,7 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
             v = 0x00;
         else {
             cyc(40);
-            v = rd8(b | 0x0E3D);
+            v = rd8(b | W(course));
             *p |= P_C;
             v = alu_sbc8(v, 0x0C, p);
             v = asl8(asl8(v, p), p);

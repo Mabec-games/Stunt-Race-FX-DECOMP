@@ -461,7 +461,7 @@ uint16_t ObjectNearestOfKind(uint8_t b, uint16_t a, uint16_t self)
     if (!a)
         goto any;
     cyc(40);
-    wr16(0x00000A, a);
+    wr16(W(dp_0a), a);
     cyc(16);
     wr16(W(dp_40), 0x0000);
 kind:
@@ -471,7 +471,7 @@ kind:
     if (x == m)
         goto kind_next;
     a = ld16(rd16(cyc_then(24, f(b, x, 0x04))));
-    m = rd16(0x00000A);
+    m = rd16(W(dp_0a));
     cmp16(a, m);
     if (a != m)
         goto kind_next;
@@ -482,7 +482,7 @@ kind:
     if (!below)
         goto kind_next;
     cyc(10);
-    m = rd16(0x000042);
+    m = rd16(W(dp_42));
     cmp16(d, m);
     if ((uint16_t)(d - m) & 0x8000)
         goto kind_next;
@@ -519,7 +519,7 @@ any_loop:
     if (!below)
         goto any_next;
     cyc(10);
-    m = rd16(0x000042);
+    m = rd16(W(dp_42));
     cmp16(d, m);
     if ((uint16_t)(d - m) & 0x8000)
         goto any_next;
@@ -603,7 +603,7 @@ uint16_t ObjectFirstWithin(uint8_t b, uint16_t a, uint16_t self)
     if (!a)
         { cyc(20); goto any; }
     cyc(34);
-    wr16(0x00000A, a);
+    wr16(W(dp_0a), a);
     cyc(16);
     wr16(W(dp_40), 0x0000);
 kind:
@@ -613,7 +613,7 @@ kind:
     if (x == m)
         { cyc(6); goto kind_next; }
     a = ld16(rd16(cyc_then(24, f(b, x, 0x04))));
-    m = rd16(0x00000A);
+    m = rd16(W(dp_0a));
     cmp16(a, m);
     if (a != m)
         { cyc(6); goto kind_next; }
@@ -624,7 +624,7 @@ kind:
     if (!below)
         goto kind_next;
     cyc(10);
-    m = rd16(0x000042);
+    m = rd16(W(dp_42));
     cmp16(d, m);
     if (!((uint16_t)(d - m) & 0x8000))
         { cyc(2); goto done; }
@@ -647,7 +647,7 @@ any:
     if (!below)
         goto any_next;
     cyc(10);
-    m = rd16(0x000042);
+    m = rd16(W(dp_42));
     cmp16(d, m);
     if (!((uint16_t)(d - m) & 0x8000))
         { cyc(2); goto done; }
@@ -1121,7 +1121,7 @@ void abi_ObjectPointDistanceXZ(void)
  */
 uint16_t ObjectPointDistanceXY(uint8_t b, uint16_t x)
 {
-    return point_distance(b, x, 0x00000A, 0x0E);
+    return point_distance(b, x, W(dp_0a), 0x0E);
 }
 
 void ObjectPointDistanceXY_cr(Carried *cr)
@@ -1417,7 +1417,7 @@ uint16_t ObjectPairOffsetPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
     m = rd16(cyc_then(44, f(b, x, 0x0E)));
     a = sub16(a, m);
     cyc(24);
-    m = rd16(0x00000A);
+    m = rd16(W(dp_0a));
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_02), a);

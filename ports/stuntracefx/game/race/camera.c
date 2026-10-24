@@ -129,13 +129,13 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         wr16(W(cam_tmp_c), a);
         a = asr_round(a, 2);
         cyc(16);
-        wr16(0x000008, a);
+        wr16(W(cam_tmp_b), a);
         cyc(16);
-        wr16(0x000002, 0x0000);
+        wr16(W(cam_tmp_a), 0x0000);
         cyc(16);
-        wr16(CAM(r, 0x26), cyc_then(60, (uint16_t)(~rd16(0x000002) + 1)));
+        wr16(CAM(r, 0x26), cyc_then(60, (uint16_t)(~rd16(W(cam_tmp_a)) + 1)));
         cyc(16);
-        wr16(CAM(r, 0x28), cyc_then(60, (uint16_t)(~rd16(0x000008) + 1)));
+        wr16(CAM(r, 0x28), cyc_then(60, (uint16_t)(~rd16(W(cam_tmp_b)) + 1)));
         cyc(16);
         wr16(CAM(r, 0x2A), cyc_then(60, (uint16_t)(~rd16(W(cam_tmp_c)) + 1)));
         cyc(44);                        /* BRA to .lead_done, LDA dp,X */
@@ -148,9 +148,9 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         wr16(CAM(r, 0x2A), 0x0000);
         cyc(22);                        /* LDA dp,X */
     }
-    wr16(0x000002, cyc_then(16, rd16(CAM(r, 0x1A))));
+    wr16(W(cam_tmp_a), cyc_then(16, rd16(CAM(r, 0x1A))));
     cyc(22);
-    wr16(0x000008, cyc_then(16, rd16(CAM(r, 0x1C))));
+    wr16(W(cam_tmp_b), cyc_then(16, rd16(CAM(r, 0x1C))));
     cyc(22);
     wr16(W(cam_tmp_c), cyc_then(16, rd16(CAM(r, 0x1E))));
     cyc(24);

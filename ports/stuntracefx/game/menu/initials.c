@@ -587,7 +587,7 @@ void MenuSettingsFrame(Carried *cr)
                 wr16(W(menu_1907), 0x0028);
                 cr->a = 0x464A;
                 cyc(56);
-                wr16(0x7EFD65, 0x464A);
+                wr16(W(wram_7EFD65), 0x464A);
                 cr->a = 0x0000;
                 set_p(cr, nz16(cr->p, 0));
                 cyc(56);

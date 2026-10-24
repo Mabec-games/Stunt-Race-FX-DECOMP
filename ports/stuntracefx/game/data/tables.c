@@ -93,19 +93,19 @@ uint8_t CourseIndex12(uint8_t a, uint8_t *p)
     unsigned s;
 
     cyc(62);
-    wr8(0x0000F1, a);
+    wr8(W(dp_f1), a);
     cyc(44);
-    f = rd8(0x0000F1);
+    f = rd8(W(dp_f1));
     a3 = (uint8_t)((uint8_t)(a << 1) + f);
     cyc(16);
-    wr8(0x0000F1, a3);
+    wr8(W(dp_f1), a3);
     cyc(24);
-    c = rd8(0x000E3D);
+    c = rd8(W(course));
     cyc(52);
-    c2 = rd8(0x000E3D);
+    c2 = rd8(W(course));
     c12 = (uint8_t)((uint8_t)((uint8_t)(c << 1) + c2) << 2);
     cyc(58);
-    a3 = rd8(0x0000F1);
+    a3 = rd8(W(dp_f1));
     s = (unsigned)c12 + a3;
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(c12 ^ a3) & (c12 ^ (uint8_t)s) & 0x80) ? P_V : 0));
@@ -147,7 +147,7 @@ void abi_CourseIndex12(void)
 uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p)
 {
     cyc(46);
-    uint16_t c = rd16(0x000E3D), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
+    uint16_t c = rd16(W(course)), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
     cyc(326);
     uint16_t addr = rd16(0x03F4A5 + i), r = (uint16_t)(addr - 0x8000);
 

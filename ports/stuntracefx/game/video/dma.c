@@ -1008,7 +1008,7 @@ static void split_picture(uint32_t b, uint16_t x)
         { cyc(24); ppu_wr(CGADD, 0x00); }
     put8(CGDATA, 0xC4);
     cyc(32);
-    wr8(0x7EFD65, 0xC4);
+    wr8(W(wram_7EFD65), 0xC4);
     put8(CGDATA, 0x1C);
     cyc(32);
     wr8(W(wram_7EFD66), 0x1C);

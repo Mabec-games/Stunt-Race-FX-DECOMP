@@ -36,7 +36,7 @@ uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
     cyc(46);
     obj = rd16(W(obj_link) + obj);
     cyc(46);
-    return (rd16(W(dp_00) + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
+    return (rd16(0x000000 + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
 }
 
 /* PlayerVehicleRaised on carried registers. */

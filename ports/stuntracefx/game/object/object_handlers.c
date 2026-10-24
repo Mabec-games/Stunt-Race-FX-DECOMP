@@ -1081,7 +1081,7 @@ void ObjectPaceCarSetup(Carried *cr)
     sta16_imm(cr, b | (uint16_t)(0x200E + cr->y), 0x0000);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(68);
-    r_lda16(cr, b | 0x18DB);
+    r_lda16(cr, b | W(wram_18DB));
     cyc(30);
     wr16(b | (uint16_t)(0x2027 + cr->y), cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -1676,13 +1676,13 @@ void ObjectChildReturn(Carried *cr)
     cyc(46);
     r_add16(cr, rd16(0x70004C + cr->x));
     cyc(16);
-    wr16(0x00000A, cr->a);
+    wr16(W(dp_0a), cr->a);
     cyc(32);
     r_lda16(cr, 0x700022 + cr->x);
     cyc(46);
     r_add16(cr, rd16(0x70004E + cr->x));
     cyc(24);
-    wr16(b | 0x05F2, cr->a);
+    wr16(b | W(wram_05F2), cr->a);
     (cyc(46), ObjectTurnFromRecord_cr(cr));
     cr->x = obj;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -1700,14 +1700,14 @@ void ObjectChildReturn(Carried *cr)
     cyc(74);
     wr16(W(dp_3e), cyc_then(16, rd16(b | (uint16_t)(0x200E + cr->x))));
     cyc(16);
-    r_lda16(cr, 0x00000A);
+    r_lda16(cr, W(dp_0a));
     r_approach(cr, ApproachQuarterMin4);
     cyc(30);
     wr16(b | (uint16_t)(0x200E + cr->x), cr->a);
     cyc(74);
     wr16(W(dp_3e), cyc_then(16, rd16(b | (uint16_t)(0x2010 + cr->x))));
     cyc(24);
-    r_lda16(cr, b | 0x05F2);
+    r_lda16(cr, b | W(wram_05F2));
     r_approach(cr, ApproachQuarterMin4);
     cyc(30);
     wr16(b | (uint16_t)(0x2010 + cr->x), cr->a);
@@ -2533,7 +2533,7 @@ static void spray_from_y(Carried *cr)
     cyc(2);
     wr8(W(dp_08), 0x00);
     cyc(16);
-    wr8(0x00000A, 0x00);
+    wr8(W(dp_0a), 0x00);
     cyc(54);
     wr8(W(dp_0b), 0x00);
     spray_from_z(cr);
@@ -2552,7 +2552,7 @@ static void spray_from_z(Carried *cr)
     cyc(16);
     wr8(W(dp_94), v);
     cyc(24);
-    wr8(b | 0x05F2, v);
+    wr8(b | W(wram_05F2), v);
     if (v & 0x80) {
         lda8(cr, 0xFF);
         cyc(42);
@@ -2580,11 +2580,11 @@ static void spray_turn(Carried *cr)
     cyc(16);
     wr8(W(dp_02), (uint8_t)cr->a);
     cyc(16);
-    r_lda8(cr, 0x00000A);
+    r_lda8(cr, W(dp_0a));
     cyc(16);
     wr8(W(dp_08), (uint8_t)cr->a);
     cyc(24);
-    r_lda8(cr, b | 0x05F2);
+    r_lda8(cr, b | W(wram_05F2));
     cyc(16);
     wr8(W(dp_94), (uint8_t)cr->a);
     cyc(30);
@@ -2597,15 +2597,15 @@ static void spray_turn(Carried *cr)
     cyc(30);
     wr16(W(dp_04), cr->a);
     cyc(16);
-    r_lda16(cr, 0x00000A);
+    r_lda16(cr, W(dp_0a));
     r_asl16(cr);
     cyc(30);
-    wr16(0x00000A, cr->a);
+    wr16(W(dp_0a), cr->a);
     cyc(24);
-    r_lda16(cr, b | 0x05F2);
+    r_lda16(cr, b | W(wram_05F2));
     r_asl16(cr);
     cyc(38);
-    wr16(b | 0x05F2, cr->a);
+    wr16(b | W(wram_05F2), cr->a);
     cyc(30);
     r_lda16(cr, b | (uint16_t)(0x200C + cr->x));
     cyc(30);
@@ -2615,13 +2615,13 @@ static void spray_turn(Carried *cr)
     cyc(30);
     r_lda16(cr, b | (uint16_t)(0x2010 + cr->x));
     cyc(38);
-    r_add16(cr, rd16(b | 0x05F2));
+    r_add16(cr, rd16(b | W(wram_05F2)));
     cyc(30);
     wr16(b | (uint16_t)(0x2010 + cr->x), cr->a);
     cyc(30);
     r_lda16(cr, b | (uint16_t)(0x200E + cr->x));
     cyc(30);
-    r_add16(cr, rd16(0x00000A));
+    r_add16(cr, rd16(W(dp_0a)));
     cyc(30);
     wr16(b | (uint16_t)(0x200E + cr->x), cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -2867,7 +2867,7 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(16);
     wr8(W(dp_08), v);
     cyc(16);
-    wr8(0x00000A, v);
+    wr8(W(dp_0a), v);
     if (v & 0x80) {
         lda8(cr, 0xFF);
         cyc(34);
@@ -2882,7 +2882,7 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(16);
     wr8(W(dp_94), v);
     cyc(24);
-    wr8(b | 0x05F2, v);
+    wr8(b | W(wram_05F2), v);
     if (v & 0x80) {
         lda8(cr, 0xFF);
         cyc(42);
@@ -2899,11 +2899,11 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(16);
     wr8(W(dp_02), (uint8_t)cr->a);
     cyc(16);
-    r_lda8(cr, 0x00000A);
+    r_lda8(cr, W(dp_0a));
     cyc(16);
     wr8(W(dp_08), (uint8_t)cr->a);
     cyc(24);
-    r_lda8(cr, b | 0x05F2);
+    r_lda8(cr, b | W(wram_05F2));
     cyc(16);
     wr8(W(dp_94), (uint8_t)cr->a);
     if (with14) {
@@ -2915,11 +2915,11 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
         cyc(16);
         wr8(W(dp_02), (uint8_t)cr->a);
         cyc(16);
-        r_lda8(cr, 0x00000A);
+        r_lda8(cr, W(dp_0a));
         cyc(16);
         wr8(W(dp_08), (uint8_t)cr->a);
         cyc(24);
-        r_lda8(cr, b | 0x05F2);
+        r_lda8(cr, b | W(wram_05F2));
         cyc(16);
         wr8(W(dp_94), (uint8_t)cr->a);
     }
@@ -2934,17 +2934,17 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(16);
     wr16(W(dp_04), cr->a);
     cyc(16);
-    r_lda16(cr, 0x00000A);
+    r_lda16(cr, W(dp_0a));
     for (i = 0; i < sh; i++)
         { cyc(14); r_asl16(cr); }
     cyc(16);
-    wr16(0x00000A, cr->a);
+    wr16(W(dp_0a), cr->a);
     cyc(24);
-    r_lda16(cr, b | 0x05F2);
+    r_lda16(cr, b | W(wram_05F2));
     for (i = 0; i < sh; i++)
         { cyc(14); r_asl16(cr); }
     cyc(24);
-    wr16(b | 0x05F2, cr->a);
+    wr16(b | W(wram_05F2), cr->a);
     cyc(30);
     r_lda16(cr, b | (uint16_t)(0x200C + cr->y));
     cyc(30);
@@ -2954,13 +2954,13 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(30);
     r_lda16(cr, b | (uint16_t)(0x2010 + cr->y));
     cyc(38);
-    r_add16(cr, rd16(b | 0x05F2));
+    r_add16(cr, rd16(b | W(wram_05F2)));
     cyc(30);
     wr16(b | (uint16_t)(0x2010 + cr->x), cr->a);
     cyc(30);
     r_lda16(cr, b | (uint16_t)(0x200E + cr->y));
     cyc(30);
-    r_add16(cr, rd16(0x00000A));
+    r_add16(cr, rd16(W(dp_0a)));
     cyc(30);
     wr16(b | (uint16_t)(0x200E + cr->x), cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));

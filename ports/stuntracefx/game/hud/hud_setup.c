@@ -298,7 +298,7 @@ void RecordOffsetAllCourses(Carried *cr)
     uint8_t p;
 
     cyc(86);
-    r_lda16(cr, b | 0x0E3D);
+    r_lda16(cr, b | W(course));
     r_sub16(cr, 0x0014);
     cyc(48);
     wr16((uint16_t)(cr->d + 0xF1), cr->a);
@@ -457,7 +457,7 @@ static void mode_stunt(Carried *cr, uint32_t b)
         hud_bytes(cr, stunt_record_sprites, 12, 0);
         r_rep(cr, P_M | P_X);
         cyc(46);
-        r_lda16(cr, b | 0x0E3D);
+        r_lda16(cr, b | W(course));
         r_and16(cr, 0x00FF);
         r_sub16(cr, 0x0017);
         cyc(70);

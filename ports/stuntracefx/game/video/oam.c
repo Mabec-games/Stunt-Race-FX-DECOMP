@@ -367,7 +367,7 @@ void OamBufferClear(void)
         { cyc(110); wr16(W(oam_buffer) + (unsigned)x, 0xF0F0); }
     cyc(70);
     for (x = 0x1E; x >= 0; x -= 2)
-        { cyc(82); wr16(0x000575 + (unsigned)x, 0x0000); }
+        { cyc(82); wr16(W(oam_buffer_high) + (unsigned)x, 0x0000); }
     cyc(116);
 }
 
@@ -409,7 +409,7 @@ void OamBufferHideLarge(void)
         { cyc(132); wr8(W(wram_0376) + x, 0xF0); }
     cyc(76);
     for (x = 0; x < 0x20; x++)
-        { cyc(90); wr8(0x000575 + x, 0xAA); }
+        { cyc(90); wr8(W(oam_buffer_high) + x, 0xAA); }
     cyc(124);
 }
 
@@ -1811,12 +1811,12 @@ uint16_t MetaspriteDraw(uint8_t bank, uint16_t group, uint16_t slot, uint8_t *pp
             wr16(W(dp_f3), mask);
             hi = (uint16_t)(mask & 0xFF00);
             cyc(54);
-            v = rd8(0x000575 + (y >> 4));
+            v = rd8(W(oam_buffer_high) + (y >> 4));
             cyc(16);
             o = rd8(W(dp_f3));
             lo = (uint8_t)(v & o);
             cyc(32);
-            wr8(0x000575 + (y >> 4), lo);
+            wr8(W(oam_buffer_high) + (y >> 4), lo);
             p = (uint8_t)((p & ~P_C) | ((y >> 3) & 1 ? P_C : 0));
         }
         x = (uint16_t)(x + 5);
@@ -3149,7 +3149,7 @@ void OamWordRow5(uint8_t bank)
     cyc(22 + 54);
     wr8(W(dp_f3), 0xA5);
     cyc(32);
-    wr8(0x0000F4, 0x4E);
+    wr8(W(dp_f4), 0x4E);
     do {
         cyc(48);
         v = rd8(W(dp_f3));
@@ -3158,7 +3158,7 @@ void OamWordRow5(uint8_t bank)
         cyc(46);
         wr8(W(dp_f3), (uint8_t)(v + 8));
         cyc(16);
-        wr8(b | (uint16_t)(0x04E2 + x), cyc_then(30, rd8(0x0000F4)));
+        wr8(b | (uint16_t)(0x04E2 + x), cyc_then(30, rd8(W(dp_f4))));
         cyc(92);
         v = rd8(b | (uint16_t)(0xD5AD + y));
         wr8(b | (uint16_t)(0x04E3 + x), (uint8_t)(v + 0xC0));
@@ -3663,7 +3663,7 @@ static uint16_t overlay_draw(unsigned lead)
         step = 0x08;
     }
     cyc(64);
-    wr8(0x0000F5, bob);
+    wr8(W(dp_f5), bob);
     cyc(bob ? 32 : 38);                 /* to STA $F1: LDA #8, or the BRA */
     wr8(W(sprite_piece_count), step);
     cyc(22 + 24);
@@ -3694,7 +3694,7 @@ static uint16_t overlay_draw(unsigned lead)
             v = rd8(0x04E1B7 + (uint32_t)x);
             v = (uint8_t)(v + rd8(b | W(wram_10A6)));
             cyc(30);
-            v = (uint8_t)(v - rd8(0x0000F5));
+            v = (uint8_t)(v - rd8(W(dp_f5)));
             cyc(30);
             wr8(b | (uint16_t)(0x0376 + y), v);
             cyc(70);

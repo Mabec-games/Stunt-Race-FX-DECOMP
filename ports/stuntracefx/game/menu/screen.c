@@ -127,7 +127,7 @@ uint16_t MenuPaletteLoad(void)
     for (i = 0; i < 0x200; i += 2) {
         cyc(48);
         c = rd16((src + i) & 0xFFFFFF);
-        wr16(0x7EFD65 + i, c);
+        wr16(W(wram_7EFD65) + i, c);
         cyc(142);
     }
     cyc(24);
@@ -167,7 +167,7 @@ uint16_t MenuPaletteSave(void)
 
     for (i = 0; i < 0x200; i += 2) {
         cyc(100);
-        c = rd16(0x7EFD65 + i);
+        c = rd16(W(wram_7EFD65) + i);
         cyc(32);
         wr16(W(palette_saved) + i, c);
         cyc(6);
@@ -579,7 +579,7 @@ uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y)
         cyc(24);
         wr16(b | W(scratch_11e1), r);
         cyc(32);
-        wr16(0x7EFD65 + *x, r);
+        wr16(W(wram_7EFD65) + *x, r);
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y - 1);
     } while (!(*y & 0x8000));
@@ -1141,7 +1141,7 @@ void MenuScreenOpen0(Carried *cr)
     wr16(W(apu_stream_bank), 0x001C);
     (cyc(90), MenuPaletteLoad());
     cyc(78);
-    wr16(0x7EFD65, 0x0000);
+    wr16(W(wram_7EFD65), 0x0000);
     cyc(48);
     ppu_wr16(VMADDL, 0x4000);
     for (x = 0; x != 0x0720; x = (uint16_t)(x + 2))

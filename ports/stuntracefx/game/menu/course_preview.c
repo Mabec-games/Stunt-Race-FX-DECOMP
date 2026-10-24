@@ -469,9 +469,9 @@ void MenuScreenOpenPreview(Carried *cr)
     cyc(48);
     wr16(W(gsu_buffer_offset), 0x0006);
     cyc(48);
-    wr16(0x001189, 0x1234);
+    wr16(W(wram_1189), 0x1234);
     cyc(24);
-    wr16(0x00118F, 0x0000);
+    wr16(W(wram_118F), 0x0000);
     cyc(24);
     wr16(W(menu_exit), 0x0000);
     cr->a = 0x1234;
@@ -665,9 +665,9 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cyc(48);
     wr16(W(gsu_buffer_offset), 0x0006);
     cyc(48);
-    wr16(0x001189, 0x1234);
+    wr16(W(wram_1189), 0x1234);
     cyc(24);
-    wr16(0x00118F, 0x0000);
+    wr16(W(wram_118F), 0x0000);
     cyc(48);
     wr16(W(menu_slide_pos), 0x0000);
     cyc(48);
@@ -695,7 +695,7 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     for (x = 0, y = 0; x != 0x0018; x = (uint16_t)(x + 2), y = (uint16_t)(y + 2)) {
         cyc(108);
         src = rd8(W(dp_fb));
-        src |= (uint32_t)rd8(W(wram_00FC)) << 8;
+        src |= (uint32_t)rd8(W(dp_fc)) << 8;
         src |= (uint32_t)rd8(W(apu_stream_bank)) << 16;
         cyc(48);
         wr16(W(palette_saved) + x, rd16((src + y) & 0xFFFFFF));

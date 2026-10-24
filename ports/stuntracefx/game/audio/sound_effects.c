@@ -972,7 +972,7 @@ uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x)
     uint8_t p = 0, i;
 
     cyc(76);
-    i = (uint8_t)HandlerSoundIndex(rd16(0x0018DB), &p);
+    i = (uint8_t)HandlerSoundIndex(rd16(W(wram_18DB)), &p);
     cyc(92);
     wr8(b | W(wram_0D89), i);
     cyc(24);

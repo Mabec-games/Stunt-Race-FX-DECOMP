@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "carried.h"
+#include "wram_names.h"
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -39,7 +40,7 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
         { cyc(6); return a; }
     *x = c == 1 ? (cyc(16), 0x0006) : 0x0000;
     cyc(110);
-    wr8(0x0000F1, 0x06);
+    wr8(W(dp_f1), 0x06);
     do {
         cyc(70);
         c = rd8(CLASS_NAMES + *x);
@@ -47,9 +48,9 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
         *x = (uint16_t)(*x + 1);
         *y = (uint16_t)(*y + 4);
         cyc(86);
-        n = (uint8_t)(rd8(0x0000F1) - 1);
+        n = (uint8_t)(rd8(W(dp_f1)) - 1);
         cyc(6);
-        wr8(0x0000F1, n);
+        wr8(W(dp_f1), n);
     } while (cyc_loop(22, n));
     return (uint16_t)((a & 0xFF00) | c);
 }

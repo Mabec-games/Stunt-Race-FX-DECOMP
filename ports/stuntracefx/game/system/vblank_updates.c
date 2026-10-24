@@ -243,7 +243,7 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
         return t;
     t = 0x0000;
     wr16(WINDOW_MODE, t);
-    wr16(0x7EFD65, t);
+    wr16(W(wram_7EFD65), t);
     ppu_wr(dbw(bank, CGADD), 0x00);
     ppu_wr(dbw(bank, CGDATA), 0x00);
     ppu_wr(dbw(bank, CGDATA), 0x00);

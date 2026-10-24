@@ -23,7 +23,7 @@ void abi_RaceRestart(void);
 static uint16_t tilemap_row(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(30);
-    uint16_t f1 = rd16(0x0000F1);
+    uint16_t f1 = rd16(W(dp_f1));
     uint32_t s = (uint32_t)a + f1;
     uint16_t v = 0;
     unsigned i;
@@ -133,12 +133,12 @@ static uint16_t vram_fill_gradient(uint16_t start, uint8_t *p)
     unsigned r, c;
 
     cyc(16);
-    wr16(0x0000F1, start);
+    wr16(W(dp_f1), start);
     cyc(40);
     wr16(W(dp_f3), 0x0010);
     for (r = 0; r < 16; r++) {
         cyc(46);
-        a = rd16(0x0000F1);
+        a = rd16(W(dp_f1));
         for (c = 0; c < 32; c++) {
             uint32_t s;
             cyc(24);
@@ -149,7 +149,7 @@ static uint16_t vram_fill_gradient(uint16_t start, uint8_t *p)
             a = (uint16_t)s;
         }
         cyc(10);
-        wr16(0x0000F1, cyc_then(14, (uint16_t)(rd16(0x0000F1) + 1)));
+        wr16(W(dp_f1), cyc_then(14, (uint16_t)(rd16(W(dp_f1)) + 1)));
         cyc(22);
     }
     return a;
@@ -197,7 +197,7 @@ void abi_VramFillGradient(void)
 void VramDmaTileFromGsuRam(uint16_t tile, uint16_t vram, uint8_t *p)
 {
     cyc(108);
-    uint16_t a = (uint16_t)(tile << 5), f1 = rd16(0x0000F1);
+    uint16_t a = (uint16_t)(tile << 5), f1 = rd16(W(dp_f1));
     uint32_t s = (uint32_t)a + f1;
 
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
@@ -538,7 +538,7 @@ void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a, uint8_t entry)
 {
     cyc(entry);                         /* JSR and LDA long, or PLX falling in */
     do {
-        uint8_t v = (uint8_t)((rd8(W(tilemap_7f93d7) + *x) & 0xE3) | rd8(cyc_then(32, 0x0000F1)));
+        uint8_t v = (uint8_t)((rd8(W(tilemap_7f93d7) + *x) & 0xE3) | rd8(cyc_then(32, W(dp_f1))));
 
         cyc(32);
         wr8(W(tilemap_7f93d7) + *x, v);
@@ -606,7 +606,7 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     table = mode == 2 ? 0xCF2C : (cyc(16), 0xCF26);
     cyc(132);
     pal = rd8(0x070000 | (uint16_t)(table + phase));
-    wr8(0x0000F1, pal);
+    wr8(W(dp_f1), pal);
     *a = (uint16_t)(rd8(0x070000 | (uint16_t)(table + phase + 1)) << 8);
     TilemapPaletteFill(x, y, a, 68);
     return mode >= 2 ? 2 : 1;
@@ -985,7 +985,7 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     h = rd16(W(wram_06CD));
     s = (uint16_t)((h << 1) + 0x42 + (h >> 15));
     cyc(138);
-    wr16(b | 0x0D96, s < 0x0300 ? s : (cyc(18), 0x0300));
+    wr16(b | W(wram_0D96), s < 0x0300 ? s : (cyc(18), 0x0300));
     cyc(144);
     wr16(b | (uint16_t)(0x0D8E + x), cyc_then(30, (uint16_t)((h & 0x0007) - 0x20 + rd16(W(backdrop_scroll_base) + x))));
     cyc(24);
@@ -999,11 +999,11 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     /* M7B, then M7C (no part here) */
     io_wr16(0x00211C, mb = cyc_then(98, (uint16_t)(((uint16_t)(rd16(b | W(wram_06CD)) + rd16(cyc_then(38, b | W(view_0da2)))) >> 3) & 0x003F)));
     cyc(32);
-    wr16(0x0000F1, cyc_then(16, io_rd16(0x002134, (uint16_t)ppu_mul((uint8_t)mb))));
+    wr16(W(dp_f1), cyc_then(16, io_rd16(0x002134, (uint16_t)ppu_mul((uint8_t)mb))));
     cyc(24);
-    x = (uint16_t)(((rd16(b | W(view_06cf)) >> 3) & 0x00FE) + rd16(cyc_then(96, 0x0000F1)));
+    x = (uint16_t)(((rd16(b | W(view_06cf)) >> 3) & 0x00FE) + rd16(cyc_then(96, W(dp_f1))));
     cyc(186);
-    wr16(0x0000F1, 0x0011);
+    wr16(W(dp_f1), 0x0011);
     cyc(32);
     sel = rd16(W(gsu_buffer_select));
     y = sel ? (cyc(6), 0x0440) : 0x0000;
@@ -1025,9 +1025,9 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
         x = (uint16_t)(x + 0x0100);
         a = x;
         cyc(82);
-        n = (uint16_t)(rd16(0x0000F1) - 1);
+        n = (uint16_t)(rd16(W(dp_f1)) - 1);
         cyc(14);
-        wr16(0x0000F1, (uint16_t)n);
+        wr16(W(dp_f1), (uint16_t)n);
         if (!n)
             break;
     }
@@ -1262,7 +1262,7 @@ static uint8_t row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark,
     uint8_t v;
 
     cyc(80);
-    wr8(0x0000F1, bits);
+    wr8(W(dp_f1), bits);
     *xp = x;
     *yp = count;
     TilemapPaletteFill(xp, yp, a, 78);
@@ -1789,7 +1789,7 @@ void ChampionshipScreenStep(Carried *cr)
         do {
             cyc(104);
             r_lda16(cr, 0x1F8600 + (uint32_t)cr->x);
-            wr16(0x7EFD65 + (uint32_t)cr->x, cr->a);
+            wr16(W(wram_7EFD65) + (uint32_t)cr->x, cr->a);
             cr->x = (uint16_t)(cr->x - 2);
             set_p(cr, nz16(cr->p, cr->x));
         } while (cyc_loop(26, !(cr->x & 0x8000)));

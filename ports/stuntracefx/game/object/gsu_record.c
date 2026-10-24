@@ -2371,22 +2371,22 @@ void PlayerControlsFrame(Carried *cr)
     cyc(94);
     ctl_player(cr, 0x0309, 0x1F23, 0, 0x0346);
     cyc(24);
-    r_lda8(cr, (((0x7E0000 | W(dp_00)) | W(dp_00)) | W(wram_0D62)));
+    r_lda8(cr, (0x7E0000 | W(wram_0D62)));
     if ((uint8_t)cr->a)
         ctl_player(cr, 0x030D, 0x1F25, 1, 0x034A); else { cyc(22); }
     r_rep(cr, P_M);
     cyc(24);
-    r_lda16(cr, (((0x7E0000 | W(dp_00)) | W(dp_00)) | W(joy1_held)));
+    r_lda16(cr, (0x7E0000 | W(joy1_held)));
     cyc(24);
-    wr16(((0x7E0000 | W(dp_00)) | W(wram_1F23)), cr->a);
+    wr16((0x7E0000 | W(wram_1F23)), cr->a);
     cyc(24);
-    r_lda16(cr, (((0x7E0000 | W(dp_00)) | W(dp_00)) | W(joy2_held)));
+    r_lda16(cr, (0x7E0000 | W(joy2_held)));
     cyc(24);
-    wr16(((0x7E0000 | W(dp_00)) | W(wram_1F25)), cr->a);
+    wr16((0x7E0000 | W(wram_1F25)), cr->a);
     cyc(24);
-    wr16(((0x7E0000 | W(dp_00)) | W(dp_00)) | W(joy1_held), 0x0000);
+    wr16(0x7E0000 | W(joy1_held), 0x0000);
     cyc(24);
-    wr16(((0x7E0000 | W(dp_00)) | W(dp_00)) | W(joy2_held), 0x0000);
+    wr16(0x7E0000 | W(joy2_held), 0x0000);
     r_sep(cr, P_M);
     cr->db = db;
     set_p(cr, nz8(cr->p, db));

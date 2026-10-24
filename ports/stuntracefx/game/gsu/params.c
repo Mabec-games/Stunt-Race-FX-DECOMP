@@ -982,7 +982,7 @@ void abi_GsuTableEntryNext(void)
 uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(164);
-    uint16_t n = rd16(0x000CEE), s, d;
+    uint16_t n = rd16(W(wram_0CEE)), s, d;
     unsigned i;
 
     cyc(32);

@@ -13,7 +13,7 @@ void abi_ObjectInit(void);
 void abi_ObjectPoolInit(void);
 void abi_CrashGreen(void);
 
-#define OBJ_FIELD(o, f) ((0x7E0000 | W(dp_00)) | W(obj_base) + (uint16_t)((f) + (o)))
+#define OBJ_FIELD(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
 
 void CourseScriptRun(Carried *cr);
 static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint16_t link);
@@ -172,11 +172,11 @@ void CourseScriptRun(Carried *cr)
             cyc(32);
             wr16(W(wram_1AEC), 0x0000);
             cyc(24);
-            a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+            a = (uint16_t)(rd16(b | W(course)) & 0x00FF);
             cyc(56);
             wr16(0x7026F4, a);
             cyc(24);
-            wr16(b | 0x0CEE, 0x0000);
+            wr16(b | W(wram_0CEE), 0x0000);
             cyc(24);
             wr16(b | W(wram_1AEE), 0x0000);
             cyc(46);

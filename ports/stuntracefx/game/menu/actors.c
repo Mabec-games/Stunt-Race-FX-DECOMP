@@ -3592,7 +3592,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
         cyc(110);
         wr16(W(scratch_11e3), n);
         cyc(22);
-        wr16(0x0011FD, cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, W(menu_slide_pos))))));
+        wr16(W(oam_group_x), cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, W(menu_slide_pos))))));
         cyc(22);
         wr16(W(oam_group_y), cyc_then(24, (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, W(menu_scroll_y))))));
         cyc(24);
@@ -3608,7 +3608,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             if (*y == 0x0200)
                 { cyc(48); break; }
             cyc(78);
-            sx = (uint16_t)(rd16(W(menu_sprite_groups) + *x) + rd16(cyc_then(38, 0x0011FD)));
+            sx = (uint16_t)(rd16(W(menu_sprite_groups) + *x) + rd16(cyc_then(38, W(oam_group_x))));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
                     { cyc(62); goto next; }

@@ -63,7 +63,7 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     cyc(38);
     mins = rd8(b | W(race_time_minutes));
     cyc(16);
-    wr8(0x0000F1, mins);
+    wr8(W(dp_f1), mins);
     cyc(24);
     frac = rd8(b | W(race_time_fraction));
     *p |= P_C;
@@ -79,13 +79,13 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
         *p &= (uint8_t)~P_C;
         v = adc_bcd8(v, 0x60, p);
         cyc(40);
-        wr8(0x0000F1, cyc_then(6, (uint8_t)(rd8(0x0000F1) - 1)));
+        wr8(W(dp_f1), cyc_then(6, (uint8_t)(rd8(W(dp_f1)) - 1)));
     }
     cyc(30);
     wr8(b | (uint16_t)(0x0EDF + x), v);
     *p |= P_C;
     cyc(16);
-    v = rd8(0x0000F1);                          /* LDA, then SBC */
+    v = rd8(W(dp_f1));                          /* LDA, then SBC */
     cyc(38);
     v = sbc_bcd8(v, rd8(b | W(wram_0EDD)), p);
     cyc(8);

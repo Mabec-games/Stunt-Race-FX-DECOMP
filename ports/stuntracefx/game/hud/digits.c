@@ -458,7 +458,7 @@ static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(24);
-    uint8_t d = rd8(b | W(digit62_override)) ? (cyc(54), 0x01) : rd8(cyc_then(46, b | 0x0DF4));
+    uint8_t d = rd8(b | W(digit62_override)) ? (cyc(54), 0x01) : rd8(cyc_then(46, b | W(wram_0DF4)));
 
     *digit = d;
     cyc(38);

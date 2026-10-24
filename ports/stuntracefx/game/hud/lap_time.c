@@ -394,7 +394,7 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
  */
 uint8_t TimeAddToTotal(uint8_t bank, uint16_t x, uint8_t *p)
 {
-    uint32_t to[3] = {0x0000F1, 0x0000F2, W(dp_f3)};
+    uint32_t to[3] = {0x0000F1, W(dp_f2), W(dp_f3)};
 
     return time_add((uint32_t)bank << 16, x, to, 1, p);
 }
@@ -481,7 +481,7 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
         cyc(16);
         wr8(W(bcd_digits), 0);
         cyc(16);
-        wr8(0x0000F2, 0);
+        wr8(W(dp_f2), 0);
         cyc(16);
         wr8(W(dp_f3), 0);
         for (i = 0; i < 4; i++) {
@@ -495,7 +495,7 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
             cyc(48);
             wr8(W(bcd_digits), v);
             cyc(16);
-            wr8(0x0000F2, v);
+            wr8(W(dp_f2), v);
             cyc(16);
             wr8(W(dp_f3), v);
         }
@@ -848,7 +848,7 @@ static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
 
     *p = nz8(*p, slot);
     cyc(32);
-    wr8(0x0000F5, slot);
+    wr8(W(dp_f5), slot);
     cyc(24);
     a = rd8(b | W(wram_0D4A));
     for (i = 0; i < 3; i++)
@@ -857,7 +857,7 @@ static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
     cyc(80);
     a = alu_adc8(a, rd8(b | W(wram_0D4A)), p);
     cyc(16);
-    a = alu_adc8(a, rd8(0x0000F5), p);
+    a = alu_adc8(a, rd8(W(dp_f5)), p);
     x = a;
     *p = nz8(*p, a);
     cyc(38);
@@ -1288,7 +1288,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     p &= (uint8_t)~(P_M | P_X);         /* REP #$30 */
     cyc(22);
     cyc(place == 0x03 ? 56 : 78);       /* the third place has no BRA */
-    wr16(0x0000F7, page);
+    wr16(W(dp_f7), page);
     cyc(24);
     w = asl16(rd16(b | W(wram_0D4A)), &p);
     p &= (uint8_t)~P_C;
@@ -1297,9 +1297,9 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     for (i = 0; i < 3; i++)
         w = asl16(w, &p);
     cyc(82);
-    w = alu_adc16(w, rd16(0x0000F7), &p);
+    w = alu_adc16(w, rd16(W(dp_f7)), &p);
     cyc(16);
-    wr16(0x0000F7, w);
+    wr16(W(dp_f7), w);
     aa = a;
     for (i = 0; i < 4; i++) {
         cyc(24);
@@ -1311,7 +1311,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
         cyc(46);
         aa = TimePackBcd(aa, xx, yy, &p);
         cyc(16);
-        xx = rd16(0x0000F7);
+        xx = rd16(W(dp_f7));
         cyc(32);
         wr16(0x70FC88 + xx + 2 * i, aa);
     }

@@ -1121,7 +1121,7 @@ void RaceFinishSounds(Carried *cr)
     if (cr->a == 0x0000) {
         r_sep(cr, P_M);
         cyc(68);
-        r_lda8(cr, b | 0x0DF4);
+        r_lda8(cr, b | W(wram_0DF4));
         cyc(24);
         wr8(b | W(wram_0D5E), (uint8_t)cr->a);
         cmp8_imm(cr, 0x01);
@@ -1412,7 +1412,7 @@ static void lap_override(Carried *cr, uint32_t b)
     cyc(24);
     r_lda8(cr, b | W(race_time_minutes));
     cyc(16);
-    wr8(0x0000F1, (uint8_t)cr->a);
+    wr8(W(dp_f1), (uint8_t)cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_D)));
     cyc(38);
     r_lda8(cr, b | W(race_time_fraction));
@@ -1428,12 +1428,12 @@ static void lap_override(Carried *cr, uint32_t b)
     if (!(cr->p & P_C)) {
         cyc(22);
         cr->a = (uint16_t)((cr->a & 0xFF00) | alu_adc8((uint8_t)cr->a, 0x60, &cr->p));
-        dec8_mem(cr, 0x0000F1);
+        dec8_mem(cr, W(dp_f1));
     } else { cyc(6); }
     cyc(24);
     wr8(b | W(wram_0EDF), (uint8_t)cr->a);
     cyc(16);
-    r_lda8(cr, 0x0000F1);
+    r_lda8(cr, W(dp_f1));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     cyc(38);
     m = rd8(b | W(wram_0EDD));
@@ -1547,7 +1547,7 @@ static void lap_finish(Carried *cr, uint32_t b)
     if ((uint8_t)cr->a)
         { cyc(40); goto hold; }
     cyc(46);
-    r_lda8(cr, b | 0x0DF4);
+    r_lda8(cr, b | W(wram_0DF4));
     cmp8_imm(cr, 0x04);
     if ((uint8_t)cr->a >= 0x04) {
         cyc(24);
@@ -1576,7 +1576,7 @@ static void lap_finish(Carried *cr, uint32_t b)
     }
     r_rep(cr, P_M);
     cyc(30);
-    r_lda16(cr, b | 0x0DF4);
+    r_lda16(cr, b | W(wram_0DF4));
     r_and16(cr, 0x00FF);
     r_cmp16(cr, 0x0002);
     if (cr->a < 0x0002)
@@ -2388,7 +2388,7 @@ void RaceEndWindowSteps(Carried *cr)
                 r_lda8(cr, b | W(wram_0D4A));
                 set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
                 cr->a = (uint16_t)((cr->a & 0xFF00) | alu_adc8((uint8_t)cr->a, 0x14, &cr->p));
-                wr8(b | 0x0E3D, (uint8_t)cr->a);
+                wr8(b | W(course), (uint8_t)cr->a);
                 lda8_imm(cr, 0x04);
                 wr8(b | W(wram_0D89), 0x04);
             } else {

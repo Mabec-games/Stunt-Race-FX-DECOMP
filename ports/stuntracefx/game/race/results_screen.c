@@ -580,11 +580,11 @@ void abi_ResultsUnpackNext(void)
 void KeepTimeDigits(Carried *cr)
 {
     cyc(62);
-    wr16(0x0000F1, cr->y);
+    wr16(W(dp_f1), cr->y);
     cyc(16);
     wr16(W(dp_f3), cr->x);
     cyc(16);
-    wr16(0x0000F5, cr->a);
+    wr16(W(dp_f5), cr->a);
 }
 
 void abi_KeepTimeDigits(void)
@@ -617,21 +617,21 @@ void ScoreTiles(Carried *cr)
     unsigned i;
 
     cyc(102);
-    wr16(0x0000F1, cr->a);
+    wr16(W(dp_f1), cr->a);
     r_sep(cr, P_M);
     lo = (uint8_t)cr->a;
     wr8((uint32_t)(TILES + 16 + x), cyc_then(98, low_digit_tile(cr, lo)));
     cyc(16);
-    lo = rd8(0x0000F1);
+    lo = rd8(W(dp_f1));
     wr8((uint32_t)(TILES + 14 + x), cyc_then(64, high_digit_tile(cr, lo)));
     cyc(16);
-    hi = rd8(0x0000F2);
+    hi = rd8(W(dp_f2));
     cr->a = (uint16_t)((cr->a & 0xFF00) | hi);
     cmp8_imm(cr, 0x40);
     if (hi < 0x40) {
         wr8((uint32_t)(TILES + 2 + x), cyc_then(124, low_digit_tile(cr, hi)));
         cyc(16);
-        hi = rd8(0x0000F2);
+        hi = rd8(W(dp_f2));
         wr8((uint32_t)(TILES + x), cyc_then(64, high_digit_tile(cr, hi)));
         lda8_imm(cr, 0xC4);
         cyc(48);
@@ -680,7 +680,7 @@ void TimeTiles(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(150);
-    v = rd8(0x0000F5);
+    v = rd8(W(dp_f5));
     set_p(cr, nz8(cr->p, v));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(78);
@@ -690,9 +690,9 @@ void TimeTiles(Carried *cr)
     cyc(16);
     wr8((uint32_t)(TILES + 6 + x), cyc_then(76, low_digit_tile(cr, rd8(W(dp_f3)))));
     cyc(16);
-    wr8((uint32_t)(TILES + 10 + x), cyc_then(64, high_digit_tile(cr, rd8(0x0000F1))));
+    wr8((uint32_t)(TILES + 10 + x), cyc_then(64, high_digit_tile(cr, rd8(W(dp_f1)))));
     cyc(16);
-    v = low_digit_tile(cr, rd8(0x0000F1));
+    v = low_digit_tile(cr, rd8(W(dp_f1)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(76);
     wr8((uint32_t)(TILES + 12 + x), v);
@@ -1568,7 +1568,7 @@ void ResultsChampionScreen(Carried *cr)
     for (x = 0x01FE; x >= 0; x -= 2) {
         cyc(104);
         r_lda16(cr, (uint32_t)(0x1F8600 + x));
-        wr16((uint32_t)(0x7EFD65 + x), cr->a);
+        wr16((uint32_t)(W(wram_7EFD65) + x), cr->a);
         cyc(26);
     }
     cr->x = 0xFFFE;
@@ -1652,19 +1652,19 @@ static void total_line(Carried *cr, uint32_t b)
     wr8(b | W(wram_0D45), (uint8_t)cr->a);
     lda8_imm(cr, 0x60);
     cyc(32);
-    wr8(0x0000F2, 0x60);
+    wr8(W(dp_f2), 0x60);
     lda8_imm(cr, 0x67);
     cyc(32);
     wr8(W(dp_f3), 0x67);
     lda8_imm(cr, 0x2F);
     cyc(32);
-    wr8(0x0000F4, 0x2F);
+    wr8(W(dp_f4), 0x2F);
     lda8_imm(cr, 0xC0);
     cyc(32);
-    wr8(0x0000F1, 0xC0);
+    wr8(W(dp_f1), 0xC0);
     lda8_imm(cr, 0x38);
     cyc(32);
-    wr8(0x0000F5, 0x38);
+    wr8(W(dp_f5), 0x38);
     (cyc(46), w_OamTextLine(cr));
 }
 
@@ -2179,7 +2179,7 @@ static void palette_fill(Carried *cr, uint16_t x, uint16_t y, uint8_t f, unsigne
     set_p(cr, nz16(cr->p, y));
     lda8_imm(cr, f);
     cyc(t);
-    wr8(0x0000F1, f);
+    wr8(W(dp_f1), f);
     TilemapPaletteFill_cr(cr);
 }
 

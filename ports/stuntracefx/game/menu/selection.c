@@ -310,7 +310,7 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     uint16_t v;
 
     cyc(76);
-    wr16(0x0018DB, cyc_then(32, HandlerTableA(cyc_then(46, rd16(W(selection))))));
+    wr16(W(wram_18DB), cyc_then(32, HandlerTableA(cyc_then(46, rd16(W(selection))))));
     cyc(32);
     wr16(W(selection_handler_b), cyc_then(32, HandlerTableA(cyc_then(46, rd16(W(selection_prev))))));
     cyc(32);
@@ -415,7 +415,7 @@ static uint16_t save_selection(uint8_t bank, uint16_t *x)
 uint16_t SelectionSave(uint8_t bank, uint16_t *x)
 {
     static const struct { uint32_t from, to; int b; } h[5] = {
-        {0x0018CB, 0x0018DB, 0}, {0x0018C9, W(selection_handler_b), 0}, {0x0018CD, W(selection_handler_b), 1},
+        {0x0018CB, W(wram_18DB), 0}, {0x0018C9, W(selection_handler_b), 0}, {0x0018CD, W(selection_handler_b), 1},
         {0x0018CF, W(selection_handler_c), 1}, {0x0018D1, W(selection_handler_d), 1}};
     uint16_t v;
     unsigned i;

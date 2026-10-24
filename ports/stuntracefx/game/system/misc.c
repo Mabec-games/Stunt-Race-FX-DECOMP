@@ -889,7 +889,7 @@ void DemoRun(Carried *cr)
     cr->x = rd16(b | W(wram_1A57));
     cyc(72);
     r_lda16(cr, 0x038006 + cr->x);
-    wr16(b | 0x0E3D, cr->a);
+    wr16(b | W(course), cr->a);
     r_lda16_imm(cr, 0x0020);
     cyc(10);
     wr16(b | W(wram_1A5B), 0x0020);
@@ -897,7 +897,7 @@ void DemoRun(Carried *cr)
     cr->x = rd16(b | W(wram_1A57));
     cyc(80);
     r_lda16(cr, 0x038004 + cr->x);
-    wr16(0x0018DB, cr->a);
+    wr16(W(wram_18DB), cr->a);
     r_lda16_imm(cr, 0x0000);
     cyc(10);
     wr16(b | W(hud_mode), 0x0000);
@@ -1077,7 +1077,7 @@ void DemoRun(Carried *cr)
                 wr16(W(dp_08) + cr->x, cr->a);
                 r_lda16(cr, cyc_then(16, dp_addr(cr, 0x94)));
                 cyc(32);
-                wr16(0x00000C + cr->x, cr->a);
+                wr16(W(dp_0c) + cr->x, cr->a);
                 db = cr->db;
                 demo_camera(cr, db);
                 cr->x = x;
@@ -1092,13 +1092,13 @@ void DemoRun(Carried *cr)
                 x = cr->x;
                 cr->x = 0x1A64;
                 cyc(86);
-                v = rd16(0x00000A + cr->x);
+                v = rd16(W(dp_0a) + cr->x);
                 p = (uint8_t)(cr->p & ~P_C);
                 w = alu_adc16(v, rd16(cyc_then(30, dp_addr(cr, 0x08))), &p);
                 set_p(cr, p);
                 cr->a = w;
                 cyc(32);
-                wr16(0x00000A + cr->x, w);
+                wr16(W(dp_0a) + cr->x, w);
                 db = cr->db;
                 demo_camera(cr, db);
                 cr->x = x;

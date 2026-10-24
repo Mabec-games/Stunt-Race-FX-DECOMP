@@ -65,7 +65,7 @@ void VideoRegsReset(uint8_t bank, uint16_t x)
     cyc(78);
     wr16(0x70021A, 0x2C00);
     cyc(16);
-    wr16(0x000048, 0x2C00);
+    wr16(W(dp_48), 0x2C00);
     cyc(72);
 }
 
@@ -517,9 +517,9 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
     cyc(16);
     rv_gsu_vram(0xF80D, 0xF7DA);
     cyc(46);
-    w = (uint16_t)(rd16(b | 0x0E3D) << 1);
+    w = (uint16_t)(rd16(b | W(course)) << 1);
     cyc(52);
-    k3 = (uint16_t)((w + rd16(b | 0x0E3D)) & 0x00FF);
+    k3 = (uint16_t)((w + rd16(b | W(course))) & 0x00FF);
     (cyc(100), PaletteCourseLoad(0x03, &rx, &ry, &p));
     cyc(64);
     (cyc(62), CgramDmaAll());
@@ -877,7 +877,7 @@ void RaceHudLoad(Carried *cr)
     (cyc(68), RaceTimeInit_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(46);
-    x = (uint16_t)((rd16(b | 0x0E3D) & 0x00FF) << 1);
+    x = (uint16_t)((rd16(b | W(course)) & 0x00FF) << 1);
     cr->x = x;
     cyc(132);
     cr->a = rd16(0x03F799 + x);

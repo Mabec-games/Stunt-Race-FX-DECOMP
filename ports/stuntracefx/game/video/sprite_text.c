@@ -27,14 +27,14 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(60);
-    uint16_t y = (uint16_t)((rd16(0x0000F2) & 0xFF) << 2);
+    uint16_t y = (uint16_t)((rd16(W(dp_f2)) & 0xFF) << 2);
     cyc(90);
-    uint16_t x = rd16(cyc_then(190, 0x078000 + ((rd16(b | 0x0E3D) << 1) & 0x00FF)));
+    uint16_t x = rd16(cyc_then(190, 0x078000 + ((rd16(b | W(course)) << 1) & 0x00FF)));
     uint8_t c, pen, attr = 0;
 
     *ap = x;
     c = rd8(b | x);
-    wr8(0x0000F2, c);
+    wr8(W(dp_f2), c);
     x++;
     cyc(72);
     wr8(W(dp_f3), cyc_then(46, (uint8_t)(rd8(W(dp_f3)) - (uint8_t)(c << 2))));
@@ -45,12 +45,12 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
             x++;
             wr8(W(dp_f3), cyc_then(46, (uint8_t)(rd8(W(dp_f3)) + 8)));
             cyc(16);
-            wr8(0x0000F2, cyc_then(6, (uint8_t)(rd8(0x0000F2) - 1)));
+            wr8(W(dp_f2), cyc_then(6, (uint8_t)(rd8(W(dp_f2)) - 1)));
             cyc(22);
             continue;
         }
         cyc(6);
-        wr8(b | (uint16_t)(OAM_BUFFER + 2 + y), cyc_then(30, (uint8_t)(c + rd8(0x0000F1))));
+        wr8(b | (uint16_t)(OAM_BUFFER + 2 + y), cyc_then(30, (uint8_t)(c + rd8(W(dp_f1)))));
         x++;
         cyc(30);
         pen = rd8(W(dp_f3));
@@ -59,16 +59,16 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
         cyc(46);
         wr8(W(dp_f3), (uint8_t)(pen + 8));
         cyc(16);
-        wr8(b | (uint16_t)(OAM_BUFFER + 1 + y), cyc_then(30, rd8(0x0000F4)));
+        wr8(b | (uint16_t)(OAM_BUFFER + 1 + y), cyc_then(30, rd8(W(dp_f4))));
         cyc(16);
-        attr = rd8(0x0000F5);
+        attr = rd8(W(dp_f5));
         cyc(30);
         wr8(b | (uint16_t)(OAM_BUFFER + 3 + y), attr);
         y += 4;
         cyc(72);
-        c = (uint8_t)(rd8(0x0000F2) - 1);
+        c = (uint8_t)(rd8(W(dp_f2)) - 1);
         cyc(6);
-        wr8(0x0000F2, c);
+        wr8(W(dp_f2), c);
         if (!c)
             break; else { cyc(22); }
     }
@@ -157,15 +157,15 @@ static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp
     unsigned i;
 
     cyc(74);
-    wr8(0x0000F4, y);
+    wr8(W(dp_f4), y);
     cyc(36);
     wr8(W(dp_f3), x);
     cyc(32);
-    wr8(0x0000F2, 0x70);
+    wr8(W(dp_f2), 0x70);
     cyc(32);
-    wr8(0x0000F5, 0x36);
+    wr8(W(dp_f5), 0x36);
     cyc(16);
-    wr8(0x0000F1, 0x00);
+    wr8(W(dp_f1), 0x00);
     OamTextLineLong(xp, yp, &a);
     cyc(254);
     for (i = 0; i < 8; i += 2)

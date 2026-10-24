@@ -1344,7 +1344,7 @@ void SpeedRecordsPage(Carried *cr)
     }
     r_sep(cr, P_M);
     cyc(join);
-    r_lda8(cr, b | 0x0E3D);
+    r_lda8(cr, b | W(course));
     old = (uint8_t)cr->a;
     cyc(46);
     r_lda8(cr, b | W(wram_10D8));
@@ -1362,12 +1362,12 @@ void SpeedRecordsPage(Carried *cr)
         lda8(cr, 0x1C);
     }
     cyc(46);
-    wr8(b | 0x0E3D, (uint8_t)cr->a);
+    wr8(b | W(course), (uint8_t)cr->a);
     (cyc(46), w_SpriteTextAt895E(cr));
     r_sep(cr, P_M);
     lda8(cr, old);
     cyc(74);
-    wr8(b | 0x0E3D, old);
+    wr8(b | W(course), old);
     cyc(42);
 }
 
@@ -1504,7 +1504,7 @@ void SpeedRecordsLeaveCar(Carried *cr)
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x8669);
     cyc(18);
-    wr16(0x0018DB, 0x8669);
+    wr16(W(wram_18DB), 0x8669);
     r_sep(cr, P_M);
     (cyc(84), ColourMathA7Start_cr(cr));
     cyc(86);
@@ -1536,7 +1536,7 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
 
     slot_to_y(cr, 0x0D75, d_time);
     cyc(66);
-    r_lda16(cr, b | 0x0E3D);
+    r_lda16(cr, b | W(course));
     r_sub16(cr, first);
     wr16(dp(cr, 0xF1), cyc_then(48, cr->a));
     r_asl16(cr);
@@ -1649,23 +1649,23 @@ void StuntRecordsScreen(Carried *cr)
         if (pressed(cr, 0x0100)) {
             sound16(cr, 0x0045);
             cyc(24);
-            r_lda16(cr, b | 0x0E3D);
+            r_lda16(cr, b | W(course));
             cr->a = (uint16_t)(cr->a + 1);
             r_cmp16(cr, 0x001B);
             if (cr->a >= 0x001B)
                 { r_lda16_imm(cr, 0x0017); cyc(4); }
             cyc(82);
-            wr16(b | 0x0E3D, cr->a);
+            wr16(b | W(course), cr->a);
         } else { cyc(30); if (pressed(cr, 0x0200)) {
             sound16(cr, 0x0045);
             cyc(24);
-            r_lda16(cr, b | 0x0E3D);
+            r_lda16(cr, b | W(course));
             cr->a = (uint16_t)(cr->a - 1);
             r_cmp16(cr, 0x0017);
             if (cr->a < 0x0017)
                 { r_lda16_imm(cr, 0x001A); cyc(4); }
             cyc(60);
-            wr16(b | 0x0E3D, cr->a);
+            wr16(b | W(course), cr->a);
         } else { cyc(30); } }
         md_first(cr, 0x0015, 0);
         md_next(cr, 0x04EE21, 0, 0x0D73, 0x0013);

@@ -158,7 +158,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
     cyc(24);
     obj = rd16((uint32_t)bank << 16 | 0x0346);
     cyc(32);
-    kind = rd16((0x7E0000 | W(dp_00)) | W(obj_27) + obj);
+    kind = rd16(0x7E0000 | W(obj_27) + obj);
     for (i = 0; i < 5; i++)
         { cyc(40); if (kind == gauge_kinds[i]) {
             cyc(6);
