@@ -269,22 +269,17 @@ void FrameObjectsWhileGsuRuns(Carried *cr)
     (cyc(62), GsuRecordsUpload_cr(cr));
 }
 
-void FrameObjectsWhileGsuRuns_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    FrameObjectsWhileGsuRuns(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 void abi_FrameObjectsWhileGsuRuns(void)
 {
-    FrameObjectsWhileGsuRuns_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameObjectsWhileGsuRuns(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -330,22 +325,17 @@ void FrameRunGsu8FCA(Carried *cr)
     cyc(94);
 }
 
-void FrameRunGsu8FCA_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    FrameRunGsu8FCA(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 void abi_FrameRunGsu8FCA(void)
 {
-    FrameRunGsu8FCA_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    FrameRunGsu8FCA(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_SlideStep(void);

@@ -140,22 +140,17 @@ void Bg2Band2TilemapE817(Carried *cr)
     cyc(42);                            /* RTS */
 }
 
-void Bg2Band2TilemapE817_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    Bg2Band2TilemapE817(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 void abi_Bg2Band2TilemapE817(void)
 {
-    Bg2Band2TilemapE817_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Bg2Band2TilemapE817(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -176,21 +171,16 @@ void Bg2Band0TilemapE3D7(Carried *cr)
     cyc(42);                            /* RTS */
 }
 
-void Bg2Band0TilemapE3D7_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    Bg2Band0TilemapE3D7(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 void abi_Bg2Band0TilemapE3D7(void)
 {
-    Bg2Band0TilemapE3D7_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    Bg2Band0TilemapE3D7(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

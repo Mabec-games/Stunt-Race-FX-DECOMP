@@ -312,22 +312,17 @@ void PlayerStatsFromRecord(Carried *cr)
     cyc(42);
 }
 
-void PlayerStatsFromRecord_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    PlayerStatsFromRecord(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 void abi_PlayerStatsFromRecord(void)
 {
-    PlayerStatsFromRecord_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerStatsFromRecord(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Player 0's figures from its record at $70:2476: Y = 0, X = the record,
@@ -367,22 +362,17 @@ void PlayerStatsAndPaletteAnimate(Carried *cr)
     cyc(72);                            /* its return */
 }
 
-void PlayerStatsAndPaletteAnimate_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    PlayerStatsAndPaletteAnimate(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 void abi_PlayerStatsAndPaletteAnimate(void)
 {
-    PlayerStatsAndPaletteAnimate_g();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerStatsAndPaletteAnimate(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_PlayerStatsFromRecord(void);
