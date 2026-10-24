@@ -10,6 +10,7 @@
 
 #include "video_calls.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 uint8_t HudDrawTime(uint16_t *x, int *x_set);
 
 /*
@@ -122,7 +123,7 @@ void WaitScanline(uint8_t bank)
     uint8_t lo;
 
     cyc(150);
-    wr8(0x7E0000 | W(scanline_wait_high), 0x00);
+    WR8(scanline_wait_high, 0x00);
     do {
         cyc(46);
         hw_rd(SLHV);
@@ -130,7 +131,7 @@ void WaitScanline(uint8_t bank)
         lo = hw_rd(OPVCT);
         cyc(44);
         hw_rd(OPVCT);
-    } while (cyc_loop(22, lo != rd8(cyc_then(44, 0x7E0000 | W(scanline_wait)))));
+    } while (cyc_loop(22, lo != rd8(cyc_then(44, WA(scanline_wait)))));
     cyc(182);
 }
 
@@ -386,8 +387,8 @@ static void hblank_inline(Carried *cr)
 /* The frame's counters: $0E3B and $0306 up by one. */
 static void frame_counts(Carried *cr)
 {
-    inc8(cr, 0x7E0000 | W(frame_count));
-    inc8(cr, 0x7E0000 | W(frames_since_tick));
+    inc8(cr, WA(frame_count));
+    inc8(cr, WA(frames_since_tick));
 }
 
 /* BG2's scroll for the split screen's lower half: y by the sign of v
@@ -440,16 +441,16 @@ void RasterStage(Carried *cr)
 
     r_sep(cr, P_M | P_X);
     cyc(24);
-    ldx8(cr, rd8(0x7E0000 | W(wram_0D3F)));
+    ldx8(cr, RD8(wram_0D3F));
     cyc(30);
     switch (rd16(W(wram_bank_7e) | (uint16_t)(0xA30D + cr->x))) {
     case 0xA330:
         cyc(46);
         WaitHBlank_cr(cr);
-        copy8(cr, INIDISP, 0x7E0000 | W(fade_level_hi));
+        copy8(cr, INIDISP, WA(fade_level_hi));
         put8(cr, VTIMEL, 0xC8);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x02);
+        put8(cr, WA(wram_0D3F), 0x02);
         frame_counts(cr);
         break;
     case 0xA34D:
@@ -459,8 +460,8 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x17);
         irq_ack(cr);
         cyc(24);
-        wr8(0x7E0000 | W(wram_0D3F), 0x00);
-        put8(cr, 0x7E0000 | W(wram_0D52), 0xFF);
+        WR8(wram_0D3F, 0x00);
+        put8(cr, WA(wram_0D52), 0xFF);
         put8(cr, HDMAEN, 0x02);
         (cyc(46), JoypadRead_cr(cr));
         (cyc(132), OamDmaAll_cr(cr));
@@ -470,11 +471,11 @@ void RasterStage(Carried *cr)
         cyc(68);
         WaitHBlank_cr(cr);
         put8(cr, TM, 0x13);
-        copy8(cr, BG2VOFS, 0x7E0000 | W(scroll_value));
-        copy8(cr, BG2VOFS, 0x7E0000 | W(wram_0E34));
+        copy8(cr, BG2VOFS, WA(scroll_value));
+        copy8(cr, BG2VOFS, WA(wram_0E34));
         put8(cr, VTIMEL, 0xD8);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x12);
+        put8(cr, WA(wram_0D3F), 0x12);
         frame_counts(cr);
         (cyc(46), JoypadRead_cr(cr));
         (cyc(46), FadeStepFixed_cr(cr));
@@ -488,13 +489,13 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x37);
         irq_ack(cr);
         put8(cr, VTIMEH, 0x00);
-        copy8(cr, HDMAEN, 0x7E0000 | W(wram_0D45));
-        copy8(cr, CGADSUB, 0x7E0000 | W(colour_math_mode));
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x10);
-        put8(cr, 0x7E0000 | W(wram_0D52), 0xFF);
+        copy8(cr, HDMAEN, WA(wram_0D45));
+        copy8(cr, CGADSUB, WA(colour_math_mode));
+        put8(cr, WA(wram_0D3F), 0x10);
+        put8(cr, WA(wram_0D52), 0xFF);
         (cyc(62), OamDmaAll_cr(cr));
-        copy8(cr, BG2VOFS, 0x7E0000 | W(wram_0E33));
-        copy8(cr, BG2VOFS, 0x7E0000 | W(wram_0E34));
+        copy8(cr, BG2VOFS, WA(wram_0E33));
+        copy8(cr, BG2VOFS, WA(wram_0E34));
         cyc(32);
         c = (uint8_t)(rd8(W(fixed_colour)) | 0x80);
         put8(cr, COLDATA, c);
@@ -523,18 +524,18 @@ void RasterStage(Carried *cr)
         put8(cr, A1B0, 0x7F);
         put8(cr, VMAIN, 0x80);
         cyc(24);
-        c = (uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) & 0xF7);
+        c = (uint8_t)(RD8(gsu_scmr_shadow) & 0xF7);
         put8(cr, GSU_SCMR, c);
         put8(cr, MDMAEN, 0x01);
         cyc(24);
-        c = (uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) | 0x18);
+        c = (uint8_t)(RD8(gsu_scmr_shadow) | 0x18);
         put8(cr, GSU_SCMR, c);
         r_rep(cr, P_M | P_X);
         cyc(24);
-        r_lda16(cr, 0x7E0000 | W(gsu_buffer_select));
+        r_lda16(cr, WA(gsu_buffer_select));
         if (cr->a) {
             cyc(40);
-            wr16(0x7E0000 | W(gsu_buffer_select), 0x0000);
+            WR16(gsu_buffer_select, 0x0000);
             cr->x = 0x2C00;
             cr->y = 0x0400;
             r_lda16_imm(cr, 0x0800);
@@ -550,21 +551,21 @@ void RasterStage(Carried *cr)
         WindowTable7F(cr);
         r_sep(cr, P_M);
         cyc(22);
-        copy8(cr, INIDISP, 0x7E0000 | W(fade_level_hi));
+        copy8(cr, INIDISP, WA(fade_level_hi));
         break;
     }
     case 0xA4F5:
         cyc(24);
-        ldx8(cr, rd8(0x7E0000 | W(fade_level_hi)));
+        ldx8(cr, RD8(fade_level_hi));
         hblank_inline(cr);
         cyc(56);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, HTIMEL, 0x30);
         put8(cr, VTIMEL, 0xC0);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x14);
+        put8(cr, WA(wram_0D3F), 0x14);
         frame_counts(cr);
-        put8(cr, 0x7E0000 | W(wram_0D52), 0xFF);
+        put8(cr, WA(wram_0D52), 0xFF);
         (cyc(46), FadeStep_cr(cr));
         (cyc(46), JoypadAccumulate_cr(cr));
         (cyc(46), SoundPortsSend_cr(cr));
@@ -572,7 +573,7 @@ void RasterStage(Carried *cr)
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x01D8);
         cyc(10);
-        wr16(0x7E0000 | W(hud_time_sprite), 0x01D8);
+        WR16(hud_time_sprite, 0x01D8);
         w_HudDrawTime(cr);
         (cyc(46), HudPanelsStep_cr(cr));
         (cyc(46), PalettesStep_cr(cr));
@@ -580,7 +581,7 @@ void RasterStage(Carried *cr)
     case 0xA53D:
         put8(cr, VTIMEL, 0xD0);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x06);
+        put8(cr, WA(wram_0D3F), 0x06);
         (cyc(62), WindowHdmaNormal_cr(cr));
         (cyc(62), WindowLayoutStepForScreen_cr(cr));
         (cyc(62), WindowSlideOrOscillate(cr));
@@ -606,14 +607,14 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x10);
         irq_ack(cr);
         put8(cr, TM, 0x13);
-        copy8(cr, HDMAEN, 0x7E0000 | W(wram_0D45));
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x04);
+        copy8(cr, HDMAEN, WA(wram_0D45));
+        put8(cr, WA(wram_0D3F), 0x04);
         window_colours(cr, b, W(window_setup_bytes));
         (cyc(62), WindowsSetupSelect_cr(cr));
         break;
     case 0xA5B6:
         cyc(24);
-        ldx8(cr, cyc_then(46, rd8(0x7E0000 | W(fade_level_hi))));
+        ldx8(cr, cyc_then(46, RD8(fade_level_hi)));
         WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
@@ -623,9 +624,9 @@ void RasterStage(Carried *cr)
         hw_wr(VTIMEH, 0x00);
         put8(cr, HTIMEL, 0x10);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x0A);
+        put8(cr, WA(wram_0D3F), 0x0A);
         frame_counts(cr);
-        put8(cr, 0x7E0000 | W(wram_0D52), 0xFF);
+        put8(cr, WA(wram_0D52), 0xFF);
         (cyc(46), FadeStep_cr(cr));
         (cyc(46), RaceClockStep_cr(cr));
         r_sep(cr, P_M);
@@ -634,7 +635,7 @@ void RasterStage(Carried *cr)
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x0100);
         cyc(10);
-        wr16(0x7E0000 | W(hud_time_sprite), 0x0100);
+        WR16(hud_time_sprite, 0x0100);
         w_HudDrawTime(cr);
         (cyc(46), HudPanelASlide_cr(cr));
         (cyc(46), HudPanelBSlide_cr(cr));
@@ -652,10 +653,10 @@ void RasterStage(Carried *cr)
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0x77);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x0C);
+        put8(cr, WA(wram_0D3F), 0x0C);
         window_colours(cr, b, W(wram_19AF));
         cyc(24);
-        r_lda8(cr, 0x7E0000 | W(wram_0D5D));
+        r_lda8(cr, WA(wram_0D5D));
         v = (uint8_t)cr->a;
         if (v) {
             cyc(32);
@@ -663,7 +664,7 @@ void RasterStage(Carried *cr)
             break;
         }
         cyc(46);
-        r_lda8(cr, 0x7E0000 | W(wram_0D5C));
+        r_lda8(cr, WA(wram_0D5C));
         if ((uint8_t)cr->a)
             { cyc(16); put8(cr, BG12NBA, 0x40); } else { cyc(22); }
         put8(cr, BG2SC, 0x3F);
@@ -674,17 +675,17 @@ void RasterStage(Carried *cr)
         break;
     case 0xA681:
         cyc(24);
-        ldx8(cr, cyc_then(46, rd8(0x7E0000 | W(fade_level_hi))));
+        ldx8(cr, cyc_then(46, RD8(fade_level_hi)));
         WaitHBlank_cr(cr);
         cyc(24);
         ppu_wr(INIDISP, (uint8_t)cr->x);
         put8(cr, VTIMEL, 0xD7);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x0E);
+        put8(cr, WA(wram_0D3F), 0x0E);
         r_rep(cr, P_M);
         r_lda16_imm(cr, 0x0000);
         cyc(10);
-        wr16(0x7E0000 | W(hud_time_sprite), 0x0000);
+        WR16(hud_time_sprite, 0x0000);
         w_HudDrawTime(cr);
         r_sep(cr, P_M | P_X);
         cr->y = 0x00;
@@ -710,7 +711,7 @@ void RasterStage(Carried *cr)
         r_sep(cr, P_M | P_X);
         b = (uint32_t)cr->db << 16;
         cyc(24);
-        r_lda8(cr, 0x7E0000 | W(wram_0D5C));
+        r_lda8(cr, WA(wram_0D5C));
         v = (uint8_t)cr->a;
         if (v) {
             cyc(32);
@@ -718,7 +719,7 @@ void RasterStage(Carried *cr)
             cyc(22);                                   /* BRA */
         } else {
             cyc(46);
-            r_lda8(cr, 0x7E0000 | W(wram_0D5D));
+            r_lda8(cr, WA(wram_0D5D));
             if ((uint8_t)cr->a)
                 put8(cr, BG12NBA, 0x40); else { cyc(84); }
             ldx8(cr, 0x00);
@@ -734,7 +735,7 @@ void RasterStage(Carried *cr)
         (cyc(62), WindowsSetupSelect_cr(cr));
         put8(cr, VTIMEL, 0x0F);
         irq_ack(cr);
-        put8(cr, 0x7E0000 | W(wram_0D3F), 0x08);
+        put8(cr, WA(wram_0D3F), 0x08);
         (cyc(46), w_GradientPointersToBank7F(cr));
         break;
     case 0xA75D:
@@ -952,7 +953,7 @@ void TimeMarkEnd(Carried *cr)
         a = rd16(W(time_now));
         a = (uint16_t)(a & 0xFF00);
         cyc(62);
-        m = rd16(0x7E0000 | W(time_marks));
+        m = RD16(time_marks);
         set_p(cr, (uint8_t)(cr->p | (P_C)));
         a = alu_sbc16(a, m, &cr->p);
         a = (uint16_t)((a >> 8) | (a << 8));

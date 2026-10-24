@@ -11,6 +11,7 @@
 #include "video_palette_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size);
@@ -277,10 +278,10 @@ uint16_t PaletteCycle(uint16_t *x)
     cyc(188);
     if (!(rd8(W(frame_count)) & 0x01)) {
         cyc(54);
-        cycle_step(W(wram_7EFD5B), W(wram_7EB71B), (0x7E0000 | W(cycle_colour_a)), x);
-        return cycle_step(W(wram_7EFD5D), W(wram_7EB6FB), (0x7E0000 | W(cycle_colour_b)), x);
+        cycle_step(W(wram_7EFD5B), W(wram_7EB71B), (WA(cycle_colour_a)), x);
+        return cycle_step(W(wram_7EFD5D), W(wram_7EB6FB), (WA(cycle_colour_b)), x);
     } else { cyc(60); }
-    return cycle_step(W(wram_7EFD5F), W(wram_7EB70B), (0x7E0000 | W(cycle_colour_c)), x);
+    return cycle_step(W(wram_7EFD5F), W(wram_7EB70B), (WA(cycle_colour_c)), x);
 }
 
 void PaletteCycle_cr(Carried *cr)
@@ -380,7 +381,7 @@ uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
 {
     (void)bank;
     cyc(90);
-    uint8_t v = rd8(0x7E0000 | W(wram_0D22));
+    uint8_t v = RD8(wram_0D22);
 
     *ran = !v;
     if (v)
@@ -533,11 +534,11 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16, src;
     cyc(46);
-    uint16_t c = rd16(0x7E0000 | W(course)), i, x, y, w, d, s;
+    uint16_t c = RD16(course), i, x, y, w, d, s;
     uint8_t blk;
     unsigned k;
 
-    s = (uint16_t)((uint16_t)(c << 1) + rd16(cyc_then(52, 0x7E0000 | W(course))));
+    s = (uint16_t)((uint16_t)(c << 1) + rd16(cyc_then(52, WA(course))));
     *p = (uint8_t)((*p & ~P_V) | ((~((uint16_t)(c << 1) ^ c) & ((uint16_t)(c << 1) ^ s) & 0x8000) ? P_V : 0));
     i = (uint16_t)(s & 0x00FF);
     cyc(208);
@@ -605,19 +606,19 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
         x = (uint16_t)(x - 2);
     }
     cyc(92);
-    wr16(0x7E0000 | W(blend_set_a), 0x45CC);
+    WR16(blend_set_a, 0x45CC);
     cyc(48);
-    wr16(0x7E0000 | W(wram_0E23), 0x2528);
+    WR16(wram_0E23, 0x2528);
     cyc(48);
-    wr16(0x7E0000 | W(wram_0E25), 0x1CE5);
+    WR16(wram_0E25, 0x1CE5);
     cyc(48);
-    wr16(0x7E0000 | W(blend_set_b), 0x739A);
+    WR16(blend_set_b, 0x739A);
     cyc(48);
-    wr16(0x7E0000 | W(wram_0E29), 0x1CE5);
+    WR16(wram_0E29, 0x1CE5);
     cyc(48);
-    wr16(0x7E0000 | W(wram_0E2B), 0x2528);
+    WR16(wram_0E2B, 0x2528);
     cyc(24);
-    w = rd16(0x7E0000 | W(wram_10DC));
+    w = RD16(wram_10DC);
     if (!w) {
         *xo = 0xFFFE;
         *yo = y;
@@ -706,42 +707,42 @@ uint16_t ColourBlend(uint8_t bank)
     uint16_t r, g, bl, m, s, t, f, a;
     uint8_t cv = 0;
 
-    blend_split(0x7F0000 | W(colour_from_r), W(dp_f1));
-    blend_split(0x7F0000 | W(colour_from_g), W(dp_f1));
-    blend_split(0x7F0000 | W(colour_from_b), W(dp_f1));
-    blend_split(0x7F0000 | W(colour_to_r), W(dp_f3));
-    blend_split(0x7F0000 | W(colour_to_g), W(dp_f3));
-    blend_split(0x7F0000 | W(colour_to_b), W(dp_f3));
+    blend_split(WA(colour_from_r), W(dp_f1));
+    blend_split(WA(colour_from_g), W(dp_f1));
+    blend_split(WA(colour_from_b), W(dp_f1));
+    blend_split(WA(colour_to_r), W(dp_f3));
+    blend_split(WA(colour_to_g), W(dp_f3));
+    blend_split(WA(colour_to_b), W(dp_f3));
     cyc(24);
-    t = rd16(0x7F0000 | W(colour_to_r));
+    t = RD16(colour_to_r);
     cyc(38);
-    f = rd16(0x7F0000 | W(colour_from_r));
+    f = RD16(colour_from_r);
     cyc(46);
     m = PpuMultiply((uint8_t)(t - f));
     cyc(80);
-    f = rd16(0x7F0000 | W(colour_from_r));
+    f = RD16(colour_from_r);
     r = (uint16_t)((m + f) & 0x1F);
     cyc(48);
-    wr16(0x7F0000 | W(colour_from_r), r);
+    WR16(colour_from_r, r);
     cyc(24);
-    t = rd16(0x7F0000 | W(colour_to_g));
+    t = RD16(colour_to_g);
     cyc(38);
-    f = rd16(0x7F0000 | W(colour_from_g));
+    f = RD16(colour_from_g);
     cyc(46);
     m = PpuMultiply((uint8_t)(t - f));
     cyc(80);
-    f = rd16(0x7F0000 | W(colour_from_g));
+    f = RD16(colour_from_g);
     g = (uint16_t)(m + f);
     cyc(24);
-    wr16(0x7F0000 | W(colour_from_g), g);
+    WR16(colour_from_g, g);
     cyc(24);
-    t = rd16(0x7F0000 | W(colour_to_b));
+    t = RD16(colour_to_b);
     cyc(38);
-    f = rd16(0x7F0000 | W(colour_from_b));
+    f = RD16(colour_from_b);
     cyc(46);
     m = PpuMultiply((uint8_t)(t - f));
     cyc(80);
-    bl = rd16(0x7F0000 | W(colour_from_b));
+    bl = RD16(colour_from_b);
     s = (uint16_t)(m + bl);
     if (~(m ^ bl) & (m ^ s) & 0x8000)
         cv |= P_V;
@@ -749,13 +750,13 @@ uint16_t ColourBlend(uint8_t bank)
     cyc(88);
     wr16(W(dp_f1), bl);
     cyc(24);
-    g = rd16(0x7F0000 | W(colour_from_g));
+    g = RD16(colour_from_g);
     if (g & 0x0800)
         cv |= P_C;
     cyc(110);
     bl = rd16(W(dp_f1));
     cyc(24);
-    r = rd16(0x7F0000 | W(colour_from_r));
+    r = RD16(colour_from_r);
     a = (uint16_t)(((g << 5) & 0x03E0) | bl | r);
     blend_cv = cv;
     cyc(42);                                    /* RTS */
@@ -828,77 +829,77 @@ uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y
     enum { NONE, SKIP, ONE, TWO, ODD } go = NONE;
 
     cyc(102);
-    if (rd8(0x7E0000 | W(wram_0D53)))
+    if (RD8(wram_0D53))
         up = 0, cyc(68);                /* BNE taken, SEP, LDA */
-    else if (!rd8(cyc_then(40, 0x7E0000 | (uint16_t)(W(kept_enable) + y))))
+    else if (!rd8(cyc_then(40, WAI(kept_enable, y))))
         up = 0, cyc(68);                /* BEQ taken, SEP, LDA */
     else {
-        a = rd16(cyc_then(62, 0x7E0000 | (uint16_t)(W(joy1_last) + x)));
+        a = rd16(cyc_then(62, WAI(joy1_last, x)));
         up = (a & 0x4000) != 0;
         if (!up)
             cyc(92);                    /* BIT, BEQ taken, SEP, LDA */
     }
     if (up) {
         cyc(86);
-        t = rd8(0x7E0000 | (uint16_t)(W(kept_timer) + y));
+        t = RD8I(kept_timer, y);
         if (t == 0xFF) {
             go = TWO;
         } else {
             t++;
             cyc(76);
-            wr8(0x7E0000 | (uint16_t)(W(kept_timer) + y), t);
+            WR8I(kept_timer, y, t);
             go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
         }
     } else {
-        t = rd8(0x7E0000 | (uint16_t)(W(kept_timer) + y));
+        t = RD8I(kept_timer, y);
         if (!t) {
             a = 0x7E63;
             cyc(100);
             wr16(W(kept_colour_c), a);
         } else if (t >= 0x78) {
-            wr8(0x7E0000 | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 5));
+            WR8I(kept_timer, y, (uint8_t)(t - 5));
             go = TWO;
         } else if (t >= 0x3C) {
-            wr8(0x7E0000 | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 4));
+            WR8I(kept_timer, y, (uint8_t)(t - 4));
             go = ONE;
         } else if (t >= 0x1E) {
-            wr8(0x7E0000 | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 3));
+            WR8I(kept_timer, y, (uint8_t)(t - 3));
             go = ODD;
         } else {
-            wr8(0x7E0000 | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 1));
+            WR8I(kept_timer, y, (uint8_t)(t - 1));
             go = SKIP;
         }
     }
     /* SKIP steps by one on every fourth frame, ODD on every other one. */
     if (go == SKIP)
-        { cyc(120); go = (rd8(0x7E0000 | W(frame_count)) & 0x03) ? (cyc(38), NONE) : ONE; }
+        { cyc(120); go = (RD8(frame_count) & 0x03) ? (cyc(38), NONE) : ONE; }
     else if (go == ODD)
-        go = (rd8(0x7E0000 | W(frame_count)) & 0x01) ? NONE : ONE;
+        go = (RD8(frame_count) & 0x01) ? NONE : ONE;
     if (go == ONE || go == TWO) {
-        step = cycle13(rd8(0x7E0000 | (uint16_t)(W(kept_cycle_c) + y)), go == TWO ? 2 : 1);
-        wr8(0x7E0000 | (uint16_t)(W(kept_cycle_c) + y), step);
+        step = cycle13(RD8I(kept_cycle_c, y), go == TWO ? 2 : 1);
+        WR8I(kept_cycle_c, y, step);
         x = (uint8_t)(step << 1);
         a = rd16(W(kept_colours_c) + x);
         wr16(W(kept_colour_c), a);
     }
     cyc(46);
-    v = rd8(0x7E0000 | (uint16_t)(W(kept_acc) + y));
+    v = RD8I(kept_acc, y);
     cyc(38);
-    d = rd8(0x7E0000 | (uint16_t)(W(kept_sub) + y));
+    d = RD8I(kept_sub, y);
     s = (unsigned)v - d;
     cf = s < 0x100;
     kept_v = ((v ^ d) & (v ^ (uint8_t)s) & 0x80) != 0;
     cyc(30);
-    wr8(0x7E0000 | (uint16_t)(W(kept_acc) + y), (uint8_t)s);
+    WR8I(kept_acc, y, (uint8_t)s);
     *stepped = !cf;
     if (cf) {
         cyc(22);
         a = (uint16_t)((a & 0xFF00) | (uint8_t)s);
     } else {
         cyc(40 + (((0x0DFF + y) ^ 0x0DFF) & 0xFF00 ? 6 : 0));  /* BCS, LDA abs,Y */
-        step = cycle13(rd8(0x7E0000 | (uint16_t)(W(kept_cycle_ab) + y)), 1);
+        step = cycle13(RD8I(kept_cycle_ab, y), 1);
         cyc(82);
-        wr8(0x7E0000 | (uint16_t)(W(kept_cycle_ab) + y), step);
+        WR8I(kept_cycle_ab, y, step);
         x = (uint8_t)(step << 1);
         cyc(82);
         wr16(W(palette_kept), cyc_then(32, rd16(W(kept_colours_a) + x)));
@@ -999,13 +1000,13 @@ uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x)
     cyc(16);
     wr16(W(dp_f1), colour);
     cyc(24);
-    t = rd16(0x7F0000 | W(blend_target));
+    t = RD16(blend_target);
     if (t & 0x8000)
         { cyc(32); t = rd16(W(dp_f1)); } else { cyc(22); }
     cyc(16);
     wr16(W(dp_f3), t);
     cyc(24);
-    t = rd16(0x7F0000 | W(blend_target_amount));
+    t = RD16(blend_target_amount);
     cyc(16);
     wr16(W(dp_f5), t);
     cyc(46);
@@ -1075,7 +1076,7 @@ uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *x
     src = 0x0E21;
     if (!k) {
         cyc(178);
-        wr8(0x7E0000 | (uint16_t)(W(flash_count) + y), 0x00);
+        WR8I(flash_count, y, 0x00);
     } else {
         n = (uint8_t)(8 - k);
         flash_v = 0;
@@ -1084,26 +1085,26 @@ uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *x
         cyc(30);
         wr8(W(flash_2n), (uint8_t)(n << 1));
         cyc(30);
-        c = rd8(0x7E0000 | (uint16_t)(W(flash_count) + y));
+        c = RD8I(flash_count, y);
         if (c >= (uint8_t)(n << 1))
             { cyc(10); c = 0xFF; }
         c = (uint8_t)(c + 1);
         cyc(90);
-        wr8(0x7E0000 | (uint16_t)(W(flash_count) + y), c);
+        WR8I(flash_count, y, c);
         if (c < n)
             { cyc(6); src = 0x0E27; }
         cyc(18);
     }
     cyc(116);
-    x = rd16(0x7E0000 | (uint16_t)(W(player_pal_offset) + (uint16_t)(y << 1)));
+    x = RD16I(player_pal_offset, (uint16_t)(y << 1));
     cyc(38);
     wr16(W(player_palettes) + x, cyc_then(32, rd16(b | src)));
     cyc(24);
-    wr16((0x7E0000 | W(wram_01CA)) + x, cyc_then(32, rd16(b | (uint16_t)(src + 2))));
+    wr16((WA(wram_01CA)) + x, cyc_then(32, rd16(b | (uint16_t)(src + 2))));
     cyc(24);
     a = rd16(b | (uint16_t)(src + 4));
     cyc(32);
-    wr16((0x7E0000 | W(wram_01CC)) + x, a);
+    wr16((WA(wram_01CC)) + x, a);
     cyc(42);
     *xo = x;
     return a;
@@ -1196,23 +1197,23 @@ uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
     *stored = 1;
     status_c_kept = 1;
     cyc(30);
-    v = rd8(0x7E0000 | (uint16_t)(W(wram_0DDA) + y));
+    v = RD8I(wram_0DDA, y);
     if (v == 0) {
         cyc(68);
         a = 0x0000;
         goto store;
     }
     cyc(46);
-    v = rd8(0x7E0000 | (uint16_t)(W(player_rec_43) + y));
+    v = RD8I(player_rec_43, y);
     flags = (uint16_t)(v << 8);
     cyc(50);
-    flags |= rd8(0x7E0000 | (uint16_t)(W(player_rec_42) + y));
+    flags |= RD8I(player_rec_42, y);
     if (flags & 0x0400) {
         cyc(150);
-        v = rd8(0x7E0000 | (uint16_t)(W(kept_enable) + y));
+        v = RD8I(kept_enable, y);
         if (v) {
             cyc(104);
-            t = rd16(0x7E0000 | W(frame_count));
+            t = RD16(frame_count);
             x = (uint16_t)((t & 0x0003) << 1);
             status_c_kept = 0;
             cyc(84);
@@ -1223,17 +1224,17 @@ uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
     cyc(86);
     if (flags & 0x0010) {
         cyc(74);
-        v = rd8(0x7E0000 | (uint16_t)(W(wram_0DDA) + y));
+        v = RD8I(wram_0DDA, y);
         status_c_kept = 0;
         if (v >= 0x3C) {
             cyc(78);
-            t = rd16(0x7E0000 | W(frame_count));
+            t = RD16(frame_count);
             table = 1;
         }
     }
     if (!table) {
         cyc(84);
-        t = rd16(0x7E0000 | W(frame_count));
+        t = RD16(frame_count);
         if (t & 0x0001) {
             cyc(88);
             *stored = 0;
@@ -1299,10 +1300,10 @@ uint16_t PalettesStep(uint8_t bank, int *ran, uint16_t *xo)
     uint8_t level;
 
     cyc(90);
-    *ran = rd8(0x7E0000 | W(palette_animate)) != 0;
+    *ran = RD8(palette_animate) != 0;
     if (*ran) {
         cyc(64);
-        level = rd8(0x7E0000 | W(wram_0DDA));
+        level = RD8(wram_0DDA);
         cyc(46);
         PlayerColoursFlash(bank, level, 0, &x);
         cyc(114);
@@ -1404,15 +1405,15 @@ uint16_t FadeValueStep(uint16_t a)
         a = (uint16_t)((a & 0xFF00) | v);
         if (v) {
             cyc(78);
-            w = rd16(0x7E0000 | W(wram_19FE));
+            w = RD16(wram_19FE);
             cyc(38);
-            w = add16(w, rd16(0x7E0000 | W(wram_1A00)), NULL);
+            w = add16(w, RD16(wram_1A00), NULL);
             a = w;
             cyc(24);
-            m = rd16(0x7E0000 | W(wram_1A02));
+            m = RD16(wram_1A02);
             cyc(0);
             if (w != m)
-                { cyc(40); wr16(0x7E0000 | W(wram_19FE), w); cyc(24); }  /* JMP .show */
+                { cyc(40); WR16(wram_19FE, w); cyc(24); }  /* JMP .show */
             else {
                 cyc(76);
                 v = (uint8_t)(rd8(W(slide_flags)) & 0xDF);
@@ -1420,7 +1421,7 @@ uint16_t FadeValueStep(uint16_t a)
                 wr8(W(slide_flags), v);
             }
             cyc(46);                    /* SEP, LDA abs */
-            v = rd8(0x7E0000 | W(wram_19FF));
+            v = RD8(wram_19FF);
             a = (uint16_t)((a & 0xFF00) | v);
             cyc(32);
             wr8(W(wram_7F3460), v);
@@ -1465,23 +1466,23 @@ static uint16_t fade_part(uint16_t m, uint16_t step, uint16_t x, uint16_t y)
     uint16_t a, c;
 
     cyc(30);
-    a = rd16(0x7E0000 | (uint16_t)(W(crash_scroll) + 9 + y));
+    a = RD16I(crash_scroll, 9 + y);
     cyc(2);
     a &= m;
     cyc(46);
-    wr16(0x7E0000 | W(wram_1F2B), a);
+    WR16(wram_1F2B, a);
     cyc(94);
     a = rd16(0x02D65A + (uint32_t)x);
     cyc(2);
     a &= m;
-    c = rd16(0x7E0000 | W(wram_1F2B));
+    c = RD16(wram_1F2B);
     cyc(0);
     fade_c = a >= c;
     if (a == c)
         { cyc(8); return a; }
     if (a > c) {
         cyc(62);
-        a = rd16(0x7E0000 | W(wram_1F2B));
+        a = RD16(wram_1F2B);
         if (step == 1) {
             a++;
         } else {
@@ -1490,7 +1491,7 @@ static uint16_t fade_part(uint16_t m, uint16_t step, uint16_t x, uint16_t y)
         }
     } else {
         cyc(56);
-        a = rd16(0x7E0000 | W(wram_1F2B));
+        a = RD16(wram_1F2B);
         if (step == 1) {
             a--;
         } else {
@@ -1524,19 +1525,19 @@ int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
 
     fade_v = -1;
     cyc(46);
-    v = rd8(0x7E0000 | W(wram_0CFA));
+    v = RD8(wram_0CFA);
     if (v == 0)
         { cyc(60); return 0; }
     v = (uint8_t)(v - 1);
     cyc(60);
-    wr8(0x7E0000 | W(wram_0CFA), v);
+    WR8(wram_0CFA, v);
     cyc(22);                            /* REP #$30 */
     cyc(24);
-    x = rd16(0x7E0000 | W(frame_step));
+    x = RD16(frame_step);
     cyc(24);
-    y = rd16(0x7E0000 | W(frame_step));
+    y = RD16(frame_step);
     cyc(24);
-    a = rd16(0x7E0000 | W(wram_1167));
+    a = RD16(wram_1167);
     for (;;) {
         cyc(30);
         n = a;
@@ -1552,7 +1553,7 @@ int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
         cyc(16);
         a |= rd16(W(dp_40));
         cyc(30);
-        wr16(0x7E0000 | (uint16_t)(W(crash_scroll) + 9 + y), a);
+        WR16I(crash_scroll, 9 + y, a);
         y = (uint16_t)(y + 2);
         x = (uint16_t)(x + 2);
         a = (uint16_t)(n - 1);
@@ -1607,12 +1608,12 @@ void abi_PaletteFadeStep(void)
 static uint16_t palette_cycle_step(uint16_t a, int index8, uint16_t *x)
 {
     cyc(56);
-    uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D30)) + 1);
+    uint8_t v = (uint8_t)(RD8(wram_0D30) + 1);
 
     if (v >= 0x16)
         { cyc(10); v = 0x00; }
     cyc(76);
-    wr8(0x7E0000 | W(wram_0D30), v);
+    WR8(wram_0D30, v);
     v = (uint8_t)(v << 1);
     a = (uint16_t)((a & 0xFF00) | v);
     cyc(28);
@@ -1660,7 +1661,7 @@ uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo)
     int bright = 0;
 
     cyc(140);
-    c = rd8(0x7E0000 | W(course));
+    c = RD8(course);
     a = (uint16_t)((a & 0xFF00) | c);
     if (c == 0x03) {
         a = palette_cycle_step(a, index8, &x);

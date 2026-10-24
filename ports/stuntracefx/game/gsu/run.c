@@ -18,6 +18,7 @@
 #include "object_calls.h"
 #include "system_calls.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 void abi_HudColourStep(void);
 
 /* Poll until the Super FX stops (status bit 5 clear), counting each poll:
@@ -181,20 +182,20 @@ static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
     cyc(108);
     hw_wr(b | 0x3034, 0x01);
     cyc(24);
-    hw_wr(b | 0x303A, cyc_then(40, (uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) | 0x18)));
+    hw_wr(b | 0x303A, cyc_then(40, (uint8_t)(RD8(gsu_scmr_shadow) | 0x18)));
     cyc(24);
     hw_wr16(b | 0x301E, 0xAB13);
     do {
         cyc(46);
-        uint8_t n = (uint8_t)(rd8(0x7E0000 | W(gsu_ab13_polls)) + 1);
+        uint8_t n = (uint8_t)(RD8(gsu_ab13_polls) + 1);
 
         cyc(6);
-        wr8(0x7E0000 | W(gsu_ab13_polls), n);
+        WR8(gsu_ab13_polls, n);
         if (!n)
-            { cyc(40); wr8(0x7E0000 | W(wram_1F22), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(wram_1F22)) + 1))); } else { cyc(22); }
+            { cyc(40); WR8(wram_1F22, cyc_then(6, (uint8_t)(RD8(wram_1F22) + 1))); } else { cyc(22); }
     } while (cyc_loop(16, hw_rd(cyc_then(24, b | 0x3030)) & 0x20));
     cyc(56);
-    mode = rd8(0x7E0000 | W(gsu_scmr_shadow));
+    mode = RD8(gsu_scmr_shadow);
     cyc(24);
     hw_wr(b | 0x303A, mode);
     return mode;
@@ -383,7 +384,7 @@ void HudFrameWhileGsuRuns(Carried *cr)
     (cyc(62), DataBankTest_cr(cr));
     r_sep(cr, P_M | P_X);
     cyc(24);
-    r_lda8(cr, 0x7E0000 | W(wram_0D62));
+    r_lda8(cr, WA(wram_0D62));
     if ((uint8_t)cr->a) {
         cyc(72);
         r_lda8(cr, W(gsu_buffer_select));
@@ -443,7 +444,7 @@ static void start_ab13(Carried *cr, uint32_t b)
     cyc(64);
     hw_wr(b | 0x3034, 0x01);
     cyc(24);
-    cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(0x7E0000 | W(gsu_scmr_shadow)) | 0x18));
+    cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(RD8(gsu_scmr_shadow) | 0x18));
     set_p(cr, nz8(cr->p, (uint8_t)cr->a));
     cyc(40);
     hw_wr(b | 0x303A, (uint8_t)cr->a);
@@ -484,7 +485,7 @@ void FrameRunGsuAB13B(Carried *cr)
     r_sep(cr, P_M);
     b = (uint32_t)cr->db << 16;
     cyc(46);
-    r_lda8(cr, 0x7E0000 | W(wram_0D62));
+    r_lda8(cr, WA(wram_0D62));
     if ((uint8_t)cr->a)
         { cyc(62); w_FrameObjectsWhileGsuRuns(cr); cyc(88); }
     else
@@ -495,7 +496,7 @@ void FrameRunGsuAB13B(Carried *cr)
     cyc(16);
     r_lda16(cr, W(gsu_wait_count));
     cyc(24);
-    wr16(0x7E0000 | W(gsu_ab13_polls), cr->a);
+    WR16(gsu_ab13_polls, cr->a);
     (cyc(46), w_MapMarkersPanelB(cr));
     cyc(44);                            /* RTL */
 }
@@ -532,9 +533,9 @@ void FrameRunGsuAB13A(Carried *cr)
     (cyc(22), GsuParamsUpdate_cr(cr));
     b = (uint32_t)cr->db << 16;
     cyc(24);
-    wr8(0x7E0000 | W(gsu_ab13_polls), 0x00);
+    WR8(gsu_ab13_polls, 0x00);
     cyc(24);
-    wr8(0x7E0000 | W(wram_1F22), 0x00);
+    WR8(wram_1F22, 0x00);
     start_ab13(cr, b);
     HudFrameWhileGsuRuns(cr);
     (cyc(88), HudGaugesPanelA_cr(cr));

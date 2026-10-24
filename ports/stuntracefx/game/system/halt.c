@@ -13,6 +13,7 @@
 #include "system_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 /*
  * @routine 0B:E41D SystemHalt
@@ -158,7 +159,7 @@ void DebugByteHalt(uint16_t d)
         cyc(70);
         ppu_wr(INIDISP, 0x0F);
         cyc(40);
-        wr8(0x7E0000 | W(fade_level_hi), 0x0F);
+        WR8(fade_level_hi, 0x0F);
         cyc(32);
         wr8((uint16_t)(d + W(dp_00)), 0x02);
         cyc(70);
@@ -166,15 +167,15 @@ void DebugByteHalt(uint16_t d)
         cyc(32);
         wr8((uint16_t)(d + W(text_pos) + 1), 0x06);
         cyc(40);
-        wr8(0x7E0000 | W(text_half), 0x00);
+        WR8(text_half, 0x00);
         (cyc(90), DebugPrintHexByte(0x03, 0x69, P_M)) /* PLA, JSL */;
         cyc(46);
-        wr8(0x7E0000 | W(wram_0357), 0x00);
+        WR8(wram_0357, 0x00);
         cyc(22);                        /* REP #$20 */
         cyc(24);
-        wr16(0x7E0000 | W(gsu_buffer_select), 0x0000);
+        WR16(gsu_buffer_select, 0x0000);
         cyc(24);
-        v = (uint16_t)(rd16(0x7E0000 | W(gsu_scmr_shadow)) & 0xFFF7);
+        v = (uint16_t)(RD16(gsu_scmr_shadow) & 0xFFF7);
         cyc(48);
         hw_wr16(b | 0x303A, v);
         cyc(56);
@@ -182,7 +183,7 @@ void DebugByteHalt(uint16_t d)
         cyc(16);
         wr16((uint16_t)(d + W(gsu_screen_start_dp)), 0x2C00);
         cyc(24);
-        v = (uint16_t)(rd16(0x7E0000 | W(gsu_scmr_shadow)) | 0x0018);
+        v = (uint16_t)(RD16(gsu_scmr_shadow) | 0x0018);
         cyc(48);
         hw_wr16(b | 0x303A, v);
         cyc(70);

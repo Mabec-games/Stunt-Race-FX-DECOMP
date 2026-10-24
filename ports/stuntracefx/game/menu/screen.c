@@ -14,6 +14,7 @@ void ApproachTargetZero(uint8_t bank);
 #include "system_calls.h"
 #include "menu_calls.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 uint8_t SaveChecksum(void);
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
@@ -210,7 +211,7 @@ void MenuOamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
     uint16_t w;
 
     while ((w = rd16(cyc_then(138, b | (uint16_t)(0xFCA2 + *y)))) != 0xFFFF) {
-        wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + *x), w);
+        WR16I(oam_buffer, *x, w);
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 2);
         cyc(56);
@@ -265,7 +266,7 @@ uint16_t MenuPictureToVram(uint8_t bank, uint16_t in68, uint16_t in6a, uint16_t 
         cyc(24);
         ppu_wr16(VMDATAL, w);
         *x = (uint16_t)(*x + 2);
-    } while (*x != rd16(cyc_then(52, 0x7E0000 | W(menu_picture_size))));
+    } while (*x != rd16(cyc_then(52, WA(menu_picture_size))));
     cyc(86);
     return w;
 }
@@ -545,7 +546,7 @@ static uint16_t scale_component(uint8_t v)
     cyc(70);
     io_wr8(WRMPYA, v);
     cyc(24);
-    io_wr8(WRMPYB, f = cyc_then(24, rd8(0x7E0000 | W(scratch_11df))));
+    io_wr8(WRMPYB, f = cyc_then(24, RD8(scratch_11df)));
     cyc(102);
     return io_rd16(RDMPYL, cpu_mul(v, f));
 }
@@ -561,24 +562,24 @@ uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y)
         first = 0;
         c = rd16(W(palette_saved) + *x);
         cyc(24);
-        wr16(0x7E0000 | W(scratch_11e3), c);
+        WR16(scratch_11e3, c);
         prod = scale_component((uint8_t)(c & 0x1F));
         cyc(110);
-        wr16(0x7E0000 | W(scratch_11e1), (uint16_t)(((prod << 3) >> 8) & 0x1F));
+        WR16(scratch_11e1, (uint16_t)(((prod << 3) >> 8) & 0x1F));
         cyc(24);
-        c = rd16(0x7E0000 | W(scratch_11e3));
+        c = RD16(scratch_11e3);
         cyc(62);
         prod = scale_component((uint8_t)((c & 0x03E0) >> 5));
         cyc(48);
-        wr16(0x7E0000 | W(scratch_11e1), cyc_then(24, (uint16_t)((prod & 0x03E0) | rd16(0x7E0000 | W(scratch_11e1)))));
+        WR16(scratch_11e1, cyc_then(24, (uint16_t)((prod & 0x03E0) | RD16(scratch_11e1))));
         cyc(24);
-        c = rd16(0x7E0000 | W(scratch_11e3));
+        c = RD16(scratch_11e3);
         cyc(72);
         prod = scale_component((uint8_t)((c & 0x7C00) >> 10));
         cyc(110);
-        r = (uint16_t)((((prod & 0x03E0) >> 3) << 8) | rd16(0x7E0000 | W(scratch_11e1)));
+        r = (uint16_t)((((prod & 0x03E0) >> 3) << 8) | RD16(scratch_11e1));
         cyc(24);
-        wr16(0x7E0000 | W(scratch_11e1), r);
+        WR16(scratch_11e1, r);
         cyc(32);
         wr16(W(wram_7EFD65) + *x, r);
         *x = (uint16_t)(*x + 2);
@@ -644,12 +645,12 @@ uint16_t MenuPictureInsetGrid(uint8_t bank)
     for (i = 0; i < 0x180; i++, x = (uint16_t)(x + 2))
         { cyc(18); a = raise_tile(x); }
     cyc(82);
-    wr16(0x7E0000 | W(scratch_11df), 0x000A);
+    WR16(scratch_11df, 0x000A);
     do {
         for (i = 0; cyc_loop(2, i < 4); i++, x = (uint16_t)(x + 2))
             { raise_tile(x); cyc(16); }
         cyc(42);
-        a = (uint16_t)(rd16(0x7E0000 | W(scratch_11e1)) | 0x2000);
+        a = (uint16_t)(RD16(scratch_11e1) | 0x2000);
         for (i = 0; i < 13; i++, x = (uint16_t)(x + 2)) {
             cyc(110);
             wr16(0x703800 + x, cyc_then(70, (uint16_t)(rd16(0x703000 + x) + 0x0100)));
@@ -662,11 +663,11 @@ uint16_t MenuPictureInsetGrid(uint8_t bank)
         for (i = 0; i < 15; i++, x = (uint16_t)(x + 2))
             { cyc(18); a = raise_tile(x); }
         cyc(58);
-        wr16(0x7E0000 | W(scratch_11e1), cyc_then(14, (uint16_t)(rd16(0x7E0000 | W(scratch_11e1)) + 1)));
+        WR16(scratch_11e1, cyc_then(14, (uint16_t)(RD16(scratch_11e1) + 1)));
         cyc(24);
-        rows = (uint16_t)(rd16(0x7E0000 | W(scratch_11df)) - 1);
+        rows = (uint16_t)(RD16(scratch_11df) - 1);
         cyc(14);
-        wr16(0x7E0000 | W(scratch_11df), rows);
+        WR16(scratch_11df, rows);
     } while (cyc_loop(22, !(rows & 0x8000)));
     for (i = 0; cyc_loop(18, i < 0xA0); i++, x = (uint16_t)(x + 2))
         a = w = raise_tile(x);
@@ -719,7 +720,7 @@ static uint16_t picture_to_vram(uint8_t bank, uint16_t in68, uint16_t in6a, uint
 static void course_picture(uint32_t table, uint16_t *in68, uint16_t *in6a)
 {
     cyc(64);
-    uint16_t c = rd16(0x7E0000 | W(course)), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
+    uint16_t c = RD16(course), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
 
     cyc(168);
     *in68 = rd16(table + i);
@@ -786,11 +787,11 @@ uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor)
     uint16_t x = 0x01A0, y = 0x0007;
 
     cyc(24);
-    wr16(0x7E0000 | W(scratch_11df), factor);
+    WR16(scratch_11df, factor);
     cyc(140);
     MenuPaletteScale(bank, &x, &y);
     cyc(60);
-    wr16(0x7E0000 | W(scratch_11df), factor);
+    WR16(scratch_11df, factor);
     x = 0x0120;
     y = 0x0007;
     cyc(110);
@@ -800,7 +801,7 @@ uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor)
 void MenuSpritePalettesScale_cr(Carried *cr)
 {
     cr->a = MenuSpritePalettesScale(cr->db, cr->a);
-    cr->x = rd16(0x7E0000 | W(actor_current));
+    cr->x = RD16(actor_current);
     cr->y = 0xFFFF;
     set_p(cr, nz16(cr->p, cr->x));
 }
@@ -827,13 +828,13 @@ static uint16_t cross_fade(uint8_t bank, uint16_t n, uint16_t *factor)
     uint16_t x = 0x0080, y = 0x003F;
 
     cyc(114);
-    wr16(0x7E0000 | W(scratch_11df), rd16(0x0BCFE5 + (uint16_t)(n & 0xFFFE)));
+    WR16(scratch_11df, rd16(0x0BCFE5 + (uint16_t)(n & 0xFFFE)));
     cyc(110);
     MenuPaletteScale(bank, &x, &y);
     cyc(24);
-    *factor = (uint16_t)(((uint16_t)(rd16(0x7E0000 | W(scratch_11df)) - 1) ^ 0x001F) + 1);
+    *factor = (uint16_t)(((uint16_t)(RD16(scratch_11df) - 1) ^ 0x001F) + 1);
     cyc(76);
-    wr16(0x7E0000 | W(scratch_11df), *factor);
+    WR16(scratch_11df, *factor);
     x = 0x0018;
     y = 0x0003;
     cyc(110);
@@ -904,7 +905,7 @@ static uint16_t picture_dc8c_grid(uint8_t bank, uint16_t first)
     cyc(154);
     GsuCF42To3000(0xDC8C, 0x001C);
     cyc(88);
-    wr16(0x7E0000 | W(scratch_11e1), first);
+    WR16(scratch_11e1, first);
     cyc(46);
     return cyc_then(70, MenuPictureInsetGrid(bank));
 }
@@ -1385,7 +1386,7 @@ void PictureCellAttributes(Carried *cr)
         r_lda16(cr, a);
         r_and16(cr, 0x01FF);
         cyc(46);
-        cr->a |= rd16(0x7E0000 | W(scratch_11df));
+        cr->a |= RD16(scratch_11df);
         cyc(32);
         wr16(a, cr->a);
     }
@@ -1864,18 +1865,18 @@ void ChampionScreenRun(Carried *cr)
         (cyc(62), MenuOamBuild_cr(cr));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(46);
-        wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
+        WR16(menu_joy1_pressed, 0x0000);
         cyc(24);
-        wr16(0x7E0000 | W(menu_joy2_pressed), 0x0000);
+        WR16(menu_joy2_pressed, 0x0000);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(46);
-        cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(rd8(0x7E0000 | W(frame_update_flags)) | 0x0F));
+        cr->a = (uint16_t)((cr->a & 0xFF00) | (uint8_t)(RD8(frame_update_flags) | 0x0F));
         set_p(cr, nz8(cr->p, (uint8_t)cr->a));
         cyc(40);
-        wr8(0x7E0000 | W(frame_update_flags), (uint8_t)cr->a);
+        WR8(frame_update_flags, (uint8_t)cr->a);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
         cyc(46);
-        r_lda16(cr, 0x7E0000 | W(menu_exit));
+        r_lda16(cr, WA(menu_exit));
     } while (!cr->a);
     cyc(62);
     w_ApproachTargetZero(cr);
@@ -1994,19 +1995,19 @@ void TitleScreenLoop(Carried *cr)
             }
         }
         cyc(70);
-        wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
+        WR16(menu_joy1_pressed, 0x0000);
         cyc(24);
-        wr16(0x7E0000 | W(menu_joy2_pressed), 0x0000);
+        WR16(menu_joy2_pressed, 0x0000);
         r_sep(cr, P_M);
         cyc(46);
-        r_lda8(cr, 0x7E0000 | W(frame_update_flags));
+        r_lda8(cr, WA(frame_update_flags));
         cr->a = (uint16_t)(cr->a | 0x0F);
         set_p(cr, nz8(cr->p, (uint8_t)cr->a));
         cyc(40);
-        wr8(0x7E0000 | W(frame_update_flags), (uint8_t)cr->a);
+        WR8(frame_update_flags, (uint8_t)cr->a);
         r_rep(cr, P_M | P_X);
         cyc(24);
-        r_lda16(cr, 0x7E0000 | W(menu_exit));
+        r_lda16(cr, WA(menu_exit));
         if (cr->a) {
             cyc(52);
             r_lda16_imm(cr, 0x0000);

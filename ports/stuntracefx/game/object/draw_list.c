@@ -6,6 +6,7 @@
 #include "object_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 #define DRAW_LIST 0xF77Fu         /* the records, 30 bytes each, bank $7E */
 #define OBJ(o, f) (0x7E0000 | W(obj_base) + (uint16_t)((f) + (o)))
@@ -87,21 +88,21 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(30);
     v = rd8(OBJ(o, OBJ_OFF(obj_5a)));
     if (!(v & 0x80))
-        { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
+        { cyc(40); v = RD8(wram_05E9); } else { cyc(22); }
     cyc(46);
     wr8(REC(r, W(draw_palette)), (uint8_t)(v & 0x7F));
     cyc(24);
-    if (rd8((0x7E0000 | W(draw_side)))) {
+    if (rd8((WA(draw_side)))) {
         cyc(46);
         v = rd8(OBJ(o, OBJ_OFF(obj_19)));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); }
+            { cyc(40); v = RD8(wram_05E9); }
         cyc(22);
     } else {
         cyc(52);
         v = rd8(OBJ(o, OBJ_OFF(obj_18)));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
+            { cyc(40); v = RD8(wram_05E9); } else { cyc(22); }
     }
     cyc(46);
     wr8(REC(r, W(draw_frame)), (uint8_t)(v & 0x7F));
@@ -114,7 +115,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(52);
     wr16(REC(r, W(draw_anim)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_5d)))));
     cyc(90);
-    wr16((0x7E0000 | W(draw_count)), cyc_then(14, (uint16_t)(rd16((0x7E0000 | W(draw_count))) + 1)));
+    wr16((WA(draw_count)), cyc_then(14, (uint16_t)(rd16((WA(draw_count))) + 1)));
     return (uint16_t)(r + W(draw_60) + 1);
 }
 
@@ -133,14 +134,14 @@ static int drawn(uint16_t o)
         cyc(94);
         if (rd8(OBJ(o, OBJ_OFF(obj_26))) == 0x02) {
             cyc(62);
-            if (rd8((0x7E0000 | W(draw_side))))
+            if (rd8((WA(draw_side))))
                 return 0;
-        } else { cyc(56); if (!rd8((0x7E0000 | W(draw_side)))) {
+        } else { cyc(56); if (!rd8((WA(draw_side)))) {
             return 0;
         } }
     } else { cyc(48); }
     cyc(68);
-    n = (int16_t)(rd16((0x7E0000 | W(draw_count))) - 0x0031);
+    n = (int16_t)(rd16((WA(draw_count))) - 0x0031);
     if (n >= 0)
         { cyc(8); return 0; }
     cyc(76);
@@ -173,7 +174,7 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
         cyc(44);
         if (!next) {
             cyc(2);
-            wr16((0x7E0000 | W(draw_object)), o);
+            wr16((WA(draw_object)), o);
             if (drawn(o))
                 r = draw_record(o, r); else { cyc(62); }
         }
@@ -197,19 +198,19 @@ static void draw_triggers(unsigned end, ObjectDrawListEnd *e)
 
     for (;;) {
         cyc(24);
-        pos = rd16((0x7E0000 | W(trigger_pos)));
+        pos = rd16((WA(trigger_pos)));
         cyc(30);
-        a = rd16((0x7E0000 | W(group_trigger_list)) + pos);
+        a = rd16((WA(group_trigger_list)) + pos);
         e->x = pos;
         if (!a)
             { cyc(end); return; }
         cyc(46);
-        wr16((0x7E0000 | W(trigger_word)), a);
+        wr16((WA(trigger_word)), a);
         cyc(30);
-        a = rd16((0x7E0000 | W(group_trigger_list)) + 2 + pos);
+        a = rd16((WA(group_trigger_list)) + 2 + pos);
         pos = (uint16_t)(pos + 4);
         cyc(80);
-        wr16((0x7E0000 | W(trigger_pos)), pos);
+        wr16((WA(trigger_pos)), pos);
         cyc(70);
         a = rd16(W(object_buckets) + (a & 0x07FE));
         if (!a)
@@ -225,9 +226,9 @@ ObjectDrawListEnd ObjectDrawListBuild(uint16_t y)
     ObjectDrawListEnd e = {0, y};
 
     cyc(178);
-    wr16((0x7E0000 | W(draw_count)), 0x0000);
+    wr16((WA(draw_count)), 0x0000);
     cyc(24);
-    wr16((0x7E0000 | W(trigger_pos)), 0x0000);
+    wr16((WA(trigger_pos)), 0x0000);
     cyc(40);
     wr16(W(draw_next), DRAW_LIST);
     draw_triggers(144, &e);

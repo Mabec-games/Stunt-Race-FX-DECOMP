@@ -14,6 +14,7 @@
 #include "menu_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
@@ -40,7 +41,7 @@ static void queue_from_gsu_ram(uint16_t size, uint16_t src, uint16_t vram)
 static uint16_t next_step(uint16_t next)
 {
     cyc(0);
-    uint16_t x = rd16(0x7E0000 | W(actor_current));
+    uint16_t x = RD16(actor_current);
 
     cyc(46);
     wr16((uint16_t)(x + W(actor_handler)), next);

@@ -8,6 +8,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
 
@@ -77,7 +78,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t a, v;
     int rep;
 
-    a = rd16(cyc_then(24, (0x7E0000 | W(wram_118F)))) & 0x0200;
+    a = rd16(cyc_then(24, (WA(wram_118F)))) & 0x0200;
     *p = nz16(*p, a);
     if (a) {
         cyc(72);
@@ -94,7 +95,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             wr16(W(wram_18ED), a);
         }
     } else { cyc(46); }
-    a = rd16(cyc_then(24, (0x7E0000 | W(wram_118F)))) & 0x0100;
+    a = rd16(cyc_then(24, (WA(wram_118F)))) & 0x0100;
     *p = nz16(*p, a);
     if (a) {
         cyc(72);
@@ -120,7 +121,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(60);
     rep = hold_repeats(rd16(W(joy1_held)) & 0x0800, W(wram_190B), p, &a);
     if (!rep) {
-        a = rd16((0x7E0000 | W(wram_118F))) & 0x0800;
+        a = rd16((WA(wram_118F))) & 0x0800;
         *p = nz16(*p, a);
     }
     if (rep || a) {
@@ -143,7 +144,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(78);
     rep = hold_repeats(rd16(W(joy1_held)) & 0x0400, W(wram_190D), p, &a);
     if (!rep) {
-        a = rd16((0x7E0000 | W(wram_118F))) & 0x0400;
+        a = rd16((WA(wram_118F))) & 0x0400;
         *p = nz16(*p, a);
         if (!a)
             { cyc(88); return a; }
@@ -220,7 +221,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint16_t i, v, a;
 
-    wr16((0x7E0000 | W(menu_joy1_pressed)), cyc_then(24, 0x0000));
+    wr16((WA(menu_joy1_pressed)), cyc_then(24, 0x0000));
     cyc(32);
     i = (uint16_t)(rd16(W(word_list_a_size)) - 2);
     if (!(i & 0x8000)) {
@@ -228,9 +229,9 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             *x = i;
             cyc(90);
             v = rd16(W(word_list_a) + i);
-            wr16((0x7E0000 | W(wram_118F)), cyc_then(24, v));
-            v |= rd16(cyc_then(24, (0x7E0000 | W(menu_joy1_pressed))));
-            wr16((0x7E0000 | W(menu_joy1_pressed)), cyc_then(24, v));
+            wr16((WA(wram_118F)), cyc_then(24, v));
+            v |= rd16(cyc_then(24, (WA(menu_joy1_pressed))));
+            wr16((WA(menu_joy1_pressed)), cyc_then(24, v));
             cyc(76);
             MenuInitialsStep(bank, x, y, p);
             i = (uint16_t)(i - 2);
@@ -241,7 +242,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(70);
     MenuActorFind(bank, 0x0009, x, y, p);
     a = MenuRowBlinkSettings(bank, x, y, p);
-    *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
+    *x = rd16(cyc_then(24, (WA(actor_current))));
     *p = nz16(*p, *x);
     cyc(42);
     return a;
@@ -350,19 +351,19 @@ void MenuInitialsFrame(Carried *cr)
     wr16(W(wram_18FD), 0x0001);
     (cyc(46), MenuInitialsPresses_cr(cr));
     cyc(24);
-    pad = rd16(0x7E0000 | W(menu_joy1_pressed));
+    pad = RD16(menu_joy1_pressed);
     cr->y = pad;
     cyc(24);
-    wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
+    WR16(menu_joy1_pressed, 0x0000);
     cr->a = pad;
     r_and16(cr, 0x9000);
     if (!(cr->p & P_Z)) {
         cr->a = 0x0001;
         cyc(106);
-        wr16(0x7E0000 | W(menu_exit), 0x0001);
+        WR16(menu_exit, 0x0001);
         sound_port0(cr, 0x46);
         cyc(46);
-        cr->y = rd16(0x7E0000 | W(actor_current_slot));
+        cr->y = RD16(actor_current_slot);
         set_p(cr, nz16(cr->p, cr->y));
         (cyc(46), MenuActorFree_cr(cr));
         cyc(42);
@@ -372,7 +373,7 @@ void MenuInitialsFrame(Carried *cr)
     r_and16(cr, 0x4000);
     if (!(cr->p & P_Z)) {
         cyc(158);
-        cr->x = rd16(0x7E0000 | W(actor_current));
+        cr->x = RD16(actor_current);
         set10(cr, 0x0005, 0x0000);
         {
             cyc(30);
@@ -503,7 +504,7 @@ void MenuSettingsFrame(Carried *cr)
             { cyc(16); kind_anim(cr, 0x0004, 0x008A); } else { cyc(22); }
     } else { cyc(22); }
     cyc(24);
-    cr->x = rd16(0x7E0000 | W(actor_current));
+    cr->x = RD16(actor_current);
     (cyc(46), MenuFixedColourDown_cr(cr));
     (cyc(46), MenuFixedColourDown_cr(cr));
     cr->a = 0x0000;
@@ -514,20 +515,20 @@ void MenuSettingsFrame(Carried *cr)
     cyc(56);
     wr16(W(wram_18FD), 0x0001);
     cyc(24);
-    cr->x = rd16(0x7E0000 | W(actor_current));
+    cr->x = RD16(actor_current);
     (cyc(46), w_MenuChoicePressesP1(cr));
     cyc(24);
-    cr->x = rd16(0x7E0000 | W(actor_current));
+    cr->x = RD16(actor_current);
     cyc(24);
-    pad = rd16(0x7E0000 | W(menu_joy1_pressed));
+    pad = RD16(menu_joy1_pressed);
     cr->y = pad;
     cyc(24);
-    wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
+    WR16(menu_joy1_pressed, 0x0000);
     cr->a = pad;
     r_and16(cr, 0x4000);
     if (cr->a) {
         cyc(106);
-        cr->x = rd16(0x7E0000 | W(actor_current));
+        cr->x = RD16(actor_current);
         cr->a = 0xC872;
         wr16(dpx(cr, 0x08), cyc_then(46, 0xC872));
         cr->a = 0x0080;
@@ -541,7 +542,7 @@ void MenuSettingsFrame(Carried *cr)
         set10(cr, 0x0005, 0xFFFF);
         kinds67_anim(cr);
         cyc(60);
-        cr->x = rd16(0x7E0000 | W(actor_current));
+        cr->x = RD16(actor_current);
         set_p(cr, nz16(cr->p, cr->x));
         cyc(42);
         return;
@@ -563,7 +564,7 @@ void MenuSettingsFrame(Carried *cr)
                 set10(cr, 0x0005, 0xFFFF);
                 sound_port0(cr, 0x46);
                 cyc(46);
-                cr->x = rd16(0x7E0000 | W(actor_current));
+                cr->x = RD16(actor_current);
                 cr->a = 0xBC9A;
                 wr16(dpx(cr, 0x08), cyc_then(46, 0xBC9A));
                 cr->a = 0x0001;

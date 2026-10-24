@@ -9,6 +9,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 static void io8(uint8_t bank, uint32_t reg, uint8_t v)
@@ -130,9 +131,9 @@ void RaceScreenSetup(uint8_t bank)
     unsigned i;
 
     cyc(70);
-    wr16(0x7E0000 | W(gsu_buffer_select), 0x0000);
+    WR16(gsu_buffer_select, 0x0000);
     cyc(48);
-    wr16(0x7E0000 | W(wram_0D81), 0xFFFF);
+    WR16(wram_0D81, 0xFFFF);
     cyc(38);
     for (i = 0; i < 10; i++)
         { cyc(32); wr8(W(object_buckets) | ones[i], 0x01); }
@@ -140,7 +141,7 @@ void RaceScreenSetup(uint8_t bank)
     for (i = 0; i < 4; i++)
         { cyc(32); wr8(W(object_buckets) | zeros[i], 0x00); }
     cyc(24);
-    wr8(0x7E0000 | W(colour_math_mode), 0x00);
+    WR8(colour_math_mode, 0x00);
     cyc(40);
     io8(bank, DMAP1, 0x01);
     cyc(40);
@@ -164,24 +165,24 @@ void RaceScreenSetup(uint8_t bank)
     /* The scroll HDMA table: $38 lines of $0E33, $4F lines of $0E37, then
        three single lines of $0E37 and the end. */
     cyc(62);
-    wr8(0x7E0000 | W(scroll_hdma), 0x38);
+    WR8(scroll_hdma, 0x38);
     cyc(24);
-    wr8(0x7E0000 | W(wram_10AB), cyc_then(24, rd8(0x7E0000 | W(wram_0E33))));
+    WR8(wram_10AB, cyc_then(24, RD8(wram_0E33)));
     cyc(24);
-    wr8(0x7E0000 | W(wram_10AC), cyc_then(24, rd8(0x7E0000 | W(wram_0E34))));
+    WR8(wram_10AC, cyc_then(24, RD8(wram_0E34)));
     cyc(40);
-    wr8(0x7E0000 | W(wram_10AD), 0x4F);
+    WR8(wram_10AD, 0x4F);
     for (i = 0; i < 4; i++) {
         cyc(24);
-        lo = rd8(0x7E0000 | W(scroll_value));
+        lo = RD8(scroll_value);
         cyc(24);
-        wr8(0x7E0000 | (uint16_t)(W(scroll_hdma) + 4 + 3 * i), lo);
+        WR8I(scroll_hdma, 4 + 3 * i, lo);
         cyc(24);
-        hi = rd8(0x7E0000 | W(wram_0E38));
+        hi = RD8(wram_0E38);
         cyc(24);
-        wr8(0x7E0000 | (uint16_t)(W(scroll_hdma) + 5 + 3 * i), hi);
+        WR8I(scroll_hdma, 5 + 3 * i, hi);
         cyc(40);
-        wr8(0x7E0000 | (uint16_t)(W(scroll_hdma) + 6 + 3 * i), i < 3 ? 0x01 : 0x00);
+        WR8I(scroll_hdma, 6 + 3 * i, i < 3 ? 0x01 : 0x00);
     }
     cyc(40);
     io8(bank, DMAP2, 0x02);
@@ -194,11 +195,11 @@ void RaceScreenSetup(uint8_t bank)
     io8(bank, A1T2H, 0x10);
 
     cyc(62);
-    wr8(0x7E0000 | W(wram_0D45), 0x02);
+    WR8(wram_0D45, 0x02);
     cyc(40);
-    wr8(0x7E0000 | W(wram_0E91), 0xF0);
+    WR8(wram_0E91, 0xF0);
     cyc(24);
-    wr8(0x7E0000 | W(wram_0E92), 0xF0);
+    WR8(wram_0E92, 0xF0);
     cyc(40);
     io8(bank, BGMODE, 0x0B);
     cyc(40);
@@ -270,11 +271,11 @@ void VideoStartUploads(uint8_t bank)
     cyc(16);
     wr8(W(dp_00), 0x00);
     cyc(24);
-    rd8(0x7E0000 | W(wram_1073));
+    RD8(wram_1073);
     cyc(54);
     hw_rd16(GSU_SFR);
     cyc(48);
-    wr16(0x7E0000 | W(gsu_scmr_shadow), 0x0003);
+    WR16(gsu_scmr_shadow, 0x0003);
     cyc(40);
     io8(bank, VMAIN, 0x80);
     cyc(48);
@@ -516,9 +517,9 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
     cyc(16);
     rv_gsu_vram(0xF80D, 0xF7DA);
     cyc(46);
-    w = (uint16_t)(rd16(0x7E0000 | W(course)) << 1);
+    w = (uint16_t)(RD16(course) << 1);
     cyc(52);
-    k3 = (uint16_t)((w + rd16(0x7E0000 | W(course))) & 0x00FF);
+    k3 = (uint16_t)((w + RD16(course)) & 0x00FF);
     (cyc(100), PaletteCourseLoad(0x03, &rx, &ry, &p));
     cyc(64);
     (cyc(62), CgramDmaAll());
@@ -526,7 +527,7 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
     rd16(b + 0xF807 + k3);                          /* read and not used */
     GradientBuildColours(k3, &carry);
     cyc(104 + 46);
-    if (rd8(0x7E0000 | W(wram_0D62))) {
+    if (RD8(wram_0D62)) {
         cyc(138);
         MenuCourseGraphics(0x03);
         cyc(112 + 122);
@@ -559,7 +560,7 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
     cyc(62 + 98 - 98);                              /* JSL; CoursePictureToVram's PHP ... */
     ra = CoursePictureToVram(0x03);
     cyc(22 + 24);                                   /* SEP #$30, LDA */
-    v = (uint8_t)(rd8(0x7E0000 | W(hud_mode)) << 1);
+    v = (uint8_t)(RD8(hud_mode) << 1);
     cyc(66);
     w = rd16(b | (uint16_t)(0xDA53 + v));
     if (w == 0xDB23)
@@ -575,7 +576,7 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
         goto done;
     }
     cyc(54);
-    if (!rd8(0x7E0000 | W(hud_blank))) {
+    if (!RD8(hud_blank)) {
         cyc(32);
         rv_gsu_vram(0xF830, 0xF7D4);
         cyc(58);
@@ -589,7 +590,7 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
     } else { cyc(14); }
 mode3:
     cyc(32);
-    v = rd8(0x7E0000 | W(wram_10CD));
+    v = RD8(wram_10CD);
     cyc(38);
     if (!v) {
         rv_gsu_vram(0xF830, 0xF7D4);
@@ -608,7 +609,7 @@ mode0:
     cyc(18);
     rv_gsu_3000(0x9228, 0x001D, 0);
     cyc(162 - 98);
-    rx = (uint16_t)((rd16(0x7E0000 | W(wram_0D8B)) & 0x000F) << 8);  /* XBA */
+    rx = (uint16_t)((RD16(wram_0D8B) & 0x000F) << 8);  /* XBA */
     cyc(130);
     ppu_wr16(b | 0x2116, 0x5B40);
     for (w = 0x0080; w; w--) {
@@ -709,18 +710,18 @@ int RaceVideoInit(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
     int r;
 
     cyc(118);
-    rvi_v = rd8(0x7E0000 | W(wram_0D24));
+    rvi_v = RD8(wram_0D24);
     if (rvi_v >= 0x03) {
         cyc(56);
-        wr8(0x7E0000 | W(wram_0EED), 0x00);
+        WR8(wram_0EED, 0x00);
         cyc(24);
-        wr8(0x7E0000 | W(wram_0EEE), 0x00);
+        WR8(wram_0EEE, 0x00);
         cyc(24);
-        wr8(0x7E0000 | W(wram_0EEF), 0x00);
+        WR8(wram_0EEF, 0x00);
         cyc(22 + 24);
-        wr16(0x7E0000 | W(wram_0E6C), 0x0000);
+        WR16(wram_0E6C, 0x0000);
         cyc(24);
-        wr16(0x7E0000 | W(wram_0E6E), 0x0000);
+        WR16(wram_0E6E, 0x0000);
     } else { cyc(38); }
     cyc(62);
     r = RaceVideoSetup(x_in, a, x, y);
@@ -816,12 +817,12 @@ void RaceHudLoad(Carried *cr)
     SoundReset_cr(cr);
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, 0x7E0000 | W(digit62_override));
-    if ((uint8_t)cr->a && (r_lda8(cr, cyc_then(40, 0x7E0000 | W(hud_mode))), !(uint8_t)cr->a)) {
+    r_lda8(cr, WA(digit62_override));
+    if ((uint8_t)cr->a && (r_lda8(cr, cyc_then(40, WA(hud_mode))), !(uint8_t)cr->a)) {
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
         set_p(cr, nz8(cr->p, 0x04));
         cyc(56);
-        wr8(0x7E0000 | W(wram_0D89), 0x04);
+        WR8(wram_0D89, 0x04);
         cyc(22);                                /* BRA */
     } else
         { cyc(84); SoundIndicesFromHandlers_cr(cr); }
@@ -830,7 +831,7 @@ void RaceHudLoad(Carried *cr)
     video_gsu_3000(cr, 0x8078, 0x001D, 0);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(162);
-    w = rd16(0x7E0000 | W(hud_mode));
+    w = RD16(hud_mode);
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (w >> 15)));
     x = (uint16_t)(w << 1);
     cr->a = x;
@@ -851,7 +852,7 @@ void RaceHudLoad(Carried *cr)
     if (w == 0xDDCE) {
         r_sep(cr, P_M);
         cyc(40);
-        r_lda8(cr, 0x7E0000 | W(hud_blank));
+        r_lda8(cr, WA(hud_blank));
         if ((uint8_t)cr->a)
             w = 0xDD5E;
     }
@@ -875,14 +876,14 @@ void RaceHudLoad(Carried *cr)
     (cyc(68), RaceTimeInit_cr(cr));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(46);
-    x = (uint16_t)((rd16(0x7E0000 | W(course)) & 0x00FF) << 1);
+    x = (uint16_t)((RD16(course) & 0x00FF) << 1);
     cr->x = x;
     cyc(132);
     cr->a = rd16(0x03F799 + x);
     wr16(0x700050, cr->a);
     r_sep(cr, P_M);
     cyc(46);
-    r_lda8(cr, 0x7E0000 | W(wram_0D62));
+    r_lda8(cr, WA(wram_0D62));
     if ((uint8_t)cr->a)
         { cyc(46); RaceHudSetupTwoPlayers(cr, pushed[0], pushed[1]); }
     else

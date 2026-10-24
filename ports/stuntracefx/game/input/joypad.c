@@ -7,6 +7,7 @@
 #include "hw.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 /*
@@ -148,10 +149,10 @@ void abi_JoypadAccumulate(void)
 static void serial_shift(uint8_t bit)
 {
     cyc(38);
-    uint8_t v = rd8(0x7E0000 | W(joy_serial_bits));
+    uint8_t v = RD8(joy_serial_bits);
 
     cyc(6);
-    wr8(0x7E0000 | W(joy_serial_bits), (uint8_t)(v << 1 | bit));
+    WR8(joy_serial_bits, (uint8_t)(v << 1 | bit));
 }
 
 /* The serial loop from count y (7 down to 0): each pass one read of data
@@ -162,14 +163,14 @@ static uint8_t serial_rest(uint32_t b, uint8_t port, int y, uint16_t lead)
     for (; y >= 0; y--, lead = 60)
         { cyc(lead); serial_shift((io_rd8(b | (uint16_t)(0x4016 + port), 0x00) & 0x02) ? (cyc(32), 1) : (cyc(38), 0)); }
     cyc(54);
-    return rd8(0x7E0000 | W(joy_serial_bits));
+    return RD8(joy_serial_bits);
 }
 
 /* Eight serial reads into a cleared $1182, first bit highest. */
 static uint8_t serial_byte(uint32_t b, uint8_t port)
 {
     cyc(24);
-    wr8(0x7E0000 | W(joy_serial_bits), 0x00);
+    WR8(joy_serial_bits, 0x00);
     return serial_rest(b, port, 7, 40);
 }
 
@@ -376,12 +377,12 @@ void FrameSoundAndJoypads(Carried *cr)
     cyc(92);
     for (i = 0; i < 2; i++) {
         cyc(24);
-        cr->a = rd16(0x7E0000 | (uint16_t)(W(menu_joy1_pressed) + i * 2));
+        cr->a = RD16I(menu_joy1_pressed, i * 2);
         cyc(24);
-        cr->a |= rd16(0x7E0000 | (uint16_t)(W(joy1_pressed) + i * 2));
+        cr->a |= RD16I(joy1_pressed, i * 2);
         set_p(cr, nz16(cr->p, cr->a));
         cyc(24);
-        wr16(0x7E0000 | (uint16_t)(W(menu_joy1_pressed) + i * 2), cr->a);
+        WR16I(menu_joy1_pressed, i * 2, cr->a);
     }
     cyc(42);
 }

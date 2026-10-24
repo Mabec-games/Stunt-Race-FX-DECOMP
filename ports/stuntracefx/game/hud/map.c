@@ -6,6 +6,7 @@
 #include "hud_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 /* Arithmetic shift right by 3, as three CMP #$8000 / ROR A. */
 static uint16_t asr3(uint16_t v)
@@ -57,7 +58,7 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(72);
         wr16(W(dp_08), v);
         cyc(30);
-        wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + *y), v);
+        WR16I(oam_buffer, *y, v);
         cyc(54);
         v = rd16(0x7E0000 | W(obj_26) + obj);
         cyc(16);
@@ -67,7 +68,7 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(16);
         wr16(W(dp_02), v);
         cyc(62);
-        wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + 2 + *y), v);
+        WR16I(oam_buffer, 2 + *y, v);
         cyc(108);
         *y = (uint16_t)(*y + rd16(W(dp_f5)));
     }
@@ -129,7 +130,7 @@ uint16_t MapMarkersPanelA(uint8_t bank, uint16_t *y)
     uint16_t x;
 
     cyc(46);
-    map_origin(0x7E0000 | W(map_a_x), 0xFFFC);
+    map_origin(WA(map_a_x), 0xFFFC);
     *y = 0x0158;
     cyc(86);                                    /* JSL */
     x = MapMarkerSprites(bank, y);
@@ -193,9 +194,9 @@ int MapMarkersPanelB(uint8_t bank, uint16_t *x, uint16_t *y)
     /* the setup's stores come before the $0D62 read that picks the first
        slot */
     cyc(10);
-    map_origin(0x7E0000 | W(map_b_x), 0x0004);
+    map_origin(WA(map_b_x), 0x0004);
     cyc(46);                                    /* SEP, LDA long */
-    v = rd8(0x7E0000 | W(wram_0D62));
+    v = RD8(wram_0D62);
     *y = v ? 0x0054 : 0x0180;
     cyc(v ? 108 : 124);                         /* BNE, LDY # (and BRA), JSL */
     *x = MapMarkerSprites(bank, y);

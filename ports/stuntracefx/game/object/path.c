@@ -8,6 +8,7 @@
 #include "machine.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 #define PATH_TABLE 0x0885B9u
 
@@ -15,7 +16,7 @@
 static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
 {
     (void)bank;
-    return 0x7E0000 | (uint16_t)(W(obj_base) + off + obj);
+    return WAI(obj_base, off + obj);
 }
 
 /* One halving as CMP #$8000 / ROR A / BPL / ADC #0 does it: an arithmetic
@@ -97,29 +98,29 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         link = rd16(cyc_then(74, field(bank, obj, OBJ_OFF(obj_link_w))));
         cyc(132);
         n = rd16(PATH_TABLE + 3 + t);
-        wr16(0x7E0000 | W(wram_1F4C), n & 0x00FF);
+        WR16(wram_1F4C, n & 0x00FF);
         for (i = 0; i < 3; i++) {
             cyc(92);
             v = rd16(PATH_TABLE + 4 + 2 * i + t);
             w = rd16(b | (uint16_t)(link + 0x20 + 2 * i));
             cyc(24);
-            wr16(0x7E0000 | (uint16_t)(W(wram_1F4E) + 2 * i), (uint16_t)(v - w));
+            WR16I(wram_1F4E, 2 * i, (uint16_t)(v - w));
         }
         cyc(60);
-        n = rd16(0x7E0000 | W(wram_1F4C));
+        n = RD16(wram_1F4C);
         cyc(44);
         while (n--) {
             for (i = 0; i < 3; i++) {
                 cyc(24);
-                v = rd16(0x7E0000 | (uint16_t)(W(wram_1F4E) + 2 * i));
-                wr16(0x7E0000 | (uint16_t)(W(wram_1F4E) + 2 * i), cyc_then(84, halve(v)));
+                v = RD16I(wram_1F4E, 2 * i);
+                WR16I(wram_1F4E, 2 * i, cyc_then(84, halve(v)));
             }
             cyc(52);
         }
         cyc(6);
         for (i = 0; i < 3; i++) {
             cyc(24);
-            v = rd16(0x7E0000 | (uint16_t)(W(wram_1F4E) + 2 * i));
+            v = RD16I(wram_1F4E, 2 * i);
             wr16(field(bank, obj, (uint16_t)(0x2E + 2 * i)), cyc_then(30, v));
         }
         *a = advance(bank, obj, 10, 0, p);

@@ -14,6 +14,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 uint8_t RandomStepLong(void);
 
@@ -354,7 +355,7 @@ static void turned_again(Carried *cr)
     wr8(dp(cr, 0x02), cyc_then(16, ld8(cr, dp(cr, 0x04))));
     wr8(dp(cr, 0x08), cyc_then(16, ld8(cr, dp(cr, 0x0A))));
     cyc(8);
-    wr8(dp(cr, 0x94), cyc_then(16, ld8(cr, 0x7E0000 | W(wram_05F2))));
+    wr8(dp(cr, 0x94), cyc_then(16, ld8(cr, WA(wram_05F2))));
 }
 
 /*
@@ -374,14 +375,14 @@ void PartOffset(Carried *cr)
     int neg;
 
     v = ld8(cr, cyc_then(14, F(W(obj_48), cr->x)));
-    wr8(0x7E0000 | W(wram_1F58), cyc_then(24, v));
+    WR8(wram_1F58, cyc_then(24, v));
     v = ld8(cr, cyc_then(14, F(W(obj_49), cr->x)));
-    wr8(0x7E0000 | W(wram_1F59), cyc_then(24, v));
+    WR8(wram_1F59, cyc_then(24, v));
     v = ld8(cr, cyc_then(14, F(W(obj_4a), cr->x)));
-    wr8(0x7E0000 | W(wram_1F5A), cyc_then(24, v));
-    neg = axis_from(cr, 0x7E0000 | W(wram_1F58), dp(cr, 0x02), dp(cr, 0x04), dp(cr, 0x05), 8);
-    neg = axis_from(cr, 0x7E0000 | W(wram_1F59), dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B), neg ? 30 : 8);
-    neg = axis_from(cr, 0x7E0000 | W(wram_1F5A), dp(cr, 0x94), 0x7E0000 | W(wram_05F2), 0x7E0000 | W(rot_z_high), neg ? 30 : 8);
+    WR8(wram_1F5A, cyc_then(24, v));
+    neg = axis_from(cr, WA(wram_1F58), dp(cr, 0x02), dp(cr, 0x04), dp(cr, 0x05), 8);
+    neg = axis_from(cr, WA(wram_1F59), dp(cr, 0x08), dp(cr, 0x0A), dp(cr, 0x0B), neg ? 30 : 8);
+    neg = axis_from(cr, WA(wram_1F5A), dp(cr, 0x94), WA(wram_05F2), WA(rot_z_high), neg ? 30 : 8);
     ld8(cr, cyc_then(neg ? 36 : 14, F(W(obj_16), cr->y)));   /* BRA, LDA abs,Y */
     (cyc(62), RotateXY_cr(cr));
     turned_again(cr);
@@ -397,9 +398,9 @@ void PartOffset(Carried *cr)
     r_lda16(cr, cyc_then(16, dp(cr, 0x0A)));
     r_asl16(cr);
     wr16(dp(cr, 0x0A), cyc_then(30, cr->a));
-    r_lda16(cr, cyc_then(24, 0x7E0000 | W(wram_05F2)));
+    r_lda16(cr, cyc_then(24, WA(wram_05F2)));
     r_asl16(cr);
-    wr16(0x7E0000 | W(wram_05F2), cyc_then(38, cr->a));
+    WR16(wram_05F2, cyc_then(38, cr->a));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(64);
 }
@@ -470,7 +471,7 @@ static void detach_frame(Carried *cr)
         cyc(22);
         add16m(cr, F(W(obj_pos_x), cr->x), dp(cr, 0x04), 30);
         add16m(cr, F(W(obj_pos_y), cr->x), dp(cr, 0x0A), 30);
-        add16m(cr, F(W(obj_pos_z), cr->x), 0x7E0000 | W(wram_05F2), 38);
+        add16m(cr, F(W(obj_pos_z), cr->x), WA(wram_05F2), 38);
         cyc(32);
         lda8(cr, v);
         v--;
@@ -560,8 +561,8 @@ static void return_frame(Carried *cr)
     r_add16(cr, rd16(cyc_then(30, dp(cr, 0x0A))));
     wr16(dp(cr, 0x0A), cyc_then(16, cr->a));
     r_lda16(cr, cyc_then(30, F(W(obj_pos_z), cr->y)));
-    r_add16(cr, rd16(cyc_then(38, 0x7E0000 | W(wram_05F2))));
-    wr16(0x7E0000 | W(wram_05F2), cyc_then(24, cr->a));
+    r_add16(cr, rd16(cyc_then(38, WA(wram_05F2))));
+    WR16(wram_05F2, cyc_then(24, cr->a));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     {
         static const uint16_t f[3] = {0x200C, 0x200E, 0x2010};
@@ -570,7 +571,7 @@ static void return_frame(Carried *cr)
 
         t[0] = dp(cr, 0x04);
         t[1] = dp(cr, 0x0A);
-        t[2] = 0x7E0000 | W(wram_05F2);
+        t[2] = WA(wram_05F2);
         for (i = 0; i < 3; i++) {
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
             r_lda16(cr, cyc_then(74, F(f[i], cr->x)));
@@ -803,7 +804,7 @@ void PartKnockOff(Carried *cr)
     (cyc(0), part_on_car(cr));
     add16m(cr, F(W(obj_pos_x), cr->x), dp(cr, 0x04), 30);
     add16m(cr, F(W(obj_pos_y), cr->x), dp(cr, 0x0A), 30);
-    add16m(cr, F(W(obj_pos_z), cr->x), 0x7E0000 | W(wram_05F2), 38);
+    add16m(cr, F(W(obj_pos_z), cr->x), WA(wram_05F2), 38);
     (cyc(62), ObjectVelocityFromRecordOf_cr(cr));
     (cyc(62), GsuRecordNew426_cr(cr));
     if (cr->p & P_N) {
@@ -847,7 +848,7 @@ void PartKnockOff(Carried *cr)
     r_asl16(cr);
     r_add16(cr, rd16(cyc_then(58, F(W(obj_vel_y), cr->x))));
     wr16(F(W(obj_vel_y), cr->x), cyc_then(30, cr->a));
-    r_lda16(cr, cyc_then(24, 0x7E0000 | W(wram_05F2)));
+    r_lda16(cr, cyc_then(24, WA(wram_05F2)));
     r_add16(cr, rd16(cyc_then(44, F(W(obj_vel_z), cr->x))));
     wr16(F(W(obj_vel_z), cr->x), cyc_then(30, cr->a));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -931,7 +932,7 @@ static void player1_frame(Carried *cr)
 {
     uint16_t sx;
 
-    st8i(cr, 0x7E0000 | W(current_player), 0x00);
+    st8i(cr, WA(current_player), 0x00);
     player_drive(cr);
     and8(cr, F(W(obj_24), cr->x), cyc_then(4, 0xFD));
     cr->y = cr->x;
@@ -1028,10 +1029,10 @@ void PlayerCar1(Carried *cr)
     (cyc(62), ObjectListAppend_cr(cr));
     add16(cr, F(W(obj_pos_y), cr->x), 0xFF60);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
-    r_lda16(cr, cyc_then(68, 0x7E0000 | W(hud_mode)));
+    r_lda16(cr, cyc_then(68, WA(hud_mode)));
     r_and16(cr, 0x00FF);
     if (!cr->a) {
-        cr->y = rd16(cyc_then(62, 0x7E0000 | W(bare_object_a)));
+        cr->y = rd16(cyc_then(62, WA(bare_object_a)));
         set_p(cr, nz16(cr->p, cr->y));
         r_lda16(cr, cyc_then(30, F(W(obj_1a_w), cr->y)));
         r_cmp16(cr, 0x8E2A);
@@ -1089,12 +1090,12 @@ void abi_PlayerCar1Step(void)
 /* 08:B049: player 2's frame (see PlayerCar2Step). */
 static void player2_frame(Carried *cr)
 {
-    st8i(cr, 0x7E0000 | W(current_player), 0x01);
+    st8i(cr, WA(current_player), 0x01);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
-    r_lda16(cr, cyc_then(46, 0x7E0000 | W(joy2_held)));
-    wr16(0x7E0000 | W(seq_input), cyc_then(24, cr->a));
-    r_lda16(cr, cyc_then(24, 0x7E0000 | W(wram_1F25)));
-    wr16(0x7E0000 | W(wram_1AF2), cyc_then(24, cr->a));
+    r_lda16(cr, cyc_then(46, WA(joy2_held)));
+    WR16(seq_input, cyc_then(24, cr->a));
+    r_lda16(cr, cyc_then(24, WA(wram_1F25)));
+    WR16(wram_1AF2, cyc_then(24, cr->a));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     (cyc(22), player_drive(cr));
     cyc(44);
@@ -1321,7 +1322,7 @@ static int shed(Carried *cr, uint16_t kind, uint8_t o48, uint8_t o49, uint8_t o4
     if (mark)
         or8(cr, F(W(obj_25), cr->y), 0x02);
     cyc(8);
-    lda8(cr, cyc_then(20, (uint8_t)(ld8(cr, 0x7E0000 | W(wram_1F58)) & 0x01)));
+    lda8(cr, cyc_then(20, (uint8_t)(ld8(cr, WA(wram_1F58)) & 0x01)));
     if (!(uint8_t)cr->a) {
         handler(cr, cr->y, 0xAC04);
         cyc(26);
@@ -1436,7 +1437,7 @@ void CarCrashParts(Carried *cr)
     static int (*const set[4])(Carried *) = {crash_set_a5e4, crash_set_a88b, crash_set_a33d, crash_set_a096};
     int i, hit;
 
-    wr8(0x7E0000 | W(wram_1F58), cyc_then(24, (uint8_t)cr->a));
+    WR8(wram_1F58, cyc_then(24, (uint8_t)cr->a));
     cyc(4);
     if (bits25(cr, cr->x, 0x04) || (cyc(0), bits25(cr, cr->x, 0x80)))
         { cyc(22); goto fail; }
@@ -1450,7 +1451,7 @@ void CarCrashParts(Carried *cr)
     }
     if (i == 8 || set[i & 3](cr))
         goto fail; else { cyc(4); }
-    lda8(cr, cyc_then(34, (uint8_t)(ld8(cr, 0x7E0000 | W(wram_1F58)) & 0x01)));
+    lda8(cr, cyc_then(34, (uint8_t)(ld8(cr, WA(wram_1F58)) & 0x01)));
     hit = (uint8_t)cr->a != 0;
     sound0(cr, hit ? 0x5B : (cyc(6), 0x43));
     cyc(hit ? 80 : 58);                 /* BRA after the hit's sound, CLC, RTL */
@@ -1509,7 +1510,7 @@ static void rival_frame(Carried *cr)
     uint8_t v;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
-    r_lda16(cr, cyc_then(46, 0x7E0000 | W(wram_1AEC)));
+    r_lda16(cr, cyc_then(46, WA(wram_1AEC)));
     r_and16(cr, 0x0400);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     if (cr->a) {
@@ -1532,7 +1533,7 @@ static void rival_frame(Carried *cr)
     if ((uint8_t)cr->a >= 0xF2)
         { cyc(6); rec_word(cr, 0x700070, 2, 0x0002); cyc(58); } else { cyc(26); }
     car = cr->x;
-    wr16(0x7E0000 | W(wram_1F18), cyc_then(24, car));
+    WR16(wram_1F18, cyc_then(24, car));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16(cr, cyc_then(52, F(W(obj_22), cr->x)));
     cr->x = cr->a;
@@ -1541,7 +1542,7 @@ static void rival_frame(Carried *cr)
     r_lda16(cr, (0x70002C + cr->x) & 0xFFFFFF);
     r_and16(cr, 0x0004);
     if (cr->a) {
-        cr->x = rd16(cyc_then(62, 0x7E0000 | W(wram_1F18)));
+        cr->x = rd16(cyc_then(62, WA(wram_1F18)));
         set_p(cr, nz16(cr->p, cr->x));
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         or8(cr, F(W(obj_25), cr->x), cyc_then(22, 0x10));
@@ -1550,9 +1551,9 @@ static void rival_frame(Carried *cr)
         CarCrashParts(cr);
         if (!(cr->p & P_C)) {
             cyc(40);                    /* BCS not taken, DEC abs to its read */
-            v = (uint8_t)(rd8(0x7E0000 | W(script_byte_1f71)) - 1);
+            v = (uint8_t)(RD8(script_byte_1f71) - 1);
             cyc(6);
-            wr8(0x7E0000 | W(script_byte_1f71), v);
+            WR8(script_byte_1f71, v);
             set_p(cr, nz8(cr->p, v));
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
             r_lda16(cr, cyc_then(52, F(W(obj_22), cr->x)));
@@ -1573,7 +1574,7 @@ static void rival_frame(Carried *cr)
         } else { cyc(22); }
     } else { cyc(44); }
     set_p(cr, (uint8_t)(cr->p | (P_M)));
-    cr->x = rd16(cyc_then(46, 0x7E0000 | W(wram_1F18)));
+    cr->x = rd16(cyc_then(46, WA(wram_1F18)));
     set_p(cr, nz16(cr->p, cr->x));
     cyc(4);
     if (bits25b(cr, cr->x, 0x04))
@@ -1592,7 +1593,7 @@ static void rival_car(Carried *cr, int b)
     uint16_t sx;
     uint32_t at;
 
-    inc8(cr, 0x7E0000 | W(script_byte_1f71));
+    inc8(cr, WA(script_byte_1f71));
     st8i(cr, F(W(obj_48), cr->x), cyc_then(6, 0x00));
     st8i(cr, F(W(obj_26), cr->x), cyc_then(6, 0x00));
     (cyc(62), ObjectCarSpawnListed(cr));

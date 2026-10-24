@@ -13,6 +13,7 @@
 #include "alu.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p);
 uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p);
@@ -233,7 +234,7 @@ static int rise(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     kept = *a;
     lda_imm(a, p, 0x0066);
     sub(a, p, rd16(cyc_then(52, fld(x, 0x0A))));
-    wr16((0x7E0000 | W(menu_scroll_y)), cyc_then(18, *a));
+    wr16((WA(menu_scroll_y)), cyc_then(18, *a));
     lda(a, p, kept);
     cmp(*a, p, 0x0066);
     cyc(4);
@@ -435,7 +436,7 @@ void ResultsPlaceWait(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8
         if (*p & P_Z) {
             cyc(104);
             *a = MenuActorCopyGroup(cr, bank, x, p);
-            *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
+            *x = rd16(cyc_then(24, (WA(actor_current))));
             *p = nz16(*p, *x);
             set_field(*x, a, p, 0x08, 0xDA33);
             wr16(fld(*x, 0x22), cyc_then(22, 0x0000));
@@ -485,18 +486,18 @@ void ResultsCarIndex(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     uint16_t v;
 
     byte_of(a, p, W(wram_0D4A));
-    wr16((0x7E0000 | W(scratch_11df)), cyc_then(42, *a));
+    wr16((WA(scratch_11df)), cyc_then(42, *a));
     asl(a, p);
     asl(a, p);
     asl(a, p);
-    add(a, p, rd16(cyc_then(80, (0x7E0000 | W(scratch_11df)))));
-    wr16((0x7E0000 | W(scratch_11e1)), cyc_then(24, *a));
+    add(a, p, rd16(cyc_then(80, (WA(scratch_11df)))));
+    wr16((WA(scratch_11e1)), cyc_then(24, *a));
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
     v = lda(a, p, (uint16_t)(*a - 1));
-    wr16((0x7E0000 | W(scratch_11df)), cyc_then(38, v));
+    wr16((WA(scratch_11df)), cyc_then(38, v));
     asl(a, p);
-    add(a, p, rd16(cyc_then(52, (0x7E0000 | W(scratch_11df)))));
-    add(a, p, rd16(cyc_then(38, (0x7E0000 | W(scratch_11e1)))));
+    add(a, p, rd16(cyc_then(52, (WA(scratch_11df)))));
+    add(a, p, rd16(cyc_then(38, (WA(scratch_11e1)))));
     tax(*a, x, p);
     cyc(26);
 }
@@ -549,7 +550,7 @@ void ResultsPlaceCar(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     tax(*a, x, p);
     cyc(92);
     lda(a, p, rd16(table + (uint32_t)*x));
-    *x = rd16((0x7E0000 | W(actor_current)));
+    *x = rd16((WA(actor_current)));
     *p = nz16(*p, *x);
     wr16(fld(*x, 0x14), cyc_then(22, *a));
     *a = (cyc(24), MenuWaitThenAnimate(bank, *a, x, p));
@@ -604,7 +605,7 @@ void ResultsGroupPalette(uint8_t bank, uint16_t x, uint16_t *a, uint16_t *y, uin
         cyc(74);
         lda(a, p, rd16(W(menu_sprite_attr) + (uint32_t)x));
         and_imm(a, p, 0xF1FF);
-        lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, (0x7E0000 | W(scratch_11df))))));
+        lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, (WA(scratch_11df))))));
         cyc(32);
         wr16(W(menu_sprite_attr) + (uint32_t)x, *a);
         txa(x, a, p);
@@ -665,8 +666,8 @@ void ResultsLeaderBlink(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uin
     tax(*a, x, p);
     cyc(70);
     lda(a, p, rd16(0x0BDA86 + (uint32_t)*x));
-    wr16((0x7E0000 | W(scratch_11df)), *a);
-    *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
+    wr16((WA(scratch_11df)), *a);
+    *x = rd16(cyc_then(24, (WA(actor_current))));
     *p = nz16(*p, *x);
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x0A))));
     cyc(32);
@@ -750,7 +751,7 @@ void abi_ResultsLeaderBlinkResume(void)
 /* Y = the A, B or Start presses ($118B AND $9000), with N, Z (TYA, AND). */
 static uint16_t pressed(uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    *y = rd16(cyc_then(24, (0x7E0000 | W(menu_joy1_pressed))));
+    *y = rd16(cyc_then(24, (WA(menu_joy1_pressed))));
     *a = *y;
     and_imm(a, p, 0x9000);
     return *a;
@@ -761,8 +762,8 @@ static uint16_t pressed(uint16_t *a, uint16_t *y, uint8_t *p)
 static void end_screen(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
     lda_imm(a, p, 0x0001);
-    wr16((0x7E0000 | W(menu_exit)), cyc_then(62, 0x0001));
-    *y = rd16(cyc_then(24, (0x7E0000 | W(actor_current_slot))));
+    wr16((WA(menu_exit)), cyc_then(62, 0x0001));
+    *y = rd16(cyc_then(24, (WA(actor_current_slot))));
     *p = nz16(*p, *y);
     *a = (cyc(46), MenuActorFree(bank, *x, *y));
     *x = 0xFFFF;
@@ -795,7 +796,7 @@ void ResultsWaitButton(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint
         end_screen(bank, x, a, y, p);
         return;
     }
-    lda(a, p, rd16(cyc_then(82, (0x7E0000 | W(wram_0FAC)))));
+    lda(a, p, rd16(cyc_then(82, (WA(wram_0FAC)))));
     and_imm(a, p, 0x00FF);
     cyc(22);
     set_field(*x, a, p, 0x08, 0xDAD1);
@@ -924,7 +925,7 @@ void ResultsOverOrHide(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
         *a = MenuWaitThenAnimate(bank, *a, x, p);
         return;
     }
-    *x = rd16(cyc_then(88, (0x7E0000 | W(actor_current))));
+    *x = rd16(cyc_then(88, (WA(actor_current))));
     *p = nz16(*p, *x);
     set_field(*x, a, p, 0x10, 0xFFFF);
     set_field(*x, a, p, 0x08, 0xDF7B);
@@ -1024,7 +1025,7 @@ void ResultsLower(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *
     kept = *a;
     lda_imm(a, p, 0x0066);
     sub(a, p, rd16(cyc_then(52, fld(*x, 0x0A))));
-    wr16((0x7E0000 | W(menu_scroll_y)), cyc_then(18, *a));
+    wr16((WA(menu_scroll_y)), cyc_then(18, *a));
     lda(a, p, kept);
     cmp(*a, p, 0x0000);
     if (!(*p & P_Z))
@@ -1080,7 +1081,7 @@ static void tile_at(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t
     cyc(32);
     lda(a, p, rd16(W(menu_sprite_attr) + (uint32_t)*x));
     and_imm(a, p, 0xFE00);
-    lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, (0x7E0000 | W(scratch_11e3))))));
+    lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, (WA(scratch_11e3))))));
     cyc(32);
     wr16(W(menu_sprite_attr) + (uint32_t)*x, *a);
     lda(a, p, rd16(cyc_then(24, abs_db(bank, at))));
@@ -1093,9 +1094,9 @@ static void tile_at(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t
 static void tall_tile(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
 {
     tile_at(bank, x, a, p, at);
-    lda(a, p, rd16(cyc_then(24, (0x7E0000 | W(scratch_11e3)))));
+    lda(a, p, rd16(cyc_then(24, (WA(scratch_11e3)))));
     add(a, p, 0x0010);
-    wr16((0x7E0000 | W(scratch_11e3)), cyc_then(62, *a));
+    wr16((WA(scratch_11e3)), cyc_then(62, *a));
     tile_at(bank, x, a, p, at);
     cyc(78);
 }
@@ -1118,7 +1119,7 @@ void ResultsLetterTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     tax(*a, &x, p);
     cyc(100);
     lda(a, p, rd16(0x0BDDD3 + (uint32_t)x));
-    wr16((0x7E0000 | W(scratch_11e3)), *a);
+    wr16((WA(scratch_11e3)), *a);
     tall_tile(bank, &x, a, p, 0x11E5);
     *p = nz16(*p, x0);
 }
@@ -1162,7 +1163,7 @@ void ResultsDigitTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     if (*p & P_Z)
         lda_imm(a, p, 0x0044); else { cyc(20); }
     add(a, p, 0x0050);
-    wr16((0x7E0000 | W(scratch_11e3)), cyc_then(118, *a));
+    wr16((WA(scratch_11e3)), cyc_then(118, *a));
     tall_tile(bank, &x, a, p, 0x11E1);
     *p = nz16(*p, x0);
 }
@@ -1201,14 +1202,14 @@ void abi_ResultsDigitTiles(void)
 void ResultsBcdPair(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
     and_imm(a, p, 0x00FF);
-    wr16((0x7E0000 | W(scratch_11e5)), cyc_then(46, *a));
+    wr16((WA(scratch_11e5)), cyc_then(46, *a));
     lsr(a, p);
     lsr(a, p);
     lsr(a, p);
     lsr(a, p);
     and_imm(a, p, 0x000F);
     (cyc(124), ResultsDigitTiles(bank, x, a, p));
-    lda(a, p, rd16(cyc_then(24, (0x7E0000 | W(scratch_11e5)))));
+    lda(a, p, rd16(cyc_then(24, (WA(scratch_11e5)))));
     and_imm(a, p, 0x000F);
     (cyc(68), ResultsDigitTiles(bank, x, a, p));
     cyc(42);
@@ -1257,7 +1258,7 @@ void ResultsTimeDigits(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint
         *a = MenuActorCopyGroup(cr, bank, x, p);
         lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
         lda(a, p, (uint16_t)(*a + 2));
-        wr16((0x7E0000 | W(scratch_11e1)), cyc_then(52, *a));
+        wr16((WA(scratch_11e1)), cyc_then(52, *a));
         cyc(32);
         lda(a, p, rd16(W(wram_0EEF)));
         (cyc(46), ResultsBcdPair(bank, *x, a, p));
@@ -1267,10 +1268,10 @@ void ResultsTimeDigits(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint
         cyc(32);
         lda(a, p, rd16(W(wram_0EED)));
         (cyc(46), ResultsBcdPair(bank, *x, a, p));
-        *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
+        *x = rd16(cyc_then(24, (WA(actor_current))));
         *p = nz16(*p, *x);
     } else {
-        *x = rd16(cyc_then(88, (0x7E0000 | W(actor_current))));
+        *x = rd16(cyc_then(88, (WA(actor_current))));
         *p = nz16(*p, *x);
         set_field(*x, a, p, 0x10, 0xFFFF);
     }
@@ -1305,7 +1306,7 @@ void abi_ResultsTimeDigits(void)
    object starts ResultsLeaderBlink; otherwise it stops. */
 static void leader_or_stop(uint16_t *x, uint16_t *a, uint8_t *p, uint16_t field)
 {
-    *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
+    *x = rd16(cyc_then(24, (WA(actor_current))));
     *p = nz16(*p, *x);
     byte_of(a, p, W(wram_0FAC));
     cmp(*a, p, rd16(cyc_then(40, fld(*x, field))));
@@ -1314,7 +1315,7 @@ static void leader_or_stop(uint16_t *x, uint16_t *a, uint8_t *p, uint16_t field)
         byte_of(a, p, W(wram_0DD6));
         cmp(*a, p, 0x0008);
         if (*p & P_Z) {
-            *x = rd16(cyc_then(82, (0x7E0000 | W(actor_current))));
+            *x = rd16(cyc_then(82, (WA(actor_current))));
             *p = nz16(*p, *x);
             set_field(*x, a, p, 0x08, 0xDA33);
             wr16(fld(*x, 0x22), cyc_then(22, 0x0000));
@@ -1348,20 +1349,20 @@ void ResultsInitials(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_
     *a = MenuActorCopyGroup(cr, bank, x, p);
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
     lda(a, p, (uint16_t)(*a + 2));
-    wr16((0x7E0000 | W(scratch_11e5)), cyc_then(52, *a));
+    wr16((WA(scratch_11e5)), cyc_then(52, *a));
     (cyc(46), ResultsCarIndex(bank, x, a, p));
     cyc(32);
     lda(a, p, rd16(0x70FC6D + (uint32_t)*x));
-    wr16((0x7E0000 | W(scratch_11df)), cyc_then(24, *a));
+    wr16((WA(scratch_11df)), cyc_then(24, *a));
     for (i = 0; i < 3; i++) {
         if (i) {
-            lda(a, p, rd16(cyc_then(24, (0x7E0000 | W(scratch_11df)))));
+            lda(a, p, rd16(cyc_then(24, (WA(scratch_11df)))));
             lsr(a, p);
             lsr(a, p);
             lsr(a, p);
             lsr(a, p);
             lsr(a, p);
-            wr16((0x7E0000 | W(scratch_11df)), cyc_then(94, *a));
+            wr16((WA(scratch_11df)), cyc_then(94, *a));
         }
         cyc(68);
         and_imm(a, p, 0x001F);
@@ -1405,7 +1406,7 @@ void ResultsBlankLetters(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 
     lda(a, p, rd16(cyc_then(22, fld(x, 0x12))));
     lda(a, p, (uint16_t)(*a + 2));
-    wr16((0x7E0000 | W(scratch_11e5)), cyc_then(52, *a));
+    wr16((WA(scratch_11e5)), cyc_then(52, *a));
     for (i = 0; cyc_loop(32, i < 3); i++) {
         lda_imm(a, p, 0x001A);
         ResultsLetterTiles(bank, x, a, p);
@@ -1449,11 +1450,11 @@ void abi_ResultsBlankLetters(void)
  */
 void ResultsNoTime(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    uint16_t k11df = rd16(cyc_then(24, (0x7E0000 | W(scratch_11df)))), k11e1, letters, other;
+    uint16_t k11df = rd16(cyc_then(24, (WA(scratch_11df)))), k11e1, letters, other;
 
     lda(a, p, k11df);
-    k11e1 = rd16(cyc_then(54, (0x7E0000 | W(scratch_11e1))));
-    *x = rd16(cyc_then(54, (0x7E0000 | W(actor_current))));
+    k11e1 = rd16(cyc_then(54, (WA(scratch_11e1))));
+    *x = rd16(cyc_then(54, (WA(actor_current))));
     *p = nz16(*p, *x);
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x1A))));
     cmp(*a, p, 0x0020);
@@ -1476,9 +1477,9 @@ void ResultsNoTime(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t 
     set_field(*x, a, p, 0x10, 0xFFFF);
     set_field(*x, a, p, 0x02, 0x0200);
     set_field(*x, a, p, 0x08, 0xDF7B);
-    wr16((0x7E0000 | W(scratch_11e1)), cyc_then(60, k11e1));
+    wr16((WA(scratch_11e1)), cyc_then(60, k11e1));
     lda_imm(a, p, k11df);
-    wr16((0x7E0000 | W(scratch_11df)), cyc_then(22, k11df));
+    wr16((WA(scratch_11df)), cyc_then(22, k11df));
     cyc(42);
 }
 
@@ -1525,7 +1526,7 @@ void ResultsLapTimes(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint16
     *a = MenuActorCopyGroup(cr, bank, x, p);
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
     lda(a, p, (uint16_t)(*a + 2));
-    wr16((0x7E0000 | W(scratch_11e1)), cyc_then(52, *a));
+    wr16((WA(scratch_11e1)), cyc_then(52, *a));
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x22))));
     tax(*a, x, p);
     place = *x;
@@ -1582,7 +1583,7 @@ void ResultsPointsTile(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
     uint16_t x0 = x;
 
-    wr16((0x7E0000 | W(scratch_11e3)), cyc_then(54, *a));
+    wr16((WA(scratch_11e3)), cyc_then(54, *a));
     tile_at(bank, &x, a, p, 0x11E1);
     *p = nz16(*p, x0);
     cyc(78);
@@ -1622,14 +1623,14 @@ void abi_ResultsPointsTile(void)
 void ResultsPointsPair(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
     and_imm(a, p, 0x00FF);
-    wr16((0x7E0000 | W(scratch_11e5)), cyc_then(46, *a));
+    wr16((WA(scratch_11e5)), cyc_then(46, *a));
     lsr(a, p);
     lsr(a, p);
     lsr(a, p);
     lsr(a, p);
     and_imm(a, p, 0x000F);
     (cyc(124), ResultsPointsTile(bank, x, a, p));
-    lda(a, p, rd16(cyc_then(24, (0x7E0000 | W(scratch_11e5)))));
+    lda(a, p, rd16(cyc_then(24, (WA(scratch_11e5)))));
     and_imm(a, p, 0x000F);
     (cyc(68), ResultsPointsTile(bank, x, a, p));
     cyc(42);
@@ -1675,13 +1676,13 @@ void ResultsPoints(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t 
     cyc(76);
     *a = MenuActorCopyGroup(cr, bank, x, p);
     lda(a, p, car);
-    wr16((0x7E0000 | W(scratch_11df)), cyc_then(60, car));
+    wr16((WA(scratch_11df)), cyc_then(60, car));
     lda(a, p, rd16(cyc_then(22, fld(*x, 0x12))));
     lda(a, p, (uint16_t)(*a + 2));
-    wr16((0x7E0000 | W(scratch_11e1)), cyc_then(52, *a));
-    lda(a, p, rd16(cyc_then(24, (0x7E0000 | W(scratch_11df)))));
+    wr16((WA(scratch_11e1)), cyc_then(52, *a));
+    lda(a, p, rd16(cyc_then(24, (WA(scratch_11df)))));
     asl(a, p);
-    add(a, p, rd16(cyc_then(52, (0x7E0000 | W(scratch_11df)))));
+    add(a, p, rd16(cyc_then(52, (WA(scratch_11df)))));
     tax(*a, x, p);
     at = *x;
     cyc(16);
@@ -1694,7 +1695,7 @@ void ResultsPoints(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t 
     cyc(32);
     lda(a, p, rd16(W(wram_0EF9) + (uint32_t)*x));
     (cyc(46), ResultsPointsPair(bank, *x, a, p));
-    *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
+    *x = rd16(cyc_then(24, (WA(actor_current))));
     *p = nz16(*p, *x);
     cyc(42);
 }

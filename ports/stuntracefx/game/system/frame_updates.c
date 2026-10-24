@@ -14,6 +14,7 @@
 #include "system_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 
@@ -576,20 +577,20 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     cyc(32);
     wr16(W(menu_pos_18bd), w);
     cyc(24);
-    w = rd16(0x7E0000 | W(joy1_pressed));
+    w = RD16(joy1_pressed);
     word_list_append(W(word_list_a_size), W(word_list_a), w);
     cyc(94);
-    w = rd16(0x7E0000 | W(joy2_pressed));
+    w = RD16(joy2_pressed);
     *hi = (uint16_t)(w & 0xFF00);
     *x = word_list_append(W(word_list_b_size), W(word_list_b), w);
     cyc(116);
-    wr8(0x7E0000 | W(frame_count), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frame_count)) + 1)));
+    WR8(frame_count, cyc_then(6, (uint8_t)(RD8(frame_count) + 1)));
     cyc(24);
-    wr8(0x7E0000 | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frames_since_tick)) + 1)));
+    WR8(frames_since_tick, cyc_then(6, (uint8_t)(RD8(frames_since_tick) + 1)));
     cyc(16);
     wr8(W(dp_06), cyc_then(6, (uint8_t)(rd8(W(dp_06)) + 1)));
     cyc(24);
-    v = rd8(0x7E0000 | W(wram_11DA));
+    v = RD8(wram_11DA);
     cyc(24);
     ppu_wr(b | 0x2100, v);
     return v;
@@ -662,9 +663,9 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     cyc(38);
     wr8(W(dp_06), cyc_then(6, (uint8_t)(rd8(W(dp_06)) + 1)));
     cyc(24);
-    wr8(0x7E0000 | W(frame_count), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frame_count)) + 1)));
+    WR8(frame_count, cyc_then(6, (uint8_t)(RD8(frame_count) + 1)));
     cyc(24);
-    wr8(0x7E0000 | W(frames_since_tick), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(frames_since_tick)) + 1)));
+    WR8(frames_since_tick, cyc_then(6, (uint8_t)(RD8(frames_since_tick) + 1)));
     cyc(78);
     wr16(W(wram_18FB), 0x0000);
     cyc(32);
@@ -681,7 +682,7 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
         *checked = 1;
     }
     cyc(68);
-    lum = rd8(0x7E0000 | W(wram_11DA));
+    lum = RD8(wram_11DA);
     cyc(24);
     ppu_wr(b | INIDISP, lum);
     return lum;

@@ -8,6 +8,7 @@
 #include "hw.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 uint8_t SoundPairFromTable(void);
 void MenuOamFromList(uint8_t bank, uint16_t *x, uint16_t *y);
@@ -54,10 +55,10 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     SoundPairFromTable();
     cyc(28);
     for (x = 0; x != 0x0200; x += 2)
-        { wr16((0x7E0000 | (uint16_t)(W(oam_buffer) + x)), cyc_then(72, 0xE0E0)); cyc(56); }
+        { wr16((WAI(oam_buffer, x)), cyc_then(72, 0xE0E0)); cyc(56); }
     cyc(0);
     for (x = 0; x != 0x0020; x += 2)
-        { wr16((0x7E0000 | (uint16_t)(W(oam_buffer_high) + x)), cyc_then(90, 0x5555)); cyc(38); }
+        { wr16((WAI(oam_buffer_high, x)), cyc_then(90, 0x5555)); cyc(38); }
     cyc(182);
     for (i = 0; cyc_loop(18, i < 4); i++) {
         cyc(56);
@@ -73,8 +74,8 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     cyc(62);
     CoursePictureToVram(bank);
     ppu_wr(dbw(bank, 0x2101), cyc_then(62, 0x03));
-    wr8((0x7E0000 | W(wram_0D3F)), cyc_then(62, 0x08));
-    wr8((0x7E0000 | W(gsu_buffer_offset)), cyc_then(40, 0x0C));
+    wr8((WA(wram_0D3F)), cyc_then(62, 0x08));
+    wr8((WA(gsu_buffer_offset)), cyc_then(40, 0x0C));
     for (i = 0; i < sizeof course_params / sizeof course_params[0]; i++)
         wr8(dbw(bank, course_params[i].addr), cyc_then(40, course_params[i].v));
     uint16_t a = GradientSetup(bank);

@@ -7,6 +7,7 @@
 #include "math_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 
@@ -279,7 +280,7 @@ void abi_ScaleSevenEighths(void)
 uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
 {
     (void)bank;
-    uint32_t eighth_at = 0x7E0000 | W(wram_1F2B);
+    uint32_t eighth_at = WA(wram_1F2B);
     uint16_t half = asr1(v), quarter, eighth, r;
 
     cyc(8);
@@ -514,7 +515,7 @@ void abi_ScaleDp02Dp94Long(void)
 uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
 {
     (void)bank;
-    uint32_t eighth_at = 0x7E0000 | W(wram_1F2B);
+    uint32_t eighth_at = WA(wram_1F2B);
     uint16_t e = asr1(asr1(asr1(v))), t;
 
     cyc(0);

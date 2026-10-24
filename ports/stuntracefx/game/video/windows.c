@@ -8,6 +8,7 @@
 #include "hw.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 /*
@@ -254,7 +255,7 @@ void abi_WindowsColourSub81(void)
 static uint8_t windows_setup_select(uint8_t *sel)
 {
     cyc(140);
-    *sel = rd8(0x7E0000 | W(windows_setup_index));
+    *sel = RD8(windows_setup_index);
     switch (*sel) {
     case 0: cyc(76); WindowsColourAddBg12(); cyc(100); return 0x17;
     case 2: cyc(76); ColourMathSub83Windowed(); cyc(100); return 0x03;
@@ -349,7 +350,7 @@ void BobStep(Carried *cr)
     v = rd8(W(wram_1A1C) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
-    v = alu_adc8(v, rd8(0x7E0000 | (uint16_t)(W(wram_1A20) + cr->x)), &cr->p);
+    v = alu_adc8(v, RD8I(wram_1A20, cr->x), &cr->p);
     cyc(32);
     wr8(W(wram_1A1C) + cr->x, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -428,7 +429,7 @@ void BobWindow0(Carried *cr)
     if (!bob_window(cr, 0, 0x19AC))
         { cyc(42); return; }
     cyc(24);
-    v = rd8(0x7E0000 | W(wram_0D62));
+    v = RD8(wram_0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(68); WindowHdmaFFD5_cr(cr); cyc(42); }
@@ -519,20 +520,20 @@ void WindowSweepStep(Carried *cr)
         cyc(80);
         wr8(W(wram_1A1B), 0x00);
         cyc(24);
-        v = (uint8_t)(rd8(0x7E0000 | W(slide_flags)) & 0xEF);
+        v = (uint8_t)(RD8(slide_flags) & 0xEF);
         cyc(40);
-        wr8(0x7E0000 | W(slide_flags), v);
+        WR8(slide_flags, v);
         cyc(16);
         for (i = 0; i < 3; i++)
             { cyc(24); wr8(b | z[i], 0x00); }
         cyc(40);
-        wr8(0x7E0000 | W(wram_1A19), 0xFE);
+        WR8(wram_1A19, 0xFE);
         cyc(24);
-        wr8(0x7E0000 | W(wram_1A1A), 0xFE);
+        WR8(wram_1A1A, 0xFE);
         cyc(40);
-        wr8(0x7E0000 | W(wram_1A15), 0xF0);
+        WR8(wram_1A15, 0xF0);
         cyc(24);
-        wr8(0x7E0000 | W(wram_1A16), 0xF0);
+        WR8(wram_1A16, 0xF0);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0xF0);
         set_p(cr, nz8(cr->p, 0xF0));
         cyc(42);                        /* RTS */
@@ -544,7 +545,7 @@ void WindowSweepStep(Carried *cr)
     v = rd8(W(wram_1A15) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
-    v = alu_adc8(v, rd8(0x7E0000 | (uint16_t)(W(wram_1A19) + cr->x)), &cr->p);
+    v = alu_adc8(v, RD8I(wram_1A19, cr->x), &cr->p);
     cyc(32);
     wr8(W(wram_1A15) + cr->x, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -605,7 +606,7 @@ void WindowSweep(Carried *cr)
     cyc(32);
     wr8(W(wram_19AD), v);
     cyc(24);
-    v = rd8(0x7E0000 | W(wram_0D62));
+    v = RD8(wram_0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(68); WindowHdmaFFD5_cr(cr); }
@@ -644,7 +645,7 @@ void WindowSweepIfOn(Carried *cr)
     cr->db = 0x7E;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(140);
-    v = rd8(0x7E0000 | W(window_hdma_off));
+    v = RD8(window_hdma_off);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (!v) {
         cyc(48);
@@ -652,12 +653,12 @@ void WindowSweepIfOn(Carried *cr)
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (v != 0xFF) {
             cyc(78);
-            v = (uint8_t)(rd8(0x7E0000 | W(slide_flags)) & 0x10);
+            v = (uint8_t)(RD8(slide_flags) & 0x10);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             if (v) {
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
                 cyc(94);
-                wr8(0x7E0000 | W(windows_setup_index), 0x04);
+                WR8(windows_setup_index, 0x04);
                 (cyc(46), WindowSweep(cr));
             } else { cyc(38); }
         } else { cyc(38); }
@@ -736,7 +737,7 @@ void OscillatorStep(Carried *cr)
     cyc(104);
     v = rd8((uint32_t)(W(oscillator_rates) + a));
     cyc(24);
-    wr8(0x7E0000 | W(wram_1A10), v);
+    WR8(wram_1A10, v);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(60);
     c = alu_adc8(rd8(W(wram_1A0A) + cr->x), 0x01, &cr->p);
@@ -753,7 +754,7 @@ void OscillatorStep(Carried *cr)
     wr8(W(wram_1A0A) + cr->x, 0x00);
     v = rd8(W(wram_1A08) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
-    v = alu_adc8(v, rd8(0x7E0000 | (uint16_t)(W(wram_1A0C) + cr->x)), &cr->p);
+    v = alu_adc8(v, RD8I(wram_1A0C, cr->x), &cr->p);
     wr8(W(wram_1A08) + cr->x, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x40)) & ~P_C) | (v >= 0x40 ? P_C : 0)));
@@ -803,7 +804,7 @@ void OscillatorWindow(Carried *cr)
     cr->x = 0x00;
     (cyc(62), OscillatorStep(cr));
     cyc(24);
-    v = rd8(0x7E0000 | W(wram_1A08));
+    v = RD8(wram_1A08);
     cyc(32);
     wr8(W(wram_19AD), v);
     cyc(48);
@@ -811,7 +812,7 @@ void OscillatorWindow(Carried *cr)
     cyc(48);
     wr8(W(wram_19AE), 0x95);
     cyc(24);
-    v = rd8(0x7E0000 | W(wram_0D62));
+    v = RD8(wram_0D62);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(68); WindowHdmaFFD5_cr(cr); }
@@ -847,7 +848,7 @@ static void bob_setup(Carried *cr)
     cyc(48);
     wr8(W(wram_0D45), v);
     cyc(40);
-    wr8(0x7E0000 | W(windows_setup_index), 0x02);
+    WR8(windows_setup_index, 0x02);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
 }
 
@@ -870,7 +871,7 @@ void BobWindowsRun(Carried *cr)
     cr->db = 0x7E;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(140);
-    v = rd8(0x7E0000 | W(window_hdma_off));
+    v = RD8(window_hdma_off);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     if (v)
         { cyc(22); goto out; }
@@ -882,20 +883,20 @@ void BobWindowsRun(Carried *cr)
     (cyc(78), ObjectLinkEventTrigger_cr(cr));
     r_sep(cr, P_M | P_X);
     cyc(cr->p & P_Z ? 110 : 126);       /* beq taken at lda.w $1A24, not bne at $0DA4 */
-    v = (uint8_t)(rd8(0x7E0000 | W(wram_0DA4)) & 0x80);
+    v = (uint8_t)(RD8(wram_0DA4) & 0x80);
     if (v) {
         bob_setup(cr);
         BobWindow0(cr);
     }
     if (cr->p & P_M) {
         cyc(62);
-        v = rd8(0x7E0000 | W(wram_0D62));
+        v = RD8(wram_0D62);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (!v)
             { cyc(22); goto out; }
     } else {                    /* WindowHdmaFFD1 left M 16-bit: a word */
         cyc(24);
-        cr->a = rd16(0x7E0000 | W(wram_0D62));
+        cr->a = RD16(wram_0D62);
         if (!cr->a)
             goto out;
     }
@@ -904,7 +905,7 @@ void BobWindowsRun(Carried *cr)
     ObjectLinkEventTrigger2(cr);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    v = (uint8_t)(rd8(0x7E0000 | W(wram_0DA6)) & 0x80);
+    v = (uint8_t)(RD8(wram_0DA6) & 0x80);
     if (v) {
         bob_setup(cr);
         (cyc(46), BobWindow1(cr));
@@ -977,7 +978,7 @@ void WindowSlideOrOscillate(Carried *cr)
     cr->db = 0x7E;
     r_sep(cr, P_M);
     cyc(140);
-    r_lda8(cr, (0x7E0000 | W(window_hdma_off)));
+    r_lda8(cr, (WA(window_hdma_off)));
     if (!(uint8_t)cr->a) {
         cyc(48);
         r_lda8(cr, W(window_hdma_19bc));
@@ -985,7 +986,7 @@ void WindowSlideOrOscillate(Carried *cr)
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(38), P_C) : 0)));
         if (v != 0xFF) {
             cyc(78);
-            r_lda8(cr, (0x7E0000 | W(slide_flags)));
+            r_lda8(cr, (WA(slide_flags)));
             v = (uint8_t)(cr->a & 0x06);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             set_p(cr, nz8(cr->p, v));
@@ -993,10 +994,10 @@ void WindowSlideOrOscillate(Carried *cr)
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
                 set_p(cr, nz8(cr->p, 0x02));
                 cyc(72);
-                wr8(0x7E0000 | W(windows_setup_index), 0x02);
+                WR8(windows_setup_index, 0x02);
                 WindowSlideStep_cr(cr);
                 cyc(108);
-                r_lda8(cr, (0x7E0000 | W(slide_flags)));
+                r_lda8(cr, (WA(slide_flags)));
                 v = (uint8_t)(cr->a & 0x06);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | v);
                 set_p(cr, nz8(cr->p, v));
@@ -1005,7 +1006,7 @@ void WindowSlideOrOscillate(Carried *cr)
             }
             r_sep(cr, P_M);
             cyc(84);
-            r_lda8(cr, (0x7E0000 | W(slide_flags)));
+            r_lda8(cr, (WA(slide_flags)));
             v = (uint8_t)(cr->a & 0x08);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             set_p(cr, nz8(cr->p, v));
@@ -1014,7 +1015,7 @@ void WindowSlideOrOscillate(Carried *cr)
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
                 set_p(cr, nz8(cr->p, 0x02));
                 cyc(94);
-                wr8(0x7E0000 | W(windows_setup_index), 0x02);
+                WR8(windows_setup_index, 0x02);
                 (cyc(46), OscillatorWindow(cr));
             } else { cyc(38); }
         }

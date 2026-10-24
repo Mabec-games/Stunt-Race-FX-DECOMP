@@ -11,6 +11,7 @@
 #include "object_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 /* An absolute indexed address: the data bank, plus the offset and index
@@ -184,9 +185,9 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(W(dp_c7), cyc_then(16, rd16((uint16_t)(rec + W(tie_y)))));
     cyc(22);
     wr16(W(dp_c9), cyc_then(16, rd16((uint16_t)(rec + W(tie_z)))));
-    wr16((0x7E0000 | W(wram_0664)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_0e))))));
-    wr16((0x7E0000 | W(wram_0666)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_10))))));
-    wr16((0x7E0000 | W(wram_0668)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_12))))));
+    wr16((WA(wram_0664)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_0e))))));
+    wr16((WA(wram_0666)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_10))))));
+    wr16((WA(wram_0668)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_12))))));
     cyc(52);
     obj = rd16((uint16_t)(rec + W(tie_object)));
     cyc(46);
@@ -198,12 +199,12 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     area_origin(bank, W(view_area_origin), p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
-        v = rd16(cyc_then(64, (0x7E0000 | W(view_area_origin))));
-        wr16((0x7E0000 | W(fixed_area_origin)), cyc_then(24, v));
-        v = rd16(cyc_then(24, (0x7E0000 | W(wram_1EF7))));
-        wr16((0x7E0000 | W(wram_1EFD)), cyc_then(24, v));
-        v = rd16(cyc_then(24, (0x7E0000 | W(wram_1EF9))));
-        wr16((0x7E0000 | W(wram_1EFF)), cyc_then(24, v));
+        v = rd16(cyc_then(64, (WA(view_area_origin))));
+        wr16((WA(fixed_area_origin)), cyc_then(24, v));
+        v = rd16(cyc_then(24, (WA(wram_1EF7))));
+        wr16((WA(wram_1EFD)), cyc_then(24, v));
+        v = rd16(cyc_then(24, (WA(wram_1EF9))));
+        wr16((WA(wram_1EFF)), cyc_then(24, v));
         *p = nz16(*p, v);
         cyc(66);                        /* BRA, RTL */
         return v;

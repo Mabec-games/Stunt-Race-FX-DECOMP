@@ -7,6 +7,7 @@
 #include "video_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
@@ -217,7 +218,7 @@ void ColourMathOff(uint8_t bank)
 {
     (void)bank;
     cyc(62);
-    wr8(0x7E0000 | W(colour_math_mode), 0x00);
+    WR8(colour_math_mode, 0x00);
     cyc(42);
 }
 

@@ -10,6 +10,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 void SoundPort1QueuePush(uint8_t command);
@@ -610,7 +611,7 @@ uint16_t SoundAtRateForLevel(uint8_t bank, uint16_t level, int *queued, uint8_t 
     d = (uint16_t)(level - 0xA0);
     *p = (uint8_t)((*p & ~P_C) | (level >= 0xA0 ? (cyc(6), P_C) : 0));
     cyc(172);
-    m = rd16(0x7E0000 | W(wram_05E9)) & (d & 0x8000 ? 0x0003 : 0x0001);
+    m = RD16(wram_05E9) & (d & 0x8000 ? 0x0003 : 0x0001);
     if (m) {
         *p = nz16(*p, m);
         return m;
@@ -660,7 +661,7 @@ int SoundIfFlag40(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *x)
     if (!(flags & 0x0040))
         { cyc(138); return 0; }
     cyc(116);
-    *x = rd8(0x7E0000 | (uint16_t)(W(wram_0D89) + y));
+    *x = RD8I(wram_0D89, y);
     cyc(100);
     SoundPort0QueuePush(rd8(0x04D0D6 + *x));
     cyc(46);
@@ -706,7 +707,7 @@ void abi_SoundIfFlag40(void)
 int SoundHoldByFlags(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *a)
 {
     (void)bank;
-    uint32_t at = 0x7E0000 | (uint16_t)(W(sound_hold) + y);
+    uint32_t at = WAI(sound_hold, y);
 
     /* BIT #$8000 and BNE (taken with bit 15), BIT #$4000 and BEQ, LDA */
     cyc(flags & 0x8000 ? 92 : flags & 0x4000 ? 126 : 132);
@@ -773,7 +774,7 @@ int PlayerSound35(uint8_t bank, uint16_t y)
 {
     (void)bank;
     cyc(52);
-    uint8_t v = rd8(0x7E0000 | (uint16_t)(W(player_mode) + y));
+    uint8_t v = RD8I(player_mode, y);
 
     cyc(v == 1 ? 116 : 110);            /* BEQ taken (v = 1) 6 longer than not */
     SoundPort0QueuePush(0x35);
@@ -820,7 +821,7 @@ static uint16_t engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint
     es_full = 0;
     es_xset = 0;
     cyc(68);
-    v = rd8(0x7E0000 | W(wram_0E4B));
+    v = RD8(wram_0E4B);
     if (!v) {
         cyc(40);
         v = rd8(b | phase);
@@ -977,18 +978,18 @@ uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x)
     cyc(76);
     i = (uint8_t)HandlerSoundIndex(rd16(W(wram_18DB)), &p);
     cyc(92);
-    wr8(0x7E0000 | W(wram_0D89), i);
+    WR8(wram_0D89, i);
     cyc(24);
-    *x = rd8(0x7E0000 | W(wram_10DA));
+    *x = RD8(wram_10DA);
     if (!*x)
-        { cyc(40); *x = rd8(0x7E0000 | W(wram_10DC)); } else { cyc(6); }
+        { cyc(40); *x = RD8(wram_10DC); } else { cyc(6); }
     cyc(22);
     if (*x)
-        { cyc(18); wr8(0x7E0000 | W(wram_0D8B), i); }
+        { cyc(18); WR8(wram_0D8B, i); }
     cyc(54);
     i = (uint8_t)HandlerSoundIndex(rd16(W(selection_handler_b)), &p);
     cyc(92);
-    wr8(0x7E0000 | W(wram_0D8A), i);
+    WR8(wram_0D8A, i);
     cyc(72);
     return i;
 }
@@ -1039,11 +1040,11 @@ uint16_t SoundNearCarOnce(uint8_t bank)
 
     sn_full = 0;
     cyc(22 + 46);
-    v = rd8(0x7E0000 | W(wram_0E1A));
+    v = RD8(wram_0E1A);
     if (v != 0)
         { cyc(72); return v; }
     cyc(54);
-    wr8(0x7E0000 | W(wram_0E1A), 0xFF);
+    WR8(wram_0E1A, 0xFF);
     cyc(78);
     SoundPort1QueuePushW(0x1D, 0);
     cyc(54);
@@ -1128,9 +1129,9 @@ uint16_t NearCarSoundUpdate(uint8_t bank, uint16_t d, int m16)
     nc_low = 0;
     nc_once = 0;
     if (!m16)
-        v = rd8(0x7E0000 | W(wram_0E4B));
+        v = RD8(wram_0E4B);
     else
-        { cyc(46); v = rd16(0x7E0000 | W(wram_0E4B)); }
+        { cyc(46); v = RD16(wram_0E4B); }
     if (v) {
         cyc(94);
         nc_low = !m16;
@@ -1140,7 +1141,7 @@ uint16_t NearCarSoundUpdate(uint8_t bank, uint16_t d, int m16)
     lv = rd16(0x702642);
     if (lv & 0x8000) {
         cyc(84);
-        wr8(0x7E0000 | W(near_car_none), 0x01);
+        WR8(near_car_none, 0x01);
         a = (uint16_t)((lv & 0xFF00) | (cyc(62), Sound0E1AStop()));
         cyc(22 + 72);
         return a;
@@ -1156,14 +1157,14 @@ uint16_t NearCarSoundUpdate(uint8_t bank, uint16_t d, int m16)
     cyc(92);
     v = (uint16_t)(0x0031 - rd16(0x702646));
     cyc(24);
-    if (v == rd16(0x7E0000 | W(near_car_band_sent)))
+    if (v == RD16(near_car_band_sent))
         { cyc(94); return v; }
     cyc(40);
-    wr16(0x7E0000 | W(near_car_band_sent), v);
+    WR16(near_car_band_sent, v);
     cyc(62);
     SoundPort1QueuePushW((uint8_t)v, 24);           /* M and X 16-bit */
     cyc(24);
-    wr16(0x7E0000 | W(near_car_none), 0x0000);
+    WR16(near_car_none, 0x0000);
     a = (cyc(62), SoundNearCarOnce(bank));
     if (!sn_full)
         a = (uint16_t)((v & 0xFF00) | (uint8_t)a);
@@ -1212,16 +1213,16 @@ uint8_t WindowSlideUpSound(uint8_t bank, int x16)
     uint8_t v;
 
     cyc(68);
-    if (rd8(0x7E0000 | W(slide_flags)) & 0x04) {
+    if (RD8(slide_flags) & 0x04) {
         cyc(110);
         SoundPort1QueuePushW(0x10, x16 ? 16 : 0);
     } else { cyc(38); }
     cyc(24);
-    v = rd8(0x7E0000 | W(window_hdma_off));
+    v = RD8(window_hdma_off);
     if (!v) {
         v = 0x01;
         cyc(56);
-        wr8(0x7E0000 | W(window_hdma_off), 0x01);
+        WR8(window_hdma_off, 0x01);
     } else { cyc(22); }
     cyc(72);
     return v;

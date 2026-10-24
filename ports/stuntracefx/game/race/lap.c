@@ -8,6 +8,7 @@
 #include "race_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 /* An 8-bit SBC in decimal mode, as the 65816 does it: C is the decimal
    no-borrow, V from the binary sum of the top digit before its adjustment. */
@@ -61,20 +62,20 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     uint8_t frac, secs, mins, v;
 
     cyc(38);
-    mins = rd8(0x7E0000 | W(race_time_minutes));
+    mins = RD8(race_time_minutes);
     cyc(16);
     wr8(W(dp_f1), mins);
     cyc(24);
-    frac = rd8(0x7E0000 | W(race_time_fraction));
+    frac = RD8(race_time_fraction);
     *p |= P_C;
     cyc(38);
-    v = sbc_bcd8(frac, rd8(0x7E0000 | W(lap_mark)), p);
+    v = sbc_bcd8(frac, RD8(lap_mark), p);
     cyc(8);
-    wr8(0x7E0000 | (uint16_t)(W(lap_splits) + x), v);
+    WR8I(lap_splits, x, v);
     cyc(24);
-    secs = rd8(0x7E0000 | W(race_time_seconds));
+    secs = RD8(race_time_seconds);
     cyc(24);
-    v = sbc_bcd8(secs, rd8(0x7E0000 | W(wram_0EDC)), p);
+    v = sbc_bcd8(secs, RD8(wram_0EDC), p);
     if (!(*p & P_C)) {
         *p &= (uint8_t)~P_C;
         v = adc_bcd8(v, 0x60, p);
@@ -82,43 +83,43 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
         wr8(W(dp_f1), cyc_then(6, (uint8_t)(rd8(W(dp_f1)) - 1)));
     }
     cyc(30);
-    wr8(0x7E0000 | (uint16_t)(W(lap_splits) + 1 + x), v);
+    WR8I(lap_splits, 1 + x, v);
     *p |= P_C;
     cyc(16);
     v = rd8(W(dp_f1));                          /* LDA, then SBC */
     cyc(38);
-    v = sbc_bcd8(v, rd8(0x7E0000 | W(wram_0EDD)), p);
+    v = sbc_bcd8(v, RD8(wram_0EDD), p);
     cyc(8);
-    wr8(0x7E0000 | (uint16_t)(W(lap_splits) + 2 + x), v);
+    WR8I(lap_splits, 2 + x, v);
 
     cyc(24);
-    frac = rd8(0x7E0000 | W(race_time_fraction));
+    frac = RD8(race_time_fraction);
     cyc(24);
-    wr8(0x7E0000 | W(lap_mark), frac);
+    WR8(lap_mark, frac);
     cyc(30);
-    wr8(0x7E0000 | (uint16_t)(W(lap_times) + x), frac);
+    WR8I(lap_times, x, frac);
     cyc(62);
-    wr8(0x7E0000 | W(wram_0F6D), frac & 0x0F);
+    WR8(wram_0F6D, frac & 0x0F);
     cyc(108);
-    wr8(0x7E0000 | W(wram_0F6C), frac >> 4);
+    WR8(wram_0F6C, frac >> 4);
     cyc(24);
-    secs = rd8(0x7E0000 | W(race_time_seconds));
+    secs = RD8(race_time_seconds);
     cyc(24);
-    wr8(0x7E0000 | W(wram_0EDC), secs);
+    WR8(wram_0EDC, secs);
     cyc(30);
-    wr8(0x7E0000 | (uint16_t)(W(lap_times) + 1 + x), secs);
+    WR8I(lap_times, 1 + x, secs);
     cyc(62);
-    wr8(0x7E0000 | W(wram_0F6B), secs & 0x0F);
+    WR8(wram_0F6B, secs & 0x0F);
     cyc(108);
-    wr8(0x7E0000 | W(wram_0F6A), secs >> 4);
+    WR8(wram_0F6A, secs >> 4);
     cyc(24);
-    mins = rd8(0x7E0000 | W(race_time_minutes));
+    mins = RD8(race_time_minutes);
     cyc(24);
-    wr8(0x7E0000 | W(wram_0EDD), mins);
+    WR8(wram_0EDD, mins);
     cyc(30);
-    wr8(0x7E0000 | (uint16_t)(W(lap_times) + 2 + x), mins);
+    WR8I(lap_times, 2 + x, mins);
     cyc(24);
-    wr8(0x7E0000 | W(lap_digits), mins);
+    WR8(lap_digits, mins);
 
     *p = (uint8_t)((nz8(*p, mins) & ~(P_C | P_D)) | (secs & 0x08 ? (cyc(56), P_C) : (cyc(56), 0)));
     return mins;
@@ -160,17 +161,17 @@ uint8_t RaceTimeKeep(uint8_t bank)
     uint8_t v;
 
     cyc(46);
-    v = rd8(0x7E0000 | W(race_time_fraction));
+    v = RD8(race_time_fraction);
     cyc(24);
-    wr8(0x7E0000 | W(wram_0EE7), v);
+    WR8(wram_0EE7, v);
     cyc(24);
-    v = rd8(0x7E0000 | W(race_time_seconds));
+    v = RD8(race_time_seconds);
     cyc(24);
-    wr8(0x7E0000 | W(wram_0EE8), v);
+    WR8(wram_0EE8, v);
     cyc(24);
-    v = rd8(0x7E0000 | W(race_time_minutes));
+    v = RD8(race_time_minutes);
     cyc(24);
-    wr8(0x7E0000 | W(wram_0EE9), v);
+    WR8(wram_0EE9, v);
     cyc(42);
     return v;
 }
