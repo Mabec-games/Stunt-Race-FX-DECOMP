@@ -228,14 +228,14 @@ uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(W(obj_17) + x))));
     (cyc(22), save_xy(x, y));
     cyc(16);
     wr8(W(dp_08), 0x00);
     cyc(16);
     wr8(W(dp_08) + 1, 0x00);
     cyc(30);
-    i = rd8(b | (uint16_t)(0x2015 + x));
+    i = rd8(b | (uint16_t)(W(obj_15) + x));
     v = flat(i);
     finish();
     return v;
@@ -274,9 +274,9 @@ uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(W(obj_17) + x))));
     cyc(30);
-    i = rd8(b | (uint16_t)(0x2015 + x));
+    i = rd8(b | (uint16_t)(W(obj_15) + x));
     save_xy(x, y);
     cyc(16);
     wr8(W(dp_08), 0x00);
@@ -323,7 +323,7 @@ uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(W(obj_17) + x))));
     cyc(16);
     wr8(W(dp_02) + 1, 0x00);
     cyc(16);
@@ -332,9 +332,9 @@ uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
     wr8(W(dp_94) + 1, 0x00);
     save_xy(x, y);
     cyc(30);
-    h = rd8(b | (uint16_t)(0x2015 + x));
+    h = rd8(b | (uint16_t)(W(obj_15) + x));
     cyc(44);
-    pitch = rd8(b | (uint16_t)(0x2014 + x));
+    pitch = rd8(b | (uint16_t)(W(obj_14) + x));
     cyc(118);
     v = pitched(h, (uint8_t)(~pitch + 1));
     finish();
@@ -396,11 +396,11 @@ uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    wr8(W(heading_speed), cyc_then(16, rd8(b | (uint16_t)(W(obj_17) + x))));
     cyc(30);
-    wr8(b | W(heading_turn), cyc_then(24, rd8(b | (uint16_t)(0x2015 + x))));
+    wr8(b | W(heading_turn), cyc_then(24, rd8(b | (uint16_t)(W(obj_15) + x))));
     cyc(30);
-    wr8(b | W(heading_pitch), cyc_then(24, rd8(b | (uint16_t)(0x2014 + x))));
+    wr8(b | W(heading_pitch), cyc_then(24, rd8(b | (uint16_t)(W(obj_14) + x))));
     return pitched_1f7c(x, y);
 }
 
@@ -476,7 +476,7 @@ uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t
     cyc(16);
     wr8(W(dp_08) + 1, 0x00);
     cyc(60);
-    i = sbc8(0x40, rd8(b | (uint16_t)(0x2015 + x)));
+    i = sbc8(0x40, rd8(b | (uint16_t)(W(obj_15) + x)));
     cyc(20);
     v = flat((uint8_t)(i + 1));
     finish();
@@ -522,7 +522,7 @@ uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
     cyc(16);
     wr8(W(dp_08) + 1, 0x00);
     cyc(30);
-    i = rd8(b | (uint16_t)(0x2015 + x));
+    i = rd8(b | (uint16_t)(W(obj_15) + x));
     cyc(36);
     v = flat((uint8_t)(i + 1));
     finish();
@@ -567,23 +567,23 @@ static uint16_t move_by(uint8_t bank, uint16_t x)
     uint16_t v;
 
     cyc(52);
-    v = rd16(b | (uint16_t)(0x200C + x));
+    v = rd16(b | (uint16_t)(W(obj_pos_x) + x));
     cyc(30);
     v = add16(v, rd16(W(dp_02)));
     cyc(30);
-    wr16(b | (uint16_t)(0x200C + x), v);
+    wr16(b | (uint16_t)(W(obj_pos_x) + x), v);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x200E + x));
+    v = rd16(b | (uint16_t)(W(obj_pos_y) + x));
     cyc(30);
     v = add16(v, rd16(W(dp_08)));
     cyc(30);
-    wr16(b | (uint16_t)(0x200E + x), v);
+    wr16(b | (uint16_t)(W(obj_pos_y) + x), v);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x2010 + x));
+    v = rd16(b | (uint16_t)(W(obj_pos_z) + x));
     cyc(30);
     v = add16(v, rd16(W(dp_94)));
     cyc(30);
-    wr16(b | (uint16_t)(0x2010 + x), v);
+    wr16(b | (uint16_t)(W(obj_pos_z) + x), v);
     return v;
 }
 
@@ -744,7 +744,7 @@ static uint16_t velocity_from_vector(uint8_t bank, uint16_t x, uint16_t y, int s
             v = (uint16_t)(v << 1);
         }
         cyc(30);
-        wr16(b | (uint16_t)(0x202E + 2 * i + x), v);
+        wr16(b | (uint16_t)(W(obj_vel_x) + 2 * i + x), v);
     }
     cyc(66);
     return v;
@@ -912,13 +912,13 @@ uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
     cyc(38);
     v = rd16(W(dp_02));
     cyc(30);
-    wr16(b | (uint16_t)(0x202E + x), v);
+    wr16(b | (uint16_t)(W(obj_vel_x) + x), v);
     cyc(16);
     v = rd16(W(dp_08));
     cyc(30);
-    wr16(b | (uint16_t)(0x2030 + x), v);
+    wr16(b | (uint16_t)(W(obj_vel_y) + x), v);
     cyc(30);
-    wr16(b | (uint16_t)(0x2032 + x), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_z) + x), 0x0000);
     cyc(66);
     return v;
 }

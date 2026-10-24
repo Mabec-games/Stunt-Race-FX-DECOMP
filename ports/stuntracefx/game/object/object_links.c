@@ -42,7 +42,7 @@ static void free_list(Carried *cr)
     while (obj) {
         cyc(first ? 46 : 102);  /* later ones: PLY, TYX, BNE taken */
         first = 0;
-        next = rd16(b | (uint16_t)(0x2000 + obj));
+        next = rd16(b | (uint16_t)(W(obj_base) + obj));
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cr->x = obj;
         cr->y = next;
@@ -85,10 +85,10 @@ void ObjectListTableFirst(Carried *cr)
         cr->y = 0x0000;
         if (a & 0x00FF) {
             cyc(156);
-            a = rd16(b | (uint16_t)(0x2008 + x));
+            a = rd16(b | (uint16_t)(W(obj_08) + x));
             if (!(a & 0x0001)) {
                 cyc(100);
-                at = rd16(b | (uint16_t)(0x2004 + x));
+                at = rd16(b | (uint16_t)(W(obj_04) + x));
                 cyc(96);
                 wr16(W(object_table), x);
                 cyc(30);
@@ -116,7 +116,7 @@ void ObjectListTableFirst(Carried *cr)
         } else { cyc(66); }
         do {
             cyc(t);
-            x = rd16(b | (uint16_t)(0x2000 + x));
+            x = rd16(b | (uint16_t)(W(obj_base) + x));
             t = 154; /* later objects: BNE taken at the top */
         } while (x);
         cyc(8);
@@ -223,16 +223,16 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     cyc(24);
     tag = rd8(b | W(wram_1F2B));
     cyc(30);
-    wr8(b | (uint16_t)(0x2048 + child), tag);
+    wr8(b | (uint16_t)(W(obj_48) + child), tag);
     cyc(88);
-    wr16(b | (uint16_t)(0x2006 + child), parent);
+    wr16(b | (uint16_t)(W(obj_06) + child), parent);
     cyc(126);
-    wr16(b | (uint16_t)(0x2027 + child), 0x0000);
+    wr16(b | (uint16_t)(W(obj_27) + child), 0x0000);
     cyc(60);
     wr16(W(debug_digit), child);
     for (;;) {
         cyc(58);
-        next = rd16(b | (uint16_t)(0x2027 + at));
+        next = rd16(b | (uint16_t)(W(obj_27) + at));
         if (!next)
             break; else { cyc(8); }
         at = next;
@@ -240,7 +240,7 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     cyc(32);
     child = rd16(W(debug_digit));
     cyc(30);
-    wr16(b | (uint16_t)(0x2027 + at), child);
+    wr16(b | (uint16_t)(W(obj_27) + at), child);
     cyc(16);
     (void)rd16(W(debug_digit));
     cyc(66);                            /* SEP, RTL */
@@ -279,11 +279,11 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
     wr8(b | W(child_search_tag), tag);
     for (;;) {
         cyc(60);
-        next = rd16(b | (uint16_t)(0x2027 + at));
+        next = rd16(b | (uint16_t)(W(obj_27) + at));
         if (!next)
             { cyc(102); return 0; }
         cyc(46);
-        t = rd8(b | (uint16_t)(0x2048 + next));
+        t = rd8(b | (uint16_t)(W(obj_48) + next));
         *a = t;
         cyc(24);
         want = rd8(b | W(child_search_tag));

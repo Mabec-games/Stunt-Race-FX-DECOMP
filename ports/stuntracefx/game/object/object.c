@@ -20,7 +20,7 @@ void abi_ObjectAttachSpawn(void);
 /* A field of the object at offset `obj` in the data bank. */
 static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
 {
-    return (uint32_t)bank << 16 | (uint16_t)(0x2000 + off + obj);
+    return (uint32_t)bank << 16 | (uint16_t)(W(obj_base) + off + obj);
 }
 
 /*
@@ -511,9 +511,9 @@ int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8
     cyc(40);
     *x = rd16(b | W(wram_0346));
     cyc(52);
-    *v = (uint8_t)(rd8(b | (uint16_t)(0x2025 + *x)) | 0x40);
+    *v = (uint8_t)(rd8(b | (uint16_t)(W(obj_25) + *x)) | 0x40);
     cyc(46);
-    wr8(b | (uint16_t)(0x2025 + *x), *v);
+    wr8(b | (uint16_t)(W(obj_25) + *x), *v);
     *p = nz8(*p, *v);
     return 1;
 }
@@ -565,7 +565,7 @@ uint8_t ObjectTableE8AF(uint8_t bank, uint8_t a, uint16_t obj, uint8_t *p)
     uint32_t b = (uint32_t)bank << 16;
 
     cyc(44);
-    a = add8(a, rd8(b | (uint16_t)(0x2015 + obj)), p);
+    a = add8(a, rd8(b | (uint16_t)(W(obj_15) + obj)), p);
     cyc(38);
     a = add8(a, rd8(b | W(wram_1F4C)), p);
     *p = (uint8_t)((*p & ~P_C) | (a & 0x04 ? P_C : 0));
@@ -606,7 +606,7 @@ uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(98);
-    uint8_t f = rd8(b | (uint16_t)(0x2015 + obj)), s = rd8(cyc_then(38, b | W(wram_1F5A))), d = (uint8_t)(f - s), v;
+    uint8_t f = rd8(b | (uint16_t)(W(obj_15) + obj)), s = rd8(cyc_then(38, b | W(wram_1F5A))), d = (uint8_t)(f - s), v;
 
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (d & 0x02 ? P_C : 0) | (((f ^ s) & (f ^ d) & 0x80) ? P_V : 0));
     cyc(188);
@@ -765,16 +765,16 @@ uint16_t ObjectVelocityFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(30);
-    uint16_t rec = rd16(cyc_then(52, b | (uint16_t)(0x2022 + rd16(b | (uint16_t)(0x2027 + obj))))), v;
+    uint16_t rec = rd16(cyc_then(52, b | (uint16_t)(W(obj_22) + rd16(b | (uint16_t)(W(obj_27) + obj))))), v;
 
     cyc(60);
     v = asr1c(asr1c(asr1c(rd16(0x70002E + rec), p), p), p);
     cyc(144);
-    wr16(b | (uint16_t)(0x202E + obj), v);
+    wr16(b | (uint16_t)(W(obj_vel_x) + obj), v);
     cyc(32);
     v = asr1c(asr1c(asr1c(rd16(0x700032 + rec), p), p), p);
     cyc(144);
-    wr16(b | (uint16_t)(0x2032 + obj), v);
+    wr16(b | (uint16_t)(W(obj_vel_z) + obj), v);
     *p = nz16(*p, obj);
     cyc(78);
     return v;
@@ -876,7 +876,7 @@ uint16_t ObjectSet5DByKind(uint8_t bank, uint16_t obj, uint8_t kind, uint8_t *p)
 
     *p = (uint8_t)((*p & ~(P_C | P_Z)) | P_N | (kind >= last ? P_C : 0));
     cyc(160);
-    wr16((uint32_t)bank << 16 | (uint16_t)(0x205D + obj), v);
+    wr16((uint32_t)bank << 16 | (uint16_t)(W(obj_5d) + obj), v);
     return v;
 }
 
@@ -1018,7 +1018,7 @@ uint16_t ObjectLinkEventTrigger(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     cyc(78);
     *x = rd16(b | W(wram_0346));
     cyc(30);
-    *y = rd16(b | (uint16_t)(0x204F + *x));
+    *y = rd16(b | (uint16_t)(W(obj_link_w) + *x));
     cyc(30);
     *y = rd16(b + 0x204F + *y);
     cyc(44);
@@ -1502,9 +1502,9 @@ static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr, in
         cyc(k == 1 ? 38 : k == 4 ? 70 : 64);           /* CMP, BEQ (taken) */
     }
     cyc(76);
-    wr16(b | (uint16_t)(0x201A + y), addr);
+    wr16(b | (uint16_t)(W(obj_1a_w) + y), addr);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + y), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + y), 0x08);
     return y;
 }
 
@@ -2285,11 +2285,11 @@ int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y)
         *y = rx;
         ObjectInit(rx);
         cyc(46);
-        wr8(b | (uint16_t)(0x2036 + rx), 0x03);
+        wr8(b | (uint16_t)(W(obj_36) + rx), 0x03);
         cyc(46);
         *a = rd16(b | W(group_trigger_pos));
         cyc(30);
-        wr16(b | (uint16_t)(0x2004 + rx), *a);
+        wr16(b | (uint16_t)(W(obj_04) + rx), *a);
         return 1;
     }
     if (((uint8_t)(n - 0x2E) & 0x80))
@@ -2348,15 +2348,15 @@ uint16_t ObjectFree(uint8_t bank, uint16_t obj)
         cyc(24);
         wr16(b | W(wram_0329), next);
         cyc(54);
-        wr16(b | (uint16_t)(0x2002 + next), 0x0000);
+        wr16(b | (uint16_t)(W(obj_02) + next), 0x0000);
         cyc(24);
         wr16(b | W(wram_032B), 0x0000);
     } else {
         next = rd16(cyc_then(82, field(bank, obj, 0x00)));
         cyc(44);
-        wr16(b | (uint16_t)(0x2000 + prev), next);
+        wr16(b | (uint16_t)(W(obj_base) + prev), next);
         if (next)
-            { cyc(60); wr16(b | (uint16_t)(0x2002 + next), prev); cyc(36); }   /* BRA, PLX */
+            { cyc(60); wr16(b | (uint16_t)(W(obj_02) + next), prev); cyc(36); }   /* BRA, PLX */
         else
             { cyc(46); wr16(b | W(wram_032B), prev); cyc(14); }                      /* PLX */
     }
@@ -2486,9 +2486,9 @@ void ObjectCallHandler(Carried *cr, uint16_t obj)
 {
     uint32_t b = (uint32_t)cr->db << 16;
     cyc(84);
-    uint8_t keep = rd8(b | W(wram_1F58)), bank = rd8(cyc_then(262, b | (uint16_t)(0x201C + obj)));
+    uint8_t keep = rd8(b | W(wram_1F58)), bank = rd8(cyc_then(262, b | (uint16_t)(W(obj_1c) + obj)));
     cyc(74);
-    uint16_t addr = rd16(b | (uint16_t)(0x201A + obj)), a = (uint16_t)(addr - 1);
+    uint16_t addr = rd16(b | (uint16_t)(W(obj_1a_w) + obj)), a = (uint16_t)(addr - 1);
 
     cr->a = a;
     cr->x = cr->y = obj;
@@ -2542,7 +2542,7 @@ static int run_handler(Carried *cr, uint8_t bank, uint16_t obj, uint16_t word_at
         { cyc(130); return 0; }
     cyc(40);
     wr16(b | W(handler_addr), h);
-    if (need_no_record && (cr->a = rd16(cyc_then(30, b | (uint16_t)(0x2022 + obj)))) != 0)
+    if (need_no_record && (cr->a = rd16(cyc_then(30, b | (uint16_t)(W(obj_22) + obj)))) != 0)
         return 0;
     cyc(need_no_record ? 40 : 24);                     /* B: BNE not taken */
     wr16(b | W(handler_object), obj);
@@ -2714,13 +2714,13 @@ void ObjectsRunHandlers(Carried *cr)
         cyc(24);
         wr8(b | W(wram_035C), 0x00);
         cyc(30);
-        v = rd8(b | (uint16_t)(0x2036 + x));
+        v = rd8(b | (uint16_t)(W(obj_36) + x));
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         if (v && (v & 0x80 || v != 1)) {
             if (v & 0x80) {
                 v = 0x03;
                 cyc(84);
-                wr8(b | (uint16_t)(0x2036 + x), v);
+                wr8(b | (uint16_t)(W(obj_36) + x), v);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | v);
                 cr->x = x;
                 cr->y = y;
@@ -2729,7 +2729,7 @@ void ObjectsRunHandlers(Carried *cr)
             } else {
                 v = (uint8_t)(v - 1);
                 cyc(98);
-                wr8(b | (uint16_t)(0x2036 + x), v);
+                wr8(b | (uint16_t)(W(obj_36) + x), v);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | v);
                 cr->x = x;
                 cr->y = y;
@@ -2742,7 +2742,7 @@ void ObjectsRunHandlers(Carried *cr)
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             if (v) {
                 cyc(52);
-                y = rd16(b | (uint16_t)(0x2000 + x));
+                y = rd16(b | (uint16_t)(W(obj_base) + x));
                 cr->x = x;
                 cr->y = y;
                 (cyc(62), ObjectFreeLong_cr(cr));
@@ -2754,15 +2754,15 @@ void ObjectsRunHandlers(Carried *cr)
         } else {
             if (v) {
                 cyc(92);
-                wr8(b | (uint16_t)(0x2022 + x), 0x00);
+                wr8(b | (uint16_t)(W(obj_22) + x), 0x00);
                 cyc(30);
-                wr8(b | (uint16_t)(0x2023 + x), 0x00);
+                wr8(b | (uint16_t)(W(obj_23) + x), 0x00);
                 cyc(30);
-                wr8(b | (uint16_t)(0x2036 + x), 0x00);
+                wr8(b | (uint16_t)(W(obj_36) + x), 0x00);
             }
             cyc(52);
         }
-        y = rd16(b | (uint16_t)(0x2000 + x));
+        y = rd16(b | (uint16_t)(W(obj_base) + x));
         x = y;
         cyc(36);
     }
@@ -2951,19 +2951,19 @@ uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(30);
-    uint8_t v = rd8(b | (uint16_t)(0x2048 + obj));
+    uint8_t v = rd8(b | (uint16_t)(W(obj_48) + obj));
 
     *p = (uint8_t)((*p & ~P_C) | (v >= 0x08 ? (cyc(64), P_C) : 0));
     if (v != 0x08)
-        { cyc(68); wr8(b | (uint16_t)(0x2048 + obj), cyc_then(6, (uint8_t)(rd8(b | (uint16_t)(0x2048 + obj)) + 1))); }
+        { cyc(68); wr8(b | (uint16_t)(W(obj_48) + obj), cyc_then(6, (uint8_t)(rd8(b | (uint16_t)(W(obj_48) + obj)) + 1))); }
     cyc(30);
-    v = rd8(b | (uint16_t)(0x2048 + obj));
+    v = rd8(b | (uint16_t)(W(obj_48) + obj));
     cyc(24);
     wr8(b | W(wram_1F58), v);
     cyc(24);
     v = (uint8_t)(rd8(b | W(wram_1F58)) | 0x80);
     cyc(46);
-    wr8(b | (uint16_t)(0x205A + obj), v);
+    wr8(b | (uint16_t)(W(obj_5a) + obj), v);
     *p = nz8(*p, v);
     cyc(42);
     return v;
@@ -3030,15 +3030,15 @@ void ObjectSpawnChanceD460(Carried *cr)
     y = cr->y;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(98);
-    wr16(b | (uint16_t)(0x201A + y), 0xD460);
+    wr16(b | (uint16_t)(W(obj_1a_w) + y), 0xD460);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + y), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + y), 0x08);
     (cyc(62), ObjectCopyPositionTo_cr(cr));
     a = (uint8_t)cr->a;
     cyc(88);
-    wr16(b | (uint16_t)(0x2027 + cr->y), cr->x);
+    wr16(b | (uint16_t)(W(obj_27) + cr->y), cr->x);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->x & 0xFF00) | a);
     set_p(cr, nz8(cr->p, a));
@@ -3080,11 +3080,11 @@ void ObjectAdvance5DIfFlag(Carried *cr)
     if (!v)
         { cyc(64); return; }
     cyc(68);
-    w = rd16(b | (uint16_t)(0x205D + cr->x));
+    w = rd16(b | (uint16_t)(W(obj_5d) + cr->x));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_C))));
     cr->a = alu_adc16(w, 0x0002, &cr->p);
     cyc(68);
-    wr16(b | (uint16_t)(0x205D + cr->x), cr->a);
+    wr16(b | (uint16_t)(W(obj_5d) + cr->x), cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(64);
 }
@@ -3158,12 +3158,12 @@ static void spawn_sparkle(Carried *cr, uint32_t b)
         { cyc(92); return; }            /* BCS, JML; then the next spawn's REP and LDA or RTL */
     cr->a = 0xEA6B;
     cyc(98);
-    wr16(b | (uint16_t)(0x201A + cr->y), 0xEA6B);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->y), 0xEA6B);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->y), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->y), 0x08);
     cyc(88);
-    wr16(b | (uint16_t)(0x2006 + cr->y), cr->x);
+    wr16(b | (uint16_t)(W(obj_06) + cr->y), cr->x);
     cr->a = (uint16_t)((cr->x & 0xFF00) | 0x08);
     set_p(cr, nz8(cr->p, 0x08));
     (cyc(112), ObjectCopyPositionTo_cr(cr));
@@ -3243,24 +3243,24 @@ void ObjectSparkleStep(Carried *cr)
     unsigned i;
 
     cyc(30);
-    cr->y = rd16(b | (uint16_t)(0x2006 + cr->x));
+    cr->y = rd16(b | (uint16_t)(W(obj_06) + cr->x));
     set_p(cr, nz16(cr->p, cr->y));
     (cyc(62), ObjectCopyPositionFrom_cr(cr));
     (cyc(62), ObjectApplyVelocity_cr(cr));
     for (i = 0; i < 3; i++) {
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(52);
-        w = rd16(b | (uint16_t)(0x202E + i * 2 + cr->x));
+        w = rd16(b | (uint16_t)(W(obj_vel_x) + i * 2 + cr->x));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         cyc(44);
-        cr->a = alu_adc16(w, rd16(b | (uint16_t)(0x2027 + i * 2 + cr->x)), &cr->p);
+        cr->a = alu_adc16(w, rd16(b | (uint16_t)(W(obj_27) + i * 2 + cr->x)), &cr->p);
         cyc(30);
-        wr16(b | (uint16_t)(0x202E + i * 2 + cr->x), cr->a);
+        wr16(b | (uint16_t)(W(obj_vel_x) + i * 2 + cr->x), cr->a);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(22);
     }
     cyc(30);
-    v = rd8(b | (uint16_t)(0x2048 + cr->x));
+    v = rd8(b | (uint16_t)(W(obj_48) + cr->x));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     if (!v) {
@@ -3269,9 +3269,9 @@ void ObjectSparkleStep(Carried *cr)
         return;
     }
     cyc(52);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2048 + cr->x)) - 1);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_48) + cr->x)) - 1);
     cyc(6);
-    wr8(b | (uint16_t)(0x2048 + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_48) + cr->x), v);
     set_p(cr, nz8(cr->p, v));
     (cyc(62), ObjectRebucket_cr(cr));
     cyc(44);
@@ -3307,11 +3307,11 @@ void ObjectSparkleStart(Carried *cr)
     uint16_t w;
 
     cyc(30);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cr->x)) | 0x08);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_24) + cr->x)) | 0x08);
     cyc(46);
-    wr8(b | (uint16_t)(0x2024 + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_24) + cr->x), v);
     cyc(76);
-    wr16(b | (uint16_t)(0x205D + cr->x), 0x9998);
+    wr16(b | (uint16_t)(W(obj_5d) + cr->x), 0x9998);
     (cyc(84), w_RandomStepLong(cr));
     v = (uint8_t)(cr->a & 0x03);
     cyc(40);
@@ -3319,15 +3319,15 @@ void ObjectSparkleStart(Carried *cr)
     cyc(24);
     v = (uint8_t)(rd8(b | W(wram_1F58)) | 0x80);
     cyc(46);
-    wr8(b | (uint16_t)(0x2018 + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_18) + cr->x), v);
     cyc(76);
-    wr16(b | (uint16_t)(0x201A + cr->x), 0xEB07);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->x), 0xEB07);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->x), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->x), 0x08);
     cyc(46);
-    wr8(b | (uint16_t)(0x205F + cr->x), 0x0A);
+    wr8(b | (uint16_t)(W(obj_5f) + cr->x), 0x0A);
     cyc(46);
-    wr8(b | (uint16_t)(0x2048 + cr->x), 0x05);
+    wr8(b | (uint16_t)(W(obj_48) + cr->x), 0x05);
     add_random(cr, b, 0x2027, 0x007F);
     cyc(22);
     add_random(cr, b, 0x2029, 0x003F);
@@ -3335,21 +3335,21 @@ void ObjectSparkleStart(Carried *cr)
     add_random(cr, b, 0x202B, 0x007F);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(74);
-    w = rd16(b | (uint16_t)(0x2027 + cr->x));
+    w = rd16(b | (uint16_t)(W(obj_27) + cr->x));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     w = alu_sbc16(w, 0x003F, &cr->p);
     cyc(62);
-    wr16(b | (uint16_t)(0x2027 + cr->x), w);
+    wr16(b | (uint16_t)(W(obj_27) + cr->x), w);
     cyc(74);
-    w = (uint16_t)((rd16(b | (uint16_t)(0x2029 + cr->x)) ^ 0xFFFF) + 1);
+    w = (uint16_t)((rd16(b | (uint16_t)(W(obj_29) + cr->x)) ^ 0xFFFF) + 1);
     cyc(68);
-    wr16(b | (uint16_t)(0x2029 + cr->x), w);
+    wr16(b | (uint16_t)(W(obj_29) + cr->x), w);
     cyc(74);
-    w = rd16(b | (uint16_t)(0x202B + cr->x));
+    w = rd16(b | (uint16_t)(W(obj_2b) + cr->x));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     w = alu_sbc16(w, 0x003F, &cr->p);
     cyc(62);
-    wr16(b | (uint16_t)(0x202B + cr->x), w);
+    wr16(b | (uint16_t)(W(obj_2b) + cr->x), w);
     cr->a = w;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     (cyc(22), ObjectSparkleStep(cr));
@@ -3400,15 +3400,15 @@ void ObjectSpawnD460UnlessFlag(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cr->a = 0xD460;
     cyc(98);
-    wr16(b | (uint16_t)(0x201A + cr->y), 0xD460);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->y), 0xD460);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->y), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->y), 0x08);
     (cyc(62), ObjectCopyPositionTo_cr(cr));
     a = (uint8_t)cr->a;
     cyc(88);
-    wr16(b | (uint16_t)(0x2027 + cr->y), cr->x);
+    wr16(b | (uint16_t)(W(obj_27) + cr->y), cr->x);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->x & 0xFF00) | a);
     set_p(cr, nz8(cr->p, a));
@@ -3474,7 +3474,7 @@ void ObjectMoveForward(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(82);
-    cr->a = rd16(b | (uint16_t)(0x2022 + cr->x));
+    cr->a = rd16(b | (uint16_t)(W(obj_22) + cr->x));
     cr->x = cr->a;
     cyc(46);
     cr->a = rd16((uint32_t)(0x70005E + cr->x));
@@ -3552,7 +3552,7 @@ turn:
             wr8(dp8(cr, 0x94), cyc_then(16, rd8(cyc_then(24, b | W(area_rows_left)))));
         }
         cyc(30);
-        v = rd8(b | (uint16_t)(0x2000 + angle[i] + cr->x));
+        v = rd8(b | (uint16_t)(W(obj_base) + angle[i] + cr->x));
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         set_p(cr, nz8(cr->p, v));
         if (i == 0)
@@ -3682,15 +3682,15 @@ static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
 
     if (stage == 0) {
         cyc(30);
-        cr->y = rd16(b | (uint16_t)(0x2027 + cr->x));
+        cr->y = rd16(b | (uint16_t)(W(obj_27) + cr->x));
         if (attached) {
             cyc(30);
-            wr8(b | W(wram_1F59), cyc_then(24, rd8(b | (uint16_t)(0x2030 + cr->x))));
+            wr8(b | W(wram_1F59), cyc_then(24, rd8(b | (uint16_t)(W(obj_vel_y) + cr->x))));
             cyc(30);
-            wr8(b | W(wram_1F5A), cyc_then(24, rd8(b | (uint16_t)(0x2032 + cr->x))));
+            wr8(b | W(wram_1F5A), cyc_then(24, rd8(b | (uint16_t)(W(obj_vel_z) + cr->x))));
         } else {
             cyc(30);
-            v = rd8(b | (uint16_t)(0x2032 + cr->x));
+            v = rd8(b | (uint16_t)(W(obj_vel_z) + cr->x));
             cyc(24);
             wr8(b | W(wram_1F58), v);
         }
@@ -3724,7 +3724,7 @@ static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
             wr8(dp8(cr, 0x94), cyc_then(16, rd8(cyc_then(24, b | W(area_rows_left)))));
         }
         cyc(30);
-        v = rd8(b | (uint16_t)(0x2014 + i + cr->y));
+        v = rd8(b | (uint16_t)(W(obj_14) + i + cr->y));
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         set_p(cr, nz8(cr->p, v));
         if (i == 0)
@@ -3756,11 +3756,11 @@ static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     if (!attached) {
         cyc(52);
-        v = rd8(b | (uint16_t)(0x2032 + cr->x));
+        v = rd8(b | (uint16_t)(W(obj_vel_z) + cr->x));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         v = alu_adc8(v, 0xFB, &cr->p);
         cyc(60);
-        wr8(b | (uint16_t)(0x2032 + cr->x), v);
+        wr8(b | (uint16_t)(W(obj_vel_z) + cr->x), v);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } else { cyc(22); }
     cyc(62);
@@ -3805,21 +3805,21 @@ void ObjectSpawnTrail(Carried *cr)
     if (!(cr->p & P_C))
         { cyc(92); return; }
     cyc(52);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cr->y)) | 0x04);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_24) + cr->y)) | 0x04);
     cyc(46);
-    wr8(b | (uint16_t)(0x2024 + cr->y), v);
+    wr8(b | (uint16_t)(W(obj_24) + cr->y), v);
     cyc(46);
-    wr8(b | (uint16_t)(0x204A + cr->y), 0x03);
+    wr8(b | (uint16_t)(W(obj_4a) + cr->y), 0x03);
     cyc(46);
-    wr8(b | (uint16_t)(0x2048 + cr->y), 0x14);
+    wr8(b | (uint16_t)(W(obj_48) + cr->y), 0x14);
     cyc(46);
-    wr8(b | (uint16_t)(0x2049 + cr->y), 0x0A);
+    wr8(b | (uint16_t)(W(obj_49) + cr->y), 0x0A);
     cyc(76);
-    wr16(b | (uint16_t)(0x201A + cr->y), 0xE919);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->y), 0xE919);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->y), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->y), 0x08);
     cyc(88);
-    wr16(b | (uint16_t)(0x2027 + cr->y), cr->x);
+    wr16(b | (uint16_t)(W(obj_27) + cr->y), cr->x);
     cr->a = (uint16_t)((cr->x & 0xFF00) | 0x08);
     set_p(cr, nz8(cr->p, 0x08));
     cyc(94);
@@ -3851,13 +3851,13 @@ void ObjectTrailStart(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(46);
-    wr8(b | (uint16_t)(0x204B + cr->x), 0x0C);
+    wr8(b | (uint16_t)(W(obj_4b) + cr->x), 0x0C);
     cyc(76);
-    wr16(b | (uint16_t)(0x201A + cr->x), 0xE934);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->x), 0xE934);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->x), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->x), 0x08);
     cyc(46);
-    wr8(b | (uint16_t)(0x2032 + cr->x), 0xD8);
+    wr8(b | (uint16_t)(W(obj_vel_z) + cr->x), 0xD8);
     cyc(22);
     parent_place(cr, b, 0);
 }
@@ -3895,17 +3895,17 @@ void ObjectTrailStep(Carried *cr)
     uint8_t v;
 
     cyc(30);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cr->x)) | 0x04);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_24) + cr->x)) | 0x04);
     cyc(46);
-    wr8(b | (uint16_t)(0x2024 + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_24) + cr->x), v);
     cyc(46);
-    wr8(b | (uint16_t)(0x204A + cr->x), 0x00);
+    wr8(b | (uint16_t)(W(obj_4a) + cr->x), 0x00);
     cyc(46);
-    wr8(b | (uint16_t)(0x2048 + cr->x), 0x00);
+    wr8(b | (uint16_t)(W(obj_48) + cr->x), 0x00);
     cyc(46);
-    wr8(b | (uint16_t)(0x2049 + cr->x), 0x00);
+    wr8(b | (uint16_t)(W(obj_49) + cr->x), 0x00);
     cyc(30);
-    v = rd8(b | (uint16_t)(0x204B + cr->x));
+    v = rd8(b | (uint16_t)(W(obj_4b) + cr->x));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     if (!v) {
@@ -3914,9 +3914,9 @@ void ObjectTrailStep(Carried *cr)
         return;
     }
     cyc(52);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cr->x)) - 1);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_4b) + cr->x)) - 1);
     cyc(6);
-    wr8(b | (uint16_t)(0x204B + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_4b) + cr->x), v);
     parent_place(cr, b, 0);
 }
 
@@ -4050,27 +4050,27 @@ void ObjectSpawnAttached(Carried *cr)
     if (!(cr->p & P_C))
         { cyc(92); return; }
     cyc(52);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cr->y)) | 0x04);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_24) + cr->y)) | 0x04);
     cyc(46);
-    wr8(b | (uint16_t)(0x2024 + cr->y), v);
+    wr8(b | (uint16_t)(W(obj_24) + cr->y), v);
     cyc(46);
-    wr8(b | (uint16_t)(0x204A + cr->y), 0x02);
+    wr8(b | (uint16_t)(W(obj_4a) + cr->y), 0x02);
     cyc(46);
-    wr8(b | (uint16_t)(0x2048 + cr->y), 0x05);
+    wr8(b | (uint16_t)(W(obj_48) + cr->y), 0x05);
     cyc(46);
-    wr8(b | (uint16_t)(0x2049 + cr->y), 0x0A);
+    wr8(b | (uint16_t)(W(obj_49) + cr->y), 0x0A);
     cyc(76);
-    wr16(b | (uint16_t)(0x201A + cr->y), 0xEBA3);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->y), 0xEBA3);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->y), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->y), 0x08);
     cyc(88);
-    wr16(b | (uint16_t)(0x2027 + cr->y), cr->x);
+    wr16(b | (uint16_t)(W(obj_27) + cr->y), cr->x);
     cyc(74);
-    wr8(b | (uint16_t)(0x2030 + cr->y), cyc_then(30, rd8(b | W(wram_1F59))));
+    wr8(b | (uint16_t)(W(obj_vel_y) + cr->y), cyc_then(30, rd8(b | W(wram_1F59))));
     cyc(24);
     v = rd8(b | W(wram_1F5A));
     cyc(30);
-    wr8(b | (uint16_t)(0x2032 + cr->y), v);
+    wr8(b | (uint16_t)(W(obj_vel_z) + cr->y), v);
     cr->a = (uint16_t)((cr->x & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     cyc(44);
@@ -4101,11 +4101,11 @@ void ObjectAttachedStart(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(46);
-    wr8(b | (uint16_t)(0x204B + cr->x), 0x0C);
+    wr8(b | (uint16_t)(W(obj_4b) + cr->x), 0x0C);
     cyc(76);
-    wr16(b | (uint16_t)(0x201A + cr->x), 0xEBB9);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->x), 0xEBB9);
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->x), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->x), 0x08);
     cyc(22);
     parent_place(cr, b, 1);
 }
@@ -4137,17 +4137,17 @@ void ObjectAttachedStep(Carried *cr)
     uint8_t v;
 
     cyc(30);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cr->x)) | 0x04);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_24) + cr->x)) | 0x04);
     cyc(46);
-    wr8(b | (uint16_t)(0x2024 + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_24) + cr->x), v);
     cyc(46);
-    wr8(b | (uint16_t)(0x204A + cr->x), 0x00);
+    wr8(b | (uint16_t)(W(obj_4a) + cr->x), 0x00);
     cyc(46);
-    wr8(b | (uint16_t)(0x2048 + cr->x), 0x00);
+    wr8(b | (uint16_t)(W(obj_48) + cr->x), 0x00);
     cyc(46);
-    wr8(b | (uint16_t)(0x2049 + cr->x), 0x00);
+    wr8(b | (uint16_t)(W(obj_49) + cr->x), 0x00);
     cyc(30);
-    v = rd8(b | (uint16_t)(0x204B + cr->x));
+    v = rd8(b | (uint16_t)(W(obj_4b) + cr->x));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     if (!v) {
@@ -4156,9 +4156,9 @@ void ObjectAttachedStep(Carried *cr)
         return;
     }
     cyc(52);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cr->x)) - 1);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_4b) + cr->x)) - 1);
     cyc(6);
-    wr8(b | (uint16_t)(0x204B + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_4b) + cr->x), v);
     parent_place(cr, b, 1);
 }
 
@@ -4203,19 +4203,19 @@ void ObjectPlaceOnParent(Carried *cr)
     uint32_t from[3];
 
     cyc(30);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x2025 + cr->y)) & 0x01);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_25) + cr->y)) & 0x01);
     if (v) {
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x8C);
         cyc(110);
-        wr8(b | (uint16_t)(0x2018 + cr->y), 0x8C);
+        wr8(b | (uint16_t)(W(obj_18) + cr->y), 0x8C);
         cyc(30);
-        wr8(b | (uint16_t)(0x2019 + cr->y), 0x8C);
+        wr8(b | (uint16_t)(W(obj_19) + cr->y), 0x8C);
         cyc(22);                        /* BRA */
     } else {
         x0 = cr->x;
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(120);
-        w = rd16(b | (uint16_t)(0x2022 + cr->x));
+        w = rd16(b | (uint16_t)(W(obj_22) + cr->x));
         cr->x = w;
         if (w) {
             cyc(62);
@@ -4226,7 +4226,7 @@ void ObjectPlaceOnParent(Carried *cr)
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         cyc(114);
-        v = alu_adc8((uint8_t)w, rd8(b | (uint16_t)(0x2048 + cr->y)), &cr->p);
+        v = alu_adc8((uint8_t)w, rd8(b | (uint16_t)(W(obj_48) + cr->y)), &cr->p);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         cyc(24);
         wr8(b | W(wram_1F4C), v);
@@ -4241,11 +4241,11 @@ void ObjectPlaceOnParent(Carried *cr)
             v = (uint8_t)(cr->a | 0x80);
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
             cyc(46);
-            wr8(b | (uint16_t)(0x2018 + i + cr->y), v);
+            wr8(b | (uint16_t)(W(obj_18) + i + cr->y), v);
         }
     }
     for (i = 0; i < 3; i++)
-        { cyc(30); wr8(b | (uint16_t)(0x1F58 + i), cyc_then(24, rd8(b | (uint16_t)(0x202E + i * 2 + cr->y)))); }
+        { cyc(30); wr8(b | (uint16_t)(0x1F58 + i), cyc_then(24, rd8(b | (uint16_t)(W(obj_vel_x) + i * 2 + cr->y)))); }
     cyc(24);
     v = rd8(b | W(wram_1F58));
     wr8(dp8(cr, 0x02), cyc_then(16, v));
@@ -4274,7 +4274,7 @@ void ObjectPlaceOnParent(Carried *cr)
             wr8(dp8(cr, 0x94), cyc_then(16, rd8(cyc_then(24, b | W(area_rows_left)))));
         }
         cyc(30);
-        v = rd8(b | (uint16_t)(0x2000 + angle[i] + cr->x));
+        v = rd8(b | (uint16_t)(W(obj_base) + angle[i] + cr->x));
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         set_p(cr, nz8(cr->p, v));
         if (i == 0)
@@ -4348,7 +4348,7 @@ void ObjectLinkEventTrigger2(Carried *cr)
         cyc(78);
         cr->x = rd16(b | W(wram_034A));
         cyc(30);
-        cr->y = rd16(b | (uint16_t)(0x204F + cr->x));
+        cr->y = rd16(b | (uint16_t)(W(obj_link_w) + cr->x));
         cyc(30);
         cr->y = rd16(b + 0x204F + cr->y);
         cyc(44);
@@ -4537,7 +4537,7 @@ void ObjectBillboardTilt(Carried *cr)
         set_p(cr, nz16(cr->p, x));
     }
     cyc(66);
-    a = rd8(b | (uint16_t)(0x2016 + y));
+    a = rd8(b | (uint16_t)(W(obj_16) + y));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
     a = alu_adc8(a, rd8(b | W(group_trigger_pos)), &cr->p);
@@ -4559,7 +4559,7 @@ void ObjectBillboardTilt(Carried *cr)
     cyc(168);
     wr8(b | W(wram_1F58), a);
     cyc(30);
-    a = rd8(b | (uint16_t)(0x2015 + y));
+    a = rd8(b | (uint16_t)(W(obj_15) + y));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     cyc(38);
     a = alu_sbc8(a, rd8(b | W(wram_1F5A)), &cr->p);
@@ -4581,9 +4581,9 @@ void ObjectBillboardTilt(Carried *cr)
     set_p(cr, nz16(cr->p, cr->a));
     r_add16(cr, 0x0008);
     cyc(152);
-    r_add16(cr, rd16(b | (uint16_t)(0x2029 + y)));
+    r_add16(cr, rd16(b | (uint16_t)(W(obj_29) + y)));
     cyc(30);
-    wr16(b | (uint16_t)(0x205D + y), cr->a);
+    wr16(b | (uint16_t)(W(obj_5d) + y), cr->a);
     r_sep(cr, P_M);
     ObjectTableC056_cr(cr);
     cyc(24);
@@ -4592,7 +4592,7 @@ void ObjectBillboardTilt(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     set_p(cr, nz8(cr->p, a));
     cyc(46);
-    wr8(b | (uint16_t)(0x2018 + y), a);
+    wr8(b | (uint16_t)(W(obj_18) + y), a);
     cyc(24);
     r_lda8(cr, b | W(wram_0D62));
     if (!(uint8_t)cr->a)
@@ -4603,7 +4603,7 @@ void ObjectBillboardTilt(Carried *cr)
     a = (uint8_t)(cr->a | 0x80);
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     set_p(cr, nz8(cr->p, a));
-    wr8(b | (uint16_t)(0x2019 + y), a);
+    wr8(b | (uint16_t)(W(obj_19) + y), a);
     (void)w;
 }
 
@@ -4676,38 +4676,38 @@ void ObjectSpawnPuff(Carried *cr)
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x9BB4);
     cyc(38);
-    wr16(b | (uint16_t)(0x205D + cr->y), 0x9BB4);
+    wr16(b | (uint16_t)(W(obj_5d) + cr->y), 0x9BB4);
     r_sep(cr, P_M);
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0xFE0C);
     cyc(38);
-    wr16(b | (uint16_t)(0x2029 + cr->y), 0xFE0C);
+    wr16(b | (uint16_t)(W(obj_29) + cr->y), 0xFE0C);
     r_sep(cr, P_M);
     cyc(52);
-    r_lda8(cr, b | (uint16_t)(0x2024 + cr->y));
+    r_lda8(cr, b | (uint16_t)(W(obj_24) + cr->y));
     a = (uint8_t)(cr->a | 0x08);
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     set_p(cr, nz8(cr->p, a));
     cyc(46);
-    wr8(b | (uint16_t)(0x2024 + cr->y), a);
+    wr8(b | (uint16_t)(W(obj_24) + cr->y), a);
     cr->a = (uint16_t)(cr->a & 0xFF00);
     cyc(46);
-    wr8(b | (uint16_t)(0x203A + cr->y), 0x00);
+    wr8(b | (uint16_t)(W(obj_3a) + cr->y), 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x14);
     cyc(46);
-    wr8(b | (uint16_t)(0x205F + cr->y), 0x14);
+    wr8(b | (uint16_t)(W(obj_5f) + cr->y), 0x14);
     set_p(cr, nz8(cr->p, 0x14));
     (cyc(62), ObjectCopyPositionTo_cr(cr));
     r_rep(cr, P_M);
     cyc(30);
-    r_lda16(cr, b | (uint16_t)(0x200E + cr->y));
+    r_lda16(cr, b | (uint16_t)(W(obj_pos_y) + cr->y));
     r_add16(cr, 0xFE0C);
     cyc(68);
-    wr16(b | (uint16_t)(0x200E + cr->y), cr->a);
+    wr16(b | (uint16_t)(W(obj_pos_y) + cr->y), cr->a);
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x07);
     cyc(68);
-    wr8(b | (uint16_t)(0x200A + cr->y), 0x07);
+    wr8(b | (uint16_t)(W(obj_0a) + cr->y), 0x07);
     cr->x = x;
     set_p(cr, nz16(cr->p, x));
     (void)v;
@@ -5282,7 +5282,7 @@ void ObjectTimedStep(Carried *cr)
 
     (cyc(62), ObjectRebucket_cr(cr));
     cyc(30);
-    v = rd8(b | (uint16_t)(0x204B + cr->x));
+    v = rd8(b | (uint16_t)(W(obj_4b) + cr->x));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     if (!v) {
@@ -5291,9 +5291,9 @@ void ObjectTimedStep(Carried *cr)
         return;
     }
     cyc(52);
-    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cr->x)) - 1);
+    v = (uint8_t)(rd8(b | (uint16_t)(W(obj_4b) + cr->x)) - 1);
     cyc(6);
-    wr8(b | (uint16_t)(0x204B + cr->x), v);
+    wr8(b | (uint16_t)(W(obj_4b) + cr->x), v);
     set_p(cr, nz8(cr->p, v));
     cyc(44);                            /* RTL */
 }
@@ -5326,16 +5326,16 @@ void ObjectTimedSetup(Carried *cr)
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0xEC8B);
     cyc(16);
-    wr16(b | (uint16_t)(0x201A + cr->x), 0xEC8B);
+    wr16(b | (uint16_t)(W(obj_1a_w) + cr->x), 0xEC8B);
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     set_p(cr, nz8(cr->p, 0x08));
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + cr->x), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + cr->x), 0x08);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x14);
     set_p(cr, nz8(cr->p, 0x14));
     cyc(46);
-    wr8(b | (uint16_t)(0x204B + cr->x), 0x14);
+    wr8(b | (uint16_t)(W(obj_4b) + cr->x), 0x14);
     ObjectTimedStep(cr);
 }
 
@@ -5361,12 +5361,12 @@ static void set_handler(Carried *cr, uint16_t o, uint16_t h)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16_imm(cr, h);
     cyc(38);
-    wr16(b | (uint16_t)(0x201A + o), h);
+    wr16(b | (uint16_t)(W(obj_1a_w) + o), h);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     set_p(cr, nz8(cr->p, 0x08));
     cyc(68);
-    wr8(b | (uint16_t)(0x201C + o), 0x08);
+    wr8(b | (uint16_t)(W(obj_1c) + o), 0x08);
 }
 
 /* LDY +off,X: one of object X's children. */
@@ -5428,9 +5428,9 @@ void ObjectReleaseWhenPassed(Carried *cr)
     set_p(cr, nz16(cr->p, cr->y));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(52);
-    r_lda16(cr, b | (uint16_t)(0x2010 + cr->y));
+    r_lda16(cr, b | (uint16_t)(W(obj_pos_z) + cr->y));
     cyc(44);
-    r_sub16(cr, rd16(b | (uint16_t)(0x2010 + cr->x)));
+    r_sub16(cr, rd16(b | (uint16_t)(W(obj_pos_z) + cr->x)));
     if (cr->p & P_N) {
         cyc(32);
         cr->a = (uint16_t)((cr->a ^ 0xFFFF) + 1);
@@ -5445,17 +5445,17 @@ void ObjectReleaseWhenPassed(Carried *cr)
     }
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(110);
-    r_lda16(cr, b | (uint16_t)(0x2010 + cr->x));
+    r_lda16(cr, b | (uint16_t)(W(obj_pos_z) + cr->x));
     cyc(30);
-    r_cmp16(cr, rd16(b | (uint16_t)(0x2010 + cr->y)));
+    r_cmp16(cr, rd16(b | (uint16_t)(W(obj_pos_z) + cr->y)));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     if (!(cr->p & P_N))
         { cyc(114); return; }           /* JML to the RTL, RTL */
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(96);
-    r_lda16(cr, b | (uint16_t)(0x2010 + cr->y));
+    r_lda16(cr, b | (uint16_t)(W(obj_pos_z) + cr->y));
     cyc(44);
-    r_sub16(cr, rd16(b | (uint16_t)(0x2010 + cr->x)));
+    r_sub16(cr, rd16(b | (uint16_t)(W(obj_pos_z) + cr->x)));
     if (cr->p & P_N) {
         cr->a = (uint16_t)((cr->a ^ 0xFFFF) + 1);
         set_p(cr, nz16(cr->p, cr->a));

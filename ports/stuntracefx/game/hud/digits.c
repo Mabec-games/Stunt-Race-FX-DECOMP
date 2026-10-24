@@ -410,7 +410,7 @@ void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p)
     uint32_t b = (uint32_t)bank << 16;
 
     cyc(30);
-    wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, (uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) | 0x01)));
+    wr8(b | (uint16_t)(W(obj_25) + obj), cyc_then(46, (uint8_t)(rd8(b | (uint16_t)(W(obj_25) + obj)) | 0x01)));
     cyc(60);
     wr8(b | W(hud_digits_19ec), cyc_then(54, adc_bcd8(rd8(b | W(hud_digits_19ec)), 0x01, 0, p)));
     cyc(92);

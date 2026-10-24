@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "object_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 /* Go on at the long address at +addr_at (bank at +bank_at) of object obj
@@ -159,7 +160,7 @@ void abi_ObjectStubReturn(void)
 static uint32_t set_39(uint8_t bank, uint16_t obj, uint8_t v, uint16_t *a)
 {
     cyc(44);
-    wr8((uint32_t)bank << 16 | (uint16_t)(0x2039 + obj), v);
+    wr8((uint32_t)bank << 16 | (uint16_t)(W(obj_39) + obj), v);
     cyc(62);
     return continue_at(bank, obj, 0x201A, 0x201C, a);
 }
@@ -173,7 +174,7 @@ static uint32_t set_39(uint8_t bank, uint16_t obj, uint8_t v, uint16_t *a)
 uint32_t ObjectStep39Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
     cyc(30);
-    uint8_t v = rd8((uint32_t)bank << 16 | (uint16_t)(0x2039 + obj));
+    uint8_t v = rd8((uint32_t)bank << 16 | (uint16_t)(W(obj_39) + obj));
 
     return set_39(bank, obj, (uint8_t)(v + 1), a);
 }

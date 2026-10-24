@@ -14,7 +14,7 @@
 /* A field of the object at offset `obj` in the data bank. */
 static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
 {
-    return (uint32_t)bank << 16 | (uint16_t)(0x2000 + off + obj);
+    return (uint32_t)bank << 16 | (uint16_t)(W(obj_base) + off + obj);
 }
 
 /* One halving as CMP #$8000 / ROR A / BPL / ADC #0 does it: an arithmetic

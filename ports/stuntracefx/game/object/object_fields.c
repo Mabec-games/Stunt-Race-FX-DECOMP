@@ -98,26 +98,26 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     uint16_t v;
 
     cyc(30);
-    v = rd16(b | (uint16_t)(0x200C + from));
+    v = rd16(b | (uint16_t)(W(obj_pos_x) + from));
     *p &= (uint8_t)~P_C;
     cyc(30);
     v = alu_adc16(v, rd16(W(dp_04)), p);
     cyc(30);
-    wr16(b | (uint16_t)(0x200C + to), v);
+    wr16(b | (uint16_t)(W(obj_pos_x) + to), v);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x2010 + from));
+    v = rd16(b | (uint16_t)(W(obj_pos_z) + from));
     *p &= (uint8_t)~P_C;
     cyc(38);
     v = alu_adc16(v, rd16(b | W(wram_05F2)), p);
     cyc(30);
-    wr16(b | (uint16_t)(0x2010 + to), v);
+    wr16(b | (uint16_t)(W(obj_pos_z) + to), v);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x200E + from));
+    v = rd16(b | (uint16_t)(W(obj_pos_y) + from));
     *p &= (uint8_t)~P_C;
     cyc(30);
     v = alu_adc16(v, rd16(W(dp_0a)), p);
     cyc(30);
-    wr16(b | (uint16_t)(0x200E + to), v);
+    wr16(b | (uint16_t)(W(obj_pos_y) + to), v);
     return v;
 }
 
@@ -164,7 +164,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     cyc(16);
     wr8(W(dp_3e), step);
     cyc(30);
-    v = rd8(b | (uint16_t)(0x2017 + obj));
+    v = rd8(b | (uint16_t)(W(obj_17) + obj));
     *p |= P_C;
     cyc(38);
     d = alu_sbc8(v, rd8(b | W(wram_1F2B)), p);
@@ -184,7 +184,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
         cyc(22);                        /* BRA */
     } else {
         cyc(52);
-        v = rd8(b | (uint16_t)(0x2017 + obj));
+        v = rd8(b | (uint16_t)(W(obj_17) + obj));
         cyc(24);
         s = rd8(b | W(wram_1F2B));
         if (v != s) {
@@ -203,7 +203,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
         }
     }
     cyc(30);
-    wr8(b | (uint16_t)(0x2017 + obj), v);
+    wr8(b | (uint16_t)(W(obj_17) + obj), v);
     *p &= (uint8_t)~P_C;
     cyc(58);                            /* CLC, RTL */
     return v;
@@ -308,13 +308,13 @@ void ObjectStopX(uint8_t bank, uint16_t obj)
     uint32_t b = (uint32_t)bank << 16;
 
     cyc(52);
-    wr16(b | (uint16_t)(0x202E + obj), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_x) + obj), 0x0000);
     cyc(30);
-    wr16(b | (uint16_t)(0x2030 + obj), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_y) + obj), 0x0000);
     cyc(30);
-    wr16(b | (uint16_t)(0x2032 + obj), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_z) + obj), 0x0000);
     cyc(52);
-    wr8(b | (uint16_t)(0x2017 + obj), 0x00);
+    wr8(b | (uint16_t)(W(obj_17) + obj), 0x00);
 }
 
 void ObjectStopX_cr(Carried *cr)
@@ -349,13 +349,13 @@ void ObjectStopY(uint8_t bank, uint16_t obj)
     uint32_t b = (uint32_t)bank << 16;
 
     cyc(76);
-    wr16(b | (uint16_t)(0x202E + obj), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_x) + obj), 0x0000);
     cyc(30);
-    wr16(b | (uint16_t)(0x2030 + obj), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_y) + obj), 0x0000);
     cyc(30);
-    wr16(b | (uint16_t)(0x2032 + obj), 0x0000);
+    wr16(b | (uint16_t)(W(obj_vel_z) + obj), 0x0000);
     cyc(52);
-    wr8(b | (uint16_t)(0x2017 + obj), 0x00);
+    wr8(b | (uint16_t)(W(obj_17) + obj), 0x00);
 }
 
 void ObjectStopY_cr(Carried *cr)

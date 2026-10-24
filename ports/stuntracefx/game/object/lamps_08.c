@@ -285,15 +285,15 @@ static void add16(uint8_t bank, LRegs *r, uint32_t addr, uint16_t v)
 /* The handler of object o: +$1A = h, +$1C = $08. */
 static void handler(uint8_t bank, LRegs *r, uint16_t o, uint16_t h)
 {
-    st16i(bank, r, F(0x201A, o), cyc_then(6, h));
-    st8i(bank, r, F(0x201C, o), cyc_then(22, 0x08));
+    st16i(bank, r, F(W(obj_1a_w), o), cyc_then(6, h));
+    st8i(bank, r, F(W(obj_1c), o), cyc_then(22, 0x08));
 }
 
 /* The handler cleared: +$1A = 0, +$1C = 0. */
 static void handler_none(uint8_t bank, LRegs *r, uint16_t o)
 {
-    st16i(bank, r, F(0x201A, o), cyc_then(6, 0x0000));
-    st8i(bank, r, F(0x201C, o), cyc_then(22, 0x00));
+    st16i(bank, r, F(W(obj_1a_w), o), cyc_then(6, 0x0000));
+    st8i(bank, r, F(W(obj_1c), o), cyc_then(22, 0x00));
     cyc(44);
 }
 
@@ -320,9 +320,9 @@ static void swap_xy(uint8_t bank, LRegs *r, uint32_t clocks)
 /* +$24 |= 8, +$3A = 0, +$5F = t: an object lit by its own light ($5D). */
 static void lamp(uint8_t bank, LRegs *r, uint16_t o, uint8_t t)
 {
-    or8(bank, r, F(0x2024, o), 0x08);
-    st8i(bank, r, F(0x203A, o), 0x00);
-    st8i(bank, r, F(0x205F, o), t);
+    or8(bank, r, F(W(obj_24), o), 0x08);
+    st8i(bank, r, F(W(obj_3a), o), 0x00);
+    st8i(bank, r, F(W(obj_5f), o), t);
 }
 
 /*
@@ -348,7 +348,7 @@ void ObjectBreakOffBurst15(uint8_t bank, LRegs *r)
             lo = (uint8_t)r->a;
             r->p &= (uint8_t)~P_M;
             r->a = r->x;
-            wr16(F(0x2006, r->y), cyc_then(88, r->x));
+            wr16(F(W(obj_06), r->y), cyc_then(88, r->x));
             r->p |= P_M;
             r->a = (uint16_t)((r->a & 0xFF00) | lo);
             cyc(50);
@@ -399,17 +399,17 @@ void abi_ObjectBreakOffBurst15(void)
  */
 void ObjectLampPair08(uint8_t bank, LRegs *r)
 {
-    add16(bank, r, F(0x200E, r->x), cyc_then(22, 0xFF88));
+    add16(bank, r, F(W(obj_pos_y), r->x), cyc_then(22, 0xFF88));
     cyc(22);
     lamp(bank, r, r->x, 0x28);
-    st16i(bank, r, F(0x205D, r->x), cyc_then(6, 0x9971));
+    st16i(bank, r, F(W(obj_5d), r->x), cyc_then(6, 0x9971));
     cyc(22);
     if (spawn(bank, r, 0xA078)) {
         cyc(22);
         lamp(bank, r, r->y, 0x50);
-        st16i(bank, r, F(0x205D, r->y), cyc_then(6, 0x9973));
+        st16i(bank, r, F(W(obj_5d), r->y), cyc_then(6, 0x9973));
         (cyc(84), l_ObjectCopyPositionTo(bank, r));
-        add16(bank, r, F(0x200E, r->y), cyc_then(22, 0xFEC0));
+        add16(bank, r, F(W(obj_pos_y), r->y), cyc_then(22, 0xFEC0));
     } else { cyc(26); }
     cyc(22);
     handler_none(bank, r, r->x);
@@ -449,9 +449,9 @@ static void stack_light(uint8_t bank, LRegs *r, uint16_t up)
         { cyc(48); return; }
     cyc(22);
     lamp(bank, r, r->y, 0x32);
-    st16i(bank, r, F(0x205D, r->y), cyc_then(6, 0x9975));
+    st16i(bank, r, F(W(obj_5d), r->y), cyc_then(6, 0x9975));
     (cyc(84), l_ObjectCopyPositionTo(bank, r));
-    add16(bank, r, F(0x200E, r->y), cyc_then(22, up));
+    add16(bank, r, F(W(obj_pos_y), r->y), cyc_then(22, up));
     swap_xy(bank, r, 164);
     l_ObjectRebucket(bank, r);
     swap_xy(bank, r, 80);
@@ -469,8 +469,8 @@ static void stack_light(uint8_t bank, LRegs *r, uint16_t up)
  */
 void ObjectLampStack(uint8_t bank, LRegs *r)
 {
-    add16(bank, r, F(0x200E, r->x), cyc_then(22, 0xFFBA));
-    st16i(bank, r, F(0x205D, r->x), cyc_then(28, 0x9975));
+    add16(bank, r, F(W(obj_pos_y), r->x), cyc_then(22, 0xFFBA));
+    st16i(bank, r, F(W(obj_5d), r->x), cyc_then(28, 0x9975));
     cyc(22);
     lamp(bank, r, r->x, 0x1E);
     stack_light(bank, r, 0xFD44);
@@ -520,8 +520,8 @@ static void lamp_still(uint8_t bank, LRegs *r)
  */
 void ObjectLampLow08(uint8_t bank, LRegs *r)
 {
-    st16i(bank, r, F(0x205D, r->x), cyc_then(6, 0x9B8F));
-    add16(bank, r, F(0x200E, r->x), cyc_then(44, 0xFFE2));
+    st16i(bank, r, F(W(obj_5d), r->x), cyc_then(6, 0x9B8F));
+    add16(bank, r, F(W(obj_pos_y), r->x), cyc_then(44, 0xFFE2));
     lamp_still(bank, r);
 }
 
@@ -636,11 +636,11 @@ void abi_ObjectFallerRecord(void)
    -$64 (+$30), handler $08:D816 (ObjectFallerStep); then its record. */
 static void faller(uint8_t bank, LRegs *r)
 {
-    add16(bank, r, F(0x200E, r->x), cyc_then(44, 0xFED4));
-    st16i(bank, r, F(0x201D, r->x), cyc_then(28, 0xD808));
-    st8i(bank, r, F(0x201F, r->x), cyc_then(22, 0x08));
+    add16(bank, r, F(W(obj_pos_y), r->x), cyc_then(44, 0xFED4));
+    st16i(bank, r, F(W(obj_1d), r->x), cyc_then(28, 0xD808));
+    st8i(bank, r, F(W(obj_1f), r->x), cyc_then(22, 0x08));
     lamp(bank, r, r->x, 0x14);
-    st16i(bank, r, F(0x2030, r->x), cyc_then(6, 0xFF9C));
+    st16i(bank, r, F(W(obj_vel_y), r->x), cyc_then(6, 0xFF9C));
     cyc(22);
     handler(bank, r, r->x, 0xD816);
     ObjectFallerRecord(bank, r);
@@ -765,21 +765,21 @@ void ObjectSpray8(uint8_t bank, LRegs *r)
         handler(bank, r, r->y, 0xDB7A);
         r->p &= (uint8_t)~P_M;
         lr_lda_imm(r, spray8[i].vx);
-        wr16(F(0x202E, r->y), cyc_then(38, spray8[i].vx));
+        wr16(F(W(obj_vel_x), r->y), cyc_then(38, spray8[i].vx));
         lr_lda_imm(r, 0x03E8);
-        wr16(F(0x2030, r->y), cyc_then(16, 0x03E8));
+        wr16(F(W(obj_vel_y), r->y), cyc_then(16, 0x03E8));
         lr_lda_imm(r, 0x1770);
-        wr16(F(0x2032, r->y), cyc_then(16, 0x1770));
+        wr16(F(W(obj_vel_z), r->y), cyc_then(16, 0x1770));
         r->p |= P_M;
-        st16i(bank, r, F(0x2029, r->y), cyc_then(28, spray8[i].rise));
+        st16i(bank, r, F(W(obj_29), r->y), cyc_then(28, spray8[i].rise));
         lo = (uint8_t)r->a;
         r->p &= (uint8_t)~P_M;
         lr_txa(r);
-        wr16(F(0x2027, r->y), cyc_then(80, r->x));
+        wr16(F(W(obj_27), r->y), cyc_then(80, r->x));
         r->p |= P_M;
         r->a = (uint16_t)((r->a & 0xFF00) | lo);
         r->p = nz8(r->p, lo);
-        st8i(bank, r, F(0x2015, r->y), cyc_then(50, spray8[i].turn));
+        st8i(bank, r, F(W(obj_15), r->y), cyc_then(50, spray8[i].turn));
     }
     cyc(114);
     r->y = y0;
@@ -817,37 +817,37 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
 {
     uint8_t v;
 
-    lr_lda8(r, cyc_then(30, F(0x2014, r->x)));
+    lr_lda8(r, cyc_then(30, F(W(obj_14), r->x)));
     cyc(16);
     wr8(W(dp_3e), (uint8_t)r->a);
     cyc(58);
     lda8(bank, r, 0x00);
     lr_approach_byte(r, ApproachSixteenthMin16Byte);
-    wr8(F(0x2014, r->x), cyc_then(30, (uint8_t)r->a));
-    lr_lda8(r, cyc_then(30, F(0x2015, r->x)));
+    wr8(F(W(obj_14), r->x), cyc_then(30, (uint8_t)r->a));
+    lr_lda8(r, cyc_then(30, F(W(obj_15), r->x)));
     r->p &= (uint8_t)~P_C;
     v = alu_adc8((uint8_t)r->a, 0x08, &r->p);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
-    wr8(F(0x2015, r->x), cyc_then(60, v));
-    r->y = rd16(cyc_then(30, F(0x2027, r->x)));
+    wr8(F(W(obj_15), r->x), cyc_then(60, v));
+    r->y = rd16(cyc_then(30, F(W(obj_27), r->x)));
     r->p = nz16(r->p, r->y);
     (cyc(62), l_ObjectCopyPositionFrom(bank, r));
     (cyc(62), l_ObjectApplyVelocity(bank, r));
     r->p &= (uint8_t)~P_M;
-    lr_lda(r, cyc_then(52, F(0x2030, r->x)));
+    lr_lda(r, cyc_then(52, F(W(obj_vel_y), r->x)));
     cyc(16);
     wr16(W(dp_3e), r->a);
-    lr_lda(r, cyc_then(30, F(0x2029, r->x)));
+    lr_lda(r, cyc_then(30, F(W(obj_29), r->x)));
     (cyc(14), lr_approach(r, ApproachEighthMin8));
-    wr16(F(0x2030, r->x), cyc_then(30, r->a));
+    wr16(F(W(obj_vel_y), r->x), cyc_then(30, r->a));
     r->p |= P_M;
     r->p &= (uint8_t)~P_M;
-    lr_lda(r, cyc_then(74, F(0x2032, r->x)));
+    lr_lda(r, cyc_then(74, F(W(obj_vel_z), r->x)));
     cyc(16);
     wr16(W(dp_3e), r->a);
     lr_lda_imm(r, 0x05DC);
     lr_approach(r, ApproachEighthMin8);
-    wr16(F(0x2032, r->x), cyc_then(30, r->a));
+    wr16(F(W(obj_vel_z), r->x), cyc_then(30, r->a));
     r->p |= P_M;
     cyc(66);
 }
@@ -865,7 +865,7 @@ void ObjectSprayPieceStart(uint8_t bank, LRegs *r)
 {
     handler(bank, r, r->x, 0xDB90);
     (cyc(62), l_RandomStepLong(bank, r));
-    wr8(F(0x2014, r->x), cyc_then(30, (uint8_t)r->a));
+    wr8(F(W(obj_14), r->x), cyc_then(30, (uint8_t)r->a));
     spray_piece_step(bank, r);
 }
 
@@ -953,7 +953,7 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     uint8_t v;
     uint16_t d;
 
-    lr_lda8(r, cyc_then(30, F(0x2025, r->x)));
+    lr_lda8(r, cyc_then(30, F(W(obj_25), r->x)));
     v = (uint8_t)(r->a & 0x01);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
@@ -962,8 +962,8 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     r->y = rd16(cyc_then(62, ((uint32_t)bank << 16) | 0x0346));
     r->p = nz16(r->p, r->y);
     r->p &= (uint8_t)~P_M;
-    lr_lda(r, cyc_then(52, F(0x2010, r->y)));
-    lr_sub(r, rd16(cyc_then(44, F(0x2010, r->x))));
+    lr_lda(r, cyc_then(52, F(W(obj_pos_z), r->y)));
+    lr_sub(r, rd16(cyc_then(44, F(W(obj_pos_z), r->x))));
     if (r->a & 0x8000) {
         cyc(32);
         d = (uint16_t)(r->a ^ 0xFFFF);
@@ -975,17 +975,17 @@ void ObjectPlayerPassCount(uint8_t bank, LRegs *r)
     r->p |= P_M;
     if (!(r->p & P_N))
         { cyc(44); return; }
-    lr_lda8(r, cyc_then(24, F(0x204C, r->y)));
+    lr_lda8(r, cyc_then(24, F(W(obj_4c), r->y)));
     v = (uint8_t)(r->a + 1);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
-    wr8(F(0x204C, r->y), cyc_then(44, v));
+    wr8(F(W(obj_4c), r->y), cyc_then(44, v));
     r->p = (uint8_t)((nz8(r->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
-    lr_lda8(r, cyc_then(v == 0x01 ? 68 : 84, F(0x2025, r->x)));
+    lr_lda8(r, cyc_then(v == 0x01 ? 68 : 84, F(W(obj_25), r->x)));
     v = (uint8_t)(r->a | 0x01);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
     r->p = nz8(r->p, v);
-    wr8(F(0x2025, r->x), cyc_then(46, v));
+    wr8(F(W(obj_25), r->x), cyc_then(46, v));
     cyc(44);
 }
 
@@ -1083,8 +1083,8 @@ void abi_ObjectCameraPadRecord(void)
  */
 void ObjectCameraPadSetup(uint8_t bank, LRegs *r)
 {
-    st16i(bank, r, F(0x201D, r->x), cyc_then(6, 0x84B7));
-    st8i(bank, r, F(0x201F, r->x), cyc_then(22, 0x08));
+    st16i(bank, r, F(W(obj_1d), r->x), cyc_then(6, 0x84B7));
+    st8i(bank, r, F(W(obj_1f), r->x), cyc_then(22, 0x08));
     ObjectCameraPadRecord(bank, r);
 }
 
@@ -1330,12 +1330,12 @@ void ObjectContactsCameraPoint(uint8_t bank, LRegs *r)
         }
         r->p = nz16(r->p, r->x);
         cyc(30);
-        r->y = rd16(F(0x204F, r->x));
+        r->y = rd16(F(W(obj_link_w), r->x));
         r->p = nz16(r->p, r->y);
         if (!r->y)
             { cyc(22); goto next; }
         r->x = r->y;
-        r->y = rd16(cyc_then(60, F(0x204F, r->x)));
+        r->y = rd16(cyc_then(60, F(W(obj_link_w), r->x)));
         r->p = nz16(r->p, r->y);
         r->p &= (uint8_t)~P_M;
         cyc(22);
@@ -1382,11 +1382,11 @@ static void spin_step(uint8_t bank, LRegs *r)
 {
     uint8_t v;
 
-    lr_lda8(r, cyc_then(30, F(0x2015, r->x)));
+    lr_lda8(r, cyc_then(30, F(W(obj_15), r->x)));
     r->p &= (uint8_t)~P_C;
     v = alu_adc8((uint8_t)r->a, 0x08, &r->p);
     r->a = (uint16_t)((r->a & 0xFF00) | v);
-    wr8(F(0x2015, r->x), cyc_then(60, v));
+    wr8(F(W(obj_15), r->x), cyc_then(60, v));
     cyc(44);
 }
 
@@ -1396,9 +1396,9 @@ static void spin(uint8_t bank, LRegs *r, uint8_t k, int has_turn, uint8_t turn)
 {
     lda8(bank, r, k);
     lda8(bank, r, (uint8_t)(k | 0x80));
-    wr8(F(0x2018, r->x), cyc_then(22, (uint8_t)(k | 0x80)));
+    wr8(F(W(obj_18), r->x), cyc_then(22, (uint8_t)(k | 0x80)));
     if (has_turn) {
-        st8i(bank, r, F(0x2015, r->x), turn);
+        st8i(bank, r, F(W(obj_15), r->x), turn);
         cyc(22);
     }
     handler(bank, r, r->x, 0xD0DE);
@@ -1597,30 +1597,30 @@ static void record_match_step(uint8_t bank, LRegs *r)
     unsigned i;
 
     (cyc(62), l_ObjectSyncFromRecord(bank, r));
-    lr_lda8(r, cyc_then(30, F(0x2024, r->x)));
+    lr_lda8(r, cyc_then(30, F(W(obj_24), r->x)));
     f = (uint8_t)(r->a & 0xFD);
     r->a = (uint16_t)((r->a & 0xFF00) | f);
     r->p = nz8(r->p, f);
-    wr8(F(0x2024, r->x), cyc_then(46, f));
+    wr8(F(W(obj_24), r->x), cyc_then(46, f));
     r->y = r->x;
     r->p = nz16(r->p, r->y);
     r->x = rd16(cyc_then(38, ((uint32_t)bank << 16) | 0x0346));
     r->p = nz16(r->p, r->x);
     r->p &= (uint8_t)~P_M;
-    lr_lda(r, cyc_then(52, F(0x2022, r->x)));
+    lr_lda(r, cyc_then(52, F(W(obj_22), r->x)));
     lr_tax(r);
     cyc(16);
     lr_lda(r, 0x700058 + r->x);
-    lr_cmp(r, rd16(cyc_then(30, F(0x2029, r->y))));
+    lr_cmp(r, rd16(cyc_then(30, F(W(obj_29), r->y))));
     r->p |= P_M;
     if (r->p & P_Z) {
-        lr_lda8(r, cyc_then(68, F(0x2024, r->y)));
+        lr_lda8(r, cyc_then(68, F(W(obj_24), r->y)));
         f = (uint8_t)(r->a | 0x02);
         r->a = (uint16_t)((r->a & 0xFF00) | f);
         r->p = nz8(r->p, f);
-        wr8(F(0x2024, r->y), cyc_then(46, f));
+        wr8(F(W(obj_24), r->y), cyc_then(46, f));
         r->p &= (uint8_t)~P_M;
-        lr_lda(r, cyc_then(52, F(0x200E, r->y)));
+        lr_lda(r, cyc_then(52, F(W(obj_pos_y), r->y)));
         v = (uint16_t)((r->a ^ 0xFFFF) + 1);
         for (i = 0; i < 5; i++) {
             c = v >= 0x8000;
@@ -1630,7 +1630,7 @@ static void record_match_step(uint8_t bank, LRegs *r)
         r->a = v;
         r->p = nz16(r->p, v);
         wr16(((uint32_t)bank << 16) | 0x1F41, cyc_then(252, v));
-        lr_lda(r, cyc_then(30, F(0x2029, r->y)));
+        lr_lda(r, cyc_then(30, F(W(obj_29), r->y)));
         wr16(((uint32_t)bank << 16) | 0x1F43, cyc_then(24, r->a));
         r->p |= P_M;
     } else { cyc(22); }

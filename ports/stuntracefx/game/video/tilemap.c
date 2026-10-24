@@ -256,7 +256,7 @@ static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
     cyc(114);
     wr16(W(dp_f3), base);
     for (i = 0; i < 0x20; i++)
-        { cyc(118); ppu_wr16(VMDATAL, (uint16_t)(0x2001 + base)); cyc(12); }
+        { cyc(118); ppu_wr16(VMDATAL, (uint16_t)(W(obj_01) + base)); cyc(12); }
     cyc(18);
     for (i = 0; i < 0x23; i++) {
         cyc(48);

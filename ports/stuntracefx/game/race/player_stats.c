@@ -1774,9 +1774,9 @@ static void hud_car_word(Carried *cr, uint16_t set, uint16_t clear)
     cyc(134);
     x = rd16(0x7E0000 | W(wram_0346));
     cyc(30);
-    y = rd16(W(wram_bank_7e) | (uint16_t)(0x204F + x));
+    y = rd16(W(wram_bank_7e) | (uint16_t)(W(obj_link_w) + x));
     cyc(30);
-    y = rd16(W(wram_bank_7e) | (uint16_t)(0x204F + y));
+    y = rd16(W(wram_bank_7e) | (uint16_t)(W(obj_link_w) + y));
     cyc(44);
     w = (uint16_t)(rd16(W(wram_bank_7e) | y) & 0x4000);
     cr->x = x;

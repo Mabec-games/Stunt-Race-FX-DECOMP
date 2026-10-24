@@ -1579,6 +1579,11 @@
 #define WRAM_wram_1F64 0x001F64u
 #define WRAM_wram_1F73 0x001F73u
 #define WRAM_wram_1FFE 0x001FFEu
+#define WRAM_obj_01 0x002001u
+#define WRAM_obj_0a 0x00200Au
+#define WRAM_obj_23 0x002023u
+#define WRAM_obj_2b 0x00202Bu
+#define WRAM_obj_4c 0x00204Cu
 #define WRAM_wram_7E203C 0x7E203Cu
 #define WRAM_wram_7E204C 0x7E204Cu
 #define WRAM_wram_7E204E 0x7E204Eu

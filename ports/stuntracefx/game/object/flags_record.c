@@ -11,6 +11,7 @@
 #include "cpu_ops.h"
 #include "object_calls.h"
 #include "carried.h"
+#include "wram_names.h"
 
 
 uint8_t GsuRecordNew422(uint8_t bank, uint16_t obj);
@@ -19,7 +20,7 @@ uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has);
 /* Object field `f` ($20xx) of object `o`, through the data bank. */
 #define F(f, o) ((uint32_t)b << 16 | (uint16_t)((f) + (o)))
 /* A work RAM byte through the data bank. */
-#define W(a) ((uint32_t)b << 16 | (a))
+#define DB_ADDR(a) ((uint32_t)b << 16 | (a))
 
 /* How these routines end, for the adapters: no room in the record pool
    (A = $00FF), GsuRecordFlag4 with a record (A = fr_a, Y = the object) or
@@ -85,10 +86,10 @@ static void step8(uint32_t addr, int d)
 static void handler08(uint8_t b, uint16_t x, uint16_t h)
 {
     cyc(76);
-    wr16(F(0x201A, x), h);
+    wr16(F(W(obj_1a_w), x), h);
     lda8();
     cyc(38);
-    wr8(F(0x201C, x), 0x08);
+    wr8(F(W(obj_1c), x), 0x08);
 }
 
 /* LDA +f, STA $1F58, LDA $1F58, ORA #$80, STA +$5A: the frame from field
@@ -100,12 +101,12 @@ static void frame_from(uint8_t b, uint16_t x, uint16_t f)
     cyc(6);
     v = ld8(F(f, x));
     cyc(24);
-    wr8(W(0x1F58), v);
-    v = ld8(W(0x1F58));
+    wr8(DB_ADDR(W(wram_1F58)), v);
+    v = ld8(DB_ADDR(W(wram_1F58)));
     v |= 0x80;
     lda8();
     cyc(16);
-    wr8(F(0x205A, x), v);
+    wr8(F(W(obj_5a), x), v);
 }
 
 /* LDA #0, ORA #$80, STA +$5A: frame 0, shown. */
@@ -114,7 +115,7 @@ static void frame_zero(uint8_t b, uint16_t x)
     lda8();
     lda8();
     cyc(2);
-    wr8(F(0x205A, x), 0x80);
+    wr8(F(W(obj_5a), x), 0x80);
 }
 
 /*
@@ -208,11 +209,11 @@ static void frames_to_record(uint8_t b, uint16_t obj)
     uint16_t rec, v;
 
     cyc(96);
-    rec = rd16(F(0x2022, obj));
+    rec = rd16(F(W(obj_22), obj));
     fr_a = rec;
     if (rec) {
         cyc(60);
-        v = (uint16_t)(rd16(F(0x205A, obj)) & 0x007F);
+        v = (uint16_t)(rd16(F(W(obj_5a), obj)) & 0x007F);
         fr_a = v;
         cyc(56);
         wr16(0x700012 + rec, v);
@@ -230,11 +231,11 @@ static void frame_cycle(uint8_t b, uint16_t x, uint8_t d)
 {
     uint8_t v, m;
 
-    step8(F(0x204A, x), 1);
+    step8(F(W(obj_4a), x), 1);
     cyc(6);
-    v = ld8(F(0x204A, x));
+    v = ld8(F(W(obj_4a), x));
     cyc(30);
-    m = rd8(F(0x2049, x));
+    m = rd8(F(W(obj_49), x));
     cmp8(v, m);
     if (v != m) {
         cyc(6);
@@ -242,32 +243,32 @@ static void frame_cycle(uint8_t b, uint16_t x, uint8_t d)
         return;
     }
     cyc(28);
-    wr8(F(0x204A, x), 0x00);
+    wr8(F(W(obj_4a), x), 0x00);
     cyc(6);
-    v = ld8(F(0x2048, x));
+    v = ld8(F(W(obj_48), x));
     cyc(24);
-    wr8(W(0x1F58), v);
+    wr8(DB_ADDR(W(wram_1F58)), v);
     cyc(6);
-    v = ld8(F(0x205A, x));
+    v = ld8(F(W(obj_5a), x));
     v = adc8(v, d, 0);
     if (!(v & 0x80)) {
         cyc(84);
-        m = rd8(W(0x1F58));
+        m = rd8(DB_ADDR(W(wram_1F58)));
         v = adc8(v, m, 0);
     } else { cyc(52); }
     v &= 0x7F;
     lda8();
     cyc(10);
-    m = rd8(W(0x1F58));
+    m = rd8(DB_ADDR(W(wram_1F58)));
     cmp8(v, m);
     if (v >= m) {
         cyc(36);
-        m = rd8(W(0x1F58));
+        m = rd8(DB_ADDR(W(wram_1F58)));
         v = sbc8(v, m);
     } else { cyc(22); }
     v |= 0x80;
     lda8();
-    wr8(F(0x205A, x), v);
+    wr8(F(W(obj_5a), x), v);
     frames_to_record(b, x);
 }
 
@@ -283,15 +284,15 @@ void ObjectStopMarked(uint8_t b, uint16_t x)
     uint8_t v;
 
     cyc(6);
-    v = (uint8_t)(ld8(F(0x2009, x)) | 0x01);
+    v = (uint8_t)(ld8(F(W(obj_09), x)) | 0x01);
     lda8();
     cyc(16);
-    wr8(F(0x2009, x), v);
+    wr8(F(W(obj_09), x), v);
     cyc(76);
-    wr16(F(0x201A, x), 0x0000);
+    wr16(F(W(obj_1a_w), x), 0x0000);
     lda8();
     cyc(38);
-    wr8(F(0x201C, x), 0x00);
+    wr8(F(W(obj_1c), x), 0x00);
     cyc(44); /* RTL */
 }
 
@@ -341,9 +342,9 @@ void ObjectFlagsRecord(uint8_t b, uint16_t obj)
     }
     cyc(60);
     cyc(88);
-    rec = rd16(F(0x2022, obj));
+    rec = rd16(F(W(obj_22), obj));
     cyc(44);
-    v = rd16(F(0x2006, obj));
+    v = rd16(F(W(obj_06), obj));
     cyc(32);
     w = rd16(0x700016 + rec);
     v |= w;
@@ -352,7 +353,7 @@ void ObjectFlagsRecord(uint8_t b, uint16_t obj)
     cyc(32);
     v = rd16(0x700016 + rec);
     cyc(30);
-    w = rd16(F(0x2027, obj));
+    w = rd16(F(W(obj_27), obj));
     v |= w;
     cyc(32);
     wr16(0x700016 + rec, v);
@@ -387,10 +388,10 @@ void abi_ObjectFlagsRecord(void)
 static void flags_record_tail(uint8_t b, uint16_t x)
 {
     cyc(76);
-    wr16(F(0x201D, x), 0xCD55);
+    wr16(F(W(obj_1d), x), 0xCD55);
     lda8();
     cyc(38);
-    wr8(F(0x201F, x), 0x08);
+    wr8(F(W(obj_1f), x), 0x08);
     ObjectFlagsRecord(b, x);
 }
 
@@ -408,7 +409,7 @@ static void flags_record_tail(uint8_t b, uint16_t x)
 void ObjectFlagsRecordSetup(uint8_t b, uint16_t x)
 {
     cyc(76);
-    wr16(F(0x2027, x), 0x0000);
+    wr16(F(W(obj_27), x), 0x0000);
     cyc(22);
     handler08(b, x, 0xCD7E);
     flags_record_tail(b, x);
@@ -559,14 +560,14 @@ void ObjectFrameCycleBackSetup(uint8_t b, uint16_t x)
 
     handler08(b, x, 0xCAC3);
     cyc(6);
-    v = (uint8_t)(ld8(F(0x2048, x)) - 1);
+    v = (uint8_t)(ld8(F(W(obj_48), x)) - 1);
     lda8();
     cyc(8);
-    wr8(W(0x1F58), v);
-    v = (uint8_t)(ld8(W(0x1F58)) | 0x80);
+    wr8(DB_ADDR(W(wram_1F58)), v);
+    v = (uint8_t)(ld8(DB_ADDR(W(wram_1F58))) | 0x80);
     lda8();
     cyc(16);
-    wr8(F(0x205A, x), v);
+    wr8(F(W(obj_5a), x), v);
     (cyc(30), flags_record_tail(b, x));
 }
 
@@ -635,9 +636,9 @@ void ObjectFrameSwingSetup(uint8_t b, uint16_t x)
     handler08(b, x, 0xCB15);
     frame_zero(b, x);
     cyc(6);
-    v = ld8(F(0x204A, x));
+    v = ld8(F(W(obj_4a), x));
     cyc(30);
-    wr8(F(0x202E, x), v);
+    wr8(F(W(obj_vel_x), x), v);
     (cyc(30), flags_record_tail(b, x));
 }
 
@@ -676,27 +677,27 @@ void ObjectFrameSwingStep(uint8_t b, uint16_t x)
     uint8_t v, m;
 
     cyc(6);
-    v = ld8(F(0x202E, x));
+    v = ld8(F(W(obj_vel_x), x));
     if (v) {
         cyc(16);
-        step8(F(0x202E, x), -1);
+        step8(F(W(obj_vel_x), x), -1);
         (cyc(22), frames_to_record(b, x));
         return;
     } else { cyc(22); }
     frame_from(b, x, 0x2030);
     cyc(6);
-    v = ld8(F(0x2048, x));
+    v = ld8(F(W(obj_48), x));
     cyc(24);
-    wr8(W(0x1F58), v);
+    wr8(DB_ADDR(W(wram_1F58)), v);
     v--;
     lda8();
     cyc(8);
-    wr8(W(0x1F59), v);
-    step8(F(0x204B, x), 1);
+    wr8(DB_ADDR(W(wram_1F59)), v);
+    step8(F(W(obj_4b), x), 1);
     cyc(6);
-    v = ld8(F(0x204B, x));
+    v = ld8(F(W(obj_4b), x));
     cyc(30);
-    m = rd8(F(0x2049, x));
+    m = rd8(F(W(obj_49), x));
     cmp8(v, m);
     if (v != m) {
         cyc(6);
@@ -704,42 +705,42 @@ void ObjectFrameSwingStep(uint8_t b, uint16_t x)
         return;
     }
     cyc(28);
-    wr8(F(0x204B, x), 0x00);
+    wr8(F(W(obj_4b), x), 0x00);
     cyc(6);
-    v = (uint8_t)(ld8(F(0x2025, x)) & 0x01);
+    v = (uint8_t)(ld8(F(W(obj_25), x)) & 0x01);
     lda8();
     if (v) {
         cyc(40);
-        v = (uint8_t)(ld8(F(0x205A, x)) & 0x7F);
+        v = (uint8_t)(ld8(F(W(obj_5a), x)) & 0x7F);
         lda8();
         cmp8(v, 0x00);
         if (v) {
-            step8(F(0x2030, x), -1);
+            step8(F(W(obj_vel_y), x), -1);
             frames_to_record(b, x);
             return;
         } else { cyc(2); }
     } else {
         cyc(14);
-        v = (uint8_t)(ld8(F(0x205A, x)) & 0x7F);
+        v = (uint8_t)(ld8(F(W(obj_5a), x)) & 0x7F);
         lda8();
         cyc(10);
-        m = rd8(W(0x1F59));
+        m = rd8(DB_ADDR(W(wram_1F59)));
         cmp8(v, m);
         if (v != m) {
-            step8(F(0x2030, x), 1);
+            step8(F(W(obj_vel_y), x), 1);
             (cyc(22), frames_to_record(b, x));
             return;
         }
     }
     cyc(10);
-    v = (uint8_t)(ld8(F(0x2025, x)) ^ 0x01);
+    v = (uint8_t)(ld8(F(W(obj_25), x)) ^ 0x01);
     lda8();
     cyc(16);
-    wr8(F(0x2025, x), v);
+    wr8(F(W(obj_25), x), v);
     cyc(6);
-    v = ld8(F(0x204A, x));
+    v = ld8(F(W(obj_4a), x));
     cyc(30);
-    wr8(F(0x202E, x), v);
+    wr8(F(W(obj_vel_x), x), v);
     (cyc(22), frames_to_record(b, x));
 }
 
@@ -773,9 +774,9 @@ void ObjectFlagsRecordSetup20(uint8_t b, uint16_t x)
     uint8_t v;
 
     cyc(30);
-    v = (uint8_t)(rd8(F(0x2024, x)) | 0x20);
+    v = (uint8_t)(rd8(F(W(obj_24), x)) | 0x20);
     cyc(46);
-    wr8(F(0x2024, x), v);
+    wr8(F(W(obj_24), x), v);
     ObjectFlagsRecordSetup(b, x);
 }
 

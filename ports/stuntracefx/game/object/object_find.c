@@ -18,7 +18,7 @@
 
 static uint32_t f(uint8_t bank, uint16_t obj, uint16_t off)
 {
-    return (uint32_t)bank << 16 | (uint16_t)(0x2000 + off + obj);
+    return (uint32_t)bank << 16 | (uint16_t)(W(obj_base) + off + obj);
 }
 
 static uint32_t w(uint8_t bank, uint16_t a)

@@ -336,12 +336,12 @@ uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
     cyc(16);
     m = rd16(W(dp_04));
     cyc(44);
-    s = rd16(b | (uint16_t)(0x200C + obj));
+    s = rd16(b | (uint16_t)(W(obj_pos_x) + obj));
     wr16(GSU_IN_68, cyc_then(32, sub16(m, s, p)));
     cyc(24);
     m = rd16(b | W(wram_05F2));
     cyc(44);
-    s = rd16(b | (uint16_t)(0x2010 + obj));
+    s = rd16(b | (uint16_t)(W(obj_pos_z) + obj));
     wr16(0x70002E, cyc_then(32, sub16(m, s, p)));
     cyc(154);
     GsuRun(0x01, 0x80BC);
@@ -2460,7 +2460,7 @@ uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
     wr16(W(dp_08), v);
     cyc(24);
     object_cv = 0;
-    v = sub16(rd16(b | W(dp_0a)), rd16(cyc_then(44, b | (uint16_t)(0x200E + x))), &object_cv);
+    v = sub16(rd16(b | W(dp_0a)), rd16(cyc_then(44, b | (uint16_t)(W(obj_pos_y) + x))), &object_cv);
     cyc(16);
     wr16(W(dp_02), v);
     v = (cyc(62), Gsu81E3Long());
@@ -2504,12 +2504,12 @@ uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
     cyc(98);
     m = rd16(W(dp_04));
     cyc(44);
-    s = rd16(b | (uint16_t)(0x200C + x));
+    s = rd16(b | (uint16_t)(W(obj_pos_x) + x));
     wr16(W(dp_02), cyc_then(16, sub16(m, s, &object_cv)));
     cyc(24);
     m = rd16(b | W(wram_05F2));
     cyc(44);
-    s = rd16(b | (uint16_t)(0x2010 + x));
+    s = rd16(b | (uint16_t)(W(obj_pos_z) + x));
     v = sub16(m, s, &object_cv);
     cyc(16);
     wr16(W(dp_08), v);
