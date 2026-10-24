@@ -210,7 +210,7 @@ void MenuOamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
     uint16_t w;
 
     while ((w = rd16(cyc_then(138, b | (uint16_t)(0xFCA2 + *y)))) != 0xFFFF) {
-        wr16(b | (uint16_t)(0x0375 + *x), w);
+        wr16(b | (uint16_t)(W(oam_buffer) + *x), w);
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 2);
         cyc(56);

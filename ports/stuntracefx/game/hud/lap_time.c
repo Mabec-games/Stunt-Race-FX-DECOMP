@@ -328,7 +328,7 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
     uint16_t kw = dp ? 16 : 30;             /* STA absolute,X: the extra cycle always */
 
     cyc(24 + xw);
-    v = rd8(b | (uint16_t)(0x0F76 + x));
+    v = rd8(b | (uint16_t)(W(record_times) + x));
     *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(80), P_C) : 0));
     if (v == 0xFF)
         return v;
@@ -338,7 +338,7 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
     cyc(kw);
     wr8(to[0], v);
     cyc(24 + xw);
-    v = rd8(b | (uint16_t)(0x0F77 + x));
+    v = rd8(b | (uint16_t)(W(record_times) + 1 + x));
     cyc(kr);
     v = alu_adc8(v, rd8(to[1]), p);
     if (*p & P_C) {
@@ -370,7 +370,7 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
     }
     *p &= (uint8_t)~P_C;
     cyc((big ? 38 : 76) + xw);
-    v = rd8(b | (uint16_t)(0x0F78 + x));
+    v = rd8(b | (uint16_t)(W(record_times) + 2 + x));
     cyc(kr);
     v = alu_adc8(v, rd8(to[2]), p);
     cyc(kw);
@@ -431,7 +431,7 @@ void abi_TimeAddToTotal(void)
 uint8_t TimeAddToNext(uint8_t bank, uint16_t x, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint32_t to[3] = {b | (uint16_t)(0x0F79 + x), b | (uint16_t)(0x0F7A + x), b | (uint16_t)(0x0F7B + x)};
+    uint32_t to[3] = {b | (uint16_t)(W(record_times) + 3 + x), b | (uint16_t)(W(record_times) + 4 + x), b | (uint16_t)(W(record_times) + 5 + x)};
 
     return time_add(b, x, to, 0, p);
 }
@@ -489,7 +489,7 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
             TimeAddToTotal(bank, (uint16_t)(g * 12 + i * 3), &p);
         }
         cyc(24);
-        v = rd8(b | (uint16_t)(0x0F78 + g * 12));
+        v = rd8(b | (uint16_t)(W(record_times) + 2 + g * 12));
         p = (uint8_t)((nz8(p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
         if (v == 0xFF) {
             cyc(48);
@@ -503,7 +503,7 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
             cyc(16);
             v = rd8(W(bcd_digits) + i);
             cyc(24);
-            wr8(b | (uint16_t)(0x0F9A + g * 3 + i), v);
+            wr8(b | (uint16_t)(W(record_totals) + g * 3 + i), v);
         }
     }
     cyc(84);
@@ -1303,11 +1303,11 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     aa = a;
     for (i = 0; i < 4; i++) {
         cyc(24);
-        aa = rd16(b | (uint16_t)(0x0EF9 + 3 * i));
+        aa = rd16(b | (uint16_t)(W(lap_times) + 9 + 3 * i));
         cyc(24);
-        xx = rd16(b | (uint16_t)(0x0EFA + 3 * i));
+        xx = rd16(b | (uint16_t)(W(lap_times) + 10 + 3 * i));
         cyc(24);
-        yy = rd16(b | (uint16_t)(0x0EFB + 3 * i));
+        yy = rd16(b | (uint16_t)(W(lap_times) + 11 + 3 * i));
         cyc(46);
         aa = TimePackBcd(aa, xx, yy, &p);
         cyc(16);

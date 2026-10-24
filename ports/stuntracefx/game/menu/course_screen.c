@@ -54,10 +54,10 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     SoundPairFromTable();
     cyc(28);
     for (x = 0; x != 0x0200; x += 2)
-        { wr16(dbw(bank, (uint16_t)(0x0375 + x)), cyc_then(72, 0xE0E0)); cyc(56); }
+        { wr16(dbw(bank, (uint16_t)(W(oam_buffer) + x)), cyc_then(72, 0xE0E0)); cyc(56); }
     cyc(0);
     for (x = 0; x != 0x0020; x += 2)
-        { wr16(dbw(bank, (uint16_t)(0x0575 + x)), cyc_then(90, 0x5555)); cyc(38); }
+        { wr16(dbw(bank, (uint16_t)(W(oam_buffer_high) + x)), cyc_then(90, 0x5555)); cyc(38); }
     cyc(182);
     for (i = 0; cyc_loop(18, i < 4); i++) {
         cyc(56);

@@ -829,42 +829,42 @@ uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y
     cyc(102);
     if (rd8(b | W(wram_0D53)))
         up = 0, cyc(68);                /* BNE taken, SEP, LDA */
-    else if (!rd8(cyc_then(40, b | (uint16_t)(0x0E05 + y))))
+    else if (!rd8(cyc_then(40, b | (uint16_t)(W(kept_enable) + y))))
         up = 0, cyc(68);                /* BEQ taken, SEP, LDA */
     else {
-        a = rd16(cyc_then(62, b | (uint16_t)(0x0D1E + x)));
+        a = rd16(cyc_then(62, b | (uint16_t)(W(joy1_last) + x)));
         up = (a & 0x4000) != 0;
         if (!up)
             cyc(92);                    /* BIT, BEQ taken, SEP, LDA */
     }
     if (up) {
         cyc(86);
-        t = rd8(b | (uint16_t)(0x0E01 + y));
+        t = rd8(b | (uint16_t)(W(kept_timer) + y));
         if (t == 0xFF) {
             go = TWO;
         } else {
             t++;
             cyc(76);
-            wr8(b | (uint16_t)(0x0E01 + y), t);
+            wr8(b | (uint16_t)(W(kept_timer) + y), t);
             go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
         }
     } else {
-        t = rd8(b | (uint16_t)(0x0E01 + y));
+        t = rd8(b | (uint16_t)(W(kept_timer) + y));
         if (!t) {
             a = 0x7E63;
             cyc(100);
             wr16(W(kept_colour_c), a);
         } else if (t >= 0x78) {
-            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 5));
+            wr8(b | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 5));
             go = TWO;
         } else if (t >= 0x3C) {
-            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 4));
+            wr8(b | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 4));
             go = ONE;
         } else if (t >= 0x1E) {
-            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 3));
+            wr8(b | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 3));
             go = ODD;
         } else {
-            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 1));
+            wr8(b | (uint16_t)(W(kept_timer) + y), (uint8_t)(t - 1));
             go = SKIP;
         }
     }
@@ -874,30 +874,30 @@ uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y
     else if (go == ODD)
         go = (rd8(b | W(frame_count)) & 0x01) ? NONE : ONE;
     if (go == ONE || go == TWO) {
-        step = cycle13(rd8(b | (uint16_t)(0x0E03 + y)), go == TWO ? 2 : 1);
-        wr8(b | (uint16_t)(0x0E03 + y), step);
+        step = cycle13(rd8(b | (uint16_t)(W(kept_cycle_c) + y)), go == TWO ? 2 : 1);
+        wr8(b | (uint16_t)(W(kept_cycle_c) + y), step);
         x = (uint8_t)(step << 1);
         a = rd16(W(kept_colours_c) + x);
         wr16(W(kept_colour_c), a);
     }
     cyc(46);
-    v = rd8(b | (uint16_t)(0x0DFD + y));
+    v = rd8(b | (uint16_t)(W(kept_acc) + y));
     cyc(38);
-    d = rd8(b | (uint16_t)(0x0DFB + y));
+    d = rd8(b | (uint16_t)(W(kept_sub) + y));
     s = (unsigned)v - d;
     cf = s < 0x100;
     kept_v = ((v ^ d) & (v ^ (uint8_t)s) & 0x80) != 0;
     cyc(30);
-    wr8(b | (uint16_t)(0x0DFD + y), (uint8_t)s);
+    wr8(b | (uint16_t)(W(kept_acc) + y), (uint8_t)s);
     *stepped = !cf;
     if (cf) {
         cyc(22);
         a = (uint16_t)((a & 0xFF00) | (uint8_t)s);
     } else {
         cyc(40 + (((0x0DFF + y) ^ 0x0DFF) & 0xFF00 ? 6 : 0));  /* BCS, LDA abs,Y */
-        step = cycle13(rd8(b | (uint16_t)(0x0DFF + y)), 1);
+        step = cycle13(rd8(b | (uint16_t)(W(kept_cycle_ab) + y)), 1);
         cyc(82);
-        wr8(b | (uint16_t)(0x0DFF + y), step);
+        wr8(b | (uint16_t)(W(kept_cycle_ab) + y), step);
         x = (uint8_t)(step << 1);
         cyc(82);
         wr16(W(palette_kept), cyc_then(32, rd16(W(kept_colours_a) + x)));
@@ -1075,7 +1075,7 @@ uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *x
     src = 0x0E21;
     if (!k) {
         cyc(178);
-        wr8(b | (uint16_t)(0x0E1F + y), 0x00);
+        wr8(b | (uint16_t)(W(flash_count) + y), 0x00);
     } else {
         n = (uint8_t)(8 - k);
         flash_v = 0;
@@ -1084,18 +1084,18 @@ uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *x
         cyc(30);
         wr8(W(flash_2n), (uint8_t)(n << 1));
         cyc(30);
-        c = rd8(b | (uint16_t)(0x0E1F + y));
+        c = rd8(b | (uint16_t)(W(flash_count) + y));
         if (c >= (uint8_t)(n << 1))
             { cyc(10); c = 0xFF; }
         c = (uint8_t)(c + 1);
         cyc(90);
-        wr8(b | (uint16_t)(0x0E1F + y), c);
+        wr8(b | (uint16_t)(W(flash_count) + y), c);
         if (c < n)
             { cyc(6); src = 0x0E27; }
         cyc(18);
     }
     cyc(116);
-    x = rd16(b | (uint16_t)(0x0D83 + (uint16_t)(y << 1)));
+    x = rd16(b | (uint16_t)(W(player_pal_offset) + (uint16_t)(y << 1)));
     cyc(38);
     wr16(W(player_palettes) + x, cyc_then(32, rd16(b | src)));
     cyc(24);
@@ -1196,20 +1196,20 @@ uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
     *stored = 1;
     status_c_kept = 1;
     cyc(30);
-    v = rd8(b | (uint16_t)(0x0DDA + y));
+    v = rd8(b | (uint16_t)(W(wram_0DDA) + y));
     if (v == 0) {
         cyc(68);
         a = 0x0000;
         goto store;
     }
     cyc(46);
-    v = rd8(b | (uint16_t)(0x0DF2 + y));
+    v = rd8(b | (uint16_t)(W(player_rec_43) + y));
     flags = (uint16_t)(v << 8);
     cyc(50);
-    flags |= rd8(b | (uint16_t)(0x0DF0 + y));
+    flags |= rd8(b | (uint16_t)(W(player_rec_42) + y));
     if (flags & 0x0400) {
         cyc(150);
-        v = rd8(b | (uint16_t)(0x0E05 + y));
+        v = rd8(b | (uint16_t)(W(kept_enable) + y));
         if (v) {
             cyc(104);
             t = rd16(b | W(frame_count));
@@ -1223,7 +1223,7 @@ uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
     cyc(86);
     if (flags & 0x0010) {
         cyc(74);
-        v = rd8(b | (uint16_t)(0x0DDA + y));
+        v = rd8(b | (uint16_t)(W(wram_0DDA) + y));
         status_c_kept = 0;
         if (v >= 0x3C) {
             cyc(78);
@@ -1467,7 +1467,7 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step, uint16_t x, uin
     uint16_t a, c;
 
     cyc(30);
-    a = rd16(b | (uint16_t)(0x0722 + y));
+    a = rd16(b | (uint16_t)(W(crash_scroll) + 9 + y));
     cyc(2);
     a &= m;
     cyc(46);
@@ -1554,7 +1554,7 @@ int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
         cyc(16);
         a |= rd16(W(dp_40));
         cyc(30);
-        wr16(b | (uint16_t)(0x0722 + y), a);
+        wr16(b | (uint16_t)(W(crash_scroll) + 9 + y), a);
         y = (uint16_t)(y + 2);
         x = (uint16_t)(x + 2);
         a = (uint16_t)(n - 1);

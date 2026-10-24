@@ -165,7 +165,7 @@ void RaceScreenSetup(uint8_t bank)
     /* The scroll HDMA table: $38 lines of $0E33, $4F lines of $0E37, then
        three single lines of $0E37 and the end. */
     cyc(62);
-    wr8(b | W(wram_10AA), 0x38);
+    wr8(b | W(scroll_hdma), 0x38);
     cyc(24);
     wr8(b | W(wram_10AB), cyc_then(24, rd8(b | W(wram_0E33))));
     cyc(24);
@@ -176,13 +176,13 @@ void RaceScreenSetup(uint8_t bank)
         cyc(24);
         lo = rd8(b | W(scroll_value));
         cyc(24);
-        wr8(b | (uint16_t)(0x10AE + 3 * i), lo);
+        wr8(b | (uint16_t)(W(scroll_hdma) + 4 + 3 * i), lo);
         cyc(24);
         hi = rd8(b | W(wram_0E38));
         cyc(24);
-        wr8(b | (uint16_t)(0x10AF + 3 * i), hi);
+        wr8(b | (uint16_t)(W(scroll_hdma) + 5 + 3 * i), hi);
         cyc(40);
-        wr8(b | (uint16_t)(0x10B0 + 3 * i), i < 3 ? 0x01 : 0x00);
+        wr8(b | (uint16_t)(W(scroll_hdma) + 6 + 3 * i), i < 3 ? 0x01 : 0x00);
     }
     cyc(40);
     io8(bank, DMAP2, 0x02);
@@ -842,11 +842,11 @@ void RaceHudLoad(Carried *cr)
     w = rd16(b | (uint16_t)(0xDD56 + x));
     if (w == 0xDDA4) {
         cyc(34);
-        hud_tile(cr, b, 0x30A0, 0x18E5, 0x62F0);
+        hud_tile(cr, b, 0x30A0, W(wram_18E5), 0x62F0);
         cyc(0);
-        hud_tile(cr, b, 0x30A0, 0x18E7, 0x63E0);
+        hud_tile(cr, b, 0x30A0, W(wram_18E7), 0x63E0);
         cyc(0);
-        hud_tile(cr, b, 0x30A0, 0x18E9, 0x63F0);
+        hud_tile(cr, b, 0x30A0, W(wram_18E9), 0x63F0);
         w = 0xDDCE;
     } else { cyc(34); }
     cyc(0);
@@ -858,13 +858,13 @@ void RaceHudLoad(Carried *cr)
             w = 0xDD5E;
     }
     if (w == 0xDD94)
-        hud_tile(cr, b, 0x3000, 0x18E5, 0x62F0);
+        hud_tile(cr, b, 0x3000, W(wram_18E5), 0x62F0);
     cyc(0);
     if (w == 0xDD5E)
         { cyc(14); video_gsu_ram_dma(cr, 0x3080, 0x63F0, 0x0020); } else { cyc(36); }
     cyc(8);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
-    hud_tile(cr, b, 0x3000, 0x18E3, 0x62E0);
+    hud_tile(cr, b, 0x3000, W(selection_derived), 0x62E0);
     cyc(10);
     video_gsu_vram(cr, 0xF845, 0xF804);
     cyc(18);

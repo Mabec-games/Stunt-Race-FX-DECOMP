@@ -44,7 +44,7 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
     do {
         cyc(70);
         c = rd8(CLASS_NAMES + *x);
-        wr8(dbw(bank, (uint16_t)(0x0377 + *y)), c);
+        wr8(dbw(bank, (uint16_t)(W(oam_buffer) + 2 + *y)), c);
         *x = (uint16_t)(*x + 1);
         *y = (uint16_t)(*y + 4);
         cyc(86);

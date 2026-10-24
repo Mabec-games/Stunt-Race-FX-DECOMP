@@ -279,7 +279,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
     cy &= 0x00FF;                       /* Gsu8325's 8-bit index registers */
     cyc(22);
     for (i = 0; i < 18; i += 2)
-        { cyc(24); wr16(b | (uint16_t)(0x064C + i), cyc_then(24, rd16(b | (uint16_t)(0x0608 + i)))); }
+        { cyc(24); wr16(b | (uint16_t)(W(view_matrix_copy) + i), cyc_then(24, rd16(b | (uint16_t)(W(view_matrix_out) + i)))); }
     cyc(84);
     Gsu82CE();
     cyc(82);

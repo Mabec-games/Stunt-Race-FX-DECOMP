@@ -608,7 +608,7 @@ void RasterStage(Carried *cr)
         put8(cr, TM, 0x13);
         copy8(cr, HDMAEN, b | W(wram_0D45));
         put8(cr, b | W(wram_0D3F), 0x04);
-        window_colours(cr, b, 0x19AC);
+        window_colours(cr, b, W(window_setup_bytes));
         (cyc(62), WindowsSetupSelect_cr(cr));
         break;
     case 0xA5B6:
@@ -653,7 +653,7 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x77);
         irq_ack(cr);
         put8(cr, b | W(wram_0D3F), 0x0C);
-        window_colours(cr, b, 0x19AF);
+        window_colours(cr, b, W(wram_19AF));
         cyc(24);
         r_lda8(cr, b | W(wram_0D5D));
         v = (uint8_t)cr->a;
@@ -730,7 +730,7 @@ void RasterStage(Carried *cr)
         put8(cr, BGMODE, 0x01);
         put8(cr, TM, 0x03);
         put8(cr, HDMAEN, 0x1C);
-        window_colours(cr, b, 0x19AC);
+        window_colours(cr, b, W(window_setup_bytes));
         (cyc(62), WindowsSetupSelect_cr(cr));
         put8(cr, VTIMEL, 0x0F);
         irq_ack(cr);

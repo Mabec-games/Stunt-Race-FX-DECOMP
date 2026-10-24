@@ -690,7 +690,7 @@ uint16_t ViewReset(uint8_t bank)
     for (i = 0; i < 9; i++)
         { cyc(24); wr8(b | high[i], (i % 4) == 0 ? 0x7F : 0x00); }
     for (i = 0; i < 9; i++)
-        { cyc(24); wr8(b | (uint16_t)(0x063A + 2 * i), 0x00); }
+        { cyc(24); wr8(b | (uint16_t)(W(view_matrix) + 2 * i), 0x00); }
     cyc(72);
     return (uint16_t)((v & 0xFF00) | 0x7F);
 }
@@ -3453,19 +3453,19 @@ uint16_t GlyphListDraw(uint8_t bank)
     do {
         cyc(22);                        /* REP #$20 */
         cyc(30);
-        list_a = rd16(b | (uint16_t)(0x110E + x));
+        list_a = rd16(b | (uint16_t)(W(glyph_list_on) + x));
         if (list_a) {
             cyc(46);
-            v = rd16(b | (uint16_t)(0x10E8 + x));
+            v = rd16(b | (uint16_t)(W(glyph_list_glyph) + x));
             cyc(32);
             wr16(0x700216, v);
             cyc(30);
-            v = (uint16_t)(rd16(b | (uint16_t)(0x1134 + x)) & 0x00FF);
+            v = (uint16_t)(rd16(b | (uint16_t)(W(glyph_list_x) + x)) & 0x00FF);
             cyc(2);
             cyc(54);
             wr16(0x70020A, v);
             cyc(30);
-            v = (uint16_t)(rd16(b | (uint16_t)(0x1135 + x)) & 0x00FF);
+            v = (uint16_t)(rd16(b | (uint16_t)(W(glyph_list_y) + x)) & 0x00FF);
             cyc(2);
             cyc(54);
             wr16(0x70020C, v);
@@ -3530,11 +3530,11 @@ static uint8_t sprite_at(uint8_t bank, uint16_t x, uint16_t at)
     cyc(32);
     wr16(0x70020A, at);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x0FE0 + x));
+    v = rd16(b | (uint16_t)(W(glyph_spr_y) + x));
     cyc(32);
     wr16(0x70020C, v);
     cyc(30);
-    sprite_glyph = rd16(b | (uint16_t)(0x1010 + x));
+    sprite_glyph = rd16(b | (uint16_t)(W(glyph_spr_glyph) + x));
     cyc(32);
     wr16(0x700216, sprite_glyph);
     return run_f329();
@@ -3544,7 +3544,7 @@ static uint8_t sprite_at(uint8_t bank, uint16_t x, uint16_t at)
 uint8_t GlyphSpriteDraw(uint8_t bank, uint16_t x)
 {
     cyc(30);
-    return sprite_at(bank, x, rd16((uint32_t)bank << 16 | (uint16_t)(0x0FB0 + x)));
+    return sprite_at(bank, x, rd16((uint32_t)bank << 16 | (uint16_t)(W(glyph_spr_x) + x)));
 }
 
 void GlyphSpriteDraw_cr(Carried *cr)
@@ -3585,14 +3585,14 @@ void GlyphSpritesInit(uint8_t bank)
     cyc(22);
     do {
         cyc(124);
-        wr16(b | (uint16_t)(0x0FB0 + x), rd16(0x04DA7A + (uint32_t)x));
+        wr16(b | (uint16_t)(W(glyph_spr_x) + x), rd16(0x04DA7A + (uint32_t)x));
         cyc(38);
         cyc(16);
-        wr16(b | (uint16_t)(0x0FE0 + x), 0x0008);
+        wr16(b | (uint16_t)(W(glyph_spr_y) + x), 0x0008);
         cyc(78);
-        wr16(b | (uint16_t)(0x1010 + x), rd16(0x04DA8E + (uint32_t)x));
+        wr16(b | (uint16_t)(W(glyph_spr_glyph) + x), rd16(0x04DA8E + (uint32_t)x));
         cyc(30);
-        wr16(b | (uint16_t)(0x1040 + x), 0x0000);
+        wr16(b | (uint16_t)(W(glyph_spr_1040) + x), 0x0000);
         x = (uint16_t)(x + 2);
     } while (cyc_loop(28, x < 0x0020));
     cyc(92);
@@ -3634,14 +3634,14 @@ static uint16_t time_glyph(uint32_t b, uint16_t y, uint16_t glyph, uint8_t x, in
 {
     cyc(22);
     cyc(70);
-    wr16(b | (uint16_t)(0x10E8 + y), glyph);
+    wr16(b | (uint16_t)(W(glyph_list_glyph) + y), glyph);
     cyc(38);
     cyc(16);
-    wr16(b | (uint16_t)(0x110E + y), 0x0000);
+    wr16(b | (uint16_t)(W(glyph_list_on) + y), 0x0000);
     cyc(68);
-    wr8(b | (uint16_t)(0x1134 + y), x);
+    wr8(b | (uint16_t)(W(glyph_list_x) + y), x);
     cyc(46);
-    wr8(b | (uint16_t)(0x1135 + y), 0x68);
+    wr8(b | (uint16_t)(W(glyph_list_y) + y), 0x68);
     if (!last)
         y = (uint16_t)(y + 2); else { cyc(30); }
     cyc(12);
@@ -3705,18 +3705,18 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     cyc(2);
     do {
         cyc(62);
-        v = rd16(b | (uint16_t)(0x0001 + x));
+        v = rd16(b | (uint16_t)(W(slot_01) + x));
         if (v) {
             cyc(52);
-            wr16(b | (uint16_t)(0x10E8 + y), v);
+            wr16(b | (uint16_t)(W(glyph_list_glyph) + y), v);
             cyc(38);
             v = rd8(W(recip_dividend));
             cyc(30);
-            wr8(b | (uint16_t)(0x1134 + y), (uint8_t)v);
+            wr8(b | (uint16_t)(W(glyph_list_x) + y), (uint8_t)v);
             cyc(46);
-            wr8(b | (uint16_t)(0x1135 + y), 0x58);
+            wr8(b | (uint16_t)(W(glyph_list_y) + y), 0x58);
             cyc(46);
-            wr8(b | (uint16_t)(0x110E + y), 0x00);
+            wr8(b | (uint16_t)(W(glyph_list_on) + y), 0x00);
             y = (uint16_t)(y + 2);
         }
         cyc(22);
@@ -4084,7 +4084,7 @@ static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
     v = rd16(b | W(wram_115C));
     cyc(30);                            /* TAX */
     cyc(38);
-    wr16(b | (uint16_t)(0x110E + v), flag);
+    wr16(b | (uint16_t)(W(glyph_list_on) + v), flag);
     cyc(24);
     v = (uint16_t)(rd16(b | W(wram_115C)) + 1);
     cyc(14);
@@ -4151,13 +4151,13 @@ void GlyphTimesSequence(Carried *cr, uint8_t bank)
         glyph_wait(b, 0);
         break;
     case 2:
-        glyph_load_time(b, 0x0EF9, 0);
+        glyph_load_time(b, W(wram_0EF9), 0);
         break;
     case 6:
-        glyph_load_time(b, 0x0EFC, 2);
+        glyph_load_time(b, W(wram_0EFC), 2);
         break;
     case 10:
-        glyph_load_time(b, 0x0EFF, 4);
+        glyph_load_time(b, W(wram_0EFF), 4);
         break;
     case 3: case 7: case 11:
         glyph_flag_step(b, 0x00FF, 0x000A);
@@ -4316,12 +4316,12 @@ void GlyphSpritesGrowAndTimes(Carried *cr)
         x = 0x0002;
         do {
             cyc(76);
-            if (rd16(b | (uint16_t)(0x103E + x)) >= 0x0003) {
+            if (rd16(b | (uint16_t)(W(glyph_spr_1040) - 2 + x)) >= 0x0003) {
                 cyc(70);
-                v = rd16(b | (uint16_t)(0x1040 + x));
+                v = rd16(b | (uint16_t)(W(glyph_spr_1040) + x));
                 if (v < 0x0007) {
                     cyc(84);
-                    wr16(b | (uint16_t)(0x1040 + x), (uint16_t)(v + 1));
+                    wr16(b | (uint16_t)(W(glyph_spr_1040) + x), (uint16_t)(v + 1));
                 } else { cyc(46); }
             } else { cyc(46); }
             cyc(28);
@@ -4340,7 +4340,7 @@ void GlyphSpritesGrowAndTimes(Carried *cr)
         cyc(44);
         do {
             cyc(82);
-            s = rd16(b | (uint16_t)(0x1040 + x));
+            s = rd16(b | (uint16_t)(W(glyph_spr_1040) + x));
             if (s) {
                 s = (uint16_t)(s << 1);
                 times_y = s;
@@ -4356,7 +4356,7 @@ void GlyphSpritesGrowAndTimes(Carried *cr)
                 cyc(32);
                 wr16(0x700214, v);
                 cyc(30);
-                v = rd16(b | (uint16_t)(0x0FB0 + x));
+                v = rd16(b | (uint16_t)(W(glyph_spr_x) + x));
                 cyc(92);
                 v = (uint16_t)(v + rd16(b | (uint16_t)(0xDAC2 + s)));
                 wr16(0x70020A, v);
@@ -4364,7 +4364,7 @@ void GlyphSpritesGrowAndTimes(Carried *cr)
                 cyc(18);
                 wr16(0x70020C, 0x0006);
                 cyc(30);
-                v = rd16(b | (uint16_t)(0x0FE0 + x));
+                v = rd16(b | (uint16_t)(W(glyph_spr_y) + x));
                 cyc(92);
                 {
                     uint16_t m = rd16(b | (uint16_t)(0xDAD2 + s)), r = (uint16_t)(v + m);
@@ -4374,7 +4374,7 @@ void GlyphSpritesGrowAndTimes(Carried *cr)
                 }
                 wr16(0x70020C, v);
                 cyc(30);
-                v = rd16(b | (uint16_t)(0x1010 + x));
+                v = rd16(b | (uint16_t)(W(glyph_spr_glyph) + x));
                 cyc(32);
                 wr16(0x700216, v);
                 cyc(52);
@@ -4444,28 +4444,28 @@ uint8_t GlyphSlideThree(uint8_t bank)
     cyc(22);
     do {
         cyc(76);
-        a = rd16(b | (uint16_t)(0x0FB0 + x));
+        a = rd16(b | (uint16_t)(W(glyph_spr_x) + x));
         cyc(44);
-        m = rd16(b | (uint16_t)(0x1040 + x));
+        m = rd16(b | (uint16_t)(W(glyph_spr_1040) + x));
         cyc(6);                         /* the SBC */
         if (a >= m) {
             a = (uint16_t)(a - m);
             cyc(40);
-            if (a < rd16(b | (uint16_t)(0x1070 + x)))
-                { cyc(46); a = rd16(b | (uint16_t)(0x1070 + x)); } else { cyc(22); }
+            if (a < rd16(b | (uint16_t)(W(glyph_spr_1040) + 48 + x)))
+                { cyc(46); a = rd16(b | (uint16_t)(W(glyph_spr_1040) + 48 + x)); } else { cyc(22); }
         } else {
             cyc(46);
-            a = rd16(b | (uint16_t)(0x1070 + x));
+            a = rd16(b | (uint16_t)(W(glyph_spr_1040) + 48 + x));
         }
         cyc(30);
-        wr16(b | (uint16_t)(0x0FB0 + x), a);
+        wr16(b | (uint16_t)(W(glyph_spr_x) + x), a);
         cyc(32);
         wr16(0x70020A, a);
         cyc(38);
         cyc(18);
         wr16(0x70020C, 0x0050);
         cyc(30);
-        slide_glyph = rd16(b | (uint16_t)(0x1010 + x));
+        slide_glyph = rd16(b | (uint16_t)(W(glyph_spr_glyph) + x));
         cyc(32);
         wr16(0x700216, slide_glyph);
         if (slide_glyph == 0x8000)
@@ -4523,7 +4523,7 @@ uint8_t GlyphSpriteDrawLeft8(uint8_t bank, uint16_t x)
     uint16_t v, r;
 
     cyc(148);
-    v = rd16((uint32_t)bank << 16 | (uint16_t)(0x0FB0 + x));
+    v = rd16((uint32_t)bank << 16 | (uint16_t)(W(glyph_spr_x) + x));
     r = (uint16_t)(v - 8);
     cyc(6);                             /* the SBC */
     left8_cv = (uint8_t)((v >= 8 ? P_C : 0) | (((v ^ 8) & (v ^ r) & 0x8000) ? P_V : 0));
@@ -4999,7 +4999,7 @@ static void packed_rows(uint32_t b, uint32_t less)
     } else { cyc(74); }
     pos = lead_bytes(lead_read(b), GsuBytes200_BFB2B3, GsuBytes200_BF11BD, GsuBytes200_BF10B9);
     times_at(0x006C, (pos ? 22 : 0) + 72);
-    packed_time_draw(b, 0x1161);
+    packed_time_draw(b, W(packed_time_b));
 }
 
 /*
@@ -5198,14 +5198,14 @@ uint8_t HudLapDigitsDraw(uint8_t bank)
     cyc(38);
     cyc(18);
     wr16(0x70020C, 0x0028);
-    lap_digit(b, 0x0F69);
+    lap_digit(b, W(lap_digits));
     gprog(0xFAB0, 0x9014);
-    lap_digit(b, 0x0F6A);
-    lap_digit(b, 0x0F6B);
+    lap_digit(b, W(wram_0F6A));
+    lap_digit(b, W(wram_0F6B));
     gprog(0xFAB0, 0x9018);
-    lap_digit(b, 0x0F6C);
+    lap_digit(b, W(wram_0F6C));
     {
-        uint8_t mode = lap_digit(b, 0x0F6D);
+        uint8_t mode = lap_digit(b, W(wram_0F6D));
 
         cyc(42);                        /* RTS */
         return mode;

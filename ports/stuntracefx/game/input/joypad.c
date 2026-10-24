@@ -377,12 +377,12 @@ void FrameSoundAndJoypads(Carried *cr)
     cyc(92);
     for (i = 0; i < 2; i++) {
         cyc(24);
-        cr->a = rd16(b | (uint16_t)(0x118B + i * 2));
+        cr->a = rd16(b | (uint16_t)(W(menu_joy1_pressed) + i * 2));
         cyc(24);
-        cr->a |= rd16(b | (uint16_t)(0x0311 + i * 2));
+        cr->a |= rd16(b | (uint16_t)(W(joy1_pressed) + i * 2));
         set_p(cr, nz16(cr->p, cr->a));
         cyc(24);
-        wr16(b | (uint16_t)(0x118B + i * 2), cr->a);
+        wr16(b | (uint16_t)(W(menu_joy1_pressed) + i * 2), cr->a);
     }
     cyc(42);
 }

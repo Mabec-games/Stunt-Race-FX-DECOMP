@@ -84,7 +84,7 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
     *x = (uint8_t)(rd8(W(gsu_buffer_select)) << 1);
     cyc(m16 ? 90 : 82);                 /* a 16-bit LDA reads a second byte */
     a = (uint16_t)(rd16(W(view_06cf)) >> 2);
-    wr16(dbw(bank, (uint16_t)(0x0D92 + *x)), cyc_then(58, a));
+    wr16(dbw(bank, (uint16_t)(W(bg2_scroll_x) + *x)), cyc_then(58, a));
     cyc(62);
     a = PlayerVehicleRaised(bank, (uint8_t)*x);
     cyc(46);
@@ -94,10 +94,10 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
     t = (uint16_t)s;
     if (t >= 0xF257)
         { cyc(18); t = 0xF257; }
-    wr16(dbw(bank, (uint16_t)(0x0D96 + *x)), cyc_then(182, t));
+    wr16(dbw(bank, (uint16_t)(W(gradient_src_a) + *x)), cyc_then(182, t));
     cyc(82);
     a = (uint16_t)(a + rd16(W(backdrop_y_base) + *x));
-    wr16(dbw(bank, (uint16_t)(0x0D8E + *x)), cyc_then(30, a));
+    wr16(dbw(bank, (uint16_t)(W(bg2_scroll_y) + *x)), cyc_then(30, a));
     cyc(70);
     return a;
 }

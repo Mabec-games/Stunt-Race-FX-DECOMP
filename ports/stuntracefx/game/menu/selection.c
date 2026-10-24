@@ -666,29 +666,29 @@ uint8_t MenuCursorFourWay(uint8_t bank)
         case 0:
             cyc(58);
             if (pad_bit(b, 0x0100))
-                step_with_sound(b, 0x0D48, +1); else { cyc(10); }
+                step_with_sound(b, W(wram_0D48), +1); else { cyc(10); }
             cyc(22);
             break;
         case 2:
             cyc(58);
             if (pad_bit(b, 0x0200))
-                step_with_sound(b, 0x0D48, -1);
+                step_with_sound(b, W(wram_0D48), -1);
             else if (pad_bit(b, 0x0100))
-                step_with_sound(b, 0x0D4C, -1); else { cyc(10); }
+                step_with_sound(b, W(digit62_override), -1); else { cyc(10); }
             cyc(22);
             break;
         case 4:
             cyc(58);
             if (pad_bit(b, 0x0100))
-                step_with_sound(b, 0x0D48, +1);
+                step_with_sound(b, W(wram_0D48), +1);
             else if (pad_bit(b, 0x0200))
-                step_with_sound(b, 0x0D4C, -1); else { cyc(10); }
+                step_with_sound(b, W(digit62_override), -1); else { cyc(10); }
             cyc(22);
             break;
         default:
             cyc(58);
             if (pad_bit(b, 0x0200))
-                step_with_sound(b, 0x0D48, -1); else { cyc(32); }
+                step_with_sound(b, W(wram_0D48), -1); else { cyc(32); }
             break;
         }
     }

@@ -298,7 +298,7 @@ static void abi_draw_value(Carried *cr, uint16_t value, uint16_t offset)
  */
 uint8_t HudDrawValueA(uint8_t bank, uint8_t *p)
 {
-    return draw_value(bank, 0x0DDA, 0x0114, p);
+    return draw_value(bank, W(wram_0DDA), 0x0114, p);
 }
 
 void HudDrawValueA_cr(Carried *cr)
@@ -328,7 +328,7 @@ void abi_HudDrawValueA(void)
  */
 uint8_t HudDrawValueB(uint8_t bank, uint8_t *p)
 {
-    return draw_value(bank, 0x0DDA, 0x0028, p);
+    return draw_value(bank, W(wram_0DDA), 0x0028, p);
 }
 
 void HudDrawValueB_cr(Carried *cr)
@@ -358,7 +358,7 @@ void abi_HudDrawValueB(void)
  */
 uint8_t HudDrawValueC(uint8_t bank, uint8_t *p)
 {
-    return draw_value(bank, 0x0DDB, 0x0128, p);
+    return draw_value(bank, W(wram_0DDB), 0x0128, p);
 }
 
 void HudDrawValueC_cr(Carried *cr)

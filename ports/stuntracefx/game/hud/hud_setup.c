@@ -544,10 +544,10 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
         (cyc(50), RaceHudSpritesHide(cr));
     } else {
         cyc(46);
-        player_tiles(cr, b, 0x0DF4, 0x046F);
+        player_tiles(cr, b, W(wram_0DF4), W(wram_046F));
         hud_bytes(cr, battle_p1_sprites, 6, 1);
         cyc(6);
-        player_tiles(cr, b, 0x0DF8, 0x0467);
+        player_tiles(cr, b, W(wram_0DF8), W(wram_0467));
         hud_bytes(cr, battle_p2_sprites, 6, 1);
         r_sep(cr, P_M);
         cyc(28);
@@ -843,9 +843,9 @@ static void race_hud_setup_two(Carried *cr)
     cr->x = 0x00DC;
     for (cr->y = 0x0000; cr->y < 0x0024; ) {
         cyc(162);
-        wr16(b | (uint16_t)(0x0375 + cr->x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cr->y)) + 0x2C28));
+        wr16(b | (uint16_t)(W(oam_buffer) + cr->x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cr->y)) + 0x2C28));
         cyc(76);
-        wr16(b | (uint16_t)(0x0377 + cr->x), rd16(b | (uint16_t)(0xE811 + cr->y)));
+        wr16(b | (uint16_t)(W(oam_buffer) + 2 + cr->x), rd16(b | (uint16_t)(0xE811 + cr->y)));
         cr->x = (uint16_t)(cr->x + 4);
         cr->y = (uint16_t)(cr->y + 4);
         cyc(110);
@@ -853,11 +853,11 @@ static void race_hud_setup_two(Carried *cr)
     cr->x = 0x01DC;
     for (cr->y = 0x0000; cr->y < 0x0024; ) {
         cyc(204);
-        wr16(b | (uint16_t)(0x0375 + cr->x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cr->y)) + 0x9476));
+        wr16(b | (uint16_t)(W(oam_buffer) + cr->x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cr->y)) + 0x9476));
         cyc(76);
         v = rd16(b | (uint16_t)(0xE811 + cr->y));
         cr->a = v;
-        wr16(b | (uint16_t)(0x0377 + cr->x), v);
+        wr16(b | (uint16_t)(W(oam_buffer) + 2 + cr->x), v);
         cr->x = (uint16_t)(cr->x + 4);
         cr->y = (uint16_t)(cr->y + 4);
         cyc(68);
@@ -870,9 +870,9 @@ static void race_hud_setup_two(Carried *cr)
         uint8_t s = rd8(b | (uint16_t)(0xE80A + cr->y));
 
         lda8(cr, s);
-        wr8(b | (uint16_t)(0x0575 + cr->x), s);
+        wr8(b | (uint16_t)(W(oam_buffer_high) + cr->x), s);
         cyc(30);
-        wr8(b | (uint16_t)(0x0585 + cr->x), s);
+        wr8(b | (uint16_t)(W(oam_buffer_high) + 16 + cr->x), s);
         cr->x++;
         cr->y++;
     }

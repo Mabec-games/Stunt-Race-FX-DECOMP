@@ -504,7 +504,7 @@ static void choice_made(Carried *cr, uint32_t b, int quit_extra)
     if ((uint8_t)cr->a) {
         lda8_imm(cr, 0xFF);
         cyc(32);
-        wr8(b | W(wram_19BD), 0xFF);
+        wr8(b | W(layout_request), 0xFF);
         cyc(16);
         stage(cr, b, 0x08);
         lda8_imm(cr, 0x08);
@@ -529,7 +529,7 @@ static void choice_made(Carried *cr, uint32_t b, int quit_extra)
     r_sep(cr, P_M);
     lda8_imm(cr, 0xFF);
     cyc(60);
-    wr8(b | W(wram_19BD), 0xFF);
+    wr8(b | W(layout_request), 0xFF);
     cyc(16);
     stage(cr, b, 0x06);
     lda8_imm(cr, 0x08);
@@ -603,7 +603,7 @@ void PauseStageChoice(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(22);
-    if (presses(cr, b, 0x0D1A, 0x9000)) {
+    if (presses(cr, b, W(joy1_pressed_copy), 0x9000)) {
         cyc(18);
         choice_made(cr, b, 1);
         cyc(42);
@@ -641,7 +641,7 @@ void PauseStageChoiceP1(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(22);
-    if (presses(cr, b, 0x0D1A, 0x9000)) {
+    if (presses(cr, b, W(joy1_pressed_copy), 0x9000)) {
         choice_made(cr, b, 0);
         cyc(42);
         return;
@@ -675,7 +675,7 @@ void PauseStageChoiceP2(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(22);
-    if (presses(cr, b, 0x0D1C, 0x9000)) {
+    if (presses(cr, b, W(joy2_pressed_copy), 0x9000)) {
         choice_made(cr, b, 0);
         cyc(42);
         return;

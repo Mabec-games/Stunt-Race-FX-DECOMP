@@ -1536,7 +1536,7 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
         return (uint16_t)((a & 0xFF00) | 0x08);
     }
     cyc(68);
-    v = rd8(b | (uint16_t)(0x0DD6 + *y));
+    v = rd8(b | (uint16_t)(W(wram_0DD6) + *y));
     *p = cmp8(*p, v, 0x08);
     if (v == 0x08) {
         rec = rd16(cyc_then(113, field(bank, obj, OBJ_OFF(obj_22))));
@@ -1932,7 +1932,7 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
                     v = rd16(b | (uint16_t)(y + 4)) & 0x00FF;
                     if (v != 0x002E) {
                         cyc(94);
-                        wr16(b | (uint16_t)(0x1AF5 + x), v);
+                        wr16(b | (uint16_t)(W(group_trigger_list) + x), v);
                         cyc(24);
                         v = rd16(b | W(bucket_origin));
                         cyc(30);
@@ -1942,7 +1942,7 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
                         w = rd16(W(area_row));
                         v = (uint16_t)(v + w);
                         cyc(30);
-                        wr16(b | (uint16_t)(0x1AF7 + x), v);
+                        wr16(b | (uint16_t)(W(group_trigger_list) + 2 + x), v);
                         x = (uint16_t)(x + 4);
                     } else { cyc(4); }
                     cyc(20);
@@ -1980,9 +1980,9 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
         wr16(b | W(area_rows_left), n);
     } while (cyc_loop(22, n));
     cyc(46);
-    wr16(b | (uint16_t)(0x1AF5 + x), 0x0000);
+    wr16(b | (uint16_t)(W(group_trigger_list) + x), 0x0000);
     cyc(30);
-    wr16(b | (uint16_t)(0x1AF7 + x), 0x0000);
+    wr16(b | (uint16_t)(W(group_trigger_list) + 2 + x), 0x0000);
     e.x = x;
     e.y = y;
     e.p = (uint8_t)((p & ~P_N) | P_Z);
@@ -2847,7 +2847,7 @@ void ObjectSpawnFromScript(Carried *cr)
     o = cr->x;
     rm = rom_word_at(b + 0x8000 + y);
     cyc(90);
-    wr8(OBJ_FIELD(o, OBJ_OFF(obj_15)), cyc_then(32, rd8(W(wram_1AF4))));
+    wr8(OBJ_FIELD(o, OBJ_OFF(obj_15)), cyc_then(32, rd8(W(spawn_mirror))));
     cyc(52);
     wr16(OBJ_FIELD(o, OBJ_OFF(obj_04)), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8007 + y))));
     cyc(30);
@@ -2873,9 +2873,9 @@ void ObjectSpawnFromScript(Carried *cr)
         cyc(44);
         wr16(OBJ_FIELD(o, OBJ_OFF(obj_53)), cyc_then(32 + rom_word((uint16_t)(0x000A + r)), rd16((uint16_t)(0x000A + r))));
         cyc(30);
-        wr16(OBJ_FIELD(o, OBJ_OFF(obj_55)), cyc_then(32 + rom_word((uint16_t)(0x000C + r)), rd16((uint16_t)(0x000C + r))));
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_55)), cyc_then(32 + rom_word((uint16_t)(W(spawn_base_0c) + r)), rd16((uint16_t)(W(spawn_base_0c) + r))));
         cyc(30);
-        wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), cyc_then(32 + rom_word((uint16_t)(0x000E + r)), rd16((uint16_t)(0x000E + r))));
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), cyc_then(32 + rom_word((uint16_t)(W(spawn_base_0e) + r)), rd16((uint16_t)(W(spawn_base_0e) + r))));
         cyc(94);
     } else { cyc(76); }
     t = rd16(b | (uint16_t)(0x800E + y));
@@ -2890,7 +2890,7 @@ void ObjectSpawnFromScript(Carried *cr)
     cyc(46 + rm);
     wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, OBJ_OFF(obj_57))))));
     cyc(32);
-    w = (uint16_t)(rd16(W(wram_1AF4)) & 0x00FF);
+    w = (uint16_t)(rd16(W(spawn_mirror)) & 0x00FF);
     if (w != 0x0000 && (cyc(40), w != 0x0080)) {
         cyc(72);
         t = rd16(OBJ_FIELD(o, OBJ_OFF(obj_53)));
@@ -4245,7 +4245,7 @@ void ObjectPlaceOnParent(Carried *cr)
         }
     }
     for (i = 0; i < 3; i++)
-        { cyc(30); wr8(b | (uint16_t)(0x1F58 + i), cyc_then(24, rd8(b | (uint16_t)(W(obj_vel_x) + i * 2 + cr->y)))); }
+        { cyc(30); wr8(b | (uint16_t)(W(wram_1F58) + i), cyc_then(24, rd8(b | (uint16_t)(W(obj_vel_x) + i * 2 + cr->y)))); }
     cyc(24);
     v = rd8(b | W(wram_1F58));
     wr8(dp8(cr, 0x02), cyc_then(16, v));
@@ -4524,7 +4524,7 @@ void ObjectBillboardTilt(Carried *cr)
     uint16_t y = cr->y, w;
     uint8_t a, c;
 
-    camera_turn_negated(cr, b, 0x1A64);
+    camera_turn_negated(cr, b, W(menu_1a64));
     {
         uint16_t x = cr->x;
 
@@ -4597,7 +4597,7 @@ void ObjectBillboardTilt(Carried *cr)
     r_lda8(cr, b | W(wram_0D62));
     if (!(uint8_t)cr->a)
         { cyc(64); return; }
-    camera_turn_negated(cr, b, 0x1A9F);
+    camera_turn_negated(cr, b, W(view_b));
     ObjectTableC056_cr(cr);
     r_lda8(cr, b | W(wram_1F5A));
     a = (uint8_t)(cr->a | 0x80);

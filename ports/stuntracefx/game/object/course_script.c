@@ -160,7 +160,7 @@ void CourseScriptRun(Carried *cr)
             for (i = 0; i < 0x0800; i = (uint16_t)(i + 2))
                 { cyc(96); wr16(W(object_buckets) + i, 0x0000); }
             cyc(128);
-            wr8(W(wram_1AF4), 0x00);
+            wr8(W(spawn_mirror), 0x00);
             cyc(46);
             wr16(b | W(spawn_counter), 0x0000);
             cyc(56);
@@ -191,7 +191,7 @@ void CourseScriptRun(Carried *cr)
             break;
         case 0x8112:                                   /* $08 */
             cyc(68);
-            wr8(W(wram_1AF4), rd8(b | (uint16_t)(0x8001 + y)));
+            wr8(W(spawn_mirror), rd8(b | (uint16_t)(0x8001 + y)));
             cyc(22);
             x = (uint16_t)(y + 2);
             break;
@@ -256,11 +256,11 @@ void CourseScriptRun(Carried *cr)
             x = (uint16_t)(y + 3);
             break;
         case 0x81F8:                                   /* $16 */
-            bare_object(cr, b, y, 0x1ADA, 0x1A64);
+            bare_object(cr, b, y, W(bare_object_a), 0x1A64);
             x = (uint16_t)(y + 4);
             break;
         case 0x8233:                                   /* $18 */
-            bare_object(cr, b, y, 0x1ADC, 0x1A9F);
+            bare_object(cr, b, y, W(bare_object_b), 0x1A9F);
             x = (uint16_t)(y + 4);
             break;
         case 0x802C:                                   /* $04: the end */

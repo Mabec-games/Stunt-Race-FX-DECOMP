@@ -1014,7 +1014,7 @@ uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y)
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_02), a);
-    a = neg_if(a, 0x0002);
+    a = neg_if(a, W(dp_02));
     wr16(w(b, W(wram_0364)), cyc_then(18, a));
     a = rd16(cyc_then(30, f(b, y, 0x10)));
     m = rd16(cyc_then(38, w(b, W(wram_05F2))));
@@ -1023,7 +1023,7 @@ uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y)
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_08), a);
-    a = fold(b, a, 0x0008);
+    a = fold(b, a, W(dp_08));
     wr16(w(b, W(wram_0364)), cyc_then(18, a));
     cyc(66);                            /* SEP, RTL */
     return a;
@@ -1059,7 +1059,7 @@ static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t 
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_02), a);
-    a = neg_if(a, 0x0002);
+    a = neg_if(a, W(dp_02));
     wr16(w(b, W(wram_0364)), cyc_then(18, a));
     cyc(second > 0xFFFF ? 24 : 16);     /* LDA abs or dp */
     a = rd16(second);
@@ -1067,7 +1067,7 @@ static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t 
     a = sub16(a, m);
     cyc(10);
     wr16(W(dp_08), a);
-    a = fold(b, a, 0x0008);
+    a = fold(b, a, W(dp_08));
     wr16(w(b, W(wram_0364)), cyc_then(18, a));
     cyc(66);                            /* SEP, RTL */
     return a;

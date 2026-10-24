@@ -70,7 +70,7 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     cyc(38);
     v = sbc_bcd8(frac, rd8(b | W(lap_mark)), p);
     cyc(8);
-    wr8(b | (uint16_t)(0x0EDE + x), v);
+    wr8(b | (uint16_t)(W(lap_splits) + x), v);
     cyc(24);
     secs = rd8(b | W(race_time_seconds));
     cyc(24);
@@ -82,21 +82,21 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
         wr8(W(dp_f1), cyc_then(6, (uint8_t)(rd8(W(dp_f1)) - 1)));
     }
     cyc(30);
-    wr8(b | (uint16_t)(0x0EDF + x), v);
+    wr8(b | (uint16_t)(W(lap_splits) + 1 + x), v);
     *p |= P_C;
     cyc(16);
     v = rd8(W(dp_f1));                          /* LDA, then SBC */
     cyc(38);
     v = sbc_bcd8(v, rd8(b | W(wram_0EDD)), p);
     cyc(8);
-    wr8(b | (uint16_t)(0x0EE0 + x), v);
+    wr8(b | (uint16_t)(W(lap_splits) + 2 + x), v);
 
     cyc(24);
     frac = rd8(b | W(race_time_fraction));
     cyc(24);
     wr8(b | W(lap_mark), frac);
     cyc(30);
-    wr8(b | (uint16_t)(0x0EF0 + x), frac);
+    wr8(b | (uint16_t)(W(lap_times) + x), frac);
     cyc(62);
     wr8(b | W(wram_0F6D), frac & 0x0F);
     cyc(108);
@@ -106,7 +106,7 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     cyc(24);
     wr8(b | W(wram_0EDC), secs);
     cyc(30);
-    wr8(b | (uint16_t)(0x0EF1 + x), secs);
+    wr8(b | (uint16_t)(W(lap_times) + 1 + x), secs);
     cyc(62);
     wr8(b | W(wram_0F6B), secs & 0x0F);
     cyc(108);
@@ -116,7 +116,7 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     cyc(24);
     wr8(b | W(wram_0EDD), mins);
     cyc(30);
-    wr8(b | (uint16_t)(0x0EF2 + x), mins);
+    wr8(b | (uint16_t)(W(lap_times) + 2 + x), mins);
     cyc(24);
     wr8(b | W(lap_digits), mins);
 

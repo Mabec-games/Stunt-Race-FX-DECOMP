@@ -535,7 +535,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = rd8(0x00973E + i);
     cyc(0x3E + i > 0xFF ? 62 : 56);     /* LDA abs,X (6 more over a page), STA */
     wr8(W(rot_wide_cos), t);
-    mul_at(xa, 0x05F6);
+    mul_at(xa, W(rot_wide_sin));
     cyc(16);
     t = rd8(W(mul_product));
     cyc(24);
@@ -544,7 +544,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = rd8(W(dp_6b));
     cyc(24);
     wr8(W(rot_z_high), t);
-    mul_at(0x0094, 0x05F7);
+    mul_at(W(dp_94), W(rot_wide_cos));
     cyc(16);
     t = rd8(W(mul_product));
     cyc(38);
@@ -560,7 +560,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = (uint8_t)(t + v + (c > 0xFF));
     cyc(24);
     wr8(W(rot_z_high), t);
-    mul_at(0x0094, 0x05F6);
+    mul_at(W(dp_94), W(rot_wide_sin));
     cyc(16);
     t = rd8(W(mul_product));
     cyc(16);
@@ -569,7 +569,7 @@ static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = rd8(W(dp_6b));
     cyc(16);
     wr8((uint16_t)(out + 1), t);
-    w = mul_at(xa, 0x05F7);
+    w = mul_at(xa, W(rot_wide_cos));
     cyc(16);
     t = rd8(W(mul_product));
     cyc(30);

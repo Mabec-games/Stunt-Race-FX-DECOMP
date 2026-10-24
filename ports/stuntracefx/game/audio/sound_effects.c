@@ -658,7 +658,7 @@ int SoundIfFlag40(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *x)
     if (!(flags & 0x0040))
         { cyc(138); return 0; }
     cyc(116);
-    *x = rd8((uint32_t)bank << 16 | (uint16_t)(0x0D89 + y));
+    *x = rd8((uint32_t)bank << 16 | (uint16_t)(W(wram_0D89) + y));
     cyc(100);
     SoundPort0QueuePush(rd8(0x04D0D6 + *x));
     cyc(46);
@@ -703,7 +703,7 @@ void abi_SoundIfFlag40(void)
  */
 int SoundHoldByFlags(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *a)
 {
-    uint32_t at = (uint32_t)bank << 16 | (uint16_t)(0x0DD8 + y);
+    uint32_t at = (uint32_t)bank << 16 | (uint16_t)(W(sound_hold) + y);
 
     /* BIT #$8000 and BNE (taken with bit 15), BIT #$4000 and BEQ, LDA */
     cyc(flags & 0x8000 ? 92 : flags & 0x4000 ? 126 : 132);
@@ -769,7 +769,7 @@ void abi_SoundHoldByFlags(void)
 int PlayerSound35(uint8_t bank, uint16_t y)
 {
     cyc(52);
-    uint8_t v = rd8((uint32_t)bank << 16 | (uint16_t)(0x0DF4 + y));
+    uint8_t v = rd8((uint32_t)bank << 16 | (uint16_t)(W(player_mode) + y));
 
     cyc(v == 1 ? 116 : 110);            /* BEQ taken (v = 1) 6 longer than not */
     SoundPort0QueuePush(0x35);
@@ -861,7 +861,7 @@ static void engine_sounds_exit(Carried *cr, uint16_t a)
  */
 uint16_t EngineSoundsPlayer2(uint8_t bank, uint8_t player)
 {
-    return engine_sounds(bank, player, 0x0DD7, 0x0D1C, 0x030D);
+    return engine_sounds(bank, player, W(engine_phase_p2), W(joy2_pressed_copy), W(joy2_held));
 }
 
 void EngineSoundsPlayer2_cr(Carried *cr)
@@ -891,7 +891,7 @@ void abi_EngineSoundsPlayer2(void)
  */
 uint16_t EngineSoundsPlayer1(uint8_t bank, uint8_t player)
 {
-    return engine_sounds(bank, player, 0x0DD6, 0x0D1A, 0x0309);
+    return engine_sounds(bank, player, W(wram_0DD6), W(joy1_pressed_copy), W(joy1_held));
 }
 
 void EngineSoundsPlayer1_cr(Carried *cr)

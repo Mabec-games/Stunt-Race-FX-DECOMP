@@ -349,7 +349,7 @@ void BobStep(Carried *cr)
     v = rd8(W(wram_1A1C) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
-    v = alu_adc8(v, rd8(b | (uint16_t)(0x1A20 + cr->x)), &cr->p);
+    v = alu_adc8(v, rd8(b | (uint16_t)(W(wram_1A20) + cr->x)), &cr->p);
     cyc(32);
     wr8(W(wram_1A1C) + cr->x, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -544,7 +544,7 @@ void WindowSweepStep(Carried *cr)
     v = rd8(W(wram_1A15) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(38);
-    v = alu_adc8(v, rd8(b | (uint16_t)(0x1A19 + cr->x)), &cr->p);
+    v = alu_adc8(v, rd8(b | (uint16_t)(W(wram_1A19) + cr->x)), &cr->p);
     cyc(32);
     wr8(W(wram_1A15) + cr->x, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -599,7 +599,7 @@ void WindowSweep(Carried *cr)
     if (v == 0xEE)
         { cyc(80); return; }
     cyc(64);
-    wr8(W(wram_19AC), v);
+    wr8(W(window_setup_bytes), v);
     cyc(32);
     wr8(W(wram_19AE), v);
     cyc(32);
@@ -755,7 +755,7 @@ void OscillatorStep(Carried *cr)
     wr8(W(wram_1A0A) + cr->x, 0x00);
     v = rd8(W(wram_1A08) + cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
-    v = alu_adc8(v, rd8(b | (uint16_t)(0x1A0C + cr->x)), &cr->p);
+    v = alu_adc8(v, rd8(b | (uint16_t)(W(wram_1A0C) + cr->x)), &cr->p);
     wr8(W(wram_1A08) + cr->x, v);
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x40)) & ~P_C) | (v >= 0x40 ? P_C : 0)));
@@ -810,7 +810,7 @@ void OscillatorWindow(Carried *cr)
     cyc(32);
     wr8(W(wram_19AD), v);
     cyc(48);
-    wr8(W(wram_19AC), 0x20);
+    wr8(W(window_setup_bytes), 0x20);
     cyc(48);
     wr8(W(wram_19AE), 0x95);
     cyc(24);

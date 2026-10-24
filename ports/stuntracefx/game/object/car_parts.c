@@ -1041,7 +1041,7 @@ void PlayerCar1(Carried *cr)
         } else { cyc(46); }
     } else { cyc(44); }
     player_record(cr, 0x0001, 0x702476, 0);
-    player_attach(cr, 0xAF93, 0x1ADA);
+    player_attach(cr, 0xAF93, W(bare_object_a));
     (cyc(22), player1_frame(cr));
 }
 
@@ -1119,7 +1119,7 @@ void PlayerCar2(Carried *cr)
     add16(cr, F(W(obj_pos_y), cr->x), 0xFF60);
     cyc(44);
     player_record(cr, 0x0002, 0x702478, 1);
-    player_attach(cr, 0xB049, 0x1ADC);
+    player_attach(cr, 0xB049, W(bare_object_b));
     (cyc(22), player2_frame(cr));
 }
 

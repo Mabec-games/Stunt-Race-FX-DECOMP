@@ -719,23 +719,23 @@ void MenuScreenOpenPreviewFade(Carried *cr)
     cyc(68);
     wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0F)));
     cyc(48);
-    wr8(W(wram_1909), 0x20);
+    wr8(W(preview_fade_step), 0x20);
     do {
         cyc(46);
         MenuWaitFrame_cr(cr);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(62);
-        palette_scale(cr, (uint8_t)(0x20 - rd8(W(wram_1909))), 0, 0x0000, 0x0007);
+        palette_scale(cr, (uint8_t)(0x20 - rd8(W(preview_fade_step))), 0, 0x0000, 0x0007);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(32);
-        palette_scale(cr, rd8(W(wram_1909)), 0, 0x0018, 0x0003);
+        palette_scale(cr, rd8(W(preview_fade_step)), 0, 0x0018, 0x0003);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(24);
         wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0B)));
         cyc(32);
-        v = (uint8_t)(rd8(W(wram_1909)) - 2);
+        v = (uint8_t)(rd8(W(preview_fade_step)) - 2);
         cyc(60);
-        wr8(W(wram_1909), v);
+        wr8(W(preview_fade_step), v);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     } while (cyc_loop(22, !(v & 0x80)));
     cyc(62);
@@ -1075,7 +1075,7 @@ chosen:
         cyc(32);
         r_lda8(cr, setting[i]);
         cyc(24);
-        wr8(b | (uint16_t)(0x1184 + i), (uint8_t)cr->a);
+        wr8(b | (uint16_t)(W(wram_1184) + i), (uint8_t)cr->a);
         cyc(32);
         wr8(0x70FC08u + i, (uint8_t)cr->a);
     }

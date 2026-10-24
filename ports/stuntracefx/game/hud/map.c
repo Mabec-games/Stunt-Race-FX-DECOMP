@@ -57,7 +57,7 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(72);
         wr16(W(dp_08), v);
         cyc(30);
-        wr16(b | (uint16_t)(0x0375 + *y), v);
+        wr16(b | (uint16_t)(W(oam_buffer) + *y), v);
         cyc(54);
         v = rd16(0x7E0000 | W(obj_26) + obj);
         cyc(16);
@@ -67,7 +67,7 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(16);
         wr16(W(dp_02), v);
         cyc(62);
-        wr16(b | (uint16_t)(0x0377 + *y), v);
+        wr16(b | (uint16_t)(W(oam_buffer) + 2 + *y), v);
         cyc(108);
         *y = (uint16_t)(*y + rd16(W(dp_f5)));
     }

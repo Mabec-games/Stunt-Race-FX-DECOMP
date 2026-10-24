@@ -775,7 +775,7 @@ void RaceModeSetup(Carried *cr)
     v = rd8(b | W(hud_mode)) ? (cyc(16), 0x00) : 0x04;
     cyc(2);
     for (i = 0x0C; i-- > 0; )
-        { cyc(66); wr8(b | (uint16_t)(0x0F05 + i), v); }
+        { cyc(66); wr8(b | (uint16_t)(W(level_columns) + i), v); }
     cr->x = 0xFF;
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));

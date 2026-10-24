@@ -867,7 +867,7 @@ static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, ui
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(164);
-    uint8_t v = (uint8_t)(rd8(W(wram_1A14)) + step);
+    uint8_t v = (uint8_t)(rd8(W(window_slide_pos)) + step);
 
     *pos = v;
 
@@ -879,14 +879,14 @@ static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, ui
         return 0;
     }
     cyc(94);
-    wr8(W(wram_1A14), v);
+    wr8(W(window_slide_pos), v);
     (cyc(step == 0x01 ? 70 : 62), WindowHdmaFFD1());  /* JMP, JSR */
     cyc(70);
     wr8(W(wram_19AD), 0x40);
     cyc(48);
-    wr8(W(wram_19AC), 0x20);
+    wr8(W(window_setup_bytes), 0x20);
     cyc(32);
-    *a = rd8(W(wram_1A14));
+    *a = rd8(W(window_slide_pos));
     cyc(32);
     wr8(W(wram_19AE), *a);
     return 1;
@@ -1058,7 +1058,7 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(54);
-    uint8_t req = rd8(W(wram_19BD)), v;
+    uint8_t req = rd8(W(layout_request)), v;
     uint16_t y = y8, s, m, pos, lim, a;
     unsigned i;
 
@@ -1069,9 +1069,9 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
         cyc(86);
         wr8(W(window_hdma_19bc), 0xFF);
         cyc(78);
-        wr16(W(wram_19B8), req == 0x01 ? 0x0002 : 0xFFFE);
+        wr16(W(layout_step), req == 0x01 ? 0x0002 : 0xFFFE);
         cyc(56);
-        wr16(W(wram_19BA), req == 0x01 ? 0x0001 : 0x0000);
+        wr16(W(layout_dir), req == 0x01 ? 0x0001 : 0x0000);
     } else {
         cyc(34);
         v = rd8(b | W(window_hdma_19bc));
@@ -1083,11 +1083,11 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
         } else { cyc(38); }
     }
     cyc(req == 0x01 ? 94 : 70);         /* the request 1 JMPs to the common part */
-    wr8(W(wram_19BD), 0x00);
+    wr8(W(layout_request), 0x00);
     cyc(54);
     s = rd16(W(window_hdma_select));
     cyc(46);
-    m = rd16(W(wram_19B8));
+    m = rd16(W(layout_step));
     pos = (uint16_t)(s + m);
     *p = (uint8_t)(*p & ~P_V);
     if (~(s ^ m) & (s ^ pos) & 0x8000)
@@ -1108,7 +1108,7 @@ uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int
     wr8(b | W(windows_setup_index), 0x00);
     cyc(16);
     for (i = 0; i < 6; i++)
-        { cyc(32); wr8(W(wram_19AC) + i, 0xE7); }
+        { cyc(32); wr8(W(window_setup_bytes) + i, 0xE7); }
     *x = y;
     if (y == 0)
         { cyc(76); a = (uint16_t)(WindowHdmaFromTable(x) & 0xFF00); }
@@ -1242,9 +1242,9 @@ void WindowsInit(Carried *cr)
     cyc(92);
     wr16(b | W(window_hdma_select), 0xFFFE);
     cyc(48);
-    wr16(b | W(wram_19B8), 0xFFFE);
+    wr16(b | W(layout_step), 0xFFFE);
     cyc(24);
-    wr16(b | W(wram_19BA), 0x0000);
+    wr16(b | W(layout_dir), 0x0000);
     cyc(46);
     wr8(b | W(window_hdma_19bc), 0x00);
     cyc(40);
@@ -1283,7 +1283,7 @@ void WindowsInit(Carried *cr)
     wr8(b | W(wram_1A16), 0xF0);
     cyc(38);
     for (i = 0; i < 6; i++)
-        { cyc(24); wr8(b | (uint16_t)(0x19AC + i), 0x00); }
+        { cyc(24); wr8(b | (uint16_t)(W(window_setup_bytes) + i), 0x00); }
     cyc(24);
     wr8(b | W(wram_1A0E), 0x00);
     cyc(24);
@@ -1348,7 +1348,7 @@ void WindowsInit(Carried *cr)
     cyc(46);
     wr8(b | W(wram_19F5), 0x00);
     cyc(62);
-    wr8(b | W(wram_1A14), 0x80);
+    wr8(b | W(window_slide_pos), 0x80);
     cyc(40);
     wr8(b | W(window_hdma_off), 0x00);
     cyc(40);
@@ -1526,7 +1526,7 @@ WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0)
         unsigned i;
 
         for (i = 0; i < 6; i++)
-            { cyc(24); wr8(b | (uint16_t)(0x19AC + i), v); }
+            { cyc(24); wr8(b | (uint16_t)(W(window_setup_bytes) + i), v); }
     }
     cyc(54);
     a = rd16(W(window_band_pos));
@@ -1764,7 +1764,7 @@ WindowRegs WindowSplitAnimate(WindowRegs r, uint8_t p0)
     cyc(24);
     v = rd8(b | W(wram_19E0));
     for (i = 0; i < 6; i++)
-        { cyc(24); wr8(b | (uint16_t)(0x19AC + i), v); }
+        { cyc(24); wr8(b | (uint16_t)(W(window_setup_bytes) + i), v); }
     pp &= (uint8_t)~P_C;
     cyc(54);
     a = rd16(W(wram_19DB));
@@ -2177,7 +2177,7 @@ static WindowRegs window_slide_check_step(WindowRegs r, uint8_t p0, uint16_t dp)
 
     r.a = (uint16_t)((r.a & 0xFF00) | 0xE0);
     cyc(108);
-    wr8(W(wram_19AC), 0xE0);
+    wr8(W(window_setup_bytes), 0xE0);
     cyc(48);
     wr8(W(wram_19AD), 0xE0);
     cyc(48);

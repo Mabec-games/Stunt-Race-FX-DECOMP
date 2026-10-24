@@ -1169,13 +1169,13 @@ static void page_mark_flip(Carried *cr, uint8_t p)
     lda8(cr, 0xF0);
     cyc(38);
     for (i = 0; i < 3; i++)
-        { cyc(30); wr8(b | (uint16_t)(0x0377 + i * 8 + cr->y), 0xF0); }
+        { cyc(30); wr8(b | (uint16_t)(W(oam_buffer) + 2 + i * 8 + cr->y), 0xF0); }
     for (i = 0; i < 3; i++) {
         cyc(30);
-        v = (uint8_t)(rd8(b | (uint16_t)(0x0378 + i * 8 + cr->y)) | 0x40);
+        v = (uint8_t)(rd8(b | (uint16_t)(W(oam_buffer) + 3 + i * 8 + cr->y)) | 0x40);
         lda8(cr, v);
         cyc(46);
-        wr8(b | (uint16_t)(0x0378 + i * 8 + cr->y), v);
+        wr8(b | (uint16_t)(W(oam_buffer) + 3 + i * 8 + cr->y), v);
     }
     cyc(28);
     r_plp(cr, p);
@@ -1196,11 +1196,11 @@ void RecordsPageMarkFlipHide(Carried *cr)
 
     lda8(cr, 0xF0);
     cyc(132);
-    wr8(b | (uint16_t)(0x037A + cr->y), 0xF0);
+    wr8(b | (uint16_t)(W(oam_buffer) + 5 + cr->y), 0xF0);
     cyc(30);
-    wr8(b | (uint16_t)(0x0382 + cr->y), 0xF0);
+    wr8(b | (uint16_t)(W(oam_buffer) + 13 + cr->y), 0xF0);
     cyc(30);
-    wr8(b | (uint16_t)(0x038A + cr->y), 0xF0);
+    wr8(b | (uint16_t)(W(oam_buffer) + 21 + cr->y), 0xF0);
     page_mark_flip(cr, p);
 }
 
@@ -1413,8 +1413,8 @@ void SpeedRecordsScreen(Carried *cr)
     if ((uint8_t)cr->a) {
         origin(cr, 0x89, 0x89);
         md_first(cr, 0x001A, 0);
-        md_next(cr, 0x04EE35, 0, 0x0D73, 0x0019);
-        md_next(cr, 0x04EE31, 0x0D73, 0x0D75, 0x0000);
+        md_next(cr, 0x04EE35, 0, W(wram_0D73), 0x0019);
+        md_next(cr, 0x04EE31, W(wram_0D73), W(wram_0D75), 0x0000);
         cyc(24);
         r_lda16(cr, b | W(wram_0D75));
         cyc(24);
@@ -1432,11 +1432,11 @@ void SpeedRecordsScreen(Carried *cr)
     if (cr->a)
         { cyc(44); md_first(cr, 0x001B, 0); }
     else { cyc(38); md_first(cr, 0x0005, 22 /* BRA */); }
-    md_next(cr, 0x04EDE1, 0, 0x0D73, 0x0001);
-    md_next(cr, 0x04EDD1, 0x0D73, 0x0D75, 0x0002);
-    md_next(cr, 0x04EDD5, 0x0D75, 0x0D77, 0x0003);
-    md_next(cr, 0x04EDD9, 0x0D77, 0x0D79, 0x0004);
-    md_next(cr, 0x04EDDD, 0x0D79, 0x0D7B, 0x0000);
+    md_next(cr, 0x04EDE1, 0, W(wram_0D73), 0x0001);
+    md_next(cr, 0x04EDD1, W(wram_0D73), W(wram_0D75), 0x0002);
+    md_next(cr, 0x04EDD5, W(wram_0D75), W(wram_0D77), 0x0003);
+    md_next(cr, 0x04EDD9, W(wram_0D77), W(wram_0D79), 0x0004);
+    md_next(cr, 0x04EDDD, W(wram_0D79), W(wram_0D7B), 0x0000);
     (cyc(46), w_OamClassName(cr));
     (cyc(46), SpeedRecordsPage(cr));
     (cyc(62), OamPaletteFromTableE26A_cr(cr));
@@ -1534,7 +1534,7 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
     uint16_t x;
     uint8_t p;
 
-    slot_to_y(cr, 0x0D75, d_time);
+    slot_to_y(cr, W(wram_0D75), d_time);
     cyc(66);
     r_lda16(cr, b | W(course));
     r_sub16(cr, first);
@@ -1559,22 +1559,22 @@ static void best_time(Carried *cr, uint32_t save, uint16_t first, int d_time, in
         cyc(68);
         r_lda16(cr, save + 2 + x);
         (cyc(46), RecordNameLettersLarge_cr(cr));
-        slot_to_y(cr, 0x0D75, d_rest);
+        slot_to_y(cr, W(wram_0D75), d_rest);
         cyc(74);
         r_lda16(cr, save + 4 + x);
         (cyc(46), SpritePiecesCarAt51_cr(cr));
         cyc(68);                        /* BRA, JSR */
         return;
     } else { cyc(46); }
-    slot_to_y(cr, 0x0D75, d_rest);
+    slot_to_y(cr, W(wram_0D75), d_rest);
     r_sep(cr, P_M);
     lda8(cr, 0x0F);
     cyc(110);
-    wr8(b | (uint16_t)(0x0376 + cr->y), 0x0F);
+    wr8(b | (uint16_t)(W(oam_buffer) + 1 + cr->y), 0x0F);
     cyc(30);
-    wr8(b | (uint16_t)(0x037A + cr->y), 0x0F);
+    wr8(b | (uint16_t)(W(oam_buffer) + 5 + cr->y), 0x0F);
     cyc(30);
-    wr8(b | (uint16_t)(0x037E + cr->y), 0x0F);
+    wr8(b | (uint16_t)(W(oam_buffer) + 9 + cr->y), 0x0F);
     cyc(46);
 }
 
@@ -1668,9 +1668,9 @@ void StuntRecordsScreen(Carried *cr)
             wr16(b | W(course), cr->a);
         } else { cyc(30); } }
         md_first(cr, 0x0015, 0);
-        md_next(cr, 0x04EE21, 0, 0x0D73, 0x0013);
+        md_next(cr, 0x04EE21, 0, W(wram_0D73), 0x0013);
         r_rep(cr, P_M);
-        md_next(cr, 0x04EE19, 0x0D73, 0x0D75, 0x0014);
+        md_next(cr, 0x04EE19, W(wram_0D73), W(wram_0D75), 0x0014);
         best_time(cr, 0x70FC4A, 0x0017, 0, 1);
         w_SpriteTextAt8152(cr);
         (cyc(24), RecordsMenuTwo(cr));
@@ -1678,10 +1678,10 @@ void StuntRecordsScreen(Carried *cr)
     } else { cyc(30); }
     origin(cr, 0x81, 0x89);
     md_first(cr, 0x0012, 0);
-    md_next(cr, 0x04EDF5, 0, 0x0D73, 0x0007);
-    md_next(cr, 0x04EDE9, 0x0D73, 0x0D75, 0x0008);
-    md_next(cr, 0x04EDED, 0x0D75, 0x0D77, 0x0009);
-    md_next(cr, 0x04EDF1, 0x0D77, 0x0D79, 0x0006);
+    md_next(cr, 0x04EDF5, 0, W(wram_0D73), 0x0007);
+    md_next(cr, 0x04EDE9, W(wram_0D73), W(wram_0D75), 0x0008);
+    md_next(cr, 0x04EDED, W(wram_0D75), W(wram_0D77), 0x0009);
+    md_next(cr, 0x04EDF1, W(wram_0D77), W(wram_0D79), 0x0006);
     (cyc(46), w_SpriteTextAt8152(cr));
     r_rep(cr, P_M | P_X);
     special_row(cr, 0x0D77, 4, 1, SpritePiecesAt46Y93_cr);
@@ -1722,9 +1722,9 @@ void BattleRecordsScreen(Carried *cr)
 
     origin(cr, 0x81, 0x89);
     md_first(cr, 0x000D, 0);
-    md_next(cr, 0x04EE01, 0, 0x0D73, 0x000C);
-    md_next(cr, 0x04EDFD, 0x0D73, 0x0D75, 0x000B);
-    slot_to_y(cr, 0x0D73, 0);
+    md_next(cr, 0x04EE01, 0, W(wram_0D73), 0x000C);
+    md_next(cr, 0x04EDFD, W(wram_0D73), W(wram_0D75), 0x000B);
+    slot_to_y(cr, W(wram_0D73), 0);
     cyc(66);
     r_lda16(cr, b | W(wram_0D89));
     r_asl16(cr);
@@ -1793,8 +1793,8 @@ void AllRecordsScreen(Carried *cr)
         cyc(6);
         origin(cr, 0x89, 0x89);
         md_first(cr, 0x0018, 0);
-        md_next(cr, 0x04EE2D, 0, 0x0D73, 0x0016);
-        md_next(cr, 0x04EE25, 0x0D73, 0x0D75, 0x0017);
+        md_next(cr, 0x04EE2D, 0, W(wram_0D73), 0x0016);
+        md_next(cr, 0x04EE25, W(wram_0D73), W(wram_0D75), 0x0017);
         best_time(cr, 0x70FC5E, 0x0014, -1, 0);
         w_SpriteTextAt8952(cr);
         (cyc(24), RecordsMenuTwo(cr));
@@ -1802,10 +1802,10 @@ void AllRecordsScreen(Carried *cr)
     } else { cyc(30); }
     origin(cr, 0x89, 0x89);
     md_first(cr, 0x0012, 0);
-    md_next(cr, 0x04EE05, 0, 0x0D73, 0x000F);
-    md_next(cr, 0x04EE09, 0x0D73, 0x0D75, 0x0010);
-    md_next(cr, 0x04EE0D, 0x0D75, 0x0D77, 0x0011);
-    md_next(cr, 0x04EE11, 0x0D77, 0x0D79, 0x000E);
+    md_next(cr, 0x04EE05, 0, W(wram_0D73), 0x000F);
+    md_next(cr, 0x04EE09, W(wram_0D73), W(wram_0D75), 0x0010);
+    md_next(cr, 0x04EE0D, W(wram_0D75), W(wram_0D77), 0x0011);
+    md_next(cr, 0x04EE11, W(wram_0D77), W(wram_0D79), 0x000E);
     (cyc(46), w_SpriteTextAt8952(cr));
     (cyc(62), OamPaletteFromTableE26AByMode_cr(cr));
     r_rep(cr, P_M | P_X);

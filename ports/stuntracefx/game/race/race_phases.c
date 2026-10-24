@@ -814,9 +814,11 @@ static void panel_next_delay(Carried *cr, uint32_t b, uint8_t d)
     wr8(b | W(wram_0D5F), d);
 }
 
-/* A result line shown: with the split screen ($0D62) sprite bytes
-   $0400 + at + $20 = $20 and $0500 + at + $20 = $88, else $0400 + at =
-   $28; then the next state, the delay $32 and sound $49. */
+/* A result line shown, at the sprite byte at ($06, $0A, $0E: the lines'
+   Y bytes, +4 each from results_line_y = $0400 + 6): with the split screen
+   ($0D62) results_split_y's and results_split2_y's line = $20 and $88,
+   else results_line_y's = $28; then the next state, the delay $32 and
+   sound $49. */
 static void panel_line(Carried *cr, uint32_t b, uint16_t at)
 {
     cyc(40);
@@ -824,15 +826,15 @@ static void panel_line(Carried *cr, uint32_t b, uint16_t at)
     if ((uint8_t)cr->a) {
         lda8_imm(cr, 0x20);
         cyc(32);
-        wr8(b | (uint16_t)(0x0420 + at), 0x20);
+        wr8(b | (uint16_t)(W(results_split_y) - 6 + at), 0x20);
         lda8_imm(cr, 0x88);
         cyc(16);
-        wr8(b | (uint16_t)(0x0520 + at), 0x88);
+        wr8(b | (uint16_t)(W(results_split2_y) - 6 + at), 0x88);
         cyc(22);                        /* BRA */
     } else {
         lda8_imm(cr, 0x28);
         cyc(38);
-        wr8(b | (uint16_t)(0x0400 + at), 0x28);
+        wr8(b | (uint16_t)(W(results_line_y) - 6 + at), 0x28);
     }
     panel_next_delay(cr, b, 0x32);
     cyc(54);
@@ -3082,7 +3084,7 @@ void TimeUpBattle(Carried *cr)
     }
     a = (uint8_t)cr->a;                         /* PHA */
     cyc(86);
-    wr8(W(wram_1FFE), 0x11);
+    wr8(W(save_bad_flag), 0x11);
     lda8_imm(cr, a);                                /* PLA */
     time_up_end(cr, b, 0x3C);
 }

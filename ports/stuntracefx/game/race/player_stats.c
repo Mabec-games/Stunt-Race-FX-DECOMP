@@ -76,7 +76,7 @@ void SpeedSampleAdd(uint8_t bank, uint16_t speed, uint16_t player, uint8_t *p, u
     m = io_rd16(b | MPYM, (uint16_t)(ppu_mul(0x3C) >> 8));
     v = m < 0x00FF ? (uint8_t)m : (cyc(18), 0xFF);
     cyc(98);
-    wr8(b | (uint16_t)(0x0DDA + player), v);
+    wr8(b | (uint16_t)(W(speed_sample) + player), v);
     sum = player == 0 ? 0x0DDC : (cyc(6), 0x0DE0);
     cnt = player == 0 ? 0x0DE4 : 0x0DE6;
     cyc(124);
@@ -272,24 +272,24 @@ void PlayerStatsFromRecord(Carried *cr)
     set_p(cr, nz8(cr->p, v));
     if (!v) {
         cyc(48);
-        wr8(b | (uint16_t)(0x0DEC + y), cyc_then(30, rd8(0x700040 + x)));
+        wr8(b | (uint16_t)(W(player_rec_40) + y), cyc_then(30, rd8(0x700040 + x)));
         cyc(32);
-        wr8(b | (uint16_t)(0x0DEE + y), cyc_then(30, rd8(0x700041 + x)));
+        wr8(b | (uint16_t)(W(player_rec_41) + y), cyc_then(30, rd8(0x700041 + x)));
         cyc(32);
-        wr8(b | (uint16_t)(0x0DF0 + y), cyc_then(30, rd8(0x700042 + x)));
+        wr8(b | (uint16_t)(W(player_rec_42) + y), cyc_then(30, rd8(0x700042 + x)));
         cyc(32);
-        wr8(b | (uint16_t)(0x0DF2 + y), cyc_then(30, rd8(0x700043 + x)));
+        wr8(b | (uint16_t)(W(player_rec_43) + y), cyc_then(30, rd8(0x700043 + x)));
         cyc(32);
-        wr8(b | (uint16_t)(0x0DF6 + y), cyc_then(30, rd8(0x70004E + x)));
+        wr8(b | (uint16_t)(W(player_rec_4e) + y), cyc_then(30, rd8(0x70004E + x)));
         cyc(54);
         w = rd16(0x700082 + x) >> 3;
         v = (uint8_t)w;
         cyc(94);
-        wr8(b | (uint16_t)(0x0DF9 + y), v);
+        wr8(b | (uint16_t)(W(gauge_b4_value) + y), v);
         if (v >= 0x3F)
             { cyc(10); v = 0x3F; }
         cyc(98);
-        wr8(b | (uint16_t)(0x0DFB + y), (uint8_t)((v << 1) + 0x30));
+        wr8(b | (uint16_t)(W(kept_sub) + y), (uint8_t)((v << 1) + 0x30));
         cyc(54);
         cr->a = rd16(0x70004A + x);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -299,13 +299,13 @@ void PlayerStatsFromRecord(Carried *cr)
         set_p(cr, (uint8_t)((cr->p & ~P_C) | (w & 0x0004 ? P_C : 0)));
         w >>= 3;
         cyc(94);
-        wr8(b | (uint16_t)(0x0E05 + y), (uint8_t)w);
+        wr8(b | (uint16_t)(W(kept_enable) + y), (uint8_t)w);
         cyc(32);
-        wr8(b | (uint16_t)(0x0DE8 + y), cyc_then(46, rd8(0x70007A + x)));
+        wr8(b | (uint16_t)(W(player_rec_7a) + y), cyc_then(46, rd8(0x70007A + x)));
         cyc(32);
         v = (uint8_t)(rd8(0x700088 + x) & 0x0F);
         cyc(46);
-        wr8(b | (uint16_t)(0x0DF4 + y), v);
+        wr8(b | (uint16_t)(W(player_mode) + y), v);
         cr->a = (uint16_t)((w & 0xFF00) | v);
         set_p(cr, (uint8_t)(nz8(cr->p, v) | P_M));
     } else { cyc(22); }
@@ -663,8 +663,8 @@ void RaceSoundsPlayer1(Carried *cr)
     wr8(b | W(current_player), 0x00);
     (cyc(62), EngineSoundsPlayer1_cr(cr));
     (cyc(46), PhaseDispatchE24F(cr));
-    race_x_test(cr, b, 0x0D1A);
-    race_frame_end(cr, b, 0x0D1A, 0, p0, db0);
+    race_x_test(cr, b, W(joy1_pressed_copy));
+    race_frame_end(cr, b, W(joy1_pressed_copy), 0, p0, db0);
 }
 
 void abi_RaceSoundsPlayer1(void)
@@ -704,8 +704,8 @@ void RaceSoundsPlayer2(Carried *cr)
     r_sep(cr, P_X);
     cyc(46);
     PlayerTwoFrameWork(cr);
-    race_x_test(cr, b, 0x0D1C);
-    race_frame_end(cr, b, 0x0D1C, 0, p0, db0);
+    race_x_test(cr, b, W(joy2_pressed_copy));
+    race_frame_end(cr, b, W(joy2_pressed_copy), 0, p0, db0);
 }
 
 void abi_RaceSoundsPlayer2(void)
@@ -737,7 +737,7 @@ void RaceXPressPlayer1(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     race_x_block(cr, b, 0x0C, race_flag_p1, OamHighBits18Park48_cr);
-    race_frame_end(cr, b, 0x0D1A, 1, 0, 0);
+    race_frame_end(cr, b, W(joy1_pressed_copy), 1, 0, 0);
 }
 
 void abi_RaceXPressPlayer1(void)
@@ -767,7 +767,7 @@ void RaceXPressPlayer2(Carried *cr)
     uint32_t b = (uint32_t)cr->db << 16;
 
     race_x_block(cr, b, 0x0E, race_flag_p2, OamHighBits58Park112_cr);
-    race_frame_end(cr, b, 0x0D1C, 1, 0, 0);
+    race_frame_end(cr, b, W(joy2_pressed_copy), 1, 0, 0);
 }
 
 void abi_RaceXPressPlayer2(void)
@@ -920,13 +920,13 @@ void PlayerOnePhaseRace(Carried *cr)
         do {
             r_lda16_imm(cr, rows[r].y);
             cyc(64);
-            wr16(b | (uint16_t)(0x0FE0 + cr->x), cr->a);
+            wr16(b | (uint16_t)(W(glyph_spr_y) + cr->x), cr->a);
             r_lda16_imm(cr, 0x0038);
             cyc(16);
-            wr16(b | (uint16_t)(0x0FB0 + cr->x), cr->a);
+            wr16(b | (uint16_t)(W(glyph_spr_x) + cr->x), cr->a);
             cyc(78);
             r_lda16(cr, 0x07DFA0 + cr->x);
-            wr16(b | (uint16_t)(0x1010 + cr->x), cr->a);
+            wr16(b | (uint16_t)(W(glyph_spr_glyph) + cr->x), cr->a);
             cr->x = (uint16_t)(cr->x + 2);
             cr->y--;
             set_p(cr, nz16(cr->p, cr->y));
@@ -934,8 +934,8 @@ void PlayerOnePhaseRace(Carried *cr)
         cyc(34);
     }
     cyc(24);
-    p1_digit_glyph(cr, b, 0, 0x1016);
-    p1_digit_glyph(cr, b, 4, 0x1014);
+    p1_digit_glyph(cr, b, 0, W(wram_1016));
+    p1_digit_glyph(cr, b, 4, W(wram_1014));
     cyc(24);
     r_lda16(cr, b | W(wram_0FAE));
     if (!cr->a) {
@@ -1005,14 +1005,14 @@ void PlayerOnePhaseTally(Carried *cr)
     set_p(cr, nz16(cr->p, cr->x));
     do {
         cyc(54);
-        r_lda16(cr, b | (uint16_t)(0x0FB0 + cr->x));
+        r_lda16(cr, b | (uint16_t)(W(glyph_spr_x) + cr->x));
         r_add16(cr, 0x000B);
         cyc(134);
         r_cmp16(cr, rd16(0x07DF70 + cr->x));
         if (cr->p & P_C)
             { cyc(42); r_lda16(cr, 0x07DF70 + cr->x); }
         cyc(4);
-        wr16(b | (uint16_t)(0x0FB0 + cr->x), cr->a);
+        wr16(b | (uint16_t)(W(glyph_spr_x) + cr->x), cr->a);
         p1_next(cr, 0x0032);
     } while (!(cr->p & P_C));
     cyc(92);
@@ -1620,7 +1620,7 @@ void StuntPhaseRace(Carried *cr)
         r_sep(cr, P_M);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0C);
         cyc(84);
-        wr8(b | (uint16_t)(0x0DD6 + cr->y), 0x0C);
+        wr8(b | (uint16_t)(W(engine_phase_p1) + cr->y), 0x0C);
         cyc(24);
         wr8(b | W(panel_b_shown), 0x00);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
@@ -1634,9 +1634,9 @@ void StuntPhaseRace(Carried *cr)
     }
     r_sep(cr, P_M);
     cyc(68);
-    w = (uint16_t)(rd8(b | (uint16_t)(0x0DEE + cr->y)) << 8);
+    w = (uint16_t)(rd8(b | (uint16_t)(W(player_rec_41) + cr->y)) << 8);
     cyc(44);
-    w |= rd8(b | (uint16_t)(0x0DEC + cr->y));
+    w |= rd8(b | (uint16_t)(W(player_rec_40) + cr->y));
     r_rep(cr, P_M);
     cr->a = (uint16_t)(w & 0x0001);
     set_p(cr, nz16(cr->p, cr->a));
@@ -1655,7 +1655,7 @@ void StuntPhaseRace(Carried *cr)
         wr8(b | W(wram_0E5B), 0x00);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0E);
         cyc(46);
-        wr8(b | (uint16_t)(0x0DD6 + cr->y), 0x0E);
+        wr8(b | (uint16_t)(W(engine_phase_p1) + cr->y), 0x0E);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0C);
         set_p(cr, nz8(cr->p, 0x0C));
         cyc(40);

@@ -70,12 +70,12 @@ static void upload(Carried *cr, uint16_t gradient_src, uint16_t src, int bra)
  */
 void TilemapDmaE817(Carried *cr)
 {
-    upload(cr, 0x0D9C, 0xE817, 1);
+    upload(cr, W(wram_0D9C), 0xE817, 1);
 }
 
 void TilemapDmaE817_cr(Carried *cr)
 {
-    upload(cr, 0x0D9C, 0xE817, 1);
+    upload(cr, W(wram_0D9C), 0xE817, 1);
 }
 
 void abi_TilemapDmaE817(void)
@@ -100,13 +100,13 @@ void abi_TilemapDmaE817(void)
  */
 void TilemapDmaE3D7(Carried *cr)
 {
-    upload(cr, 0x0D9A, 0xE3D7, 0);
+    upload(cr, W(wram_0D9A), 0xE3D7, 0);
 }
 
 void TilemapDmaE3D7_cr(Carried *cr)
 {
     cyc(24);
-    upload(cr, 0x0D9A, 0xE3D7, 0);
+    upload(cr, W(wram_0D9A), 0xE3D7, 0);
 }
 
 void abi_TilemapDmaE3D7(void)
@@ -137,7 +137,7 @@ void Bg2Band2TilemapE817(Carried *cr)
     cr->y &= 0x00FF;
     (cyc(84), Bg2ScrollFromTable_cr(cr));
     cyc(46);
-    upload(cr, 0x0D9C, 0xE817, 1);
+    upload(cr, W(wram_0D9C), 0xE817, 1);
     cyc(42);                            /* RTS */
 }
 
@@ -168,7 +168,7 @@ void Bg2Band0TilemapE3D7(Carried *cr)
     cr->y &= 0x00FF;
     (cyc(84), Bg2ScrollFromTable_cr(cr));
     cyc(70);
-    upload(cr, 0x0D9A, 0xE3D7, 0);
+    upload(cr, W(wram_0D9A), 0xE3D7, 0);
     cyc(42);                            /* RTS */
 }
 

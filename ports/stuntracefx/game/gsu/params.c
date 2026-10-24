@@ -248,7 +248,7 @@ uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
     for (i = 0; i < 3; i++) {
         cyc(70);
         v = rd16(t | (uint16_t)(s + 2 * i));
-        wr16(t | (uint16_t)(0x1F4C + 2 * i), v);
+        wr16(t | (uint16_t)(W(wram_1F4C) + 2 * i), v);
     }
     cyc(108);
     return v;

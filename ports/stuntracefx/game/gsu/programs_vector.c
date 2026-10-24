@@ -626,10 +626,10 @@ uint16_t ViewFromAnglesGsu8277(uint8_t bank)
     cyc(44);
     for (i = 0; i < 9; i++) {
         cyc(24);
-        w = rd16(b | (uint16_t)(0x064C + 2 * i));
+        w = rd16(b | (uint16_t)(W(view_8325_out) + 2 * i));
         w = asr7(w, &p);
         cyc(290);
-        wr16(b | (uint16_t)(0x066A + 2 * i), w);
+        wr16(b | (uint16_t)(W(wram_0668) + 2 + 2 * i), w);
     }
     view_c = (uint8_t)(p & P_C);
     cyc(60);
@@ -715,13 +715,13 @@ uint16_t ViewToGsuParams(uint8_t bank)
     } else { cyc(46); }
     for (i = 0; i < 3; i++) {
         cyc(16);
-        w = rd16((uint16_t)(0x00C5 + 2 * i));
+        w = rd16((uint16_t)(W(dp_c5) + 2 * i));
         cyc(32);
         wr16(0x7000D8 + 2 * i, w);
     }
     for (i = 0; i < 9; i++) {
         cyc(24);
-        w = rd16(b | (uint16_t)(0x064C + 2 * i));
+        w = rd16(b | (uint16_t)(W(view_8325_out) + 2 * i));
         cyc(32);
         wr16(0x7000E4 + 2 * i, w);
     }

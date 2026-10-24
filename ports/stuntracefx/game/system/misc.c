@@ -471,7 +471,7 @@ uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_
     *x = rd16(b | W(copy_src_pos));
     cyc(118);
     a = rd16(0x02D65A + *x);
-    wr16(b | (uint16_t)(0x07A2 + *y), a);
+    wr16(b | (uint16_t)(W(copy_dest) + *y), a);
     cyc(54);
     wr16(b | W(copy_src_pos), (uint16_t)(*x - 2));
     n = (uint16_t)(*y - 2);

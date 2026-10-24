@@ -195,7 +195,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(W(tie_object), cyc_then(16, rd16(W(dp_c5))));
     cyc(16);
     wr16(W(dp_94), cyc_then(16, rd16(W(dp_c9))));
-    area_origin(bank, 0x1EF5, p);
+    area_origin(bank, W(view_area_origin), p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
         v = rd16(cyc_then(64, dbw(bank, W(view_area_origin))));
@@ -214,7 +214,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(W(tie_object), cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
     cyc(32);
     wr16(W(dp_94), cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
-    v = area_origin(bank, 0x1EFB, p);
+    v = area_origin(bank, W(fixed_area_origin), p);
     *p = nz16(*p, rec);
     cyc(80);
     return v;

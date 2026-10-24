@@ -75,9 +75,9 @@ void HudGaugesPanelA(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
     Gauge g;
 
     cyc(28);
-    g = gauge_of(b, 0x0E0F, 0x0E11, 0x0DFA);
+    g = gauge_of(b, W(gauge_a4_x), W(gauge_a4_y), W(gauge_a4_value));
     bar4(bank, g, 0x0140, 86);                  /* LDY #, JSL */
-    g = gauge_of(b, 0x0E13, 0x0E15, 0x0E06);
+    g = gauge_of(b, W(gauge_a6_x), W(wram_0E15), W(gauge_a6_value));
     *a = bar6(bank, g, 0x016C, 86, x);
     *y = 0x016C;
     cyc(14);
@@ -153,13 +153,13 @@ int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
     split = rd8(b | W(wram_0D62)) != 0;
     if (split)
         cyc(50);                        /* LDY # and the BRA's other arm */
-    g = gauge_of(b, 0x0E0E, 0x0E10, 0x0DF9);
+    g = gauge_of(b, W(gauge_b4_x), W(gauge_b4_y), W(gauge_b4_value));
     bar4(bank, g, split ? 0x0040 : 0x0100, split ? 86 : 108);
     cyc(40);
     split = rd8(b | W(wram_0D62)) != 0;
     if (split)
         cyc(50);
-    g = gauge_of(b, 0x0E12, 0x0E14, 0x0E05);
+    g = gauge_of(b, W(gauge_b6_x), W(wram_0E14), W(wram_0E05));
     *y = split ? 0x006C : 0x012C;
     *a = bar6(bank, g, *y, split ? 86 : 108, x);
     cyc(14);
@@ -213,9 +213,9 @@ static uint8_t gauge6_place(uint8_t bank, uint16_t at, uint8_t y, uint8_t x)
     cyc(x ? 16 : 38);                   /* LDX #imm; panel B's also BRAs to the shared tail */
     for (i = 0; i < 4; i++) {
         cyc(24);
-        v = (uint8_t)(rd8(b | (uint16_t)(0x057B + i + x)) & keep[i]);
+        v = (uint8_t)(rd8(b | (uint16_t)(W(oam_buffer_high) + 6 + i + x)) & keep[i]);
         cyc(46);
-        wr8(b | (uint16_t)(0x057B + i + x), v);
+        wr8(b | (uint16_t)(W(oam_buffer_high) + 6 + i + x), v);
     }
     cyc(70);
     return v;
@@ -232,7 +232,7 @@ static uint8_t gauge6_place(uint8_t bank, uint16_t at, uint8_t y, uint8_t x)
  */
 uint8_t Gauge6BPlace(uint8_t bank)
 {
-    return gauge6_place(bank, 0x0E14, 0x5A, 0x00);
+    return gauge6_place(bank, W(wram_0E14), 0x5A, 0x00);
 }
 
 void Gauge6BPlace_cr(Carried *cr)
@@ -266,7 +266,7 @@ void abi_Gauge6BPlace(void)
  */
 uint8_t Gauge6APlace(uint8_t bank)
 {
-    return gauge6_place(bank, 0x0E15, 0xC2, 0x10);
+    return gauge6_place(bank, W(wram_0E15), 0xC2, 0x10);
 }
 
 void Gauge6APlace_cr(Carried *cr)

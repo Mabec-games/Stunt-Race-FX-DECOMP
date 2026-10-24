@@ -593,7 +593,7 @@ static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8
  */
 uint8_t SpriteSlot6Yellow(uint8_t bank)
 {
-    slot_colour(bank, 0x05C5, 0x40, 0x00, 0x1F, 0);
+    slot_colour(bank, W(wram_05C5), 0x40, 0x00, 0x1F, 0);
     return 0x1F;
 }
 
@@ -625,7 +625,7 @@ void abi_SpriteSlot6Yellow(void)
  */
 uint8_t SpriteSlot6DimYellow(uint8_t bank)
 {
-    slot_colour(bank, 0x05C5, 0x40, 0x00, 0x07, 0);
+    slot_colour(bank, W(wram_05C5), 0x40, 0x00, 0x07, 0);
     return 0x07;
 }
 
@@ -658,7 +658,7 @@ void abi_SpriteSlot6DimYellow(void)
  */
 uint8_t SpriteSlot6Red(uint8_t bank)
 {
-    slot_colour(bank, 0x05C5, 0x40, 0x1F, 0x00, 1);
+    slot_colour(bank, W(wram_05C5), 0x40, 0x1F, 0x00, 1);
     return 0x1F;
 }
 
@@ -691,7 +691,7 @@ void abi_SpriteSlot6Red(void)
  */
 uint8_t SpriteSlot5DimRed(uint8_t bank)
 {
-    slot_colour(bank, 0x05BD, 0x20, 0x0A, 0x00, 1);
+    slot_colour(bank, W(wram_05BD), 0x20, 0x0A, 0x00, 1);
     return 0x0A;
 }
 
@@ -888,7 +888,7 @@ void abi_SpriteSlot2FadeOut(void)
  */
 uint8_t SpriteSlot5Yellow(uint8_t bank)
 {
-    slot_colour(bank, 0x05BD, 0x20, 0x00, 0x1F, 0);
+    slot_colour(bank, W(wram_05BD), 0x20, 0x00, 0x1F, 0);
     return 0x1F;
 }
 

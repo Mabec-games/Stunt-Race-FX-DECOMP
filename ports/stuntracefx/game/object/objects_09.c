@@ -14614,7 +14614,7 @@ void abi_ObjectSwitchLampB(void)
  */
 void ObjectSwitchBStep(Carried *cr)
 {
-    hit_switch_frame(cr, 0x19E9);
+    hit_switch_frame(cr, W(wram_19E9));
 }
 
 void abi_ObjectSwitchBStep(void)
@@ -14771,7 +14771,7 @@ void abi_ObjectSwitchLampC(void)
  */
 void ObjectSwitchCStep(Carried *cr)
 {
-    hit_switch_frame(cr, 0x19EA);
+    hit_switch_frame(cr, W(wram_19EA));
 }
 
 void abi_ObjectSwitchCStep(void)

@@ -102,7 +102,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
             v = rd16(PATH_TABLE + 4 + 2 * i + t);
             w = rd16(b | (uint16_t)(link + 0x20 + 2 * i));
             cyc(24);
-            wr16(b | (uint16_t)(0x1F4E + 2 * i), (uint16_t)(v - w));
+            wr16(b | (uint16_t)(W(wram_1F4E) + 2 * i), (uint16_t)(v - w));
         }
         cyc(60);
         n = rd16(b | W(wram_1F4C));
@@ -110,15 +110,15 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         while (n--) {
             for (i = 0; i < 3; i++) {
                 cyc(24);
-                v = rd16(b | (uint16_t)(0x1F4E + 2 * i));
-                wr16(b | (uint16_t)(0x1F4E + 2 * i), cyc_then(84, halve(v)));
+                v = rd16(b | (uint16_t)(W(wram_1F4E) + 2 * i));
+                wr16(b | (uint16_t)(W(wram_1F4E) + 2 * i), cyc_then(84, halve(v)));
             }
             cyc(52);
         }
         cyc(6);
         for (i = 0; i < 3; i++) {
             cyc(24);
-            v = rd16(b | (uint16_t)(0x1F4E + 2 * i));
+            v = rd16(b | (uint16_t)(W(wram_1F4E) + 2 * i));
             wr16(field(bank, obj, (uint16_t)(0x2E + 2 * i)), cyc_then(30, v));
         }
         *a = advance(bank, obj, 10, 0, p);

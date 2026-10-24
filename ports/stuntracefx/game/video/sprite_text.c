@@ -168,7 +168,7 @@ static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp
     OamTextLineLong(xp, yp, &a);
     cyc(254);
     for (i = 0; i < 8; i += 2)
-        { cyc(24); wr16(b | (uint16_t)(0x058E + i), 0x0000); }
+        { cyc(24); wr16(b | (uint16_t)(W(oam_buffer_high) + 25 + i), 0x0000); }
     cyc(42);
 }
 

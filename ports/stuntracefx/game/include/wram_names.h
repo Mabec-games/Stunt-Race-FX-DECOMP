@@ -162,6 +162,8 @@
 #define WRAM_palette_work_a 0x7F35D7u
 #define WRAM_palette_work_b 0x7F37D7u
 #define WRAM_palette_work_c 0x7F39D7u
+/* Scroll HDMA table (video/scroll.asm): entries of a line count and a word. */
+#define WRAM_scroll_hdma 0x0010AAu
 /* Colour maths (video/colour_math.asm): the CGADSUB value the frame code */
 /* writes, and the fixed colour's intensity step and value in bank $7F. */
 #define WRAM_colour_math_mode 0x000D47u
@@ -333,6 +335,7 @@
 #define WRAM_wram_0DDB 0x000DDBu
 #define WRAM_wram_0D22 0x000D22u
 #define WRAM_wram_0346 0x000346u
+#define WRAM_wram_06CD 0x0006CDu
 /* Object fields used by the record code (object/gsu_record.asm): another */
 /* object (+$06), the Super FX record address (+$22), a flags byte (+$25). */
 #define WRAM_obj_06 0x002006u
@@ -633,7 +636,12 @@
 #define WRAM_blend_set_a 0x000E21u
 #define WRAM_blend_set_b 0x000E27u
 #define WRAM_player_palettes 0x7E01C8u
+#define WRAM_layout_step 0x0019B8u
+#define WRAM_layout_dir 0x0019BAu
+#define WRAM_layout_request 0x0019BDu
 #define WRAM_layout_limits 0x7EDBC5u
+#define WRAM_window_setup_bytes 0x0019ACu
+#define WRAM_view_angle 0x0006CDu
 #define WRAM_backdrop_0d96 0x000D96u
 #define WRAM_backdrop_scroll_base 0x7EE811u
 #define WRAM_view_06cf 0x0006CFu
@@ -692,6 +700,7 @@
 #define WRAM_save_tables_b_w 0x00FC6Du
 #define WRAM_table_first 0x0000F3u
 #define WRAM_table_second 0x0000F5u
+#define WRAM_save_bad_flag 0x001FFEu
 #define WRAM_save_block_groups_w 0x00FFD0u
 /* Gradient colour lists in bank $7F built by GradientBuildColours */
 /* (video/gradient.asm): the first list from $EF57, the second from $F357, */
@@ -728,9 +737,16 @@
 #define WRAM_wram_0EED 0x000EEDu
 #define WRAM_wram_0E6C 0x000E6Cu
 #define WRAM_wram_0E6E 0x000E6Eu
+/* Cleared by MenuButtonSequence when X is pressed (menu/handlers.asm); its */
+/* reader is not filed yet. Written with a long store. */
+#define WRAM_wram_1913 0x001913u
 /* Player 2's buttons newly pressed this frame, as the menu collects them */
 /* (menu/choices.asm); $118B is player 1's. */
 #define WRAM_menu_joy2_pressed 0x00118Du
+/* Cleared when the second settings screen is left (menu/choices.asm); */
+/* written with long stores. */
+#define WRAM_wram_190B 0x00190Bu
+#define WRAM_wram_190D 0x00190Du
 /* Set with the HUD positions by MenuCourseScreenSetup (menu/course_screen.asm). */
 #define WRAM_wram_0E0D 0x000E0Du
 #define WRAM_obj_handler_27 0x7E2027u
@@ -752,6 +768,11 @@
 #define WRAM_window_lines_12e8 0x7F12E8u
 #define WRAM_window_lines_12f6 0x7F12F6u
 #define WRAM_window_lines_1301 0x7F1301u
+#define WRAM_wram_1921 0x001921u
+#define WRAM_wram_1925 0x001925u
+#define WRAM_wram_1927 0x001927u
+#define WRAM_wram_191B 0x00191Bu
+#define WRAM_wram_191D 0x00191Du
 /* The two colours VblankUpdates alternates colour $D9 between, stored in */
 /* the work RAM code (system/vblank_updates.asm). */
 #define WRAM_blink_colours 0x7F0DA8u
@@ -905,6 +926,9 @@
 /* Computer driving fields (race/fx_drive.asm). */
 #define WRAM_fxcar_steer_bias 0x00003Au
 #define WRAM_fxcar_stuck 0x00007Eu
+/* The window slide position (video/window_hdma.asm): the line the moving */
+/* window band starts at, stepped by WindowSlideDown/WindowSlideUp. */
+#define WRAM_window_slide_pos 0x001A14u
 /* $19F2: set to 1 when HudCountMove19EE moves the count at $19EE to $19F0 */
 /* (hud/digits.asm). */
 #define WRAM_wram_19F2 0x0019F2u
@@ -1051,6 +1075,7 @@
 #define WRAM_spawn_base_0a 0x00000Au
 #define WRAM_spawn_base_0c 0x00000Cu
 #define WRAM_spawn_base_0e 0x00000Eu
+#define WRAM_spawn_mirror 0x001AF4u
 #define WRAM_obj_09_long 0x7E2009u
 #define WRAM_obj_27_long 0x7E2027u
 #define WRAM_obj_29_long 0x7E2029u
@@ -1095,6 +1120,9 @@
 #define WRAM_frames_taken 0x0006D4u
 #define WRAM_race_word_116a 0x00116Au
 #define WRAM_palette_word_fd65 0x7EFD65u
+/* MenuScreenOpenPreviewFade's fade level, $20 counted down by 2 */
+/* (menu/course_preview.asm). */
+#define WRAM_preview_fade_step 0x001909u
 /* The sprite table's high part (size and X bit 8), after the 512 bytes at */
 /* $0375 (video/oam.asm). */
 #define WRAM_oam_high_table 0x000575u
@@ -1343,6 +1371,13 @@
 #define WRAM_wram_0364 0x000364u
 #define WRAM_wram_0376 0x000376u
 #define WRAM_wram_0377 0x000377u
+#define WRAM_wram_0387 0x000387u
+#define WRAM_wram_0397 0x000397u
+#define WRAM_wram_039F 0x00039Fu
+#define WRAM_wram_03AF 0x0003AFu
+#define WRAM_wram_03B3 0x0003B3u
+#define WRAM_wram_03B7 0x0003B7u
+#define WRAM_wram_03BF 0x0003BFu
 #define WRAM_wram_0425 0x000425u
 #define WRAM_wram_0429 0x000429u
 #define WRAM_wram_042B 0x00042Bu
@@ -1388,12 +1423,13 @@
 #define WRAM_wram_0593 0x000593u
 #define WRAM_wram_0594 0x000594u
 #define WRAM_wram_0595 0x000595u
+#define WRAM_wram_05BD 0x0005BDu
+#define WRAM_wram_05C5 0x0005C5u
 #define WRAM_wram_05D9 0x0005D9u
 #define WRAM_wram_05EA 0x0005EAu
 #define WRAM_wram_05F2 0x0005F2u
 #define WRAM_wram_067C 0x00067Cu
 #define WRAM_wram_067D 0x00067Du
-#define WRAM_wram_06CD 0x0006CDu
 #define WRAM_wram_06D5 0x0006D5u
 #define WRAM_wram_06D6 0x0006D6u
 #define WRAM_wram_06D7 0x0006D7u
@@ -1425,6 +1461,7 @@
 #define WRAM_wram_0D5F 0x000D5Fu
 #define WRAM_wram_0D71 0x000D71u
 #define WRAM_wram_0D73 0x000D73u
+#define WRAM_wram_0D77 0x000D77u
 #define WRAM_wram_0D8F 0x000D8Fu
 #define WRAM_wram_0D90 0x000D90u
 #define WRAM_wram_0D91 0x000D91u
@@ -1437,6 +1474,7 @@
 #define WRAM_wram_0DA7 0x000DA7u
 #define WRAM_wram_0DD4 0x000DD4u
 #define WRAM_wram_0DF4 0x000DF4u
+#define WRAM_wram_0E05 0x000E05u
 #define WRAM_wram_0E18 0x000E18u
 #define WRAM_wram_0E23 0x000E23u
 #define WRAM_wram_0E25 0x000E25u
@@ -1461,9 +1499,12 @@
 #define WRAM_wram_0EE9 0x000EE9u
 #define WRAM_wram_0EEB 0x000EEBu
 #define WRAM_wram_0EEC 0x000EECu
+#define WRAM_wram_0EF3 0x000EF3u
 #define WRAM_wram_0EF9 0x000EF9u
 #define WRAM_wram_0EFA 0x000EFAu
 #define WRAM_wram_0EFB 0x000EFBu
+#define WRAM_wram_0EFC 0x000EFCu
+#define WRAM_wram_0EFF 0x000EFFu
 #define WRAM_wram_0F11 0x000F11u
 #define WRAM_wram_0F12 0x000F12u
 #define WRAM_wram_0F61 0x000F61u
@@ -1488,6 +1529,7 @@
 #define WRAM_wram_0FE2 0x000FE2u
 #define WRAM_wram_1012 0x001012u
 #define WRAM_wram_1014 0x001014u
+#define WRAM_wram_1016 0x001016u
 #define WRAM_wram_1022 0x001022u
 #define WRAM_wram_1024 0x001024u
 #define WRAM_wram_1026 0x001026u
@@ -1499,7 +1541,6 @@
 #define WRAM_wram_1074 0x001074u
 #define WRAM_wram_10A0 0x0010A0u
 #define WRAM_wram_10A3 0x0010A3u
-#define WRAM_wram_10AA 0x0010AAu
 #define WRAM_wram_10AB 0x0010ABu
 #define WRAM_wram_10AC 0x0010ACu
 #define WRAM_wram_10AD 0x0010ADu
@@ -1531,30 +1572,16 @@
 #define WRAM_wram_16BC 0x0016BCu
 #define WRAM_wram_16BE 0x0016BEu
 #define WRAM_wram_18DB 0x0018DBu
-#define WRAM_wram_1909 0x001909u
-#define WRAM_wram_190B 0x00190Bu
-#define WRAM_wram_190D 0x00190Du
 #define WRAM_wram_190F 0x00190Fu
 #define WRAM_wram_1911 0x001911u
-#define WRAM_wram_1913 0x001913u
 #define WRAM_wram_1915 0x001915u
 #define WRAM_wram_1917 0x001917u
 #define WRAM_wram_1919 0x001919u
-#define WRAM_wram_191B 0x00191Bu
-#define WRAM_wram_191D 0x00191Du
-#define WRAM_wram_1921 0x001921u
-#define WRAM_wram_1925 0x001925u
-#define WRAM_wram_1927 0x001927u
-#define WRAM_wram_19AC 0x0019ACu
-#define WRAM_wram_19B8 0x0019B8u
-#define WRAM_wram_19BA 0x0019BAu
-#define WRAM_wram_19BD 0x0019BDu
 #define WRAM_wram_19C4 0x0019C4u
 #define WRAM_wram_19D5 0x0019D5u
 #define WRAM_wram_19E7 0x0019E7u
 #define WRAM_wram_19EF 0x0019EFu
 #define WRAM_wram_19F7 0x0019F7u
-#define WRAM_wram_1A14 0x001A14u
 #define WRAM_wram_1A28 0x001A28u
 #define WRAM_wram_1A29 0x001A29u
 #define WRAM_wram_1A32 0x001A32u
@@ -1571,7 +1598,6 @@
 #define WRAM_wram_1AE8 0x001AE8u
 #define WRAM_wram_1AEA 0x001AEAu
 #define WRAM_wram_1AF2 0x001AF2u
-#define WRAM_wram_1AF4 0x001AF4u
 #define WRAM_wram_1AF7 0x001AF7u
 #define WRAM_wram_1EF7 0x001EF7u
 #define WRAM_wram_1EF9 0x001EF9u
@@ -1592,7 +1618,6 @@
 #define WRAM_wram_1F5E 0x001F5Eu
 #define WRAM_wram_1F64 0x001F64u
 #define WRAM_wram_1F73 0x001F73u
-#define WRAM_wram_1FFE 0x001FFEu
 #define WRAM_obj_01 0x002001u
 #define WRAM_obj_0a 0x00200Au
 #define WRAM_obj_23 0x002023u

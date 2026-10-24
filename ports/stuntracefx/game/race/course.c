@@ -914,9 +914,9 @@ void LevelColumnsSet4(Carried *cr)
     cyc(0);
     for (i = 0; i < 4; i++) {
         if (cr->p & P_M)
-            { cyc(30); wr8(b | (uint16_t)(0x0F05 + i + cr->x), (uint8_t)cr->a); }
+            { cyc(30); wr8(b | (uint16_t)(W(level_columns) + i + cr->x), (uint8_t)cr->a); }
         else
-            wr16(b | (uint16_t)(0x0F05 + i + cr->x), cr->a);
+            wr16(b | (uint16_t)(W(level_columns) + i + cr->x), cr->a);
     }
     cyc(42);
 }

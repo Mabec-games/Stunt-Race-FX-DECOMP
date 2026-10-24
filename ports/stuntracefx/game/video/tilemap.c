@@ -987,9 +987,9 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     cyc(138);
     wr16(b | W(wram_0D96), s < 0x0300 ? s : (cyc(18), 0x0300));
     cyc(144);
-    wr16(b | (uint16_t)(0x0D8E + x), cyc_then(30, (uint16_t)((h & 0x0007) - 0x20 + rd16(W(backdrop_scroll_base) + x))));
+    wr16(b | (uint16_t)(W(bg2_scroll_y) + x), cyc_then(30, (uint16_t)((h & 0x0007) - 0x20 + rd16(W(backdrop_scroll_base) + x))));
     cyc(24);
-    wr16(b | (uint16_t)(0x0D92 + x), cyc_then(106, (uint16_t)(((rd16(b | W(view_06cf)) >> 1) & 0x0007) - 0x18)));
+    wr16(b | (uint16_t)(W(bg2_scroll_x) + x), cyc_then(106, (uint16_t)(((rd16(b | W(view_06cf)) >> 1) & 0x0007) - 0x18)));
     cyc(70);
     io_wr8(0x00211B, 0x40);
     cyc(48);
@@ -1542,7 +1542,7 @@ void TimesKeepAndAdvance(uint8_t bank)
 
     cyc(22);
     for (i = 0; i < 3; i++)
-        { cyc(24); wr8(b | (uint16_t)(0x0EEA + i), cyc_then(24, rd8(b | (uint16_t)(0x0EE7 + i)))); }
+        { cyc(24); wr8(b | (uint16_t)(W(wram_0EEA) + i), cyc_then(24, rd8(b | (uint16_t)(W(wram_0EE7) + i)))); }
     cyc(40);
     wr8(b | W(wram_0E3F), 0x00);
     cyc(24);

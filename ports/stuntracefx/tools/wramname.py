@@ -27,6 +27,11 @@ def entries():
     """(name, value, comment lines, line comment, asm files) for each S-CPU
     work-RAM name; the asm files are those its comment block cites."""
     out, com, files, prev_com = [], [], [], False
+    short = set()
+    for line in open(INC):
+        m = re.match(r'!\w+\s*=\s*\$([0-9A-Fa-f]{1,4})\b', line.strip())
+        if m:
+            short.add(int(m.group(1), 16))
     for line in open(INC):
         s = line.strip()
         if s.startswith(';'):
@@ -43,7 +48,10 @@ def entries():
             continue
         v = int(m.group(2), 16)
         bank = v >> 16
-        if (bank == 0 and len(m.group(2)) <= 4) or bank in (0x7E, 0x7F):
+        # bank 0 written long ($0010AA, for the asm's long addressing) is the
+        # same low work RAM, when no short spelling names it already
+        long0 = bank == 0 and len(m.group(2)) > 4 and 0 < v < 0x2000 and v not in short
+        if (bank == 0 and len(m.group(2)) <= 4) or long0 or bank in (0x7E, 0x7F):
             out.append((m.group(1), v, com, m.group(3), list(files)))
         com = []
     return out
@@ -353,12 +361,159 @@ def name_dp(t, names, known):
     return DP.sub(f, t)
 
 
+INDEXED = re.compile(r'\(uint16_t\)\(0x([0-9A-Fa-f]{4}) \+ ')
+
+
+def asm_spellings(cfile):
+    """Value -> the spellings (name, k) cfile's asm gives work-RAM operands:
+    !oam_buffer+1 is (oam_buffer, 1) at $0375, !oam_sprite52_x-16 is
+    (oam_sprite52_x, -16)."""
+    path = os.path.join(ROOT, 'asm', 'stuntracefx', os.path.splitext(cfile)[0] + '.asm')
+    if not os.path.exists(path):
+        return {}
+    val = {n: v for n, v, *_ in entries()}
+    out = {}
+    for line in open(path):
+        code = line.split(';')[0]
+        for m in re.finditer(r'!(\w+)(?:([+-])(\$[0-9A-Fa-f]+|\d+))?', code):
+            n = m.group(1)
+            if n not in val:
+                continue
+            k = m.group(3)
+            k = int(k[1:], 16) if k and k.startswith('$') else int(k or 0)
+            k = -k if m.group(2) == '-' else k
+            out.setdefault((val[n] + k) & 0xFFFF, set()).add((n, k))
+    return out
+
+
+def name_indexed(t, names, known, spell):
+    """A work-RAM table read at an index, (uint16_t)(0x0375 + y): the base
+    as the file's asm spells it (!oam_buffer+1,Y), W(oam_buffer) + 1; a
+    base the asm does not spell, by its own name if it has one."""
+    left = []
+
+    def f(m):
+        v = int(m.group(1), 16)
+        if not is_wram(v, True):
+            return m.group(0)
+        s = spell.get(v, set())
+        if len(s) == 1:
+            n, k = next(iter(s))
+            return '(uint16_t)(W(%s)%s + ' % (n, (' + %d' % k if k > 0 else ' - %d' % -k) if k else '')
+        if v in names and not s:
+            return '(uint16_t)(W(%s) + ' % names[v]
+        left.append('$%04X %s' % (v, sorted(s)))
+        return m.group(0)
+    t = INDEXED.sub(f, t)
+    return t, left
+
+
+AUTO = re.compile(r'\bW\((wram_[0-9A-F]{4,6}|dp_[0-9a-f]{2})\)')
+
+
+def repick(t, names, known):
+    """Auto names (the address as its name) whose address now has a name
+    for this file: that name."""
+    real = {n for n, *_ in entries()}
+
+    def f(m):
+        a = m.group(1)
+        if a in real:
+            return m.group(0)
+        v = int(a.split('_')[1], 16)
+        n = names.get(v)
+        return 'W(%s)' % n if n and n != a else m.group(0)
+    return AUTO.sub(f, t)
+
+
+def address_params(t):
+    """Function -> the indexes of its parameters text t uses as a work-RAM
+    address (b | at, (uint16_t)(at + i), rd16(at), dbw(bank, at))."""
+    out = {}
+    for m in re.finditer(r'^(?:static )?(?:inline )?[\w ]+?\*?\b(\w+)\(([^)]*)\)\n\{(.*?)^\}', t, re.M | re.S):
+        fn, params, body = m.groups()
+        for i, p in enumerate(params.split(',')):
+            p = p.strip()
+            if p in ('', 'void'):
+                continue
+            P = re.escape(p.split()[-1].lstrip('*'))
+            if re.search(r'\b(?:b|db\(cr\)|0x7E0000|bank << 16\)?) \| (?:\(uint16_t\)\()?%s\b' % P, body) or \
+               re.search(r'\b(?:rd8|rd16|wr8|wr16|rd24)\(\(uint16_t\)\(%s\b' % P, body) or \
+               re.search(r'\b(?:rd8|rd16|wr8|wr16|dbw|w)\((?:bank, )?%s\b[,)]' % P, body):
+                out.setdefault(fn, set()).add(i)
+    return out
+
+
+def name_args(t, names, known):
+    """Work-RAM addresses passed as numbers to this file's helpers that take
+    an address: swap_words(b, W(special_times), ...)."""
+    params = address_params(re.sub(r'/\*.*?\*/', lambda m: ' ' * len(m.group(0)), t, flags=re.S))
+    left = []
+
+    def call(m):
+        fn = m.group(1)
+        if fn not in params:
+            return m.group(0)
+        parts = re.split(r'(,(?![^()]*\)))', m.group(2))
+        args = parts[0::2]
+        for i in params[fn]:
+            if i < len(args):
+                a = args[i]
+                s = a.strip()
+                if re.fullmatch(r'0x[0-9A-Fa-f]{4}', s) and 0 < int(s, 16) < 0x2000:
+                    v = int(s, 16)
+                    n = names.get(v) or (auto_name(v) if v not in known else None)
+                    if n:
+                        args[i] = a.replace(s, 'W(%s)' % n)
+                    else:
+                        left.append('%s %s' % (fn, s))
+        parts[0::2] = args
+        return '%s(%s)' % (fn, ''.join(parts))
+    lines = t.split('\n')
+    for k, line in enumerate(lines):
+        if re.match(r'^(?:static )?(?:inline )?[\w ]+?\*?\b\w+\([^)]*\)$', line):
+            continue                         # a definition's own line
+        lines[k] = re.sub(r'\b(\w+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)', call, line)
+    return '\n'.join(lines), left
+
+
 def main(argv):
     if argv == ['header']:
         write_header()
         return 0
     if argv == ['--meter']:
         meter(sorted(glob.glob(os.path.join(G, '*', '*.c'))))
+        return 0
+    if argv and argv[0] == '--args':
+        for f in argv[1:]:
+            p = os.path.join(G, f)
+            t = open(p).read()
+            n, left = name_args(t, *table(f))
+            for s in left:
+                print('  left', f, s)
+            if n != t:
+                open(p, 'w').write(ensure_include(n))
+                print('arguments named', f)
+        return 0
+    if argv and argv[0] == '--repick':
+        for f in argv[1:]:
+            p = os.path.join(G, f)
+            t = open(p).read()
+            n = repick(t, *table(f))
+            if n != t:
+                open(p, 'w').write(n)
+                print('repicked', f)
+        return 0
+    if argv and argv[0] == '--indexed':
+        for f in argv[1:]:
+            p = os.path.join(G, f)
+            t = open(p).read()
+            n, left = name_indexed(t, *table(f), asm_spellings(f))
+            for s in left:
+                print('  left', f, s)
+            if n != t:
+                open(p, 'w').write(ensure_include(n))
+                print('indexed named', f)
         return 0
     if argv and argv[0] == '--dp':
         for f in argv[1:]:

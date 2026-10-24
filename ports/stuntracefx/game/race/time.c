@@ -158,7 +158,7 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
     cyc(22);
     cyc(16);
     for (i = 0; i < 4; i++)
-        { cyc(24); wr8(b | (uint16_t)(0x0E68 + i), 0x99); }
+        { cyc(24); wr8(b | (uint16_t)(W(countdown_fraction) + i), 0x99); }
     cyc(24);
     v = rd8(b | W(hud_mode));
     *p = nz8(*p, v);

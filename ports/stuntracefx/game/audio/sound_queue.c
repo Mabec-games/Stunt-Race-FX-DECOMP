@@ -429,8 +429,8 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
         cyc(60);
         goto done;
     } else { cyc(38); }
-    ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8, &a, &x);
-    if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8, &a, &x))
+    ring_send(b, 0x2140, W(sound_port0_count), W(sound_port0_head), W(sound_port0_queue), &a, &x);
+    if (ring_send(b, 0x2141, W(sound_port1_count), W(sound_port1_head), W(sound_port1_queue), &a, &x))
         { cyc(24); wr8(b | W(sound_port1_last), a); }
     cyc(24);
     a = v = rd8(b | W(wram_0E4B));
