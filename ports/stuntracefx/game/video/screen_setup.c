@@ -88,8 +88,6 @@ void RaceTimeInit_cr(Carried *cr);
 void SoundIndicesFromHandlers_cr(Carried *cr);
 void SoundReset_cr(Carried *cr);
 void VramDmaTileFromGsuRam_cr(Carried *cr);
-static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db);
-static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db);
 
 void VideoRegsReset_cr(Carried *cr)
 {
@@ -781,8 +779,8 @@ static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_
     cyc(6);
 }
 
-void RaceHudSetup(uint8_t p, uint8_t db);
-void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db);
+void RaceHudSetup(Carried *cr, uint8_t p, uint8_t db);
+void RaceHudSetupTwoPlayers(Carried *cr, uint8_t p, uint8_t db);
 
 /*
  * @routine 03:DD1B RaceHudLoad
@@ -887,9 +885,9 @@ void RaceHudLoad(Carried *cr)
     cyc(46);
     r_lda8(cr, b | 0x0D62);
     if ((uint8_t)cr->a)
-        { cyc(46); RaceHudSetupTwoPlayers_c(cr, pushed[0], pushed[1]); }
+        { cyc(46); RaceHudSetupTwoPlayers(cr, pushed[0], pushed[1]); }
     else
-        { cyc(46); RaceHudSetup_c(cr, pushed[0], pushed[1]); }
+        { cyc(46); RaceHudSetup(cr, pushed[0], pushed[1]); }
     cyc(72);
 }
 
@@ -906,40 +904,3 @@ void abi_RaceHudLoad(void)
     cpu.db = r.db;
 }
 
-/* RaceHudSetupTwoPlayers, still in registers: its call with the registers loaded and taken
-   back. */
-static void RaceHudSetupTwoPlayers_c(Carried *cr, uint8_t p, uint8_t db)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    RaceHudSetupTwoPlayers(p, db);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}
-
-/* RaceHudSetup, still in registers: its call with the registers loaded and taken
-   back. */
-static void RaceHudSetup_c(Carried *cr, uint8_t p, uint8_t db)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    RaceHudSetup(p, db);
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
-}

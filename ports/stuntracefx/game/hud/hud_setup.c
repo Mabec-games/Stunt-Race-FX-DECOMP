@@ -766,19 +766,6 @@ static void race_hud_setup(Carried *cr)
     (cyc(24), hud_end(cr));
 }
 
-static void race_hud_setup_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    race_hud_setup(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* The two-player HUD (from $03:E6FA up to the end's PLB, PLP): the Super
    FX's $70:004E = $A545 and $70:01C4 = 2, $0374 = 1, the course screen's
    set-up (MenuCourseScreenSetup, PaletteCourseLoad); then the split
@@ -898,19 +885,6 @@ static void race_hud_setup_two(Carried *cr)
     (cyc(0), hud_end(cr));
 }
 
-static void race_hud_setup_two_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    race_hud_setup_two(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-}
-
 /* PLB, PLP (the data bank and P RaceHudLoad pushed), RTL: for an entry
    from original code, both pulled from the stack and the return taken
    through it. */
@@ -976,12 +950,12 @@ static void hud_leave_stack_c(Carried *cr)
  * P and the data bank as RaceHudLoad found them; A, X, Y as
  * RaceVarsReset leaves them.
  */
-void RaceHudSetup(uint8_t p, uint8_t db)
+void RaceHudSetup(Carried *cr, uint8_t p, uint8_t db)
 {
-    race_hud_setup_g();
-    cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
-    op_plp(p);
+    race_hud_setup(cr);
+    cr->db = db;
+    cr->p = nz8(cr->p, db);
+    r_plp(cr, p);
 }
 
 void RaceHudSetup_cr(Carried *cr)
@@ -1014,12 +988,12 @@ void abi_RaceHudSetup(void)
  * HOW: 16-bit copy loops, the size bits 8-bit.
  * Entry: as RaceHudSetup. Exit: as RaceHudSetup.
  */
-void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
+void RaceHudSetupTwoPlayers(Carried *cr, uint8_t p, uint8_t db)
 {
-    race_hud_setup_two_g();
-    cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
-    op_plp(p);
+    race_hud_setup_two(cr);
+    cr->db = db;
+    cr->p = nz8(cr->p, db);
+    r_plp(cr, p);
 }
 
 void RaceHudSetupTwoPlayers_cr(Carried *cr)
