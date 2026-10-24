@@ -659,6 +659,7 @@ void abi_DmaFromDescriptor(void)
  */
 uint16_t CoursePictureToVram(uint8_t bank)
 {
+    (void)bank;
     cyc(108);
     uint16_t w = rd16(cyc_then(106, W(course_picture_offsets) + 2 * (unsigned)rd8(0x7E0000 | W(course))));
     uint16_t t = (uint16_t)(w & 0xFFFC);
@@ -722,6 +723,7 @@ uint16_t VramDmaQueueAddA(uint16_t a);
  */
 uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
 {
+    (void)bank;
     uint16_t off;
     uint8_t f;
 
@@ -779,6 +781,7 @@ void abi_AnimTilesQueueNext(void)
  */
 void CgramUploadAll(uint8_t bank, int x8)
 {
+    (void)bank;
     cyc(92);
     wr16(0x7E0000 | W(player_pal_offset), 0xFD65);
     (cyc(94), CgramDma(0xFD65, 0x00, 0x0200));
@@ -865,7 +868,7 @@ static void delay_a(uint32_t n)
 }
 
 /* LDX #n / STX $0D7D: the next stage. */
-static void next_stage(uint32_t b, uint16_t n)
+static void next_stage(uint16_t n)
 {
     set_x(n);
     cyc(64);
@@ -873,7 +876,7 @@ static void next_stage(uint32_t b, uint16_t n)
 }
 
 /* SEP #$20, STZ $00, DEC $0D28. */
-static void frame_done(uint32_t b)
+static void frame_done(void)
 {
     uint8_t v;
 
@@ -886,7 +889,7 @@ static void frame_done(uint32_t b)
 }
 
 /* SEP #$20, $0357 = 1 (and STZ $00 when z). */
-static void flag_0357(uint32_t b, int z)
+static void flag_0357(int z)
 {
     set_a8(0x01);
     cyc(62);
@@ -950,8 +953,7 @@ static void upload_sprites_palette(uint32_t b)
 /* The rows stages ($A9B1, $A9D3, $A9FA, $AA1C): with $0D7F set (or clear,
    by want), the next stage, rows from Super FX RAM, $0357 = 1, and BG1/2's
    tile bases when nba is nonzero. */
-static void upload_rows(uint32_t b, int want, uint16_t n, uint16_t src,
-                        uint16_t vram, uint8_t nba)
+static void upload_rows(int want, uint16_t n, uint16_t src, uint16_t vram, uint8_t nba)
 {
     uint16_t sel;
 
@@ -960,20 +962,20 @@ static void upload_rows(uint32_t b, int want, uint16_t n, uint16_t src,
     set_a(sel);
     if (!sel != !want)
         { cyc(22); return; }
-    next_stage(b, n);
+    next_stage(n);
     ld3(src, vram, 0x0012);
     set_a(VramDmaRowsFromGsuRam(src, vram, 0x12));
     set_x(0x0001);
     set_y(0x0000);
     cyc(42);                            /* its RTS */
-    flag_0357(b, 1);
+    flag_0357(1);
     if (nba)
         put8(BG12NBA, nba);
 }
 
 /* The split screen's DMA of $7F:9BD7 ($1680 bytes) to VRAM word x, then
    BG1/2 tile bases $70, stage $10 and colour 0 = $1CC4. */
-static void split_picture(uint32_t b, uint16_t x)
+static void split_picture(uint16_t x)
 {
     int i;
 
@@ -1067,10 +1069,10 @@ static void split_stage(uint32_t b)
         break;
     case 0xAA91:
         cyc(22);
-        split_picture(b, 0x0000);
+        split_picture(0x0000);
         break;
     case 0xAA9A:
-        split_picture(b, 0x0B40);
+        split_picture(0x0B40);
         break;
     case 0xAB0F:
         cyc(70);
@@ -1222,7 +1224,7 @@ static int race_stage(uint32_t b)
             upload_sprites_palette(b);
             break;
         } else { cyc(22); }
-        next_stage(b, 0x0002);
+        next_stage(0x0002);
         ld3(0x2200, 0x2C00, 0x0000);
         fx_op_upload(1);                /* a third of the race screen */
         dma_from_gsu();
@@ -1234,7 +1236,7 @@ static int race_stage(uint32_t b)
     case 0xA85E:
         cyc(22);
         delay_a(1);
-        next_stage(b, 0x0004);
+        next_stage(0x0004);
         ld3(0x2200, 0x4E00, 0x1100);
         fx_op_upload(1);                /* a third of the race screen */
         dma_from_gsu();
@@ -1242,12 +1244,12 @@ static int race_stage(uint32_t b)
         cyc(22);
         ld3(0x0240, 0xE5D7, 0x5CC0);
         dma_from_7f();
-        flag_0357(b, 0);
+        flag_0357(0);
         break;
     case 0xA88F:
         cyc(22);
         delay_a(4);
-        next_stage(b, 0x0006);
+        next_stage(0x0006);
         cyc(24);
         set_a(rd16(0x7E0000 | W(wram_0D9A)));
         cyc(32);
@@ -1266,7 +1268,7 @@ static int race_stage(uint32_t b)
         set_a(0xFFFF);
         cyc(78);
         wr16(W(wram_0D81), 0xFFFF);
-        frame_done(b);
+        frame_done();
         break;
     case 0xA8FA:
         cyc(46);
@@ -1279,7 +1281,7 @@ static int race_stage(uint32_t b)
             break;
         }
         delay_a(1);
-        next_stage(b, 0x0008);
+        next_stage(0x0008);
         ld3(0x2200, 0xB800, 0x3400);
         fx_op_upload(1);                /* a third of the race screen */
         dma_from_gsu();
@@ -1290,7 +1292,7 @@ static int race_stage(uint32_t b)
         break;
     case 0xA92C:
         delay_a(1);
-        next_stage(b, 0x000A);
+        next_stage(0x000A);
         ld3(0x2200, 0xDA00, 0x4500);
         fx_op_upload(1);                /* a third of the race screen */
         dma_from_gsu();
@@ -1298,7 +1300,7 @@ static int race_stage(uint32_t b)
         cyc(22);
         ld3(0x0240, 0xEA17, 0x5EE0);
         dma_from_7f();
-        flag_0357(b, 0);
+        flag_0357(0);
         break;
     case 0xA95B:
         delay_a(4);
@@ -1322,25 +1324,25 @@ static int race_stage(uint32_t b)
         set_a(0x0001);
         cyc(70);
         wr16(0x7E0000 | W(wram_0D81), 0x0001);
-        frame_done(b);
+        frame_done();
         break;
     case 0xA9B1:
-        upload_rows(b, 1, 0x0010, 0x2C00, 0x0000, 0);
+        upload_rows(1, 0x0010, 0x2C00, 0x0000, 0);
         break;
     case 0xA9D1:
         break;
     case 0xA9D3:
-        upload_rows(b, 0, 0x0014, 0x9400, 0x0B40, 0x40);
+        upload_rows(0, 0x0014, 0x9400, 0x0B40, 0x40);
         break;
     case 0xA9F8:
         break;
     case 0xA9FA:
-        upload_rows(b, 1, 0x0018, 0x2C00, 0x2000, 0);
+        upload_rows(1, 0x0018, 0x2C00, 0x2000, 0);
         break;
     case 0xAA1A:
         break;
     case 0xAA1C:
-        upload_rows(b, 0, 0x000C, 0x9400, 0x2B40, 0x42);
+        upload_rows(0, 0x000C, 0x9400, 0x2B40, 0x42);
         break;
     case 0xAA41:
         break;

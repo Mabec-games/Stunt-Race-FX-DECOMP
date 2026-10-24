@@ -407,6 +407,7 @@ static uint8_t adc_bcd8(uint8_t a, uint8_t m, int c, uint8_t *p)
  */
 void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p)
 {
+    (void)bank;
 
     cyc(30);
     wr8(0x7E0000 | (uint16_t)(W(obj_25) + obj), cyc_then(46, (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(obj_25) + obj)) | 0x01)));
@@ -448,7 +449,7 @@ void abi_HudCountUp19EC(void)
  * the data bank.
  * Entry: M 8-bit. Exit: A low byte = 2d + 1; N, Z from it; C = bit 7 of d.
  */
-static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
+static uint8_t hud_digit_sprites_62(uint8_t *digit)
 {
     cyc(24);
     uint8_t d = rd8(0x7E0000 | W(digit62_override)) ? (cyc(54), 0x01) : rd8(cyc_then(46, 0x7E0000 | W(wram_0DF4)));
@@ -464,7 +465,8 @@ static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
 /* From C: returns A's low byte; *d the digit. */
 uint8_t HudDigitSprites62(uint8_t bank, uint8_t *d)
 {
-    uint8_t v = hud_digit_sprites_62(bank, d);
+    (void)bank;
+    uint8_t v = hud_digit_sprites_62(d);
 
     cyc(42);
     return v;
@@ -565,6 +567,7 @@ void abi_HudCountMove19EE(void)
  */
 uint16_t HudCountMove19EECopy(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     uint16_t n;
 
     cyc(46);

@@ -241,6 +241,8 @@ static uint16_t long_wrapper(void (*print)(uint8_t, uint8_t, DebugRegs *),
 {
     DebugRegs r = {0, 0, 0};
 
+    (void)bank;
+
     /* PHA pushes a word with M 16-bit; PHX and PHY a byte each with X 8-bit */
     cyc((p & P_M ? 194 : 202) - (p & P_X ? 16 : 0));
     wr8(0x7E0000 | W(debug_byte), byte);

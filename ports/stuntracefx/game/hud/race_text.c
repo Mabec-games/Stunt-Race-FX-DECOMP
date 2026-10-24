@@ -25,6 +25,7 @@
  */
 uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
 {
+    (void)bank;
     uint16_t a = (uint16_t)((uint16_t)(rd16(cyc_then(68, (0x7E0000 | W(wram_0D7B)))) + 1) << 2);
     uint8_t c, n;
 

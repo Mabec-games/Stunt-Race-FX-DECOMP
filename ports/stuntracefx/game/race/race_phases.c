@@ -74,7 +74,7 @@ static void apu_upload(Carried *cr, uint16_t a, uint16_t y);
 static void cmp8_imm(Carried *cr, uint8_t m);
 static uint8_t dec8_mem(Carried *cr, uint32_t addr);
 static void finish_alone(Carried *cr, uint32_t b, uint16_t colour, uint8_t phase, uint8_t t);
-static void finish_both(Carried *cr, uint32_t b);
+static void finish_both(Carried *cr);
 static void finish_sound(Carried *cr, uint8_t car);
 static uint8_t inc8_mem(Carried *cr, uint32_t addr);
 static void lap_banner(Carried *cr, void (*draw)(Carried *));
@@ -83,28 +83,28 @@ static void lap_finish(Carried *cr, uint32_t b);
 static void lap_override(Carried *cr, uint32_t b);
 static void lda8_imm(Carried *cr, uint8_t v);
 static int panel_delay_out(Carried *cr);
-static void panel_line(Carried *cr, uint32_t b, uint16_t at);
-static void panel_next(Carried *cr, uint32_t b);
-static void panel_next_delay(Carried *cr, uint32_t b, uint8_t d);
+static void panel_line(Carried *cr, uint16_t at);
+static void panel_next(Carried *cr);
+static void panel_next_delay(Carried *cr, uint8_t d);
 static void pause_results(Carried *cr);
-static void pause_stage_ten(Carried *cr, uint32_t b);
-static void phases_both(Carried *cr, uint32_t b);
-static int pressed_b_start(Carried *cr, uint32_t b);
+static void pause_stage_ten(Carried *cr);
+static void phases_both(Carried *cr);
+static int pressed_b_start(Carried *cr);
 static void race_end_wait(Carried *cr, void (*draw)(Carried *));
 static int race_phase(Carried *cr);
 static void race_ready(Carried *cr, uint8_t t, int bra);
-static void race_start(Carried *cr, uint32_t b);
+static void race_start(Carried *cr);
 static int sbc8_borrows(Carried *cr, uint8_t m);
 static void screen_off(Carried *cr);
 static void start_draw(Carried *cr, uint32_t b);
-static void start_hold(Carried *cr, uint32_t b);
-static void substate_next(Carried *cr, uint32_t b);
+static void start_hold(Carried *cr);
+static void substate_next(Carried *cr);
 static void time_digits_full(Carried *cr);
-static void time_up_end(Carried *cr, uint32_t b, uint8_t t);
-static void time_up_tick(Carried *cr, uint32_t b, uint8_t t, void (*after)(Carried *), uint8_t push_x);
-static int time_up_wait(Carried *cr, uint32_t b);
-static int window_closed_overlay(Carried *cr, uint32_t b, int beq);
-static void window_up(Carried *cr, uint32_t b);
+static void time_up_end(Carried *cr, uint8_t t);
+static void time_up_tick(Carried *cr, uint8_t t, void (*after)(Carried *), uint8_t push_x);
+static int time_up_wait(Carried *cr);
+static int window_closed_overlay(Carried *cr, int beq);
+static void window_up(Carried *cr);
 static void w_ApuUpload(Carried *cr);
 static void w_LapBannerNone(Carried *cr);
 static void w_LapSplit(Carried *cr);
@@ -206,7 +206,7 @@ static void cmp8_imm(Carried *cr, uint8_t m)
 }
 
 /* Both players' phases ($0DD6, $0DD7) = the low byte of A. */
-static void phases_both(Carried *cr, uint32_t b)
+static void phases_both(Carried *cr)
 {
     cyc(16);
     wr8(0x7E0000 | W(wram_0DD6), (uint8_t)cr->a);
@@ -215,14 +215,14 @@ static void phases_both(Carried *cr, uint32_t b)
 }
 
 /* Two INCs of the sub-state $0D5A: the next one. */
-static void substate_next(Carried *cr, uint32_t b)
+static void substate_next(Carried *cr)
 {
     inc8_mem(cr, 0x7E0000 | W(wram_0D5A));
     inc8_mem(cr, 0x7E0000 | W(wram_0D5A));
 }
 
 /* Two INCs of the panel state $0D56. */
-static void panel_next(Carried *cr, uint32_t b)
+static void panel_next(Carried *cr)
 {
     inc8_mem(cr, 0x7E0000 | W(wram_0D56));
     inc8_mem(cr, 0x7E0000 | W(wram_0D56));
@@ -287,10 +287,10 @@ void abi_PhaseNothing(void)
 
 /* 07:E299: both phases 2, $0D5A cleared; then with M 16-bit $0D67, $0D69,
    $19EE, $19F0 and $0E74 cleared and sound 5 on port 0. */
-static void race_start(Carried *cr, uint32_t b)
+static void race_start(Carried *cr)
 {
     lda8_imm(cr, 0x02);
-    phases_both(cr, b);
+    phases_both(cr);
     cyc(24);
     wr8(0x7E0000 | W(wram_0D5A), 0x00);
     r_rep(cr, P_M);
@@ -321,7 +321,6 @@ static void race_start(Carried *cr, uint32_t b)
  */
 void RaceStartCountdown(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
     wr8(0x7E0000 | W(wram_0FAE), 0x00);
@@ -331,7 +330,7 @@ void RaceStartCountdown(Carried *cr)
     cyc(16);
     wr8(0x7E0000 | W(wram_0E55), 0x20);
     cyc(22);
-    race_start(cr, b);
+    race_start(cr);
 }
 
 void abi_RaceStartCountdown(void)
@@ -356,13 +355,12 @@ void abi_RaceStartCountdown(void)
  */
 void RaceStartCountdownStunt(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     lda8_imm(cr, 0x07);
     lda8_imm(cr, 0x12);
     cyc(8);
     wr8(0x7E0000 | W(wram_0E55), 0x12);
-    race_start(cr, b);
+    race_start(cr);
 }
 
 void abi_RaceStartCountdownStunt(void)
@@ -382,7 +380,6 @@ void abi_RaceStartCountdownStunt(void)
    cleared. */
 static void race_ready(Carried *cr, uint8_t t, int bra)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     lda8_imm(cr, 0x05);
     SoundPort0QueuePushRaw_cr(cr);
@@ -392,7 +389,7 @@ static void race_ready(Carried *cr, uint8_t t, int bra)
     if (bra)
         cyc(22);                                       /* BRA */
     lda8_imm(cr, 0x02);
-    phases_both(cr, b);
+    phases_both(cr);
     cyc(24);
     wr8(0x7E0000 | W(piece_counter), 0x00);
     cyc(24);
@@ -476,7 +473,7 @@ static void start_draw(Carried *cr, uint32_t b)
 
 /* RaceStartSteps' sub-state 4: waits on the timer (at once while $0D54 is
    0), then the next sub-state with $0D54 = 8 and the timer 3. */
-static void start_hold(Carried *cr, uint32_t b)
+static void start_hold(Carried *cr)
 {
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_0D54));
@@ -486,7 +483,7 @@ static void start_hold(Carried *cr, uint32_t b)
             { cyc(22); return; }
         cyc(16);
     } else { cyc(22); }
-    substate_next(cr, b);
+    substate_next(cr);
     lda8_imm(cr, 0x08);
     cyc(16);
     wr8(0x7E0000 | W(wram_0D54), 0x08);
@@ -521,7 +518,7 @@ void RaceStartSteps(Carried *cr)
         cyc(46);
         if (dec8_mem(cr, 0x7E0000 | W(wram_0E55)))
             { cyc(64); return; } else { cyc(16); }
-        substate_next(cr, b);
+        substate_next(cr);
         lda8_imm(cr, 0x07);
         cyc(16);
         wr8(0x7E0000 | W(wram_0E55), 0x07);
@@ -534,7 +531,7 @@ void RaceStartSteps(Carried *cr)
             start_draw(cr, b);
             return;
         } else { cyc(16); }
-        substate_next(cr, b);
+        substate_next(cr);
         lda8_imm(cr, 0x14);
         cyc(16);
         wr8(0x7E0000 | W(wram_0E55), 0x14);
@@ -546,7 +543,7 @@ void RaceStartSteps(Carried *cr)
         return;
     case 4:
         cyc(46);
-        start_hold(cr, b);
+        start_hold(cr);
         cyc(42);
         return;
     case 6:
@@ -556,7 +553,7 @@ void RaceStartSteps(Carried *cr)
         cyc(40);
         wr8(0x7E0000 | W(wram_0D56), 0x00);
         lda8_imm(cr, 0x04);
-        phases_both(cr, b);
+        phases_both(cr);
         cyc(42);
         return;
     default:
@@ -616,7 +613,6 @@ void abi_RaceStartGlyphsSteps(void)
  */
 void RaceStartTimer(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -624,7 +620,7 @@ void RaceStartTimer(Carried *cr)
     if (!(uint8_t)cr->a) {
         cyc(16);
         lda8_imm(cr, 0x04);
-        phases_both(cr, b);
+        phases_both(cr);
         cyc(24);
         wr8(0x7E0000 | W(wram_0D56), 0x00);
         cyc(42);
@@ -686,7 +682,6 @@ static int sbc8_borrows(Carried *cr, uint8_t m)
  */
 void RaceStartTimerSteps(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -698,7 +693,7 @@ void RaceStartTimerSteps(Carried *cr)
         cyc(54);
         wr8(0x7E0000 | W(wram_0D56), 0x00);
         lda8_imm(cr, 0x04);
-        phases_both(cr, b);
+        phases_both(cr);
         cyc(42);
         return;
     }
@@ -711,7 +706,7 @@ void RaceStartTimerSteps(Carried *cr)
     case 0:
         set_p(cr, (uint8_t)(cr->p | (P_C)));
         if (sbc8_borrows(cr, 0x35))
-            substate_next(cr, b); else { cyc(6); }
+            substate_next(cr); else { cyc(6); }
         cyc(42);
         return;
     case 2:
@@ -719,7 +714,7 @@ void RaceStartTimerSteps(Carried *cr)
         if (sbc8_borrows(cr, 0x21)) {
             inc8_mem(cr, 0x7E0000 | W(time_bonus_state));
             inc8_mem(cr, 0x7E0000 | W(time_bonus_state));
-            substate_next(cr, b);
+            substate_next(cr);
         } else { cyc(6); }
         cyc(42);
         return;
@@ -730,14 +725,14 @@ void RaceStartTimerSteps(Carried *cr)
             lda8_imm(cr, 0x02);
             cyc(10);
             wr8(0x7E0000 | W(wram_0D54), 0x02);
-            substate_next(cr, b);
+            substate_next(cr);
         }
         cyc(42);
         return;
     case 6:
         set_p(cr, (uint8_t)(cr->p | (P_C)));
         if (sbc8_borrows(cr, 0x09))
-            substate_next(cr, b); else { cyc(6); }
+            substate_next(cr); else { cyc(6); }
         cyc(42);
         return;
     case 8:
@@ -805,9 +800,9 @@ static int panel_delay_out(Carried *cr)
 }
 
 /* The panel's next state, the delay $0D5F = d. */
-static void panel_next_delay(Carried *cr, uint32_t b, uint8_t d)
+static void panel_next_delay(Carried *cr, uint8_t d)
 {
-    panel_next(cr, b);
+    panel_next(cr);
     lda8_imm(cr, d);
     cyc(16);
     wr8(0x7E0000 | W(wram_0D5F), d);
@@ -818,7 +813,7 @@ static void panel_next_delay(Carried *cr, uint32_t b, uint8_t d)
    ($0D62) results_split_y's and results_split2_y's line = $20 and $88,
    else results_line_y's = $28; then the next state, the delay $32 and
    sound $49. */
-static void panel_line(Carried *cr, uint32_t b, uint16_t at)
+static void panel_line(Carried *cr, uint16_t at)
 {
     cyc(40);
     r_lda8(cr, 0x7E0000 | W(wram_0D62));
@@ -835,7 +830,7 @@ static void panel_line(Carried *cr, uint32_t b, uint16_t at)
         cyc(38);
         wr8(0x7E0000 | (uint16_t)(W(results_line_y) - 6 + at), 0x28);
     }
-    panel_next_delay(cr, b, 0x32);
+    panel_next_delay(cr, 0x32);
     cyc(54);
     lda8_imm(cr, 0x49);
     SoundPort0QueuePush_cr(cr);
@@ -872,7 +867,7 @@ void ResultsPanelSteps(Carried *cr)
         lda8_imm(cr, 0x3C);
         cyc(62);
         wr8(0x7E0000 | W(wram_0D5F), 0x3C);
-        panel_next(cr, b);
+        panel_next(cr);
         lda8_imm(cr, 0x08);
         cyc(16);
         wr8(0x7E0000 | W(wram_0D54), 0x08);
@@ -880,20 +875,20 @@ void ResultsPanelSteps(Carried *cr)
         return;
     case 0x02:
         if (panel_delay_out(cr))
-            { cyc(16); panel_next_delay(cr, b, 0x32); } else { cyc(22); }
+            { cyc(16); panel_next_delay(cr, 0x32); } else { cyc(22); }
         cyc(42);
         return;
     case 0x04:
         if (panel_delay_out(cr))
-            panel_line(cr, b, 0x06); else { cyc(64); }
+            panel_line(cr, 0x06); else { cyc(64); }
         return;
     case 0x06:
         if (panel_delay_out(cr))
-            panel_line(cr, b, 0x0A); else { cyc(64); }
+            panel_line(cr, 0x0A); else { cyc(64); }
         return;
     case 0x08:
         if (panel_delay_out(cr))
-            panel_line(cr, b, 0x0E); else { cyc(64); }
+            panel_line(cr, 0x0E); else { cyc(64); }
         return;
     case 0x0A:
         if (!panel_delay_out(cr))
@@ -912,7 +907,7 @@ void ResultsPanelSteps(Carried *cr)
             for (i = 0; i < 3; i++)
                 { cyc(24); wr8(b | marks[i], 0xA2); }
         }
-        panel_next_delay(cr, b, 0x32);
+        panel_next_delay(cr, 0x32);
         cyc(54);
         lda8_imm(cr, 0x4A);
         SoundPort0QueuePush_cr(cr);
@@ -937,7 +932,7 @@ void ResultsPanelSteps(Carried *cr)
     case 0x0C:
         if (!panel_delay_out(cr))
             { cyc(64); return; } else { cyc(16); }
-        panel_next_delay(cr, b, 0x0F);
+        panel_next_delay(cr, 0x0F);
         lda8_imm(cr, 0x01);
         SoundPort0QueuePushRaw_cr(cr);
         cyc(34);
@@ -948,7 +943,7 @@ void ResultsPanelSteps(Carried *cr)
         lda8_imm(cr, 0x0A);
         cyc(32);
         wr8(0x7E0000 | W(wram_0D54), 0x0A);
-        panel_next(cr, b);
+        panel_next(cr);
         cyc(42);
         return;
     case 0x10:
@@ -960,7 +955,7 @@ void ResultsPanelSteps(Carried *cr)
         lda8_imm(cr, 0x02);
         wr8(0x7E0000 | W(bonus_digit_state), 0x02);
         lda8_imm(cr, 0x06);
-        phases_both(cr, b);
+        phases_both(cr);
         cyc(42);
         return;
     default:
@@ -1183,7 +1178,7 @@ void abi_RaceFinishSounds(void)
 
 /* Both phases 8, CarFinishSound, sound 4 on port 1: a finish that ends the
    race for both. */
-static void finish_both(Carried *cr, uint32_t b)
+static void finish_both(Carried *cr)
 {
     lda8_imm(cr, 0x08);
     cyc(16);
@@ -1396,6 +1391,7 @@ static void finish_alone(Carried *cr, uint32_t b, uint16_t colour, uint8_t phase
    unit_race_phases. */
 static void lap_override(Carried *cr, uint32_t b)
 {
+    (void)b;
     uint8_t v, m;
     uint16_t x, t;
 
@@ -1570,7 +1566,7 @@ static void lap_finish(Carried *cr, uint32_t b)
     r_lda8(cr, 0x7E0000 | W(wram_0D24));
     cmp8_imm(cr, 0x03);
     if ((uint8_t)cr->a == 0x03) {
-        finish_both(cr, b);
+        finish_both(cr);
         return;
     }
     r_rep(cr, P_M);
@@ -1642,7 +1638,7 @@ hold:
     r_lda8(cr, 0x7E0000 | W(wram_10CD));
     if ((uint8_t)cr->a) {
         cyc(16);
-        finish_both(cr, b);
+        finish_both(cr);
         return;
     }
 panel:
@@ -1861,7 +1857,7 @@ time_up:
     cyc(24);
     wr8(0x7E0000 | W(wram_0E58), 0x20);
     lda8_imm(cr, 0x14);
-    phases_both(cr, b);
+    phases_both(cr);
     cyc(24);
     wr8(0x7E0000 | W(wram_0D53), 0x00);
     cyc(54);
@@ -2226,7 +2222,7 @@ void abi_RaceEndWaitBigSprites(void)
 }
 
 /* $0D22 = 1, $0D23 cleared and the window slid up with its sound. */
-static void window_up(Carried *cr, uint32_t b)
+static void window_up(Carried *cr)
 {
     lda8_imm(cr, 0x01);
     cyc(16);
@@ -2237,7 +2233,7 @@ static void window_up(Carried *cr, uint32_t b)
 }
 
 /* The B / START test of the presses $0D1A (bits 15 and 12), 16-bit. */
-static int pressed_b_start(Carried *cr, uint32_t b)
+static int pressed_b_start(Carried *cr)
 {
     r_rep(cr, P_M);
     cyc(40);
@@ -2253,7 +2249,7 @@ void abi_SoftResetToBootWarm(void);
 
 /* 07:EA6A / EADD: once the split window is in state 5 ($19D8), $0D59
    cleared, OverlayFramesUntilFaded, then on. */
-static int window_closed_overlay(Carried *cr, uint32_t b, int beq)
+static int window_closed_overlay(Carried *cr, int beq)
 {
     cyc(30);
     r_lda8(cr, 0x7E0000 | W(window_hdma_off));
@@ -2281,7 +2277,6 @@ static int window_closed_overlay(Carried *cr, uint32_t b, int beq)
  */
 void ResultsWindowWait(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -2298,7 +2293,7 @@ void ResultsWindowWait(Carried *cr)
     v = (uint8_t)cr->a;
     if (!v) {
         cyc(16);
-        if (!window_closed_overlay(cr, b, 0))
+        if (!window_closed_overlay(cr, 0))
             { cyc(42); return; }
         cyc(46);
         r_lda8(cr, 0x7E0000 | W(wram_0DD4));
@@ -2311,10 +2306,10 @@ void ResultsWindowWait(Carried *cr)
     cmp8_imm(cr, 0x10);
     if (v == 0x10) {
         cyc(10);
-        window_up(cr, b);
+        window_up(cr);
     } else {
         cmp8_imm(cr, 0x58);
-        if (v < 0x58 && pressed_b_start(cr, b)) {
+        if (v < 0x58 && pressed_b_start(cr)) {
             r_sep(cr, P_M);
             cyc(86);
             r_lda8(cr, 0x7E0000 | W(window_hdma_off));
@@ -2322,7 +2317,7 @@ void ResultsWindowWait(Carried *cr)
                 { cyc(64); return; }
             cyc(40);
             wr8(0x7E0000 | W(wram_0E58), 0x00);
-            window_up(cr, b);
+            window_up(cr);
             cyc(42);
             return;
         }
@@ -2361,11 +2356,9 @@ void abi_ResultsWindowWait(void)
  */
 void RaceEndWindowSteps(Carried *cr)
 {
-    uint32_t b;
     uint8_t v;
 
     r_sep(cr, P_M | P_X);
-    b = (uint32_t)cr->db << 16;
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_0D48));
     cmp8_imm(cr, 0x03);
@@ -2374,7 +2367,7 @@ void RaceEndWindowSteps(Carried *cr)
         GlyphSpritesGrowAndTimes_cr(cr);
         return;
     }
-    if (window_closed_overlay(cr, b, 1)) {
+    if (window_closed_overlay(cr, 1)) {
         r_lda8(cr, 0x7E0000 | W(wram_0D24));
         cmp8_imm(cr, 0x03);
         if ((uint8_t)cr->a != 0x03) {
@@ -2403,7 +2396,7 @@ void RaceEndWindowSteps(Carried *cr)
     if (v == 0x10) {
         cyc(24);
         wr8(0x7E0000 | W(wram_19DF), 0x00);
-        window_up(cr, b);
+        window_up(cr);
         cyc(24);
         r_lda8(cr, 0x7E0000 | W(wram_0E58));
         v = (uint8_t)cr->a;
@@ -2454,7 +2447,7 @@ void abi_RaceEndWindowSteps(void)
 }
 
 /* $0D2F = $0D2D = $A: the pause's stage loop from its start. */
-static void pause_stage_ten(Carried *cr, uint32_t b)
+static void pause_stage_ten(Carried *cr)
 {
     lda8_imm(cr, 0x0A);
     cyc(16);
@@ -2477,7 +2470,6 @@ static void pause_stage_ten(Carried *cr, uint32_t b)
 void PauseResultsP2(Carried *cr)
 {
     cyc(46);
-    uint32_t b = (uint32_t)cr->db << 16;
 
     GsuF15BThree_cr(cr);
     r_sep(cr, P_M);
@@ -2507,7 +2499,7 @@ void PauseResultsP2(Carried *cr)
         cyc(42);
         return;
     } else { cyc(22); }
-    pause_stage_ten(cr, b);
+    pause_stage_ten(cr);
     (cyc(24), OamStagePause2Loop(cr));
 }
 
@@ -2560,7 +2552,6 @@ void abi_PhaseGlyphsFourB(void)
    $0D2F = $0D2D = $A and pad 1's pause loop (OamStagePauseLoop, 07:BB16). */
 static void pause_results(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     cyc(52);
@@ -2606,7 +2597,7 @@ static void pause_results(Carried *cr)
             cyc(8);                     /* the push's pulls at this caller's widths */
         } else { cyc(6); }
     } else { cyc(6); }
-    pause_stage_ten(cr, b);
+    pause_stage_ten(cr);
     (cyc(32), OamStagePauseLoop(cr));
 }
 
@@ -2733,7 +2724,6 @@ void abi_RaceEndLeave(void);
  */
 void RaceEndWindowNine(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     (cyc(46), BigSpritesNine_cr(cr));
@@ -2754,7 +2744,7 @@ void RaceEndWindowNine(Carried *cr)
     cmp8_imm(cr, 0x01);
     if (v != 0x01) {
         cmp8_imm(cr, 0x28);
-        if (v >= 0x28 || !pressed_b_start(cr, b)) {
+        if (v >= 0x28 || !pressed_b_start(cr)) {
             cyc(44);
             r_sep(cr, P_M);
             dec8_mem(cr, 0x7E0000 | W(wram_0E58));
@@ -3014,7 +3004,7 @@ void abi_RaceEndLeave(void)
 
 /* SEP #$20, the time-up's end: $0D22 = $0D23 = 6, the timer $0E5A = t,
    $0D55 cleared, sound $30 on port 0, then RaceEndCountdown. */
-static void time_up_end(Carried *cr, uint32_t b, uint8_t t)
+static void time_up_end(Carried *cr, uint8_t t)
 {
     lda8_imm(cr, 0x06);
     cyc(20);
@@ -3046,7 +3036,6 @@ static void time_up_end(Carried *cr, uint32_t b, uint8_t t)
  */
 void TimeUpBattle(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t a;
 
     (cyc(46), BigSpritesRow6_cr(cr));
@@ -3082,7 +3071,7 @@ void TimeUpBattle(Carried *cr)
     cyc(86);
     wr8(W(save_bad_flag), 0x11);
     lda8_imm(cr, a);                                /* PLA */
-    time_up_end(cr, b, 0x3C);
+    time_up_end(cr, 0x3C);
 }
 
 void abi_TimeUpBattle(void)
@@ -3125,7 +3114,7 @@ void abi_PhaseNothingECF3(void)
 }
 
 /* 07:ED10 / 07:ED80: $0E5A = t, $0E59 one less, sound $51, then after(). */
-static void time_up_tick(Carried *cr, uint32_t b, uint8_t t, void (*after)(Carried *), uint8_t push_x)
+static void time_up_tick(Carried *cr, uint8_t t, void (*after)(Carried *), uint8_t push_x)
 {
     lda8_imm(cr, t);
     cyc(22);
@@ -3141,7 +3130,7 @@ static void time_up_tick(Carried *cr, uint32_t b, uint8_t t, void (*after)(Carri
 /* The first part's wait: with $0DDA at $10 or more, phase 6 when the race
    time is not 0 (returns 2, the RTS stated), else $0E5A counted down;
    returns 1 to go on, 0 when it only counted down. */
-static int time_up_wait(Carried *cr, uint32_t b)
+static int time_up_wait(Carried *cr)
 {
     cyc(40);
     r_lda8(cr, 0x7E0000 | W(wram_0DDA));
@@ -3173,7 +3162,6 @@ static int time_up_wait(Carried *cr, uint32_t b)
  */
 void TimeUpStunt(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     int w;
 
     (cyc(46), BigSpritesRow6_cr(cr));
@@ -3181,9 +3169,9 @@ void TimeUpStunt(Carried *cr)
     cyc(46);
     r_lda8(cr, 0x7E0000 | W(wram_0E59));
     if (!(uint8_t)cr->a) {
-        w = time_up_wait(cr, b);
+        w = time_up_wait(cr);
         if (w == 1)
-            time_up_tick(cr, b, 0x20, OamHide75Up_cr, 16);
+            time_up_tick(cr, 0x20, OamHide75Up_cr, 16);
         else if (w == 0)
             cyc(16);
         if (w != 2)
@@ -3199,7 +3187,7 @@ void TimeUpStunt(Carried *cr)
         cyc(42);
         return;
     } else { cyc(12); }
-    time_up_end(cr, b, 0x78);
+    time_up_end(cr, 0x78);
 }
 
 void abi_TimeUpStunt(void)
@@ -3231,7 +3219,6 @@ void abi_TimeUpStunt(void)
  */
 void TimeUpRace(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, m;
     int w;
 
@@ -3253,9 +3240,9 @@ void TimeUpRace(Carried *cr)
             (cyc(24), RaceLapCrossed(cr));
             return;
         } else { cyc(6); }
-        w = time_up_wait(cr, b);
+        w = time_up_wait(cr);
         if (w == 1)
-            time_up_tick(cr, b, 0x24, Countdown0DF8_cr, 0);
+            time_up_tick(cr, 0x24, Countdown0DF8_cr, 0);
         else if (w == 0)
             cyc(16);
         if (w != 2)
@@ -3350,7 +3337,7 @@ void abi_RaceStartStepsDraw(void)
  */
 void RaceStartStepsHold(Carried *cr)
 {
-    start_hold(cr, (uint32_t)cr->db << 16);
+    start_hold(cr);
     cyc(42);
 }
 

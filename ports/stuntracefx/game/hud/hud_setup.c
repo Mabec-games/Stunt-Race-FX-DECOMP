@@ -116,9 +116,9 @@ static void flags(Carried *cr);
 static void hud_bytes(Carried *cr, const HudByte *t, unsigned n, int x8);
 static void hud_end(Carried *cr);
 static void lda8(Carried *cr, uint8_t v);
-static int mode_all(Carried *cr, uint32_t b);
+static int mode_all(Carried *cr);
 static void mode_speed_battle(Carried *cr, uint32_t b, int speed);
-static void mode_stunt(Carried *cr, uint32_t b);
+static void mode_stunt(Carried *cr);
 static void no_time(Carried *cr);
 static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at);
 static void race_hud_setup(Carried *cr);
@@ -352,7 +352,7 @@ static void slide_word(Carried *cr, uint16_t v)
    RecordOffsetAllCourses, HudBestTimeDigits), else the best time at
    $0F61-$0F63 when $0F2B holds one; no time shows the dashes. Returns 1
    to go on as mode 0. */
-static int mode_all(Carried *cr, uint32_t b)
+static int mode_all(Carried *cr)
 {
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_10CD));
@@ -436,7 +436,7 @@ static int mode_all(Carried *cr, uint32_t b)
    as the best time (or the dashes).
    Otherwise: $0E18 = $F0, sprites 116-127 hidden, the score's sprites and
    $7F:3470 = $2127. */
-static void mode_stunt(Carried *cr, uint32_t b)
+static void mode_stunt(Carried *cr)
 {
     uint16_t x;
     uint8_t p;
@@ -612,10 +612,10 @@ static void race_hud_setup(Carried *cr)
     h = rd16(0x030000 | (uint16_t)(0xE052 + cr->x));
     switch (h) {
     case 0xE05A:
-        if (mode_all(cr, b))
+        if (mode_all(cr))
             mode_speed_battle(cr, b, 1); else { cyc(30); }
         break;
-    case 0xE263: mode_stunt(cr, b); cyc(8); break;
+    case 0xE263: mode_stunt(cr); cyc(8); break;
     case 0xE4DD: mode_speed_battle(cr, b, 1); break;
     case 0xE4E7: mode_speed_battle(cr, b, 0); break;
     default: carried_jump(cr, 0x030000 | h); return;

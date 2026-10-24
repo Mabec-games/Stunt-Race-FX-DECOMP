@@ -330,6 +330,7 @@ static uint16_t sub16(uint16_t a, uint16_t b, uint8_t *p)
 
 uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
 {
+    (void)bank;
     uint16_t m, s;
 
     cyc(16);
@@ -592,6 +593,7 @@ static uint8_t f441(uint8_t kind)
  */
 uint8_t GsuF441Player1(uint8_t bank)
 {
+    (void)bank;
     cyc(68);
     return cyc_then(114, f441(rd8(0x7E0000 | W(wram_0DF4))));
 }
@@ -627,6 +629,7 @@ void abi_GsuF441Player1(void)
  */
 uint8_t GsuF441Player2(uint8_t bank)
 {
+    (void)bank;
     cyc(68);
     return f441(rd8(0x7E0000 | W(wram_0DF5)));
 }
@@ -870,6 +873,7 @@ void GsuBytes200_BFB7B6(void);
  */
 uint8_t GsuF0A5OrF0B4(uint8_t bank, uint16_t input, uint8_t *set)
 {
+    (void)bank;
     wr16(0x70020C, input);
     cyc(24);
     *set = rd8(0x7E0000 | W(wram_0D62));
@@ -921,6 +925,7 @@ void abi_GsuF0A5OrF0B4(void)
  */
 uint8_t GsuEEF5OrEFCD(uint8_t bank, uint16_t input, uint8_t *set)
 {
+    (void)bank;
     wr16(0x70020C, input);
     cyc(46);
     *set = rd8(0x7E0000 | W(wram_0D62));
@@ -1104,6 +1109,7 @@ void abi_GsuF15BThree(void)
  */
 int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
 {
+    (void)bank;
     uint16_t y = rd16(0x7E0000 | W(wram_0D6F)), s = (uint16_t)(y + 8), x, v;
 
     GsuBytes200_BFBCBD();
@@ -1490,6 +1496,7 @@ void abi_GsuF15BFive(void)
  */
 uint8_t GsuFA5AThree(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     uint16_t y;
 
     cyc(56);
@@ -1591,6 +1598,7 @@ static uint8_t fa5a(uint16_t x, uint16_t y, uint16_t piece)
  */
 uint8_t GsuFA5AFromTables(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(24);
     uint16_t i = rd16(0x7E0000 | W(wram_0D6B)), y;
 
@@ -1673,6 +1681,7 @@ void abi_GsuFA5AFromTables(void)
  */
 uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     static const uint16_t dy[6] = {0x0000, 0x0008, 0x0010, 0x0018, 0x0008, 0x0010};
     static const uint16_t piece[6] = {0x1A0E, 0x1A16, 0x1B16, 0x1B0E, 0x1A0E, 0x1B0E};
     uint16_t x, y;
@@ -2491,6 +2500,7 @@ void abi_ObjectGsu80BCThen81E3(void)
  */
 uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
 {
+    (void)bank;
     uint16_t m, s, v;
 
     object_cv = 0;
@@ -2554,6 +2564,7 @@ static void fa5a_unit_scale(void)
  */
 uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     uint16_t x;
 
     fa5a_unit_scale();
@@ -2626,6 +2637,7 @@ void abi_GsuFA5AThreeShifted(void)
  */
 uint8_t GsuFA5ASixLeft(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(118);
     static const uint16_t dy[6] = {0x0000, 0x0008, 0x0010, 0x0018, 0x0008, 0x0010};
     static const uint16_t dx[6] = {0xFFF8, 0xFFF8, 0xFFF8, 0xFFF8, 0xFFF0, 0xFFF0};
@@ -2688,6 +2700,7 @@ void abi_GsuFA5ASixLeft(void)
  */
 int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
 {
+    (void)bank;
     uint16_t x, v;
 
     GsuBytes200_BFBCBD();
@@ -2819,7 +2832,7 @@ static uint8_t sprite24x40(uint16_t src)
 }
 
 /* SEP #$20, LDA $1160, CMP #n: 1 when the count is n or more (carry). */
-static int count_at_least(uint8_t bank, uint8_t n)
+static int count_at_least(uint8_t n)
 {
     uint8_t v;
 
@@ -2850,6 +2863,7 @@ static uint8_t count_flags;             /* N, Z, C from the compare with 12 */
 
 uint8_t BigSpritesCountDraw(uint8_t bank)
 {
+    (void)bank;
     static const uint16_t near_[4] = {0xA018, 0xA000, 0xA518, 0xA00C}, far_[4] = {0xAA06, 0xB00C, 0xA00C, 0xAA12};
     static const uint8_t need_far[3] = {7, 8, 9};
     unsigned i;
@@ -2866,7 +2880,7 @@ uint8_t BigSpritesCountDraw(uint8_t bank)
     for (i = 0; i < 4; i++) {
         sprite24x40(near_[i]);
         count_high = (uint8_t)(near_[i] >> 8);
-        if (i < 3 && (cyc(44), !count_at_least(bank, (uint8_t)(i + 1))))
+        if (i < 3 && (cyc(44), !count_at_least((uint8_t)(i + 1))))
             { cyc(24); goto count; } else { cyc(6); }
     }
     count_high = 0x00;                  /* LDA #$0040 */
@@ -2874,12 +2888,12 @@ uint8_t BigSpritesCountDraw(uint8_t bank)
     wr16(0x70020A, 0x0040);
     cyc(56);
     wr16(0x70020C, 0x0040);
-    if (!count_at_least(bank, 6))
+    if (!count_at_least(6))
         { cyc(24); goto count; } else { cyc(6); }
     for (i = 0; i < 4; i++) {
         sprite24x40(far_[i]);
         count_high = (uint8_t)(far_[i] >> 8);
-        if (i < 3 && (cyc(44), !count_at_least(bank, need_far[i])))
+        if (i < 3 && (cyc(44), !count_at_least(need_far[i])))
             goto count;
     }
 cyc(6);
@@ -3428,6 +3442,7 @@ static uint8_t list_flags;              /* N, Z, C from the last compare */
 
 uint16_t GlyphListDraw(uint8_t bank)
 {
+    (void)bank;
     uint16_t x = 0x0000, v, lim;
 
     cyc(48);
@@ -3510,7 +3525,7 @@ void abi_GlyphListDraw(void)
 /* GlyphSpriteDraw from its first store: sprite X/2 drawn at x = A. */
 static uint16_t sprite_glyph;           /* the adapters': the glyph word drawn */
 
-static uint8_t sprite_at(uint8_t bank, uint16_t x, uint16_t at)
+static uint8_t sprite_at(uint16_t x, uint16_t at)
 {
     uint16_t v;
 
@@ -3530,8 +3545,9 @@ static uint8_t sprite_at(uint8_t bank, uint16_t x, uint16_t at)
 
 uint8_t GlyphSpriteDraw(uint8_t bank, uint16_t x)
 {
+    (void)bank;
     cyc(30);
-    return sprite_at(bank, x, rd16(0x7E0000 | (uint16_t)(W(glyph_spr_x) + x)));
+    return sprite_at(x, rd16(0x7E0000 | (uint16_t)(W(glyph_spr_x) + x)));
 }
 
 void GlyphSpriteDraw_cr(Carried *cr)
@@ -3566,6 +3582,7 @@ void abi_GlyphSpriteDraw(void)
  */
 void GlyphSpritesInit(uint8_t bank)
 {
+    (void)bank;
     uint16_t x = 0x0000;
 
     cyc(22);
@@ -3616,7 +3633,7 @@ void abi_GlyphSpritesInit(void)
 
 /* One glyph of the time row: the glyph word, on (+$110E = 0, 16-bit), x,
    y $68, then the next entry (not after the last). */
-static uint16_t time_glyph(uint32_t b, uint16_t y, uint16_t glyph, uint8_t x, int last)
+static uint16_t time_glyph(uint16_t y, uint16_t glyph, uint8_t x, int last)
 {
     cyc(22);
     cyc(70);
@@ -3718,17 +3735,17 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     } while (v);
     message_end = x;
     cyc(22);
-    y = time_glyph(b, y, digit_glyph(W(glyph_time_low), 0), 0x4C, 0);
-    y = time_glyph(b, y, 0x980A, 0x54, 0);
+    y = time_glyph(y, digit_glyph(W(glyph_time_low), 0), 0x4C, 0);
+    y = time_glyph(y, 0x980A, 0x54, 0);
     cyc(22);
-    y = time_glyph(b, y, digit_glyph(W(glyph_time_mid), 1), 0x5C, 0);
+    y = time_glyph(y, digit_glyph(W(glyph_time_mid), 1), 0x5C, 0);
     cyc(22);
-    y = time_glyph(b, y, digit_glyph(W(glyph_time_mid), 0), 0x64, 0);
-    y = time_glyph(b, y, 0x980C, 0x6C, 0);
+    y = time_glyph(y, digit_glyph(W(glyph_time_mid), 0), 0x64, 0);
+    y = time_glyph(y, 0x980C, 0x6C, 0);
     cyc(22);
-    y = time_glyph(b, y, digit_glyph(W(glyph_time_high), 1), 0x74, 0);
+    y = time_glyph(y, digit_glyph(W(glyph_time_high), 1), 0x74, 0);
     cyc(22);
-    return time_glyph(b, y, digit_glyph(W(glyph_time_high), 0), 0x7C, 1);
+    return time_glyph(y, digit_glyph(W(glyph_time_high), 0), 0x7C, 1);
 }
 
 void GlyphListMessageAndTime_cr(Carried *cr)
@@ -3995,7 +4012,7 @@ static uint8_t times_v;
 
 /* DEC $115A (16-bit); at 0, $115A = reload (unless 0) and the step $10D8
    moves on; 1 when it ran out. */
-static int glyph_wait(uint32_t b, uint16_t reload)
+static int glyph_wait(uint16_t reload)
 {
     uint16_t v = (uint16_t)(rd16(0x7E0000 | W(wram_115A)) - 1);
 
@@ -4019,7 +4036,7 @@ static int glyph_wait(uint32_t b, uint16_t reload)
 }
 
 /* INC $10D8 (16-bit). */
-static void glyph_next(uint32_t b)
+static void glyph_next(void)
 {
     cyc(24);
     uint16_t v = (uint16_t)(rd16(0x7E0000 | W(wram_10D8)) + 1);
@@ -4046,7 +4063,7 @@ static void glyph_load_time(uint32_t b, uint16_t from, uint16_t extra)
     cyc(22);
     cyc(22);
     wr16(0x7E0000 | W(wram_115C), 0x0000);
-    glyph_next(b);
+    glyph_next();
     cyc(24);
     v = (uint16_t)(rd16(0x7E0000 | W(wram_0D4A)) & 0x00FF);
     cyc(2);
@@ -4084,7 +4101,7 @@ static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
     cyc(38);
     if (v >= rd16(0x7E0000 | W(glyph_list_count))) {
         cyc(16);
-        glyph_next(b);
+        glyph_next();
         cyc(38);
         cyc(10);
         wr16(0x7E0000 | W(wram_115A), reload);
@@ -4131,10 +4148,10 @@ void GlyphTimesSequence(Carried *cr, uint8_t bank)
     rd16(0x040000 | (uint16_t)(0xDB94 + seq_x));
     switch (step) {
     case 0:
-        glyph_wait(b, 0x001E);
+        glyph_wait(0x001E);
         break;
     case 1:
-        glyph_wait(b, 0);
+        glyph_wait(0);
         break;
     case 2:
         glyph_load_time(b, W(wram_0EF9), 0);
@@ -4155,7 +4172,7 @@ void GlyphTimesSequence(Carried *cr, uint8_t bank)
         if (!v) {
             cyc(40);
             wr16(0x7E0000 | W(wram_115C), 0x0000);
-            glyph_next(b);
+            glyph_next();
         } else { cyc(22); }
         cyc(46);
         seq_end = GlyphListDraw(bank);
@@ -4168,17 +4185,17 @@ void GlyphTimesSequence(Carried *cr, uint8_t bank)
         cyc(24);
         seq_a = 0x0004;
         wr16(0x7E0000 | W(wram_115A), 0x0004);
-        glyph_next(b);
+        glyph_next();
         break;
     case 15: case 16: case 17: case 18: case 19: case 20: {
         static const uint16_t reload[6] = {0x0004, 0x0004, 0x0008, 0x0008, 0x0008, 0x0004};
-        glyph_wait(b, reload[step - 15]);
+        glyph_wait(reload[step - 15]);
         seq_a = (cyc(46), row[5 - (step - 15)]());
         seq_exit = SEQ_ROW;
         break;
     }
     case 21:
-        if (glyph_wait(b, 0x0014)) {
+        if (glyph_wait(0x0014)) {
             cyc(62);
             wr8(0x7E0000 | W(window_hdma_off), 0x01);
             cyc(24);
@@ -4423,6 +4440,7 @@ static uint16_t slide_glyph;            /* the adapter's: the last glyph word */
 
 uint8_t GlyphSlideThree(uint8_t bank)
 {
+    (void)bank;
     uint16_t x = 0x0000, a, m;
     uint8_t mode = 0;
 
@@ -4505,6 +4523,7 @@ static uint8_t left8_cv;                /* the adapter's: C and V of the subtrac
 
 uint8_t GlyphSpriteDrawLeft8(uint8_t bank, uint16_t x)
 {
+    (void)bank;
     uint16_t v, r;
 
     cyc(148);
@@ -4513,7 +4532,7 @@ uint8_t GlyphSpriteDrawLeft8(uint8_t bank, uint16_t x)
     cyc(6);                             /* the SBC */
     left8_cv = (uint8_t)((v >= 8 ? P_C : 0) | (((v ^ 8) & (v ^ r) & 0x8000) ? P_V : 0));
     cyc(54);
-    return sprite_at(bank, x, r);
+    return sprite_at(x, r);
 }
 
 void GlyphSpriteDrawLeft8_cr(Carried *cr)
@@ -4665,7 +4684,7 @@ static int lead_bytes(int8_t lead, uint8_t (*neg)(void), uint8_t (*pos)(void), u
 }
 
 /* SEP #$20, LDA $0FA3 (8-bit): player 1's lead, the flags from it. */
-static int8_t lead_read(uint32_t b)
+static int8_t lead_read(void)
 {
     cyc(18);
     return (int8_t)rd8(0x7E0000 | W(p1_lead));
@@ -4710,7 +4729,7 @@ static void times_rows(uint32_t b, uint32_t less)
 
     times_at(0x0058, less);
     times_seq_tail(b, 0x0F64, 28);
-    pos = lead_bytes(lead_read(b), GsuBytes200_BFB2B3, GsuBytes200_BF11BD, GsuBytes200_BF10B9);
+    pos = lead_bytes(lead_read(), GsuBytes200_BFB2B3, GsuBytes200_BF11BD, GsuBytes200_BF10B9);
     times_at(0x006C, (pos ? 22 : 0) + 72);
     times_seq_tail(b, 0x0F69, 28);
     cyc(42);                            /* PLP */
@@ -4784,7 +4803,7 @@ void HudTimesDraw(uint8_t bank)
     if (rd8(0x7E0000 | W(wram_0E57))) {
         mode = (cyc(62), HudLapDigitsDraw(bank));
         cyc(28);
-        lead = lead_read(b);
+        lead = lead_read();
         if (lead > 0) {
             cyc(140);
             mode = HudLeadWordDraw();
@@ -4897,6 +4916,7 @@ void abi_HudTimesDrawEven(void)
  */
 void TimeDigitsStore(uint8_t bank, uint8_t min, uint8_t sec, uint8_t hund)
 {
+    (void)bank;
 
     cyc(22);
     cyc(70);
@@ -4981,7 +5001,7 @@ static void packed_rows(uint32_t b, uint32_t less)
         cyc(22);
         times_seq_tail(b, 0x0F64, 28);
     } else { cyc(74); }
-    pos = lead_bytes(lead_read(b), GsuBytes200_BFB2B3, GsuBytes200_BF11BD, GsuBytes200_BF10B9);
+    pos = lead_bytes(lead_read(), GsuBytes200_BFB2B3, GsuBytes200_BF11BD, GsuBytes200_BF10B9);
     times_at(0x006C, (pos ? 22 : 0) + 72);
     packed_time_draw(b, W(packed_time_b));
 }
@@ -5003,7 +5023,7 @@ void HudTimesPackedDraw(uint8_t bank)
     int8_t lead;
 
     cyc(22);
-    lead = lead_read(b);
+    lead = lead_read();
     cyc(22);
     if (lead < 0)
         { cyc(84); GsuBytes200_BFB3BE(); }
@@ -5244,6 +5264,7 @@ static uint16_t blank_a;                /* the adapter's: A as the draw leaves i
 
 void HudBlankDraw(uint8_t bank)
 {
+    (void)bank;
     uint16_t n;
 
     cyc(22);
@@ -5321,7 +5342,7 @@ void abi_HudBlankDraw(void)
    sprites' positions ($0FB0/$0FE0 with the bytes 0, $BF, $B7, $B6;
    $0FB2/$0FE2 with 0, $BF, $BC, $BD), program $07:FAB0 per glyph, the
    position moved 8 on after each word's third glyph. */
-static uint8_t glyph_slide_draw(uint32_t b)
+static uint8_t glyph_slide_draw(void)
 {
     static const uint16_t one[6] = {0x8804, 0x8808, 0x8C14, 0x8408, 0x8814, 0x8814};
     static const uint16_t two[8] = {0x8C14, 0x8804, 0x8418, 0x8410, 0x8408, 0x8C0C, 0x8C10, 0x901C};
@@ -5381,7 +5402,7 @@ static uint8_t slide_mode;
 
 int GlyphSpritesSlideOut(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t a, v;
 
     cyc(22);
@@ -5418,7 +5439,7 @@ int GlyphSpritesSlideOut(uint8_t bank)
             return 1;
         }
     } else { cyc(50); }
-    slide_mode = glyph_slide_draw(b);
+    slide_mode = glyph_slide_draw();
     return 0;
 }
 
@@ -5462,7 +5483,7 @@ void abi_GlyphSpritesSlideOut(void)
  */
 uint8_t GlyphSpritesSlideIn(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t a;
     uint8_t v;
     int there;
@@ -5520,7 +5541,7 @@ uint8_t GlyphSpritesSlideIn(uint8_t bank)
         cyc(90);
         wr8(0x7E0000 | W(wram_0E55), 0x10);
     }
-    return glyph_slide_draw(b);
+    return glyph_slide_draw();
 }
 
 void GlyphSpritesSlideIn_cr(Carried *cr)

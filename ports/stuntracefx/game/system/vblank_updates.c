@@ -32,7 +32,7 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
 /* One stage of the upload: the next stage, then VramDmaWideRowsFromGsuRam
    (rows - 1, source, VRAM). Returns A as that routine leaves it: the
    source's high byte after the last row, and the screen mode value. */
-static uint16_t upload_rows(uint8_t bank, uint16_t next, uint8_t rows_less_one, uint16_t src, uint16_t vram)
+static uint16_t upload_rows(uint16_t next, uint8_t rows_less_one, uint16_t src, uint16_t vram)
 {
     uint8_t mode;
     uint16_t end;
@@ -78,18 +78,18 @@ uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
     *copied = 1;
     switch (stage) {
     case 0x0:
-        return cyc_then(70, upload_rows(bank, 0x0002, 3, 0x2C00, 0x0000));
+        return cyc_then(70, upload_rows(0x0002, 3, 0x2C00, 0x0000));
     case 0x2:
-        return cyc_then(70, upload_rows(bank, 0x0004, 3, 0x3C00, 0x0580));
+        return cyc_then(70, upload_rows(0x0004, 3, 0x3C00, 0x0580));
     case 0x4:
-        a = upload_rows(bank, 0x0006, 4, 0x4C00, 0x0B00);
+        a = upload_rows(0x0006, 4, 0x4C00, 0x0B00);
         return cyc_then(70, (uint16_t)((a & 0xFF00) | upload_done(bank, 0x60)));
     case 0x8:
-        return cyc_then(70, upload_rows(bank, 0x000A, 3, 0x5000, 0x1760));
+        return cyc_then(70, upload_rows(0x000A, 3, 0x5000, 0x1760));
     case 0xA:
-        return cyc_then(70, upload_rows(bank, 0x000C, 3, 0x4000, 0x11E0));
+        return cyc_then(70, upload_rows(0x000C, 3, 0x4000, 0x11E0));
     case 0xC:
-        a = upload_rows(bank, 0x0006, 4, 0x2C00, 0x0B00);
+        a = upload_rows(0x0006, 4, 0x2C00, 0x0B00);
         return cyc_then(70, (uint16_t)((a & 0xFF00) | upload_done(bank, 0x64)));
     }
     cyc(138);

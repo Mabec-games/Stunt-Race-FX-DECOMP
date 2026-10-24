@@ -111,10 +111,10 @@ static void hide9(Carried *cr, uint16_t offset);
 static void oam_dec8(Carried *cr, uint32_t at);
 static void oam_lda8(Carried *cr, uint8_t v);
 static void oam_stage_dispatch(Carried *cr, uint32_t table);
-static void oam_wait_tick(Carried *cr, uint32_t b, uint32_t again);
+static void oam_wait_tick(Carried *cr, uint32_t again);
 static void pieces_exit(Carried *cr, uint16_t a);
 static void pull_p(Carried *cr, uint8_t p);
-static void stage_loop(Carried *cr, uint32_t b, void (*dispatch)(Carried *));
+static void stage_loop(Carried *cr, void (*dispatch)(Carried *));
 static void two_cars_exit(Carried *cr, uint16_t a);
 void PauseReplayStages(Carried *cr);
 void ResultsScreenStep(Carried *cr);
@@ -502,6 +502,7 @@ void abi_OamFromList(void)
  */
 uint8_t OamSprite0AddY(uint8_t bank, uint8_t lines, uint8_t *p)
 {
+    (void)bank;
     uint32_t a = 0x7E0000 | W(wram_0376);
     cyc(38);
     uint8_t y = rd8(a);
@@ -537,7 +538,7 @@ void abi_OamSprite0AddY(void)
 }
 
 /* Set the attribute byte of `count` sprites from entry `first` on. */
-static uint16_t oam_attr_fill(uint8_t bank, uint16_t first, uint16_t count, uint8_t attr)
+static uint16_t oam_attr_fill(uint16_t first, uint16_t count, uint8_t attr)
 {
     uint16_t x = (uint16_t)(first << 2);
 
@@ -557,7 +558,7 @@ static void abi_oam_attr_fill(Carried *cr, uint16_t count, uint8_t attr)
     uint16_t a4 = (uint16_t)(cr->a << 2);
 
     set_p(cr, (uint8_t)((cr->p & ~(P_C | P_N | P_M)) | ((cr->a << 1) & 0x8000 ? P_C : 0) | P_Z));
-    cr->x = oam_attr_fill(cr->db, cr->a, count, attr);
+    cr->x = oam_attr_fill(cr->a, count, attr);
     cr->y = 0;
     cr->a = (uint16_t)((a4 & 0xFF00) | attr);
 }
@@ -573,7 +574,8 @@ static void abi_oam_attr_fill(Carried *cr, uint16_t count, uint8_t attr)
  */
 void OamAttr36x4(uint8_t bank, uint16_t first)
 {
-    oam_attr_fill(bank, first, 4, 0x36);
+    (void)bank;
+    oam_attr_fill(first, 4, 0x36);
 }
 
 void OamAttr36x4_cr(Carried *cr)
@@ -603,7 +605,8 @@ void abi_OamAttr36x4(void)
  */
 void OamAttr38x6(uint8_t bank, uint16_t first)
 {
-    oam_attr_fill(bank, first, 6, 0x38);
+    (void)bank;
+    oam_attr_fill(first, 6, 0x38);
 }
 
 void OamAttr38x6_cr(Carried *cr)
@@ -633,7 +636,8 @@ void abi_OamAttr38x6(void)
  */
 void OamAttr38x7(uint8_t bank, uint16_t first)
 {
-    oam_attr_fill(bank, first, 7, 0x38);
+    (void)bank;
+    oam_attr_fill(first, 7, 0x38);
 }
 
 void OamAttr38x7_cr(Carried *cr)
@@ -663,6 +667,7 @@ void abi_OamAttr38x7(void)
  */
 void OamHideEntries3And9(uint8_t bank, uint16_t y)
 {
+    (void)bank;
 
     cyc(54);
     wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + 12 + y), 0xF000);
@@ -699,6 +704,7 @@ void abi_OamHideEntries3And9(void)
  */
 void OamHideEntries0To2(uint8_t bank, uint16_t y)
 {
+    (void)bank;
 
     cyc(54);
     wr16(0x7E0000 | (uint16_t)(W(oam_buffer) + y), 0xF000);
@@ -741,6 +747,7 @@ void abi_OamHideEntries0To2(void)
  */
 uint8_t OamSetPalette(uint8_t bank, uint8_t bits, uint16_t count, uint16_t *y)
 {
+    (void)bank;
     uint8_t v = 0;
 
     cyc(38);
@@ -782,7 +789,7 @@ void abi_OamSetPalette(void)
 
 /* Sprites 52-56 (X offset $10 into the block at $0435; $2C and $12C move
    it on by 7 and 71 sprites): two X positions and three attribute bytes. */
-static uint8_t oam_block(uint8_t bank, uint16_t x, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
+static uint8_t oam_block(uint16_t x, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
 {
     unsigned s = (unsigned)x0 + dx;
 
@@ -803,7 +810,8 @@ static uint8_t oam_block(uint8_t bank, uint16_t x, uint8_t x0, uint8_t dx, uint8
 
 static uint8_t oam_block_52(uint8_t bank, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
 {
-    return oam_block(bank, 0x0010, x0, dx, attr_a, attr_b, p);
+    (void)bank;
+    return oam_block(0x0010, x0, dx, attr_a, attr_b, p);
 }
 
 /*
@@ -816,8 +824,9 @@ static uint8_t oam_block_52(uint8_t bank, uint8_t x0, uint8_t dx, uint8_t attr_a
  */
 uint8_t OamBlock59Left(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
-    return oam_block(bank, 0x002C, 0x30, 0x22, 0x0C, 0x06, p);
+    return oam_block(0x002C, 0x30, 0x22, 0x0C, 0x06, p);
 }
 
 void OamBlock59Left_cr(Carried *cr)
@@ -853,8 +862,9 @@ void abi_OamBlock59Left(void)
  */
 uint8_t OamBlock123Left(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
-    return oam_block(bank, 0x012C, 0x7E, 0x22, 0x0C, 0x06, p);
+    return oam_block(0x012C, 0x7E, 0x22, 0x0C, 0x06, p);
 }
 
 void OamBlock123Left_cr(Carried *cr)
@@ -924,8 +934,9 @@ void abi_OamBlock52Left(void)
  */
 uint8_t OamBlock59Right(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
-    return oam_block(bank, 0x002C, 0x5F, 0x1A, 0x06, 0x0C, p);
+    return oam_block(0x002C, 0x5F, 0x1A, 0x06, 0x0C, p);
 }
 
 void OamBlock59Right_cr(Carried *cr)
@@ -960,8 +971,9 @@ void abi_OamBlock59Right(void)
  */
 uint8_t OamBlock123Right(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
-    return oam_block(bank, 0x012C, 0xAD, 0x1A, 0x06, 0x0C, p);
+    return oam_block(0x012C, 0xAD, 0x1A, 0x06, 0x0C, p);
 }
 
 void OamBlock123Right_cr(Carried *cr)
@@ -1031,6 +1043,7 @@ void abi_OamBlock52Right(void)
  */
 uint16_t OamColumn8(uint8_t bank, uint16_t *x, uint8_t *p)
 {
+    (void)bank;
     uint16_t v = 0, s;
     unsigned i;
 
@@ -1089,6 +1102,7 @@ void abi_OamColumn8(void)
  */
 uint8_t OamHighBits58(uint8_t bank)
 {
+    (void)bank;
     static const uint8_t bits[4] = {0x40, 0x55, 0x55, 0x15};
     uint8_t v = 0;
     unsigned i;
@@ -1326,6 +1340,7 @@ void abi_OamPalettesE28D(void)
  */
 uint8_t OamHighBits18(uint8_t bank)
 {
+    (void)bank;
     static const uint8_t bits[4] = {0x40, 0x55, 0x55, 0x15};
     uint8_t v = 0;
     unsigned i;
@@ -1414,6 +1429,7 @@ void abi_OamHighBits58Park112(void)
  */
 void OamHide36And96(uint8_t bank)
 {
+    (void)bank;
     unsigned i;
 
     cyc(160);
@@ -1458,6 +1474,7 @@ void abi_OamHide36And96(void)
  */
 void OamHide75Up(uint8_t bank)
 {
+    (void)bank;
 
     cyc(106);
     wr8(0x7E0000 | W(wram_0E0C), 0xF8);
@@ -1621,8 +1638,7 @@ void abi_OamPlaceRows75And112(void)
    plus the value, less
    the strip's span once the value reaches it, in the slot before the
    strip. The OAM writes for the marker go through the data bank. */
-static uint16_t bar_marker(uint8_t bank, uint16_t v, uint16_t y, uint16_t span,
-                           uint16_t tile_far, uint16_t tile_near, uint32_t in)
+static uint16_t bar_marker(uint16_t v, uint16_t y, uint16_t span, uint16_t tile_far, uint16_t tile_near, uint32_t in)
 {
     cyc(in);                            /* from the strip's last store: each bar's own */
     uint16_t tile, pos = rd16(W(dp_02));
@@ -1655,6 +1671,7 @@ static uint16_t bar_marker(uint8_t bank, uint16_t v, uint16_t y, uint16_t span,
  */
 uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y)
 {
+    (void)bank;
     uint16_t v = value < 0x3F ? value : 0x3F;
 
     /* PHP, SEP, REP (66), CMP # (16), BCC taken (22) or not and LDA #$3F
@@ -1667,7 +1684,7 @@ uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     v = rd8(W(dp_04));
     cyc(122);
     SpriteStrip4(v, (uint16_t)(y + 4));
-    return bar_marker(bank, v, y, 0x0010, 0x3C20, 0x3622, v >= 0x0010 ? 212 : 240);   /* BCC taken: 28 more */
+    return bar_marker(v, y, 0x0010, 0x3C20, 0x3622, v >= 0x0010 ? 212 : 240);   /* BCC taken: 28 more */
 }
 
 void SpriteBar4WithMarker_cr(Carried *cr)
@@ -1707,6 +1724,7 @@ void abi_SpriteBar4WithMarker(void)
  */
 uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y)
 {
+    (void)bank;
     uint16_t v;
 
     cyc(82);                            /* PHP, SEP, REP, STA */
@@ -1717,7 +1735,7 @@ uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     v = rd8(W(dp_04));
     cyc(122);
     SpriteStrip6(v, (uint16_t)(y + 4));
-    return bar_marker(bank, v, y, 0x0008, 0x3C1F, 0x3C1E, v >= 0x0008 ? 212 : 240);   /* BCC taken: 28 more */
+    return bar_marker(v, y, 0x0008, 0x3C1F, 0x3C1E, v >= 0x0008 ? 212 : 240);   /* BCC taken: 28 more */
 }
 
 void SpriteBar6WithMarker_cr(Carried *cr)
@@ -1872,7 +1890,7 @@ static uint8_t cycled_attr(uint8_t attr, uint8_t phase)
 /* The shared body: set selector to $0D35, then from $02:F958 on; first is
    the time from the store of $0D35 to the first high-table store (each
    entry's own way in: 78 falling in, 102 with a JMP). */
-static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x, uint16_t *y, uint32_t first)
+static uint16_t flashing_metasprite_draw(uint16_t set, uint16_t *x, uint16_t *y, uint32_t first)
 {
     uint16_t i, ph;
     uint8_t n, a = 0, phase;
@@ -1960,8 +1978,9 @@ static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x
  */
 uint16_t FlashingMetaspriteDraw(uint8_t bank, uint16_t *x, uint16_t *y)
 {
+    (void)bank;
     cyc(4);
-    return flashing_metasprite_draw(bank, 0x0008, x, y, 78);
+    return flashing_metasprite_draw(0x0008, x, y, 78);
 }
 
 void FlashingMetaspriteDraw_cr(Carried *cr)
@@ -1996,8 +2015,9 @@ void abi_FlashingMetaspriteDraw(void)
  */
 uint16_t FlashingMetaspriteDraw0(uint8_t bank, uint16_t *x, uint16_t *y)
 {
+    (void)bank;
     cyc(4);
-    return flashing_metasprite_draw(bank, 0x0000, x, y, 102);
+    return flashing_metasprite_draw(0x0000, x, y, 102);
 }
 
 void FlashingMetaspriteDraw0_cr(Carried *cr)
@@ -2033,10 +2053,11 @@ void abi_FlashingMetaspriteDraw0(void)
  */
 uint16_t FlashingMetaspriteDrawByMode(uint8_t bank, uint16_t *x, uint16_t *y)
 {
+    (void)bank;
     cyc(68);
     uint16_t set = (rd16(0x7E0000 | W(digit62_override)) & 0x00FF) ? 0x0014 : (cyc(6), 0x000E);
 
-    return flashing_metasprite_draw(bank, set, x, y, 102);
+    return flashing_metasprite_draw(set, x, y, 102);
 }
 
 void FlashingMetaspriteDrawByMode_cr(Carried *cr)
@@ -2069,7 +2090,8 @@ void abi_FlashingMetaspriteDrawByMode(void)
  */
 void OamAttr36x6(uint8_t bank, uint16_t first)
 {
-    oam_attr_fill(bank, first, 6, 0x36);
+    (void)bank;
+    oam_attr_fill(first, 6, 0x36);
 }
 
 void OamAttr36x6_cr(Carried *cr)
@@ -2099,7 +2121,8 @@ void abi_OamAttr36x6(void)
  */
 void OamAttr38x4(uint8_t bank, uint16_t first)
 {
-    oam_attr_fill(bank, first, 4, 0x38);
+    (void)bank;
+    oam_attr_fill(first, 4, 0x38);
 }
 
 void OamAttr38x4_cr(Carried *cr)
@@ -2204,6 +2227,7 @@ void abi_OamHighBits18Park48(void)
  */
 uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *set)
 {
+    (void)bank;
     uint16_t i;
     uint8_t attr = 0, n;
     unsigned t;
@@ -2974,6 +2998,7 @@ void abi_OamDirectStage(void)
  */
 uint16_t OamFillEvery4(uint8_t bank, uint8_t v, uint16_t x, uint16_t y, uint16_t mask)
 {
+    (void)bank;
     do {
         cyc(30);
         wr8(0x7E0000 | (uint16_t)(W(oam_buffer) + 1 + x), v);
@@ -3178,7 +3203,7 @@ void abi_OamHighBits18(void);
 /* The pause's frames: each waits for $0D52 (set in the vertical blank),
    clears it, runs the stage's handler and clears both pads' presses,
    until $0D2D is 0. */
-static void stage_loop(Carried *cr, uint32_t b, void (*dispatch)(Carried *))
+static void stage_loop(Carried *cr, void (*dispatch)(Carried *))
 {
     do {
         do {
@@ -3228,7 +3253,6 @@ static void plp_rts(Carried *cr)
  */
 void OamStagePause(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p, v;
 
     r_rep(cr, P_M);
@@ -3267,7 +3291,7 @@ void OamStagePause(Carried *cr)
     set_p(cr, nz8(cr->p, 0));
     cyc(40);
     wr8(0x7E0000 | W(wram_0D2F), 0x00);
-    stage_loop(cr, b, OamStageDispatchBB3C);
+    stage_loop(cr, OamStageDispatchBB3C);
     r_plp(cr, p0);
 }
 
@@ -3302,7 +3326,7 @@ void abi_OamStagePause(void)
  */
 void OamStagePauseLoop(Carried *cr)
 {
-    stage_loop(cr, (uint32_t)cr->db << 16, OamStageDispatchBB3C);
+    stage_loop(cr, OamStageDispatchBB3C);
     plp_rts(cr);
 }
 
@@ -3519,7 +3543,6 @@ void abi_OamHideForHudMode(void)
  */
 void OamStagePause2(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p, v;
 
     r_rep(cr, P_M);
@@ -3558,7 +3581,7 @@ void OamStagePause2(Carried *cr)
     set_p(cr, nz8(cr->p, 0));
     cyc(40);
     wr8(0x7E0000 | W(wram_0D2F), 0x00);
-    stage_loop(cr, b, OamStageDispatchBBA2);
+    stage_loop(cr, OamStageDispatchBBA2);
     r_plp(cr, p0);
 }
 
@@ -3585,7 +3608,7 @@ void abi_OamStagePause2(void)
  */
 void OamStagePause2Loop(Carried *cr)
 {
-    stage_loop(cr, (uint32_t)cr->db << 16, OamStageDispatchBBA2);
+    stage_loop(cr, OamStageDispatchBBA2);
     plp_rts(cr);
 }
 
@@ -3854,7 +3877,7 @@ void abi_OverlaySpritesState0(void)
 /* Waits for the vertical blank: $0D52, set by each, read until it is set,
    then cleared. `again`: the clocks the caller's copy of the loop adds each
    time round (07:BBFB's runs its SEP #$20 each pass: 22; 07:C685's none). */
-static void oam_wait_tick(Carried *cr, uint32_t b, uint32_t again)
+static void oam_wait_tick(Carried *cr, uint32_t again)
 {
     r_sep(cr, P_M);
     do
@@ -3876,12 +3899,11 @@ static void oam_wait_tick(Carried *cr, uint32_t b, uint32_t again)
  */
 void OverlayFramesUntilFaded(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(0);
     do {
         r_sep(cr, P_M | P_X);
-        oam_wait_tick(cr, b, 0);
+        oam_wait_tick(cr, 0);
         cyc(46);
         ResultsScreenStep(cr);
         (cyc(62), OverlaySpritesStep_cr(cr));
@@ -3948,7 +3970,6 @@ static void oam_lda8(Carried *cr, uint8_t v)
  */
 void PauseOnStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p;
 
     r_sep(cr, P_M);
@@ -3994,7 +4015,7 @@ void PauseOnStart(Carried *cr)
     wr8(0x7E0000 | W(wram_0D23), 0x0A);
     do {
         cyc(22);
-        oam_wait_tick(cr, b, 22);
+        oam_wait_tick(cr, 22);
         cyc(46);
         PauseReplayStages(cr);
         (cyc(46), PictureTurnStep_cr(cr));

@@ -734,6 +734,7 @@ void abi_WindowEdgesFromList(void)
  */
 uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
 {
+    (void)bank;
     uint16_t w;
     uint8_t n;
 
@@ -864,6 +865,7 @@ void abi_WindowLayoutStepForScreen(void)
    $19AC-$19AE = $20, $40, the position. */
 static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, uint8_t *pos)
 {
+    (void)bank;
     cyc(164);
     uint8_t v = (uint8_t)(rd8(W(window_slide_pos)) + step);
 
@@ -1942,6 +1944,7 @@ static uint16_t band_step(uint16_t a, uint32_t at, uint32_t step, uint32_t limit
  */
 WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p)
 {
+    (void)bank;
 
     *p |= P_M | P_X;
     index8(&r);
@@ -2082,6 +2085,7 @@ void abi_ColdataLowBandStep(void)
  */
 WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     uint8_t x, v;
 
     cyc(22);                            /* REP #$30 */

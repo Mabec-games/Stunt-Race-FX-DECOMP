@@ -89,6 +89,7 @@ static uint8_t vector_cv;               /* the adapter's: C and V of the second 
 
 uint16_t VectorGsu81E3(uint8_t bank)
 {
+    (void)bank;
     uint16_t u, v, r;
 
     cyc(98);
@@ -696,6 +697,7 @@ void abi_ViewFromAnglesGsu8277(void)
  */
 uint16_t ViewToGsuParams(uint8_t bank)
 {
+    (void)bank;
     uint16_t w;
     unsigned i;
 

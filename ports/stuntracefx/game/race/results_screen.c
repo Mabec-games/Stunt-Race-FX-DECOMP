@@ -76,8 +76,8 @@ static uint8_t bcd_sub(Carried *cr, uint32_t b, uint16_t at, uint8_t m, int sec)
 static void bcd_tiles(Carried *cr, uint32_t at, uint32_t hi, uint32_t lo);
 static void bonus_move(Carried *cr, uint32_t b, uint8_t lo, uint8_t mid);
 static void car_change(Carried *cr, uint32_t b, int right);
-static void car_picture(Carried *cr, uint32_t b);
-static uint8_t car_times(Carried *cr, uint32_t b);
+static void car_picture(Carried *cr);
+static uint8_t car_times(Carried *cr);
 static void cmp8_imm(Carried *cr, uint8_t m);
 static void count_digits(Carried *cr, uint32_t b, uint16_t at, uint32_t hi, uint32_t lo);
 static uint8_t high_digit_tile(Carried *cr, uint8_t v);
@@ -92,17 +92,17 @@ static void name_tiles(Carried *cr, uint16_t at);
 static void palette_cycle(Carried *cr, uint16_t x, uint16_t y);
 static void palette_fill(Carried *cr, uint16_t x, uint16_t y, uint8_t f, unsigned t);
 static void panel(Carried *cr, uint16_t x, uint16_t pic);
-static int pressed(Carried *cr, uint32_t b, uint16_t mask);
-static void record_cars(Carried *cr, uint32_t b, uint16_t empty);
-static void records_choice(Carried *cr, uint32_t b, uint8_t skip, int check_10cd);
+static int pressed(Carried *cr, uint16_t mask);
+static void record_cars(Carried *cr, uint16_t empty);
+static void records_choice(Carried *cr, uint8_t skip, int check_10cd);
 static void records_wait(Carried *cr, uint8_t next, const uint16_t *rows, uint16_t count, uint8_t x, uint16_t empty);
 static void rows_car(Carried *cr);
 static void rows_course(Carried *cr);
 static void rows_retry(Carried *cr);
 static void sound(Carried *cr, uint8_t s);
-static uint16_t step_dispatch(Carried *cr, uint32_t b, uint16_t t);
-static void total_line(Carried *cr, uint32_t b);
-static void total_line_end(Carried *cr, uint32_t b, uint16_t at);
+static uint16_t step_dispatch(Carried *cr, uint16_t t);
+static void total_line(Carried *cr);
+static void total_line_end(Carried *cr, uint16_t at);
 static void w_OamTextLine(Carried *cr);
 void DigitTiles1184_cr(Carried *cr);
 void GsuCF42To3000_cr(Carried *cr);
@@ -186,7 +186,7 @@ static uint8_t low_digit_tile(Carried *cr, uint8_t v)
 }
 
 /* REP #$20, LDA presses, BIT #mask: Z from the test. */
-static int pressed(Carried *cr, uint32_t b, uint16_t mask)
+static int pressed(Carried *cr, uint16_t mask)
 {
     r_rep(cr, P_M);
     cyc(2);
@@ -216,7 +216,7 @@ static void palette_cycle(Carried *cr, uint16_t x, uint16_t y)
 }
 
 /* The step $0D59 by the table at t: JMP (t,X) with X = $0D59 * 2. */
-static uint16_t step_dispatch(Carried *cr, uint32_t b, uint16_t t)
+static uint16_t step_dispatch(Carried *cr, uint16_t t)
 {
     uint16_t target;
 
@@ -250,7 +250,6 @@ static unsigned step_rts(uint16_t target)
  */
 void ResultsScreenStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(hud_mode));
@@ -259,16 +258,16 @@ void ResultsScreenStep(Carried *cr)
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     switch (cr->x) {
     case 0:
-        cyc(step_rts(step_dispatch(cr, b, 0xC6C3)));
+        cyc(step_rts(step_dispatch(cr, 0xC6C3)));
         return;
     case 2:
-        cyc(step_rts(step_dispatch(cr, b, 0xC715)));
+        cyc(step_rts(step_dispatch(cr, 0xC715)));
         return;
     case 4:
         cyc(116);
         return;
     case 6:
-        cyc(step_rts(step_dispatch(cr, b, 0xC6EB)));
+        cyc(step_rts(step_dispatch(cr, 0xC6EB)));
         return;
     default:
         carried_jump(cr, 0x070000 | rd16(0x070000 | (uint16_t)(0xC6B2 + cr->x)));
@@ -340,7 +339,7 @@ void abi_PlaceFrameFromValue(void)
    at $0F2B + 2n is not `empty`, from their tags at $0F13 + 2n
    (PlaceFrameFromValue), at Y $54, $6C, $84 into sprite offsets $130,
    $140, $150 (SpritePieces3), each sprite's size byte ($0588 + n) = $60. */
-static void record_cars(Carried *cr, uint32_t b, uint16_t empty)
+static void record_cars(Carried *cr, uint16_t empty)
 {
     static const uint8_t ys[3] = {0x54, 0x6C, 0x84};
     unsigned n;
@@ -386,12 +385,11 @@ static void record_cars(Carried *cr, uint32_t b, uint16_t empty)
    drawn at X `x`. */
 static void records_wait(Carried *cr, uint8_t next, const uint16_t *rows, uint16_t count, uint8_t x, uint16_t empty)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t place;
     uint8_t v;
 
     cyc(22);
-    if (pressed(cr, b, 0x9000)) {
+    if (pressed(cr, 0x9000)) {
         cyc(38);
         r_sep(cr, P_M);
         sound(cr, 0x46);
@@ -444,7 +442,7 @@ static void records_wait(Carried *cr, uint8_t next, const uint16_t *rows, uint16
     lda8_imm(cr, 0xF4);
     cyc(40);
     wr8(0x7E0000 | W(sprite_piece_tile), 0xF4);
-    record_cars(cr, b, empty);
+    record_cars(cr, empty);
 }
 
 /*
@@ -983,9 +981,9 @@ void abi_ResultsPanelF38E(void)
 
 /* B or START on the records: step `skip` (sound $46) for a placed player
    ($10C9) when `skip` applies, else the next step (sound $46). */
-static void records_choice(Carried *cr, uint32_t b, uint8_t skip, int check_10cd)
+static void records_choice(Carried *cr, uint8_t skip, int check_10cd)
 {
-    if (!pressed(cr, b, 0x9000))
+    if (!pressed(cr, 0x9000))
         { cyc(6 + 42); return; }
     r_rep(cr, P_M | P_X);
     if (check_10cd) {
@@ -1026,7 +1024,6 @@ next:
  */
 void StuntRecordsChoice(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     cyc(46);
@@ -1035,7 +1032,7 @@ void StuntRecordsChoice(Carried *cr)
     if ((uint8_t)cr->a == 0x40)
         { cyc(32); palette_cycle(cr, 0x0199, 0x0007); } else { cyc(38); }
     r_rep(cr, P_M | P_X);
-    records_choice(cr, b, 0x0C, 1);
+    records_choice(cr, 0x0C, 1);
 }
 
 void abi_StuntRecordsChoice(void)
@@ -1060,10 +1057,9 @@ void abi_StuntRecordsChoice(void)
  */
 void TimedRecordsChoice(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M | P_X);
-    records_choice(cr, b, 0x0F, 0);
+    records_choice(cr, 0x0F, 0);
 }
 
 void abi_TimedRecordsChoice(void)
@@ -1204,7 +1200,7 @@ void abi_ResultsPicture4000(void)
 }
 
 /* $10A0 = the car $0D89's word from the table at $07:CCB7. */
-static void car_picture(Carried *cr, uint32_t b)
+static void car_picture(Carried *cr)
 {
     r_rep(cr, P_M | P_X);
     cyc(24);
@@ -1226,14 +1222,13 @@ static void car_picture(Carried *cr, uint32_t b)
  */
 void ResultsCarPicture(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     lda8_imm(cr, 0x12);
     cyc(62);
     wr8(0x7E0000 | W(wram_0D23), 0x12);
     inc8_mem(cr, 0x7E0000 | W(wram_0D59));
-    car_picture(cr, b);
+    car_picture(cr);
     cyc(42);
 }
 
@@ -1283,6 +1278,7 @@ static void rows_car(Carried *cr)
    (SelectionSave), $0D23 = $12 and its picture word. */
 static void car_change(Carried *cr, uint32_t b, int right)
 {
+    (void)b;
     uint8_t v;
 
     if (right) {
@@ -1346,7 +1342,7 @@ static void car_change(Carried *cr, uint32_t b, int right)
     lda8_imm(cr, 0x12);
     cyc(62);
     wr8(0x7E0000 | W(wram_0D23), 0x12);
-    car_picture(cr, b);
+    car_picture(cr);
 }
 
 /*
@@ -1374,7 +1370,7 @@ void ResultsMenu(Carried *cr)
     r_lda8(cr, 0x7E0000 | W(fade_out));
     if ((uint8_t)cr->a)
         { cyc(58); return; } else { cyc(44); }
-    if (pressed(cr, b, 0x9000)) {
+    if (pressed(cr, 0x9000)) {
         r_sep(cr, P_M);
         cyc(46);
         r_lda8(cr, 0x7E0000 | W(wram_0DD4));
@@ -1417,7 +1413,7 @@ void ResultsMenu(Carried *cr)
     c = (uint8_t)cr->a;
     if (c == 0x00) {
         cyc(44);
-        if (pressed(cr, b, 0x0400)) {
+        if (pressed(cr, 0x0400)) {
             r_sep(cr, P_M);
             cyc(46);
             r_lda8(cr, 0x7E0000 | W(wram_10CD));
@@ -1437,7 +1433,7 @@ void ResultsMenu(Carried *cr)
     cmp8_imm(cr, 0x02);
     if (c == 0x01) {
         cyc(16);
-        if (pressed(cr, b, 0x0800)) {
+        if (pressed(cr, 0x0800)) {
             r_sep(cr, P_M);
             cyc(52);
             wr8(0x7E0000 | W(wram_0DD4), 0x00);
@@ -1447,7 +1443,7 @@ void ResultsMenu(Carried *cr)
             rows_retry(cr);
             return;
         }
-        if (pressed(cr, b, 0x0400)) {
+        if (pressed(cr, 0x0400)) {
             cyc(22);
             r_sep(cr, P_M);
             inc8_mem(cr, 0x7E0000 | W(wram_0DD4));
@@ -1460,7 +1456,7 @@ void ResultsMenu(Carried *cr)
         return;
     }
     if (c == 0x02) {
-        if (!pressed(cr, b, 0x0800)) {
+        if (!pressed(cr, 0x0800)) {
             cyc(30);
             rows_car(cr);
             return;
@@ -1517,9 +1513,9 @@ void ResultsMenu(Carried *cr)
     cyc(40);
     wr8(0x7E0000 | W(wram_0582), (uint8_t)cr->a);
     cyc(22);
-    if (pressed(cr, b, 0x0100))
+    if (pressed(cr, 0x0100))
         car_change(cr, b, 1);
-    else { cyc(28); if (pressed(cr, b, 0x0200))
+    else { cyc(28); if (pressed(cr, 0x0200))
         car_change(cr, b, 0); else { cyc(6); } }
     rows_car(cr);
 }
@@ -1634,7 +1630,7 @@ void abi_ResultsWaitWindow(void)
 
 /* The results' text line: $0D45's low nibble 2; direct page $F2 = $60,
    $F3 = $67, $F4 = $2F, $F1 = $C0, $F5 = $38 and OamTextLine. */
-static void total_line(Carried *cr, uint32_t b)
+static void total_line(Carried *cr)
 {
     r_sep(cr, P_M);
     cyc(46);
@@ -1661,7 +1657,7 @@ static void total_line(Carried *cr, uint32_t b)
 }
 
 /* $0D23 = 4, the next step, $0E43 = at (16-bit). */
-static void total_line_end(Carried *cr, uint32_t b, uint16_t at)
+static void total_line_end(Carried *cr, uint16_t at)
 {
     lda8_imm(cr, 0x04);
     cyc(40);
@@ -1683,10 +1679,9 @@ static void total_line_end(Carried *cr, uint32_t b, uint16_t at)
  */
 void ResultsTotalLine(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    total_line(cr, b);
-    total_line_end(cr, b, 0x0190);
+    total_line(cr);
+    total_line_end(cr, 0x0190);
     cyc(42);
 }
 
@@ -1716,11 +1711,10 @@ void abi_ResultsTotalTiles(void);
  */
 void ResultsTotalLineWords(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    total_line(cr, b);
+    total_line(cr);
     (cyc(46), OamWordRow5_cr(cr));
-    total_line_end(cr, b, 0x018E);
+    total_line_end(cr, 0x018E);
     r_sep(cr, P_M);
     cyc(46);
     r_lda8(cr, 0x7E0000 | W(wram_0EEC));
@@ -2393,7 +2387,7 @@ void ResultsBonusCount(Carried *cr)
     wr8(0x7E0000 | W(wram_0E3F), (uint8_t)cr->a);
     cyc(32);
     cmp8_imm(cr, 0x12);
-    if ((uint8_t)cr->a >= 0x12 && (cyc(22), pressed(cr, b, 0x9000))) {
+    if ((uint8_t)cr->a >= 0x12 && (cyc(22), pressed(cr, 0x9000))) {
         cyc(36);
         r_sep(cr, P_M);
         set_p(cr, (uint8_t)(cr->p | (P_D)));
@@ -2527,7 +2521,7 @@ void abi_ResultsBonusCount(void)
 }
 
 /* X = car $0D48 * 3 (CLC, ADC, ADC; 8-bit). */
-static uint8_t car_times(Carried *cr, uint32_t b)
+static uint8_t car_times(Carried *cr)
 {
     uint8_t c;
 
@@ -2566,7 +2560,7 @@ void ResultsRecordCompare(Carried *cr)
     unsigned i, last = 3;
 
     r_sep(cr, P_M | P_X);
-    x = car_times(cr, b);
+    x = car_times(cr);
     for (i = 0; i < 3; i++) {
         cyc(38);
         r_lda8(cr, b | mine[i]);
@@ -2599,7 +2593,7 @@ void ResultsRecordCompare(Carried *cr)
         palette_cycle(cr, 0x0221, 0x0008);
     }
     cyc(22);
-    if (pressed(cr, b, 0x9000)) {
+    if (pressed(cr, 0x9000)) {
         r_sep(cr, P_M);
         lda8_imm(cr, 0x01);
         cyc(62);
@@ -2644,11 +2638,10 @@ void abi_ResultsRecordCompare(void)
  */
 void RecordTimeTiles(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t x, t, v;
 
     r_sep(cr, P_X);
-    x = car_times(cr, b);
+    x = car_times(cr);
     cyc(38);
     t = high_digit_tile(cr, rd8(0x7E0000 | (uint16_t)(W(record_times) + 2 + x)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | t);

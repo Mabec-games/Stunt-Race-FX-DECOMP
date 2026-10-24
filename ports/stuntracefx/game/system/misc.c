@@ -47,8 +47,8 @@ void WramFillZero_cr(Carried *cr);
 void WramFillZeroLong(Carried *cr);
 static void demo_blank(Carried *cr, uint32_t b);
 static void demo_camera(Carried *cr, uint8_t db);
-static int demo_fade_done(Carried *cr, uint32_t b);
-static void demo_fade_out(Carried *cr, uint32_t b);
+static int demo_fade_done(Carried *cr);
+static void demo_fade_out(Carried *cr);
 static void demo_lda8(Carried *cr, uint8_t v);
 static void demo_next(Carried *cr, uint16_t n);
 static void demo_next_before(Carried *cr, uint16_t n);
@@ -238,6 +238,7 @@ void abi_ReadTable9022(void)
  */
 uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
 {
+    (void)bank;
     uint16_t v;
 
     cyc(68);
@@ -313,6 +314,7 @@ void abi_Set7EBC2BTrio(void)
  */
 uint8_t Countdown0DF8(uint8_t bank)
 {
+    (void)bank;
     cyc(52);
     uint8_t v = rd8(0x7E0000 | W(wram_0DF8));
 
@@ -455,6 +457,7 @@ void abi_Set7EFFA6Sequence(void)
  */
 uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    (void)bank;
     uint16_t n;
 
     cyc(46);
@@ -785,7 +788,7 @@ static void demo_blank(Carried *cr, uint32_t b)
 /* LDA $0D61 (16-bit), its low byte sign-extended (BIT #$80, ORA #$FF00 or
    AND #$00FF): whether the fade's level has gone negative (the fade is
    over). */
-static int demo_fade_done(Carried *cr, uint32_t b)
+static int demo_fade_done(Carried *cr)
 {
     cyc(24);
     r_lda16(cr, 0x7E0000 | W(fade_level_hi));
@@ -798,7 +801,7 @@ static int demo_fade_done(Carried *cr, uint32_t b)
 }
 
 /* SEP #$20, $0E3A = 1 (the fade out started), REP #$20. */
-static void demo_fade_out(Carried *cr, uint32_t b)
+static void demo_fade_out(Carried *cr)
 {
     r_sep(cr, P_M);
     demo_lda8(cr, 0x01);
@@ -1030,11 +1033,11 @@ void DemoRun(Carried *cr)
             } else { cyc(80); }
             if (c == 0x05) {
                 demo_next(cr, 0x0001);
-                demo_fade_out(cr, b);
+                demo_fade_out(cr);
                 continue;
             }
             if (c == 0x06) {
-                if (!demo_fade_done(cr, b))
+                if (!demo_fade_done(cr))
                     break;
                 demo_next(cr, 0x0001);
                 continue;
@@ -1107,8 +1110,8 @@ void DemoRun(Carried *cr)
                 r_lda16(cr, 0x7E0000 | W(wram_030A));
                 if (!cr->a)
                     goto next_pass;
-                demo_fade_out(cr, b);
-                while (!demo_fade_done(cr, b))
+                demo_fade_out(cr);
+                while (!demo_fade_done(cr))
                     ;
                 goto end;
             }
@@ -1150,11 +1153,11 @@ void DemoRun(Carried *cr)
                 cr->a |= 0x0041;
                 set_p(cr, nz16(cr->p, cr->a));
                 wr16(0x7E0000 | W(wram_1A5B), cr->a);
-                demo_fade_out(cr, b);
+                demo_fade_out(cr);
             } else {
                 set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_Z)));
             }
-            if (demo_fade_done(cr, b))
+            if (demo_fade_done(cr))
                 goto end;
         }
 next_pass:

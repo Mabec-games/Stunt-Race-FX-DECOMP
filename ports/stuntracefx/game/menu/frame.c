@@ -23,6 +23,7 @@ void abi_MenuActorsRun(void);
  */
 uint8_t MenuFramesTarget7(uint8_t bank)
 {
+    (void)bank;
     cyc(84);
     wr8(0x7E0000 | W(wram_11DB), 0x07);
     cyc(70);                            /* PLP, RTS */
@@ -78,6 +79,7 @@ void abi_MenuFramesTarget7(void)
  */
 uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
 {
+    (void)bank;
     uint16_t a;
 
     cyc(68);
@@ -127,6 +129,7 @@ void abi_MenuRandomStep(void)
  */
 uint16_t MenuDimOnL(uint8_t bank)
 {
+    (void)bank;
     uint16_t a;
 
     cyc(24);
@@ -168,6 +171,7 @@ void abi_MenuDimOnL(void)
  */
 void MenuWaitFrame(uint8_t bank)
 {
+    (void)bank;
     uint32_t a = 0x7E0000 | W(menu_frame_wait);
 
     cyc(68);
@@ -421,7 +425,7 @@ void abi_MenuRegionCheck(void)
 
 /* Any of bits 0-3 of either player's held buttons ($0309, $030D), or
    $18FB set. */
-static int held_or_18fb(uint32_t b)
+static int held_or_18fb(void)
 {
     cyc(46);
     return (rd16(0x7E0000 | W(joy1_held)) & 0x000F) || (rd16(cyc_then(64, 0x7E0000 | W(joy2_held))) & 0x000F) || rd16(cyc_then(72, W(wram_18FB)));
@@ -442,12 +446,11 @@ static int held_or_18fb(uint32_t b)
  */
 uint16_t MenuHeldRestart(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, rec = *x;
     uint8_t found = *p, now;
 
     now = (uint8_t)(*p & ~(P_M | P_X));
-    if (!held_or_18fb(b)) {
+    if (!held_or_18fb()) {
         *p = nz16(now, 0x0000);
         cyc(82);
         return 0x0000;
@@ -468,7 +471,7 @@ uint16_t MenuHeldRestart(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, ui
     now = (uint8_t)(found & ~(P_M | P_X));
     do {
         menu_frame(cr, bank, now, x, y);
-    } while (held_or_18fb(b));
+    } while (held_or_18fb());
     cyc(82);
     *p = nz16(now, 0xFFFF);
     return 0xFFFF;

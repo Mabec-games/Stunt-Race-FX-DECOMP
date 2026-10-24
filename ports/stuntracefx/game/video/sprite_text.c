@@ -149,7 +149,7 @@ void abi_OamTextLineLong(void)
    from slot $70 at (x, y), attributes $36, tiles from 0; then the high
    table bytes $058E-$0595 cleared (small sprites, X bit 8 clear), through
    the data bank. Returns X and Y as OamTextLine leaves them. */
-static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp, uint16_t *yp)
+static void sprite_text_line_at(uint8_t x, uint8_t y, uint16_t *xp, uint16_t *yp)
 {
     uint16_t a;
     unsigned i;
@@ -177,7 +177,7 @@ static void abi_sprite_text_line_at(Carried *cr, uint8_t x, uint8_t y)
 {
     uint16_t xo, yo;
 
-    sprite_text_line_at(cr->db, x, y, &xo, &yo);
+    sprite_text_line_at(x, y, &xo, &yo);
     cr->a = 0x0000;
     cr->x = cr->p & P_X ? (uint16_t)(xo & 0xFF) : xo;
     cr->y = cr->p & P_X ? (uint16_t)(yo & 0xFF) : yo;
@@ -195,9 +195,10 @@ static void abi_sprite_text_line_at(Carried *cr, uint8_t x, uint8_t y)
  */
 void SpriteTextAt895E(uint8_t bank)
 {
+    (void)bank;
     uint16_t x, y;
 
-    sprite_text_line_at(bank, 0x89, 0x5E, &x, &y);
+    sprite_text_line_at(0x89, 0x5E, &x, &y);
 }
 
 void SpriteTextAt895E_cr(Carried *cr)
@@ -227,9 +228,10 @@ void abi_SpriteTextAt895E(void)
  */
 void SpriteTextAt8152(uint8_t bank)
 {
+    (void)bank;
     uint16_t x, y;
 
-    sprite_text_line_at(bank, 0x81, 0x52, &x, &y);
+    sprite_text_line_at(0x81, 0x52, &x, &y);
 }
 
 void SpriteTextAt8152_cr(Carried *cr)
@@ -290,9 +292,10 @@ void abi_SpriteTextAt8152B(void)
  */
 void SpriteTextAt8952(uint8_t bank)
 {
+    (void)bank;
     uint16_t x, y;
 
-    sprite_text_line_at(bank, 0x89, 0x52, &x, &y);
+    sprite_text_line_at(0x89, 0x52, &x, &y);
 }
 
 void SpriteTextAt8952_cr(Carried *cr)

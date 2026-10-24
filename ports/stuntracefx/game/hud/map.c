@@ -35,6 +35,7 @@ static uint16_t asr3(uint16_t v)
  */
 uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
 {
+    (void)bank;
     cyc(30);
     uint16_t i, obj, sx, v;
 

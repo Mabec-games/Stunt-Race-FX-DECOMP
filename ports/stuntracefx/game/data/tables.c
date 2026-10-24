@@ -197,6 +197,7 @@ void abi_CourseDataPointer(void)
  */
 uint16_t SelectionTables18CB(uint8_t bank)
 {
+    (void)bank;
     uint16_t base, s1, i3, x, v = 0, w, u;
 
     cyc(76);

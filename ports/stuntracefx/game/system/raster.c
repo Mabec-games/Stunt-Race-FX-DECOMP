@@ -41,7 +41,7 @@ void WaitScanline_cr(Carried *cr);
 void WindowTable7F(Carried *cr);
 void WindowTable7FLong(Carried *cr);
 static void copy8(Carried *cr, uint32_t to, uint32_t from);
-static void frame_counts(Carried *cr, uint32_t b);
+static void frame_counts(Carried *cr);
 static void hblank_inline(Carried *cr);
 static void inc8(Carried *cr, uint32_t addr);
 static void irq_ack(Carried *cr);
@@ -118,6 +118,7 @@ void abi_WaitHBlank(void)
  */
 void WaitScanline(uint8_t bank)
 {
+    (void)bank;
     uint8_t lo;
 
     cyc(150);
@@ -383,7 +384,7 @@ static void hblank_inline(Carried *cr)
 }
 
 /* The frame's counters: $0E3B and $0306 up by one. */
-static void frame_counts(Carried *cr, uint32_t b)
+static void frame_counts(Carried *cr)
 {
     inc8(cr, 0x7E0000 | W(frame_count));
     inc8(cr, 0x7E0000 | W(frames_since_tick));
@@ -449,7 +450,7 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0xC8);
         irq_ack(cr);
         put8(cr, 0x7E0000 | W(wram_0D3F), 0x02);
-        frame_counts(cr, b);
+        frame_counts(cr);
         break;
     case 0xA34D:
         cyc(46);
@@ -474,7 +475,7 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0xD8);
         irq_ack(cr);
         put8(cr, 0x7E0000 | W(wram_0D3F), 0x12);
-        frame_counts(cr, b);
+        frame_counts(cr);
         (cyc(46), JoypadRead_cr(cr));
         (cyc(46), FadeStepFixed_cr(cr));
         (cyc(46), SoundPortsSend_cr(cr));
@@ -562,7 +563,7 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0xC0);
         irq_ack(cr);
         put8(cr, 0x7E0000 | W(wram_0D3F), 0x14);
-        frame_counts(cr, b);
+        frame_counts(cr);
         put8(cr, 0x7E0000 | W(wram_0D52), 0xFF);
         (cyc(46), FadeStep_cr(cr));
         (cyc(46), JoypadAccumulate_cr(cr));
@@ -623,7 +624,7 @@ void RasterStage(Carried *cr)
         put8(cr, HTIMEL, 0x10);
         irq_ack(cr);
         put8(cr, 0x7E0000 | W(wram_0D3F), 0x0A);
-        frame_counts(cr, b);
+        frame_counts(cr);
         put8(cr, 0x7E0000 | W(wram_0D52), 0xFF);
         (cyc(46), FadeStep_cr(cr));
         (cyc(46), RaceClockStep_cr(cr));

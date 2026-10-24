@@ -622,6 +622,7 @@ void SoundPort0QueuePushW(uint8_t command, unsigned wide);
  */
 void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
+    (void)bank;
     uint16_t obj = *x, n, off, sel, v;
 
     n = dec_field(obj, 0x0A);
@@ -715,7 +716,7 @@ static void menu_anim(uint16_t x, uint16_t *a, uint8_t *p, uint16_t n)
 }
 
 /* LDA $118B, AND #mask: the buttons newly pressed under mask. */
-static uint16_t menu_pressed(uint8_t bank, uint16_t *a, uint8_t *p, uint16_t mask)
+static uint16_t menu_pressed(uint16_t *a, uint8_t *p, uint16_t mask)
 {
     *a = (uint16_t)(rd16(cyc_then(24, (0x7E0000 | W(menu_joy1_pressed)))) & mask);
     *p = nz16(*p, *a);
@@ -815,7 +816,7 @@ static void menu_erase_cancel(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p,
 void MenuEraseConfirm(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     *a = MenuActorAnimateFrame(bank, x, p);
-    if (!menu_pressed(bank, a, p, 0x0200)) {
+    if (!menu_pressed(a, p, 0x0200)) {
         cyc(24);                        /* AND #imm */
     } else if (!menu_choice(*x, a, p)) {
         *a = 0x0001;
@@ -826,14 +827,14 @@ void MenuEraseConfirm(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
         menu_sound(bank, a, p, 0x45);
     }
     cyc(22);
-    if (menu_pressed(bank, a, p, 0x0100) && menu_choice(*x, a, p)) {
+    if (menu_pressed(a, p, 0x0100) && menu_choice(*x, a, p)) {
         cyc(16);
         menu_sound(bank, a, p, 0x45);
         cyc(44);
         wr16((uint16_t)(*x + W(actor_0a)), 0x0000);
         menu_anim(*x, a, p, 0x0152);
     } else { cyc(46); }
-    if (!menu_pressed(bank, a, p, 0x8000))
+    if (!menu_pressed(a, p, 0x8000))
         { cyc(88); return; }            /* BEQ taken, RTS */
     if (!menu_choice(*x, a, p)) {
         cyc(6);
@@ -933,7 +934,7 @@ void abi_MenuEraseSave(void)
 void MenuEraseConfirm2(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a, uint8_t *p)
 {
     *a = MenuActorAnimateFrame(bank, x, p);
-    if (!menu_pressed(bank, a, p, 0x0200)) {
+    if (!menu_pressed(a, p, 0x0200)) {
         cyc(24);                        /* AND #imm */
     } else if (!menu_choice(*x, a, p)) {
         *a = 0x0001;
@@ -944,14 +945,14 @@ void MenuEraseConfirm2(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a, uint
         menu_sound(bank, a, p, 0x45);
     }
     cyc(22);
-    if (menu_pressed(bank, a, p, 0x0100) && menu_choice(*x, a, p)) {
+    if (menu_pressed(a, p, 0x0100) && menu_choice(*x, a, p)) {
         cyc(38);
         wr16((uint16_t)(*x + W(actor_0a)), 0x0000);
         menu_anim(*x, a, p, 0x0166);
         menu_sound(bank, a, p, 0x45);
     } else { cyc(24); }
     cyc(22);
-    if (!menu_pressed(bank, a, p, 0x8000))
+    if (!menu_pressed(a, p, 0x8000))
         { cyc(88); return; }            /* BEQ taken, RTS */
     if (!menu_choice(*x, a, p)) {
         cyc(6);

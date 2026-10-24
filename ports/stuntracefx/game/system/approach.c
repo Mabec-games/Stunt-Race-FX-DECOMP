@@ -65,6 +65,7 @@ void abi_HalfRateApproach(void)
  */
 void ApproachTargetFull(uint8_t bank)
 {
+    (void)bank;
     cyc(84);
     wr8(0x7E0000 | W(wram_11DB), 0x0F);
     cyc(70);
@@ -98,6 +99,7 @@ void abi_ApproachTargetFull(void)
  */
 void ApproachTargetZero(uint8_t bank)
 {
+    (void)bank;
     cyc(68);
     wr8(0x7E0000 | W(wram_11DB), 0x00);
     cyc(70);

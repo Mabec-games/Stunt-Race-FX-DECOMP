@@ -527,6 +527,7 @@ void SystemHalt(void);
  */
 uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
 {
+    (void)bank;
     cyc(182);
     uint16_t x = rd16(0x7E0000 | (uint16_t)W(byte_writes_size));
 

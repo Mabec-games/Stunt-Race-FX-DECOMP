@@ -630,7 +630,7 @@ void abi_DebugLastCarMotionPanel(void)
 
 /* X = the viewed object's statistics record: the byte at +$22 of the
    object at $0346 under A's high byte (TAX with M 8-bit). */
-static uint16_t view_record8(uint8_t bank, uint16_t a)
+static uint16_t view_record8(uint16_t a)
 {
     uint16_t x;
     uint8_t b;
@@ -667,7 +667,7 @@ uint16_t DebugTrafficHexPanel(uint8_t bank, uint16_t a, uint8_t p)
     a = print8(bank, HEX_WORD, a, rd8(FX_TRAFFIC_CLOSE), 0x1D40, p);
     cyc(32);
     a = print8(bank, HEX_WORD, a, rd8(FX_TRAFFIC_DIST), 0x1D80, p);
-    x = view_record8(bank, a);
+    x = view_record8(a);
     cyc(46);
     pn_a = print8(bank, HEX_WORD, a, rd8(GSU_RAM + 0x0046 + x), 0x3140, p);
     pn_x = x;
@@ -760,7 +760,7 @@ void abi_DebugWorkBytesPanel(void)
  */
 uint16_t DebugViewRecordPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
-    uint16_t x = view_record8(bank, a);
+    uint16_t x = view_record8(a);
 
     pn_cv = 0;
     cyc(46);
@@ -805,7 +805,7 @@ void abi_DebugViewRecordPanel(void)
  */
 uint16_t DebugViewSpeedPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
-    uint16_t x = view_record8(bank, a);
+    uint16_t x = view_record8(a);
 
     pn_cv = 0;
     cyc(46);

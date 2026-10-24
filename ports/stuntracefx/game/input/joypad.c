@@ -145,7 +145,7 @@ void abi_JoypadAccumulate(void)
 }
 
 /* ROL $1182 with the carry `bit`. */
-static void serial_shift(uint32_t b, uint8_t bit)
+static void serial_shift(uint8_t bit)
 {
     cyc(38);
     uint8_t v = rd8(0x7E0000 | W(joy_serial_bits));
@@ -160,7 +160,7 @@ static void serial_shift(uint32_t b, uint8_t bit)
 static uint8_t serial_rest(uint32_t b, uint8_t port, int y, uint16_t lead)
 {
     for (; y >= 0; y--, lead = 60)
-        { cyc(lead); serial_shift(b, (io_rd8(b | (uint16_t)(0x4016 + port), 0x00) & 0x02) ? (cyc(32), 1) : (cyc(38), 0)); }
+        { cyc(lead); serial_shift((io_rd8(b | (uint16_t)(0x4016 + port), 0x00) & 0x02) ? (cyc(32), 1) : (cyc(38), 0)); }
     cyc(54);
     return rd8(0x7E0000 | W(joy_serial_bits));
 }
@@ -188,7 +188,7 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
             io_wr8(b | 0x4016, 0x01);
             v = serial_byte(b, port);
         } else {
-            serial_shift(b, 1);
+            serial_shift(1);
             cyc(22);
             v = serial_rest(b, port, y - 1, 60);
         }
@@ -202,7 +202,7 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
         io_wr8(b | 0x4016, 0x00);
         v = serial_byte(b, port);
     } else {
-        serial_shift(b, 1);
+        serial_shift(1);
         cyc(22);
         v = serial_rest(b, port, y - 1, 60);
     }

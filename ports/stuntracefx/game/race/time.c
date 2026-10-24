@@ -150,6 +150,7 @@ static uint8_t asl8(uint8_t v, uint8_t *p)
  */
 uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
 {
+    (void)bank;
     uint8_t v;
     unsigned i;
 
@@ -247,6 +248,7 @@ void abi_RaceTimeInit(void)
  */
 uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
 {
+    (void)bank;
     uint8_t p = p0 | P_M | P_X, v;
     uint16_t a;
 

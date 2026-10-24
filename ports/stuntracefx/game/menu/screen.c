@@ -250,6 +250,7 @@ void abi_MenuOamFromList(void)
  */
 uint16_t MenuPictureToVram(uint8_t bank, uint16_t in68, uint16_t in6a, uint16_t *x)
 {
+    (void)bank;
     cyc(106);
     uint16_t w;
 
@@ -537,7 +538,7 @@ void abi_MenuHdmaSetupB(void)
  * Entry: X 16-bit; X = byte offset of the first colour, Y = count - 1.
  * Exit: A = the last colour; X past it; Y = $FFFF; P unchanged.
  */
-static uint16_t scale_component(uint32_t b, uint8_t v)
+static uint16_t scale_component(uint8_t v)
 {
     uint8_t f;
 
@@ -551,7 +552,7 @@ static uint16_t scale_component(uint32_t b, uint8_t v)
 
 uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t c, r = 0, prod;
     int first = 1;
 
@@ -561,19 +562,19 @@ uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y)
         c = rd16(W(palette_saved) + *x);
         cyc(24);
         wr16(0x7E0000 | W(scratch_11e3), c);
-        prod = scale_component(b, (uint8_t)(c & 0x1F));
+        prod = scale_component((uint8_t)(c & 0x1F));
         cyc(110);
         wr16(0x7E0000 | W(scratch_11e1), (uint16_t)(((prod << 3) >> 8) & 0x1F));
         cyc(24);
         c = rd16(0x7E0000 | W(scratch_11e3));
         cyc(62);
-        prod = scale_component(b, (uint8_t)((c & 0x03E0) >> 5));
+        prod = scale_component((uint8_t)((c & 0x03E0) >> 5));
         cyc(48);
         wr16(0x7E0000 | W(scratch_11e1), cyc_then(24, (uint16_t)((prod & 0x03E0) | rd16(0x7E0000 | W(scratch_11e1)))));
         cyc(24);
         c = rd16(0x7E0000 | W(scratch_11e3));
         cyc(72);
-        prod = scale_component(b, (uint8_t)((c & 0x7C00) >> 10));
+        prod = scale_component((uint8_t)((c & 0x7C00) >> 10));
         cyc(110);
         r = (uint16_t)((((prod & 0x03E0) >> 3) << 8) | rd16(0x7E0000 | W(scratch_11e1)));
         cyc(24);
@@ -635,6 +636,7 @@ static uint16_t raise_tile(uint16_t x)
  */
 uint16_t MenuPictureInsetGrid(uint8_t bank)
 {
+    (void)bank;
     uint16_t x = 0, a = 0, rows, w;
     int i;
 
@@ -714,7 +716,7 @@ static uint16_t picture_to_vram(uint8_t bank, uint16_t in68, uint16_t in6a, uint
 }
 
 /* The two words of a course's picture entry: input $68 and input $6A. */
-static void course_picture(uint8_t bank, uint32_t table, uint16_t *in68, uint16_t *in6a)
+static void course_picture(uint32_t table, uint16_t *in68, uint16_t *in6a)
 {
     cyc(64);
     uint16_t c = rd16(0x7E0000 | W(course)), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
@@ -741,9 +743,9 @@ uint16_t MenuCourseGraphics(uint8_t bank)
     cyc(4);
     uint16_t a, x;
 
-    course_picture(bank, 0x03F4F9, &a, &x);
+    course_picture(0x03F4F9, &a, &x);
     picture_to_vram(bank, a, x, 0x4C00, 0x1800, 1);
-    course_picture(bank, 0x03F5A1, &a, &x);
+    course_picture(0x03F5A1, &a, &x);
     picture_to_vram(bank, a, x, 0x3C00, 0x2000, 1);
     picture_to_vram(bank, 0xFB84, 0x0017, 0x1680, 0x0600, 1);
     picture_to_vram(bank, 0, 0, 0x3680, 0x0600, 0);
@@ -1371,12 +1373,10 @@ void abi_MenuScreenOpen6(void)
 void PictureCellAttributes(Carried *cr)
 {
     static const uint16_t at[4] = {0x0000, 0x0002, 0x0040, 0x0042};
-    uint32_t b;
     uint8_t p0 = cr->p;
     int i;
 
     r_rep(cr, P_M | P_X);
-    b = (uint32_t)cr->db << 16;
     cyc(92);
     for (i = 0; i < 4; i++) {
         uint32_t a = 0x703000 + (uint32_t)(uint16_t)(cr->x + at[i]);
@@ -1849,7 +1849,6 @@ void abi_MenuRunFrames(void);
  */
 void ChampionScreenRun(Carried *cr)
 {
-    uint32_t b;
     int first;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
@@ -1863,7 +1862,6 @@ void ChampionScreenRun(Carried *cr)
         MenuWaitFrame_cr(cr);
         (cyc(62), w_MenuActorsRun(cr));
         (cyc(62), MenuOamBuild_cr(cr));
-        b = (uint32_t)cr->db << 16;
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(46);
         wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
@@ -1929,7 +1927,6 @@ void abi_BootWarm(void);
  */
 void TitleScreenLoop(Carried *cr)
 {
-    uint32_t b;
     uint16_t v;
 
     for (;;) {
@@ -1996,7 +1993,6 @@ void TitleScreenLoop(Carried *cr)
                 }
             }
         }
-        b = (uint32_t)cr->db << 16;
         cyc(70);
         wr16(0x7E0000 | W(menu_joy1_pressed), 0x0000);
         cyc(24);

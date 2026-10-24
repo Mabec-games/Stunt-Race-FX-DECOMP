@@ -970,11 +970,9 @@ void abi_MenuPreviewRun(void)
  */
 void MenuPreviewRunFade(Carried *cr)
 {
-    uint32_t b;
 
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     MenuScreenOpenPreviewFade(cr);
-    b = (uint32_t)cr->db << 16;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x0F);
     cyc(160);

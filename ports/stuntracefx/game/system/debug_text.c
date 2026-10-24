@@ -143,6 +143,7 @@ void abi_DebugDrawChar(void)
  */
 void DebugPrint(uint8_t bank)
 {
+    (void)bank;
     uint32_t s;
     uint16_t y = 0, a = 0, x = 0, yy = 0;
     uint8_t c;

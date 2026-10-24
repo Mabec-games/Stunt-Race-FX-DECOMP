@@ -71,16 +71,16 @@ static void continue_wait(Carried *cr, uint8_t owner);
 static int cursor_move(Carried *cr, uint32_t b, uint16_t pad, uint16_t bit, uint8_t to);
 static uint8_t dec8_mem(Carried *cr, uint32_t addr);
 static void lda8_imm(Carried *cr, uint8_t v);
-static void pause_resume(Carried *cr, uint32_t b);
+static void pause_resume(Carried *cr);
 static int presses(Carried *cr, uint32_t b, uint16_t pad, uint16_t mask);
 static void quit_menu(Carried *cr, uint16_t pad, uint16_t which, uint8_t d, void (*park)(Carried *), void (*cars)(Carried *));
 static void quit_menu_open(Carried *cr, uint32_t b);
 static void quit_menu_take(Carried *cr, uint32_t b, uint16_t which, uint8_t d, void (*park)(Carried *));
 static void rows(Carried *cr, void (*r87)(Carried *), void (*r107)(Carried *), void (*r187)(Carried *));
-static void slide_up(Carried *cr, uint32_t b, uint8_t v);
+static void slide_up(Carried *cr, uint8_t v);
 static void stage(Carried *cr, uint32_t b, uint8_t s);
-static int timer_out(Carried *cr, uint32_t b);
-static int window_closed(Carried *cr, uint32_t b);
+static int timer_out(Carried *cr);
+static int window_closed(Carried *cr);
 void CarSelectTwoPlayers_cr(Carried *cr);
 void ChampionshipScreenLoop(Carried *cr);
 void Countdown0DF8_cr(Carried *cr);
@@ -151,7 +151,7 @@ static int presses(Carried *cr, uint32_t b, uint16_t pad, uint16_t mask)
 }
 
 /* SEP #$20, the timer $0D5F counted down; 1 at its end. */
-static int timer_out(Carried *cr, uint32_t b)
+static int timer_out(Carried *cr)
 {
     r_sep(cr, P_M);
     cyc(22);
@@ -161,13 +161,14 @@ static int timer_out(Carried *cr, uint32_t b)
 /* The stage $0D2F = s. */
 static void stage(Carried *cr, uint32_t b, uint8_t s)
 {
+    (void)b;
     lda8_imm(cr, s);
     wr8(0x7E0000 | W(wram_0D2F), s);
 }
 
 /* 07:BC88: the race resumes: sound $16 on port 1, the presses' low bytes
    ($0D1A, $0D1C) and $0D2D cleared, $0E5B and $0E5F one less. */
-static void pause_resume(Carried *cr, uint32_t b)
+static void pause_resume(Carried *cr)
 {
     cyc(54);
     lda8_imm(cr, 0x16);
@@ -226,7 +227,7 @@ void PauseStageWait(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    if (timer_out(cr, b))
+    if (timer_out(cr))
         { cyc(32); stage(cr, b, 0x04); } else { cyc(22); }
     cyc(42);
 }
@@ -254,13 +255,12 @@ void abi_PauseStageWait(void)
  */
 void PauseStageResumeB(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!timer_out(cr, b))
+    if (!timer_out(cr))
         { cyc(64); return; } else { cyc(62); }
     Gauge6BPlace_cr(cr);
     cyc(22);
-    pause_resume(cr, b);
+    pause_resume(cr);
 }
 
 void abi_PauseStageResumeB(void)
@@ -284,13 +284,12 @@ void abi_PauseStageResumeB(void)
  */
 void PauseStageResumeA(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!timer_out(cr, b))
+    if (!timer_out(cr))
         { cyc(64); return; } else { cyc(62); }
     Gauge6APlace_cr(cr);
     cyc(22);
-    pause_resume(cr, b);
+    pause_resume(cr);
 }
 
 void abi_PauseStageResumeA(void)
@@ -316,9 +315,8 @@ void abi_PauseStageResumeA(void)
  */
 void PauseStageReplayEnd(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!timer_out(cr, b)) {
+    if (!timer_out(cr)) {
         cyc(40);
         r_lda8(cr, 0x7E0000 | W(wram_0D5F));
         cmp8_imm(cr, 0x01);
@@ -338,7 +336,7 @@ void PauseStageReplayEnd(Carried *cr)
     wr8(0x7E0000 | W(wram_0E18), 0x8C);
     cyc(24);
     wr8(0x7E0000 | W(wram_0D22), 0x00);
-    pause_resume(cr, b);
+    pause_resume(cr);
 }
 
 void abi_PauseStageReplayEnd(void)
@@ -355,7 +353,7 @@ void abi_PauseStageReplayEnd(void)
 }
 
 /* WindowSlideUpSound, then $19DF = v. */
-static void slide_up(Carried *cr, uint32_t b, uint8_t v)
+static void slide_up(Carried *cr, uint8_t v)
 {
     (cyc(62), WindowSlideUpSound_cr(cr));
     lda8_imm(cr, v);
@@ -375,14 +373,14 @@ void PauseStageQuit(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!timer_out(cr, b))
+    if (!timer_out(cr))
         { cyc(58); return; }
     cyc(46);
     r_lda8(cr, 0x7E0000 | W(hud_mode));
     if (!(uint8_t)cr->a) {
         cyc(32);
         stage(cr, b, 0x0A);
-        slide_up(cr, b, 0x01);
+        slide_up(cr, 0x01);
         lda8_imm(cr, 0x70);
         cyc(16);
         wr8(0x7E0000 | W(wram_0D5F), 0x70);
@@ -390,7 +388,7 @@ void PauseStageQuit(Carried *cr)
         return;
     } else { cyc(38); }
     stage(cr, b, 0x0C);
-    slide_up(cr, b, 0x00);
+    slide_up(cr, 0x00);
     cyc(42);
 }
 
@@ -467,9 +465,8 @@ void abi_PauseStageLeave(void)
  */
 void PauseStageQuitWait(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!timer_out(cr, b))
+    if (!timer_out(cr))
         { cyc(64); return; }
     cyc(40);
     r_lda8(cr, 0x7E0000 | W(wram_0D24));
@@ -796,7 +793,7 @@ static void quit_menu_open(Carried *cr, uint32_t b)
 }
 
 /* LDA $19D8, CMP #5: the split window closed. */
-static int window_closed(Carried *cr, uint32_t b)
+static int window_closed(Carried *cr)
 {
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(window_hdma_off));
@@ -817,7 +814,7 @@ void PauseStageQuitMenuP2(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!window_closed(cr, b))
+    if (!window_closed(cr))
         { cyc(48); return; }   /* BNE taken, RTS */
     r_sep(cr, P_M);
     lda8_imm(cr, 0xFF);
@@ -858,7 +855,7 @@ void PauseStageQuitMenu(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
 
-    if (!window_closed(cr, b))
+    if (!window_closed(cr))
         { cyc(42); return; }
     r_sep(cr, P_M);
     lda8_imm(cr, 0x00);
@@ -896,11 +893,10 @@ void abi_PauseStageQuitMenu(void)
  */
 void PauseStageQuitTaken(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_sep(cr, P_M);
     cyc(22);
-    if (!window_closed(cr, b))
+    if (!window_closed(cr))
         { cyc(48); return; }
     cyc(18);
     r_lda8(cr, 0x7E0000 | W(wram_0D50));

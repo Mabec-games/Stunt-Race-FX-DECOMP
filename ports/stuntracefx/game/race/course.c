@@ -29,6 +29,7 @@ void abi_TimeUpSelectDraw(void);
  */
 uint8_t CourseFromSelection(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     uint8_t a, b;
     unsigned s;
 
@@ -102,28 +103,28 @@ static void course_choose(Carried *cr, uint16_t list, uint16_t y);
 static void course_zoom(Carried *cr, uint16_t x, uint16_t y);
 static void course_zoom_box(Carried *cr, uint16_t a);
 static void course_zoom_race(Carried *cr, uint16_t a);
-static int cursor_pressed(Carried *cr, uint32_t b, uint16_t mask);
-static void cursor_to(Carried *cr, uint32_t b, uint8_t to);
-static void cursor_two(Carried *cr, uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2, unsigned idle);
-static int cursor_up_open(Carried *cr, uint32_t b);
+static int cursor_pressed(Carried *cr, uint16_t mask);
+static void cursor_to(Carried *cr, uint8_t to);
+static void cursor_two(Carried *cr, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2, unsigned idle);
+static int cursor_up_open(Carried *cr);
 static void fade_back_body(Carried *cr);
-static void fade_done(Carried *cr, uint32_t b, uint8_t panel, uint8_t state);
+static void fade_done(Carried *cr, uint8_t panel, uint8_t state);
 static int fade_step(Carried *cr);
 static void preview_rows(Carried *cr, int all, uint16_t last);
-static int records_key(Carried *cr, uint32_t b);
-static int records_key_inner(Carried *cr, uint32_t b);
-static void records_pulse(Carried *cr, uint32_t b);
+static int records_key(Carried *cr);
+static int records_key_inner(Carried *cr);
+static void records_pulse(Carried *cr);
 static void records_reopen_body(Carried *cr);
-static void records_sprite(Carried *cr, uint32_t b, uint8_t y);
-static void screen_state(Carried *cr, uint32_t b, uint16_t table);
-static void screen_state2(Carried *cr, uint32_t b);
-static void sel_choose(Carried *cr, uint32_t b);
-static void sel_cursor(Carried *cr, uint32_t b, uint8_t y);
+static void records_sprite(Carried *cr, uint8_t y);
+static void screen_state(Carried *cr, uint16_t table);
+static void screen_state2(Carried *cr);
+static void sel_choose(Carried *cr);
+static void sel_cursor(Carried *cr, uint8_t y);
 static int sel_open(Carried *cr, uint8_t bit);
-static int sel_pressed(Carried *cr, uint32_t b, uint16_t mask);
-static int sel_pressed16(Carried *cr, uint32_t b, uint16_t mask);
-static void sel_row(Carried *cr, uint32_t b, uint8_t v);
-static void sel_scroll(Carried *cr, uint32_t b, uint8_t v);
+static int sel_pressed(Carried *cr, uint16_t mask);
+static int sel_pressed16(Carried *cr, uint16_t mask);
+static void sel_row(Carried *cr, uint8_t v);
+static void sel_scroll(Carried *cr, uint8_t v);
 static void sel_sound(Carried *cr);
 static void speed_select_body(Carried *cr);
 static void time_up_cursor_body(Carried *cr);
@@ -221,7 +222,7 @@ void abi_RecordsLoadForCourse(void);
 
 /* LDA $0D1A, BIT #mask (16-bit): whether a button in mask was pressed; Z
    from the BIT, N from the load. */
-static int cursor_pressed(Carried *cr, uint32_t b, uint16_t mask)
+static int cursor_pressed(Carried *cr, uint16_t mask)
 {
     cyc(24);
     r_lda16(cr, 0x7E0000 | W(joy1_pressed_copy));
@@ -230,7 +231,7 @@ static int cursor_pressed(Carried *cr, uint32_t b, uint16_t mask)
 }
 
 /* SEP #$20, sound $45, then the cursor $0D48 = to. */
-static void cursor_to(Carried *cr, uint32_t b, uint8_t to)
+static void cursor_to(Carried *cr, uint8_t to)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x45);
@@ -245,7 +246,7 @@ static void cursor_to(Carried *cr, uint32_t b, uint8_t to)
 
 /* Up to the fourth course when it is open (the low four bits of $70:FC06
    all set): sound $45 and $0D63 = $FF; 1 when it went there. */
-static int cursor_up_open(Carried *cr, uint32_t b)
+static int cursor_up_open(Carried *cr)
 {
     uint8_t v;
 
@@ -269,13 +270,13 @@ static int cursor_up_open(Carried *cr, uint32_t b)
 /* REP #$20, then the first of two buttons pressed moves the cursor; with
    neither, `idle` more than the not-taken branch (the cursors at 3 end with
    a taken BEQ). */
-static void cursor_two(Carried *cr, uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2, unsigned idle)
+static void cursor_two(Carried *cr, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2, unsigned idle)
 {
     r_rep(cr, P_M);
-    if (cursor_pressed(cr, b, m1))
-        { cyc(36); cursor_to(cr, b, to1); }
-    else if (cursor_pressed(cr, b, m2))
-        { cyc(idle ? 54 : 36); cursor_to(cr, b, to2); }   /* at 3: BEQ not taken, JMP */
+    if (cursor_pressed(cr, m1))
+        { cyc(36); cursor_to(cr, to1); }
+    else if (cursor_pressed(cr, m2))
+        { cyc(idle ? 54 : 36); cursor_to(cr, to2); }   /* at 3: BEQ not taken, JMP */
     else
         cyc(idle);
     cyc(42);
@@ -292,7 +293,7 @@ static void cursor_two(Carried *cr, uint32_t b, uint16_t m1, uint8_t to1, uint16
  */
 void CourseCursorAt0(Carried *cr)
 {
-    cursor_two(cr, (uint32_t)cr->db << 16, 0x0100, 0x01, 0x0800, 0x02, 0);
+    cursor_two(cr, 0x0100, 0x01, 0x0800, 0x02, 0);
 }
 
 void abi_CourseCursorAt0(void)
@@ -317,7 +318,7 @@ void abi_CourseCursorAt0(void)
  */
 void CourseCursorAt1(Carried *cr)
 {
-    cursor_two(cr, (uint32_t)cr->db << 16, 0x0200, 0x00, 0x0800, 0x03, 0);
+    cursor_two(cr, 0x0200, 0x00, 0x0800, 0x03, 0);
 }
 
 void abi_CourseCursorAt1(void)
@@ -342,7 +343,7 @@ void abi_CourseCursorAt1(void)
  */
 void CourseCursorAt2(Carried *cr)
 {
-    cursor_two(cr, (uint32_t)cr->db << 16, 0x0100, 0x03, 0x0400, 0x00, 0);
+    cursor_two(cr, 0x0100, 0x03, 0x0400, 0x00, 0);
 }
 
 void abi_CourseCursorAt2(void)
@@ -368,7 +369,7 @@ void abi_CourseCursorAt2(void)
  */
 void CourseCursorAt3(Carried *cr)
 {
-    cursor_two(cr, (uint32_t)cr->db << 16, 0x0200, 0x02, 0x0400, 0x01, 6);
+    cursor_two(cr, 0x0200, 0x02, 0x0400, 0x01, 6);
 }
 
 void abi_CourseCursorAt3(void)
@@ -396,12 +397,11 @@ void abi_CourseCursorAt3(void)
  */
 void CourseCursorAt2Open(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M);
-    if (cursor_pressed(cr, b, 0x0800) && cursor_up_open(cr, b))
+    if (cursor_pressed(cr, 0x0800) && cursor_up_open(cr))
         { cyc(42); return; } else { cyc(6); }
-    cursor_two(cr, b, 0x0100, 0x03, 0x0400, 0x00, 0);
+    cursor_two(cr, 0x0100, 0x03, 0x0400, 0x00, 0);
 }
 
 void abi_CourseCursorAt2Open(void)
@@ -428,12 +428,11 @@ void abi_CourseCursorAt2Open(void)
  */
 void CourseCursorAt3Open(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     r_rep(cr, P_M);
-    if (cursor_pressed(cr, b, 0x0800) && cursor_up_open(cr, b))
+    if (cursor_pressed(cr, 0x0800) && cursor_up_open(cr))
         { cyc(42); return; } else { cyc(6); }
-    cursor_two(cr, b, 0x0200, 0x02, 0x0400, 0x01, 6);
+    cursor_two(cr, 0x0200, 0x02, 0x0400, 0x01, 6);
 }
 
 void abi_CourseCursorAt3Open(void)
@@ -938,7 +937,7 @@ static int sel_open(Carried *cr, uint8_t bit)
 }
 
 /* REP #$20, LDA $0D1A, BIT #mask, SEP #$20: whether pressed. */
-static int sel_pressed(Carried *cr, uint32_t b, uint16_t mask)
+static int sel_pressed(Carried *cr, uint16_t mask)
 {
     uint16_t v;
 
@@ -951,7 +950,7 @@ static int sel_pressed(Carried *cr, uint32_t b, uint16_t mask)
 }
 
 /* REP #$20, LDA $0D1A, BIT #mask (left 16-bit): whether pressed. */
-static int sel_pressed16(Carried *cr, uint32_t b, uint16_t mask)
+static int sel_pressed16(Carried *cr, uint16_t mask)
 {
     r_rep(cr, P_M);
     r_lda16(cr, 0x7E0000 | W(joy1_pressed_copy));
@@ -969,7 +968,7 @@ static void sel_sound(Carried *cr)
 }
 
 /* LDA #v, STA $0D4A: the cursor's row. */
-static void sel_row(Carried *cr, uint32_t b, uint8_t v)
+static void sel_row(Carried *cr, uint8_t v)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
@@ -979,7 +978,7 @@ static void sel_row(Carried *cr, uint32_t b, uint8_t v)
 
 /* The scroll $0E37 moved 4 toward $50 (in) or 0 (out), then $0E92 = $F0
    and the large sprites hidden. */
-static void sel_scroll(Carried *cr, uint32_t b, uint8_t v)
+static void sel_scroll(Carried *cr, uint8_t v)
 {
     cyc(118);
     wr8(0x7E0000 | W(scroll_value), v);
@@ -991,7 +990,7 @@ static void sel_scroll(Carried *cr, uint32_t b, uint8_t v)
 }
 
 /* LDA #y, STA $0D38, JSR MenuCursorFourWay. */
-static void sel_cursor(Carried *cr, uint32_t b, uint8_t y)
+static void sel_cursor(Carried *cr, uint8_t y)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | y);
     set_p(cr, nz8(cr->p, y));
@@ -1003,14 +1002,14 @@ static void sel_cursor(Carried *cr, uint32_t b, uint8_t y)
 /* 02:E954: Start or A ($9000) zooms into the course (the page's own
    zoom); otherwise the four-way cursor with its sprite at y $B0 on the
    page's first row, $60 on the other. */
-static void sel_choose(Carried *cr, uint32_t b)
+static void sel_choose(Carried *cr)
 {
     uint8_t page = rd8(0x7E0000 | W(wram_0D63)), v;
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | page);
     set_p(cr, nz8(cr->p, page));
     cyc(page ? 46 : 40);                /* BNE taken or not */
-    if (sel_pressed16(cr, b, 0x9000)) {
+    if (sel_pressed16(cr, 0x9000)) {
         if (page)
             { cyc(102); CourseZoomFromSelection4(cr); }
         else
@@ -1024,9 +1023,9 @@ static void sel_choose(Carried *cr, uint32_t b)
     if (page) {
         cyc(16);
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0)));
-        sel_cursor(cr, b, v == 0x01 ? 0xB0 : (cyc(6), 0x60));
+        sel_cursor(cr, v == 0x01 ? 0xB0 : (cyc(6), 0x60));
     } else {
-        sel_cursor(cr, b, v ? (cyc(6), 0x60) : 0xB0);
+        sel_cursor(cr, v ? (cyc(6), 0x60) : 0xB0);
     }
     cyc(42);
 }
@@ -1034,7 +1033,6 @@ static void sel_choose(Carried *cr, uint32_t b)
 /* The body of SpeedCourseSelectStep, up to its RTS. */
 static void speed_select_body(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     static const uint8_t bits[3] = {0x01, 0x02, 0x04};
     uint8_t v;
     int i, open;
@@ -1070,7 +1068,7 @@ static void speed_select_body(Carried *cr)
             set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0)));
             if (v >= 0x50)
                 v = 0x50;
-            sel_scroll(cr, b, v);
+            sel_scroll(cr, v);
             return;
         }
         (cyc(84), FlashingMetaspriteDrawByMode_cr(cr));
@@ -1079,36 +1077,36 @@ static void speed_select_body(Carried *cr)
         if (!(uint8_t)cr->a) {
             cyc(38);
             r_sep(cr, P_M);
-            if (sel_open(cr, 0x02) && (cyc(2), sel_pressed(cr, b, 0x0800))) {
+            if (sel_open(cr, 0x02) && (cyc(2), sel_pressed(cr, 0x0800))) {
                 cyc(6);
                 sel_sound(cr);
-                sel_row(cr, b, 0x01);
+                sel_row(cr, 0x01);
                 return;
             } else { cyc(86); }
-            sel_choose(cr, b);
+            sel_choose(cr);
             return;
         } else { cyc(44); }
         r_sep(cr, P_M);
         open = sel_open(cr, 0x04);
-        if (open && (cyc(2), sel_pressed(cr, b, 0x0800))) {
+        if (open && (cyc(2), sel_pressed(cr, 0x0800))) {
             sel_sound(cr);
             cyc(8);
             v = (uint8_t)(rd8(0x7E0000 | W(wram_0D63)) - 1);
             cyc(6);
             wr8(0x7E0000 | W(wram_0D63), v);
             cyc(16);
-            sel_row(cr, b, 0x02);
+            sel_row(cr, 0x02);
             return;
         } else { cyc(open ? 66 : 60); }  /* BEQ taken at once: 6 less */
         r_sep(cr, P_M);
         open = sel_open(cr, 0x01);
-        if (open && (cyc(2), sel_pressed(cr, b, 0x0400))) {
+        if (open && (cyc(2), sel_pressed(cr, 0x0400))) {
             sel_sound(cr);
             cyc(8);
             wr8(0x7E0000 | W(wram_0D4A), 0x00);
             return;
         } else { cyc(open ? 68 : 62); }
-        sel_choose(cr, b);
+        sel_choose(cr);
         return;
     }
     cyc(46);
@@ -1119,7 +1117,7 @@ static void speed_select_body(Carried *cr)
         v = (uint8_t)(v - 4);
         if (v & 0x80)
             { cyc(10); v = 0x00; }
-        sel_scroll(cr, b, v);
+        sel_scroll(cr, v);
         return;
     } else { cyc(92); }
     FlashingMetaspriteDrawByMode_cr(cr);
@@ -1129,7 +1127,7 @@ static void speed_select_body(Carried *cr)
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0)));
     cyc(56);
     if (v == 0x01) {
-        if (sel_pressed(cr, b, 0x0400)) {
+        if (sel_pressed(cr, 0x0400)) {
             r_sep(cr, P_M);
             if (sel_open(cr, 0x01)) {
                 sel_sound(cr);
@@ -1140,23 +1138,23 @@ static void speed_select_body(Carried *cr)
                 return;
             } else { cyc(62); }
         } else { cyc(68); }
-        if (sel_pressed(cr, b, 0x0800)) {
+        if (sel_pressed(cr, 0x0800)) {
             r_sep(cr, P_M);
             if (sel_open(cr, 0x04)) {
                 sel_sound(cr);
-                sel_row(cr, b, 0x02);
+                sel_row(cr, 0x02);
                 return;
             } else { cyc(62); }
         } else { cyc(68); }
-        sel_choose(cr, b);
+        sel_choose(cr);
         return;
     } else { cyc(6); }
-    if (sel_pressed(cr, b, 0x0400)) {
+    if (sel_pressed(cr, 0x0400)) {
         sel_sound(cr);
-        sel_row(cr, b, 0x01);
+        sel_row(cr, 0x01);
         return;
     } else { cyc(68); }
-    sel_choose(cr, b);
+    sel_choose(cr);
 }
 
 /*
@@ -1211,7 +1209,6 @@ void abi_StuntSelectCursor(void);
  */
 void StuntCourseSelectStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -1232,14 +1229,14 @@ void StuntCourseSelectStep(Carried *cr)
             set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >= 0x50 ? (cyc(10), P_C) : 0)));
             if (v >= 0x50)
                 v = 0x50;
-            sel_scroll(cr, b, v);
+            sel_scroll(cr, v);
             cyc(42);
             return;
         }
         (cyc(84), Set0D37FromTable_cr(cr));
         (cyc(46), FlashingMetaspriteDraw_cr(cr));
         cyc(24);
-        if (sel_pressed16(cr, b, 0x9000)) {
+        if (sel_pressed16(cr, 0x9000)) {
             cyc(102);
             CourseZoomStunt(cr);
             cyc(42);
@@ -1257,14 +1254,14 @@ void StuntCourseSelectStep(Carried *cr)
         v = (uint8_t)(v - 4);
         if (v & 0x80)
             { cyc(10); v = 0x00; }
-        sel_scroll(cr, b, v);
+        sel_scroll(cr, v);
         cyc(42);
         return;
     } else { cyc(68); }
     TimeUpSelectDraw(cr);  /* TimeUpSelectDraw */
     (cyc(46), FlashingMetaspriteDraw_cr(cr));
     cyc(24);
-    if (sel_pressed16(cr, b, 0x9000)) {
+    if (sel_pressed16(cr, 0x9000)) {
         r_sep(cr, P_M);
         cyc(86);                        /* BIT, BEQ, SEP, LDA abs */
         r_lda8(cr, 0x7E0000 | W(hud_blank));
@@ -1305,7 +1302,6 @@ void abi_StuntCourseSelectStep(void)
  */
 void BattleCourseSelectStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
@@ -1317,7 +1313,7 @@ void BattleCourseSelectStep(Carried *cr)
     (cyc(84), Set0D37FromTable_cr(cr));
     (cyc(46), FlashingMetaspriteDraw_cr(cr));
     cyc(24);
-    if (sel_pressed16(cr, b, 0x9000)) {
+    if (sel_pressed16(cr, 0x9000)) {
         cyc(102);
         CourseZoomBattle(cr);
         cyc(42);
@@ -1438,14 +1434,13 @@ void abi_TimeUpCursorStep(void)
 /* The body of TimeUpCursorStep, up to its RTS. */
 static void time_up_cursor_body(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(hud_blank));
     if ((uint8_t)cr->a) {
         cyc(40);
-        if (sel_pressed16(cr, b, 0x0400)) {
+        if (sel_pressed16(cr, 0x0400)) {
             time_up_sound(cr);
             cyc(24);
             wr8(0x7E0000 | W(hud_blank), 0x00);
@@ -1453,7 +1448,7 @@ static void time_up_cursor_body(Carried *cr)
         }
         return;
     } else { cyc(46); }
-    if (sel_pressed16(cr, b, 0x0800)) {
+    if (sel_pressed16(cr, 0x0800)) {
         time_up_sound(cr);
         time_up_set(cr, 0x7E0000 | W(hud_blank), 0xFF);
         return;
@@ -1464,7 +1459,7 @@ static void time_up_cursor_body(Carried *cr)
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? (cyc(62), P_C) : (cyc(56), 0))));
     if (v != 0x02) {
-        if (sel_pressed16(cr, b, 0x0400)) {
+        if (sel_pressed16(cr, 0x0400)) {
             time_up_sound(cr);
             cyc(24);
             wr8(0x7E0000 | W(wram_0D63), 0x00);
@@ -1480,7 +1475,7 @@ static void time_up_cursor_body(Carried *cr)
         }
         return;
     }
-    if (sel_pressed16(cr, b, 0x0400)) {
+    if (sel_pressed16(cr, 0x0400)) {
         time_up_sound(cr);
         cyc(24);
         wr8(0x7E0000 | W(wram_0D63), 0x00);
@@ -1604,7 +1599,7 @@ void abi_CourseZoomFromSelection4(void);
    (RecordsUnpackCourseTotals), $0D44 = $0D43 = 2 and $0D42 = $1E, and it
    leaves through its caller's frame (returns 1); otherwise the flashing
    sprite of set 0 (FlashingMetaspriteDraw0). */
-static int records_key(Carried *cr, uint32_t b)
+static int records_key(Carried *cr)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x30);
@@ -1615,7 +1610,7 @@ static int records_key(Carried *cr, uint32_t b)
     r_lda8(cr, 0x7E0000 | W(wram_0D44));
     if (!(uint8_t)cr->a) {
         cyc(40);
-        if (!sel_pressed(cr, b, 0x9000)) {
+        if (!sel_pressed(cr, 0x9000)) {
             cr->a = (uint16_t)(cr->a & 0xFF00);
             set_p(cr, nz8(cr->p, 0));
             cyc(84);
@@ -1657,10 +1652,9 @@ static int records_key(Carried *cr, uint32_t b)
  */
 void CourseRecordsKey(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
-    if (!records_key(cr, b))
+    if (!records_key(cr))
         { cyc(42); return; }
     cpu.s = (uint16_t)(cpu.s + 1);
     cpu.s = (uint16_t)(cpu.s + 1);
@@ -1687,9 +1681,9 @@ void abi_CourseRecordsKey(void)
 /* C-to-C: CourseRecordsKey from a routine of this file, its leaving being
    that routine's own return; A as its PLAs leave it (the JSR's return
    address high byte, $E6). */
-static int records_key_inner(Carried *cr, uint32_t b)
+static int records_key_inner(Carried *cr)
 {
-    if (!records_key(cr, b))
+    if (!records_key(cr))
         { cyc(42); return 0; } else { cyc(98); }
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xE6);
     set_p(cr, nz8(cr->p, 0xE6));
@@ -1697,7 +1691,7 @@ static int records_key_inner(Carried *cr, uint32_t b)
 }
 
 /* LDA #$80, STA $0D37, LDA #y, STA $0D38: the flashing sprite. */
-static void records_sprite(Carried *cr, uint32_t b, uint8_t y)
+static void records_sprite(Carried *cr, uint8_t y)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
     cyc(56);
@@ -1723,7 +1717,6 @@ static void records_sprite(Carried *cr, uint32_t b, uint8_t y)
  */
 void CourseRecordsSelectStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     int open;
 
@@ -1749,36 +1742,36 @@ void CourseRecordsSelectStep(Carried *cr)
             cyc(42);
             return;
         }
-        if (records_key_inner(cr, b))
+        if (records_key_inner(cr))
             return;
         cyc(24);
         r_lda8(cr, 0x7E0000 | W(wram_0D4A));
         if (!(uint8_t)cr->a) {
-            records_sprite(cr, b, 0xB0);
+            records_sprite(cr, 0xB0);
             cyc(24);
-            if (sel_pressed(cr, b, 0x0800)) {
+            if (sel_pressed(cr, 0x0800)) {
                 sel_sound(cr);
-                sel_row(cr, b, 0x01);
+                sel_row(cr, 0x01);
             } else { cyc(44); }
             cyc(42);
             return;
         } else { cyc(6); }
-        records_sprite(cr, b, 0x60);
+        records_sprite(cr, 0x60);
         r_sep(cr, P_M);
         cyc(22);
         open = sel_open(cr, 0x02);
-        if (open && (cyc(2), sel_pressed(cr, b, 0x0800))) {
+        if (open && (cyc(2), sel_pressed(cr, 0x0800))) {
             sel_sound(cr);
             cyc(8);
             v = (uint8_t)(rd8(0x7E0000 | W(wram_0D63)) - 1);
             cyc(6);
             wr8(0x7E0000 | W(wram_0D63), v);
             cyc(16);
-            sel_row(cr, b, 0x02);
+            sel_row(cr, 0x02);
             cyc(42);
             return;
         } else { cyc(open ? 68 : 62); }
-        if (sel_pressed(cr, b, 0x0400)) {
+        if (sel_pressed(cr, 0x0400)) {
             sel_sound(cr);
             cyc(8);
             wr8(0x7E0000 | W(wram_0D4A), 0x00);
@@ -1803,16 +1796,16 @@ void CourseRecordsSelectStep(Carried *cr)
         cyc(42);
         return;
     } else { cyc(86); }
-    if (records_key_inner(cr, b))
+    if (records_key_inner(cr))
         return;
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_0D4A));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(16), P_C) : (cyc(22), 0))));
     if (v == 0x01) {
-        records_sprite(cr, b, 0xB0);
+        records_sprite(cr, 0xB0);
         cyc(24);
-        if (sel_pressed(cr, b, 0x0400)) {
+        if (sel_pressed(cr, 0x0400)) {
             sel_sound(cr);
             cyc(8);
             wr8(0x7E0000 | W(wram_0D63), 0x00);
@@ -1821,18 +1814,18 @@ void CourseRecordsSelectStep(Carried *cr)
             cyc(42);
             return;
         } else { cyc(68); }
-        if (sel_pressed(cr, b, 0x0800)) {
+        if (sel_pressed(cr, 0x0800)) {
             sel_sound(cr);
-            sel_row(cr, b, 0x02);
+            sel_row(cr, 0x02);
         } else { cyc(44); }
         cyc(42);
         return;
     }
-    records_sprite(cr, b, 0x60);
+    records_sprite(cr, 0x60);
     cyc(24);
-    if (sel_pressed(cr, b, 0x0400)) {
+    if (sel_pressed(cr, 0x0400)) {
         sel_sound(cr);
-        sel_row(cr, b, 0x01);
+        sel_row(cr, 0x01);
     } else { cyc(44); }
     cyc(42);
 }
@@ -1950,7 +1943,7 @@ static void records_reopen_body(Carried *cr)
 /* 02:E7B4: the cursor's level column ($0F05 + $0D4A * 4 + $0D48) set by
    the count $0D42: 0 below $10, 1 to $17, 2 to $1F, 3 at $20-$21, 4
    from $22. */
-static void records_pulse(Carried *cr, uint32_t b)
+static void records_pulse(Carried *cr)
 {
     uint8_t v;
     uint16_t x;
@@ -2000,7 +1993,6 @@ static void records_pulse(Carried *cr, uint32_t b)
  */
 void CourseRecordsClosing(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     cyc(24);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D42)) + 1);
 
@@ -2009,7 +2001,7 @@ void CourseRecordsClosing(Carried *cr)
     wr8(0x7E0000 | W(wram_0D42), v);
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : (cyc(16), 0))));
     if (v < 0x2A) {
-        records_pulse(cr, b);
+        records_pulse(cr);
         return;
     }
     cr->a = (uint16_t)(cr->a & 0xFF00);
@@ -2048,7 +2040,6 @@ void abi_CourseRecordsClosing(void)
  */
 void CourseRecordsShown(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     cyc(24);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D42)) - 1);
 
@@ -2073,7 +2064,7 @@ void CourseRecordsShown(Carried *cr)
     r_lda8(cr, 0x7E0000 | W(digit62_override));
     if ((uint8_t)cr->a)
         { cyc(58); return; }
-    records_pulse(cr, b);
+    records_pulse(cr);
 }
 
 void abi_CourseRecordsShown(void)
@@ -2451,7 +2442,7 @@ void abi_CoursePreviewReset(void)
 }
 
 /* LDA #2, STA $0D40: the select's state 2. */
-static void screen_state2(Carried *cr, uint32_t b)
+static void screen_state2(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x02);
     set_p(cr, nz8(cr->p, 0x02));
@@ -2468,9 +2459,8 @@ static void screen_state2(Carried *cr, uint32_t b)
  */
 void CourseScreenStartSpeed(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
-    screen_state2(cr, b);
+    screen_state2(cr);
     cyc(24);
     wr8(0x7E0000 | W(wram_10D8), 0x00);
     cyc(42);
@@ -2497,7 +2487,7 @@ void abi_CourseScreenStartSpeed(void)
  */
 void CourseScreenStartAll(Carried *cr)
 {
-    screen_state2(cr, (uint32_t)cr->db << 16);
+    screen_state2(cr);
     cyc(42);
 }
 
@@ -2522,7 +2512,7 @@ void abi_CourseScreenStartAll(void)
  */
 void CourseScreenStartBattle(Carried *cr)
 {
-    screen_state2(cr, (uint32_t)cr->db << 16);
+    screen_state2(cr);
     cyc(42);
 }
 
@@ -2547,7 +2537,7 @@ void abi_CourseScreenStartBattle(void)
  */
 void CourseScreenStartStunt(Carried *cr)
 {
-    screen_state2(cr, (uint32_t)cr->db << 16);
+    screen_state2(cr);
     cyc(42);
 }
 
@@ -2776,7 +2766,7 @@ void abi_CourseRecordsDispatch(void)
 
 /* JMP (table,X) with X = $0D40 (8-bit): the state's step; any other word
    (a state past the table's end) through jump_routine. */
-static void screen_state(Carried *cr, uint32_t b, uint16_t table)
+static void screen_state(Carried *cr, uint16_t table)
 {
     cyc(62);
     cr->x = rd8(0x7E0000 | W(wram_0D40));
@@ -2827,7 +2817,6 @@ static void screen_state(Carried *cr, uint32_t b, uint16_t table)
  */
 void CourseScreenStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     int i;
 
@@ -2842,15 +2831,15 @@ void CourseScreenStep(Carried *cr)
     switch (rd16(0x02E360 + cr->x)) {
     case 0xE3F6:
         r_sep(cr, P_M | P_X);
-        screen_state(cr, b, 0xE3FE);
+        screen_state(cr, 0xE3FE);
         return;
     case 0xE48B:
         r_sep(cr, P_M | P_X);
-        screen_state(cr, b, 0xE493);
+        screen_state(cr, 0xE493);
         return;
     case 0xE49F:
         r_sep(cr, P_M | P_X);
-        screen_state(cr, b, 0xE4A7);
+        screen_state(cr, 0xE4A7);
         return;
     }
     r_sep(cr, P_M);
@@ -2931,10 +2920,10 @@ void CourseScreenStep(Carried *cr)
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? (cyc(18), P_C) : 0)));
     if (v == 0x03) {
         r_sep(cr, P_M | P_X);
-        screen_state(cr, b, 0xE4A7);
+        screen_state(cr, 0xE4A7);
         return;
     }
-    screen_state(cr, b, 0xE3E1);
+    screen_state(cr, 0xE3E1);
 }
 
 void abi_CourseScreenStep(void)
@@ -2995,7 +2984,7 @@ static int fade_step(Carried *cr)
 }
 
 /* SEP #$20, $0D43 = panel, $0D42 = 0, $0D40 = state, colour maths off. */
-static void fade_done(Carried *cr, uint32_t b, uint8_t panel, uint8_t state)
+static void fade_done(Carried *cr, uint8_t panel, uint8_t state)
 {
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | panel);
@@ -3022,7 +3011,7 @@ static void fade_done(Carried *cr, uint32_t b, uint8_t panel, uint8_t state)
 void CourseScreenFadeLeave(Carried *cr)
 {
     if (fade_step(cr)) {
-        fade_done(cr, (uint32_t)cr->db << 16, 0x08, 0x00);
+        fade_done(cr, 0x08, 0x00);
         cyc(42);
     } else { cyc(58); }
 }
@@ -3073,11 +3062,10 @@ void abi_CourseScreenFadeBack(void)
 /* The body of CourseScreenFadeBack, up to its RTS. */
 static void fade_back_body(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     if (!fade_step(cr))
         { cyc(16); return; }
-    fade_done(cr, b, 0x06, 0x02);
+    fade_done(cr, 0x06, 0x02);
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(hud_mode));
     if ((uint8_t)cr->a)

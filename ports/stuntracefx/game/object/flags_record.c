@@ -83,7 +83,7 @@ static void step8(uint32_t addr, int d)
 
 /* The handler of object x: +$1A = h, +$1C = $08 (16-bit then 8-bit
    immediate stores). */
-static void handler08(uint8_t b, uint16_t x, uint16_t h)
+static void handler08(uint16_t x, uint16_t h)
 {
     cyc(76);
     wr16(F(W(obj_1a_w), x), h);
@@ -94,7 +94,7 @@ static void handler08(uint8_t b, uint16_t x, uint16_t h)
 
 /* LDA +f, STA $1F58, LDA $1F58, ORA #$80, STA +$5A: the frame from field
    f, shown. */
-static void frame_from(uint8_t b, uint16_t x, uint16_t f)
+static void frame_from(uint16_t x, uint16_t f)
 {
     uint8_t v;
 
@@ -110,7 +110,7 @@ static void frame_from(uint8_t b, uint16_t x, uint16_t f)
 }
 
 /* LDA #0, ORA #$80, STA +$5A: frame 0, shown. */
-static void frame_zero(uint8_t b, uint16_t x)
+static void frame_zero(uint16_t x)
 {
     lda8();
     lda8();
@@ -281,6 +281,7 @@ static void frame_cycle(uint8_t b, uint16_t x, uint8_t d)
  */
 void ObjectStopMarked(uint8_t b, uint16_t x)
 {
+    (void)b;
     uint8_t v;
 
     cyc(6);
@@ -411,7 +412,7 @@ void ObjectFlagsRecordSetup(uint8_t b, uint16_t x)
     cyc(76);
     wr16(F(W(obj_27), x), 0x0000);
     cyc(22);
-    handler08(b, x, 0xCD7E);
+    handler08(x, 0xCD7E);
     flags_record_tail(b, x);
 }
 
@@ -452,7 +453,7 @@ void abi_ObjectFlagsRecordSetup(void)
  */
 void ObjectFlagsRecordFrame(uint8_t b, uint16_t x)
 {
-    frame_from(b, x, 0x2048);
+    frame_from(x, 0x2048);
     (cyc(30), ObjectFlagsRecordSetup(b, x));
 }
 
@@ -487,8 +488,8 @@ void abi_ObjectFlagsRecordFrame(void)
  */
 void ObjectFrameCycleSetup(uint8_t b, uint16_t x)
 {
-    handler08(b, x, 0xCA6F);
-    frame_zero(b, x);
+    handler08(x, 0xCA6F);
+    frame_zero(x);
     (cyc(30), flags_record_tail(b, x));
 }
 
@@ -558,7 +559,7 @@ void ObjectFrameCycleBackSetup(uint8_t b, uint16_t x)
 {
     uint8_t v;
 
-    handler08(b, x, 0xCAC3);
+    handler08(x, 0xCAC3);
     cyc(6);
     v = (uint8_t)(ld8(F(W(obj_48), x)) - 1);
     lda8();
@@ -633,8 +634,8 @@ void ObjectFrameSwingSetup(uint8_t b, uint16_t x)
 {
     uint8_t v;
 
-    handler08(b, x, 0xCB15);
-    frame_zero(b, x);
+    handler08(x, 0xCB15);
+    frame_zero(x);
     cyc(6);
     v = ld8(F(W(obj_4a), x));
     cyc(30);
@@ -684,7 +685,7 @@ void ObjectFrameSwingStep(uint8_t b, uint16_t x)
         (cyc(22), frames_to_record(b, x));
         return;
     } else { cyc(22); }
-    frame_from(b, x, 0x2030);
+    frame_from(x, 0x2030);
     cyc(6);
     v = ld8(F(W(obj_48), x));
     cyc(24);

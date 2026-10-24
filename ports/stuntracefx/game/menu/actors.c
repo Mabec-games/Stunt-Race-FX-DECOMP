@@ -145,6 +145,7 @@ void abi_MenuActorPoolInit(void)
  */
 uint16_t MenuActorAlloc(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     uint16_t depth = rd16(cyc_then(24, (0x7E0000 | W(actor_free_depth)))), rec, len;
 
     if (depth == ACTOR_SIZE) {
@@ -201,6 +202,7 @@ void abi_MenuActorAlloc(void)
  */
 uint16_t MenuActorFree(uint8_t bank, uint16_t rec, uint16_t slot)
 {
+    (void)bank;
     uint16_t depth = (uint16_t)(rd16(cyc_then(38, (0x7E0000 | W(actor_free_depth)))) - 2), len, moved;
 
     wr16((0x7E0000 | W(actor_free_depth)), cyc_then(52, depth));
@@ -257,6 +259,7 @@ static uint16_t find_last_kind;
 
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    (void)bank;
     uint16_t i;
     int walked = 0;
 
@@ -287,6 +290,7 @@ int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t
    *a is A's low byte, as the last record looked at left it. */
 void MenuActorFind8(uint8_t bank, uint8_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint8_t *a)
 {
+    (void)bank;
     uint8_t v = 0, m;
     uint16_t i;
 
@@ -361,6 +365,7 @@ void abi_MenuActorFind(void)
  */
 uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p)
 {
+    (void)bank;
     uint16_t i, rec, a = kind;
 
     wr16((0x7E0000 | W(scratch_11df)), cyc_then(24, value));
@@ -416,6 +421,7 @@ void abi_MenuActorsSet10(void)
  */
 uint16_t MenuActorApplyPalette(uint8_t bank, uint16_t rec, uint16_t *y, uint8_t *p)
 {
+    (void)bank;
     cyc(68);
     uint16_t pal = rd16((uint16_t)(rec + W(actor_palette))), i, n, a = 0;
     unsigned s;
@@ -540,6 +546,7 @@ void abi_MenuActorIdleCE89(void)
  */
 uint16_t MenuActorBlink(uint8_t bank, uint16_t *x)
 {
+    (void)bank;
     cyc(70);
     uint16_t a = rd16(0x7E0000 | W(menu_blink_counter)) & 0x0003;
 
@@ -591,6 +598,7 @@ void abi_MenuActorBlink(void)
  */
 uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
     uint16_t anim = rd16((uint16_t)(rec + W(actor_anim))), t, pos, i, d, g, m;
     unsigned s;
@@ -722,7 +730,7 @@ void abi_MenuActorCountdown(void)
    -1) added; stored at $18BF, and at $18C1 raised to at least $A8. C is the
    compare with $A8, V the add of $80, N and Z from $11F9, which is read
    once into *x. */
-static uint16_t sine_position(uint8_t bank, uint16_t *x, uint16_t step, uint8_t *p)
+static uint16_t sine_position(uint16_t *x, uint16_t step, uint8_t *p)
 {
     cyc(22);
     uint16_t i = (uint16_t)(rd16((uint16_t)(*x + W(actor_0a))) - 0x40) & 0x00FF, v = rd16(cyc_then(302, 0x0096FE + i)) & 0x00FF, s;
@@ -759,7 +767,8 @@ static uint16_t sine_position(uint8_t bank, uint16_t *x, uint16_t step, uint8_t 
  */
 uint16_t MenuSinePosition(uint8_t bank, uint16_t *x, uint8_t *p)
 {
-    return sine_position(bank, x, 0x0001, p);
+    (void)bank;
+    return sine_position(x, 0x0001, p);
 }
 
 void MenuSinePosition_cr(Carried *cr)
@@ -793,8 +802,9 @@ void abi_MenuSinePosition(void)
  */
 uint16_t MenuSinePosition7F(uint8_t bank, uint16_t *x, uint8_t *p)
 {
+    (void)bank;
     cyc(46);
-    return sine_position(bank, x, 0xFFFF, p);
+    return sine_position(x, 0xFFFF, p);
 }
 
 void MenuSinePosition7F_cr(Carried *cr)
@@ -831,6 +841,7 @@ void abi_MenuSinePosition7F(void)
  */
 uint16_t MenuActorSetTiles(uint8_t bank, uint16_t rec, uint16_t i, uint16_t off, uint8_t *p)
 {
+    (void)bank;
     cyc(156);
     uint16_t e = (uint16_t)(off + rd16((uint16_t)(rec + W(actor_12)))), t, w, r;
 
@@ -1521,7 +1532,7 @@ void VramDmaQueueAdd(void);
 
 /* Queues $40 bytes from $7F:src to VRAM word address dest through the
    transfer request words at $16B1-$16B7. */
-static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
+static void queue_frame_row(uint16_t dest, uint16_t src)
 {
     cyc(46);
     wr16(0x7E0000 | W(wram_16B7), dest);
@@ -1553,7 +1564,7 @@ static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
  */
 uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint16_t *xo, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t n, i, v, src, e, s = 0, at;
 
     cyc(38);
@@ -1583,11 +1594,11 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint1
         cyc(98);
         src = (uint16_t)((v & 0x7FFF) + rd16(0x7E0000 | W(scratch_11e9)));
         cyc(54);
-        queue_frame_row(b, rd16(0x7E0000 | W(scratch_11e1)), src);
+        queue_frame_row(rd16(0x7E0000 | W(scratch_11e1)), src);
         cyc(90);
         wr8(0x7E0000 | W(wram_11E2), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(wram_11E2)) + 1)));
         cyc(46);
-        queue_frame_row(b, rd16(0x7E0000 | W(scratch_11e1)), cyc_then(74, (uint16_t)(src + 0x0200)));
+        queue_frame_row(rd16(0x7E0000 | W(scratch_11e1)), cyc_then(74, (uint16_t)(src + 0x0200)));
         cyc(68);
         wr16(0x7E0000 | W(scratch_11e3), cyc_then(14, (uint16_t)(rd16(0x7E0000 | W(scratch_11e3)) + 1)));  /* two memory increments */
         cyc(24);
@@ -2219,6 +2230,7 @@ void Hang(Carried *cr);
  */
 uint16_t MenuActorCopyGroup(Carried *cr, uint8_t bank, uint16_t *xo, uint8_t *p)
 {
+    (void)bank;
     cyc(24);
     uint16_t x = rd16(0x7E0000 | W(actor_current)), src, dst, size, a = 0;
     unsigned s;

@@ -213,6 +213,7 @@ void abi_ObjectListFreeAllCopy(void)
  */
 void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
 {
+    (void)bank;
     uint16_t at = parent, next;
 
     cyc(24);
@@ -266,7 +267,7 @@ void abi_ObjectLinkChild(void)
 /* The two chain searches: from `from`, follow +$27 until a child whose
    +$48 is the tag (stored first at $1A30) or the end of the chain. The
    flags are those of the last compare, then N, Z from the pulled index. */
-static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, uint8_t *p)
+static uint16_t find_tag(uint8_t tag, uint16_t from, uint8_t *a, uint8_t *p)
 {
     uint16_t at = from, next;
     uint8_t t, want;
@@ -302,7 +303,8 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
  */
 uint16_t ObjectChildFindTagX(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
 {
-    return find_tag(bank, tag, obj, a, p);
+    (void)bank;
+    return find_tag(tag, obj, a, p);
 }
 
 void ObjectChildFindTagX_cr(Carried *cr)
@@ -337,7 +339,8 @@ void abi_ObjectChildFindTagX(void)
  */
 uint16_t ObjectChildFindTagY(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
 {
-    return find_tag(bank, tag, obj, a, p);
+    (void)bank;
+    return find_tag(tag, obj, a, p);
 }
 
 void ObjectChildFindTagY_cr(Carried *cr)

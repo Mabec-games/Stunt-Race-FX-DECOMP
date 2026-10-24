@@ -141,7 +141,7 @@ static void burst_piece(Carried *cr, uint16_t kind, int last);
 static void camera_on(Carried *cr, uint16_t car, uint16_t y, uint16_t z, int by_x);
 static void child_back(Carried *cr);
 static int child_d1bf(Carried *cr);
-static int child_fast(Carried *cr, uint32_t b);
+static int child_fast(Carried *cr);
 static void child_flags(Carried *cr);
 static void child_handler(Carried *cr, uint16_t h);
 static uint16_t child_y(Carried *cr, uint16_t f5, uint16_t a);
@@ -1139,7 +1139,7 @@ static uint16_t abs16(uint16_t w)
 
 /* With record X: whether |+$2E| + |+$32| (kept in $1F2B) is at least $64,
    signed (BPL after CMP #$0064). */
-static int child_fast(Carried *cr, uint32_t b)
+static int child_fast(Carried *cr)
 {
     uint16_t w;
 
@@ -1192,7 +1192,7 @@ static void child_handler(Carried *cr, uint16_t h)
  */
 void ObjectChildFollow(Carried *cr)
 {
-    uint32_t b = (cyc(92), db(cr));
+    cyc(92);
     uint16_t obj = cr->x, me, w, d;
     unsigned lead = 110;
 
@@ -1271,30 +1271,30 @@ void ObjectChildFollow(Carried *cr)
         if (!child_d1bf(cr))
             { cyc(0); goto place; } else { cyc(0); }
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
-        child_handler(cr, cyc_then(28, child_fast(cr, b) ? 0xD33F : (cyc(24), 0xD303)));
+        child_handler(cr, cyc_then(28, child_fast(cr) ? 0xD33F : (cyc(24), 0xD303)));
         goto place;
     } else { cyc(78); }
     if (d & 0x2000) {
-        if (child_fast(cr, b) && child_d1bf(cr))
+        if (child_fast(cr) && child_d1bf(cr))
             { cyc(6); child_handler(cr, 0xD2CF); } else { cyc(22); }
         cyc(2);
         goto place;
     } else { cyc(46); }
     if (d & 0x0800) {
-        if (child_fast(cr, b) && child_d1bf(cr))
+        if (child_fast(cr) && child_d1bf(cr))
             { cyc(6); child_handler(cr, 0xD249); } else { cyc(22); }
         cyc(2);
         goto place;
     } else { cyc(46); }
     if (d & 0x1000) {
-        if (child_fast(cr, b) && child_d1bf(cr))
+        if (child_fast(cr) && child_d1bf(cr))
             { cyc(6); child_handler(cr, 0xD1F7); } else { cyc(22); }
         cyc(2);
         goto place;
     }
     if (d & 0x0060) {
         cyc(46);
-        if (child_fast(cr, b) && child_d1bf(cr))
+        if (child_fast(cr) && child_d1bf(cr))
             { cyc(6); child_handler(cr, 0xD39F); } else { cyc(22); }
         cyc(2);
         goto place;
@@ -5556,13 +5556,11 @@ void abi_ObjectMarkerFollow(void)
  */
 void ObjectMarkerStart(Carried *cr)
 {
-    uint32_t b;
 
     cyc(36);
     lda8(cr, 0x7E);
     cr->db = 0x7E;
     set_p(cr, nz8(cr->p, 0x7E));
-    b = db(cr);
     set_handler(cr, cr->x, 0x9EFD);
     cyc(30);
     lda8(cr, (uint8_t)(rd8(0x7E0000 | (uint16_t)(W(obj_24) + cr->x)) | 0x08));

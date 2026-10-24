@@ -27,6 +27,7 @@
  */
 uint16_t SpriteSlotFirst(uint8_t bank, uint16_t *x, uint8_t *p)
 {
+    (void)bank;
     uint16_t a = 0x0000, w;
     uint8_t m;
     int found = 0;
@@ -154,6 +155,7 @@ void abi_SpriteSlotFirstLong(void)
  */
 uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
 {
+    (void)bank;
     uint16_t r = 0x059D;
     uint8_t a;
     unsigned t = 44; /* BNE taken, STZ; or REP, SEP, LDA #, STZ */
@@ -239,6 +241,7 @@ void abi_SpriteSlot1Countdown(void)
  */
 uint8_t SpriteSlot4Brighten(uint8_t bank)
 {
+    (void)bank;
     uint16_t r = 0x05B5;
     uint8_t a;
 
@@ -297,6 +300,7 @@ void abi_SpriteSlot4Brighten(void)
  */
 uint8_t SpriteSlot4Darken(uint8_t bank)
 {
+    (void)bank;
     uint16_t r = 0x05B5;
     uint8_t a;
 
@@ -358,6 +362,7 @@ void abi_SpriteSlot4Darken(void)
  */
 uint8_t SpriteSlot4Full(uint8_t bank)
 {
+    (void)bank;
     uint16_t r = 0x05B5;
     uint8_t a;
 
@@ -397,7 +402,7 @@ void abi_SpriteSlot4Full(void)
 }
 
 /* Marks record r in use (mask bit) and sets +$04 = 0, +$05 = 2, +$06 = k. */
-static void slot_show(uint8_t bank, uint16_t r, uint8_t bit, uint8_t k)
+static void slot_show(uint16_t r, uint8_t bit, uint8_t k)
 {
     uint8_t a;
 
@@ -421,10 +426,11 @@ static void slot_show(uint8_t bank, uint16_t r, uint8_t bit, uint8_t k)
  */
 uint8_t SpriteSlot2Brighten(uint8_t bank)
 {
+    (void)bank;
     uint16_t r = 0x05A5;
     uint8_t a;
 
-    slot_show(bank, r, 0x04, 0x07);
+    slot_show(r, 0x04, 0x07);
     cyc(38);
     a = rd8((uint16_t)(r + 7));
     cyc(22);
@@ -552,9 +558,9 @@ void abi_SpriteSlot1Start(void)
 }
 
 /* Records 5 and 6 with +$01, +$02, +$03 and +$00: the shared stores. */
-static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8_t c23, int c1_last)
+static void slot_colour(uint16_t r, uint8_t bit, uint8_t c1, uint8_t c23, int c1_last)
 {
-    slot_show(bank, r, bit, 0x27);
+    slot_show(r, bit, 0x27);
     if (!c1_last) {
         cyc(22);
         wr8((uint16_t)(r + 1), c1);
@@ -588,7 +594,8 @@ static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8
  */
 uint8_t SpriteSlot6Yellow(uint8_t bank)
 {
-    slot_colour(bank, W(wram_05C5), 0x40, 0x00, 0x1F, 0);
+    (void)bank;
+    slot_colour(W(wram_05C5), 0x40, 0x00, 0x1F, 0);
     return 0x1F;
 }
 
@@ -620,7 +627,8 @@ void abi_SpriteSlot6Yellow(void)
  */
 uint8_t SpriteSlot6DimYellow(uint8_t bank)
 {
-    slot_colour(bank, W(wram_05C5), 0x40, 0x00, 0x07, 0);
+    (void)bank;
+    slot_colour(W(wram_05C5), 0x40, 0x00, 0x07, 0);
     return 0x07;
 }
 
@@ -653,7 +661,8 @@ void abi_SpriteSlot6DimYellow(void)
  */
 uint8_t SpriteSlot6Red(uint8_t bank)
 {
-    slot_colour(bank, W(wram_05C5), 0x40, 0x1F, 0x00, 1);
+    (void)bank;
+    slot_colour(W(wram_05C5), 0x40, 0x1F, 0x00, 1);
     return 0x1F;
 }
 
@@ -686,7 +695,8 @@ void abi_SpriteSlot6Red(void)
  */
 uint8_t SpriteSlot5DimRed(uint8_t bank)
 {
-    slot_colour(bank, W(wram_05BD), 0x20, 0x0A, 0x00, 1);
+    (void)bank;
+    slot_colour(W(wram_05BD), 0x20, 0x0A, 0x00, 1);
     return 0x0A;
 }
 
@@ -718,6 +728,7 @@ void abi_SpriteSlot5DimRed(void)
  */
 uint8_t SpriteSlot5Off(uint8_t bank)
 {
+    (void)bank;
     uint8_t a;
 
     a = rd8(cyc_then(142, (0x7E0000 | W(slot_mask))));
@@ -758,10 +769,11 @@ void abi_SpriteSlot5Off(void)
  */
 uint8_t SpriteSlot2Darken(uint8_t bank)
 {
+    (void)bank;
     uint16_t r = 0x05A5;
     uint8_t a;
 
-    slot_show(bank, r, 0x04, 0x07);
+    slot_show(r, 0x04, 0x07);
     cyc(38);
     a = rd8((uint16_t)(r + 7));
     cyc(22);
@@ -883,7 +895,8 @@ void abi_SpriteSlot2FadeOut(void)
  */
 uint8_t SpriteSlot5Yellow(uint8_t bank)
 {
-    slot_colour(bank, W(wram_05BD), 0x20, 0x00, 0x1F, 0);
+    (void)bank;
+    slot_colour(W(wram_05BD), 0x20, 0x00, 0x1F, 0);
     return 0x1F;
 }
 

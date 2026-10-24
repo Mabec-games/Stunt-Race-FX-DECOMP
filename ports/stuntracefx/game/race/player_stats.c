@@ -156,8 +156,8 @@ static void p1_next(Carried *cr, uint16_t end);
 static uint8_t p1_step8(Carried *cr, uint32_t at, int d);
 static void phase_jump(Carried *cr, uint16_t table);
 static void player0_stats(Carried *cr);
-static void race_end_go_on(Carried *cr, uint32_t b);
-static void race_end_vblank(Carried *cr, uint32_t b, uint32_t branch);
+static void race_end_go_on(Carried *cr);
+static void race_end_vblank(Carried *cr, uint32_t branch);
 static void race_flag_p1(Carried *cr, uint32_t b);
 static void race_flag_p2(Carried *cr, uint32_t b);
 static void race_frame_end(Carried *cr, uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0);
@@ -166,7 +166,7 @@ static void race_x_block(Carried *cr, uint32_t b, uint8_t stage, void (*flag)(Ca
 static void race_x_test(Carried *cr, uint32_t b, uint16_t pressed);
 static void stats_player0(Carried *cr);
 static void stunt_count_byte(Carried *cr, uint32_t b);
-static void stunt_count_down(Carried *cr, uint32_t b, uint32_t lead);
+static void stunt_count_down(Carried *cr, uint32_t lead);
 static int time_cmp8(Carried *cr, uint8_t m);
 static void w_GlyphRowsAt32(Carried *cr);
 static void w_GlyphRowsAt56(Carried *cr);
@@ -503,11 +503,9 @@ void abi_PlayerStatsThenPhaseE232(void)
  */
 void PlayerStatsThenPhaseDD35(Carried *cr)
 {
-    uint32_t b;
     uint8_t v;
 
     (cyc(0), player0_stats(cr));
-    b = (uint32_t)cr->db << 16;
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_10CD));
     if ((uint8_t)cr->a) {
@@ -604,6 +602,7 @@ static void race_x_test(Carried *cr, uint32_t b, uint16_t pressed)
 
 static void race_flag_p1(Carried *cr, uint32_t b)
 {
+    (void)b;
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     set_p(cr, nz8(cr->p, 0xFF));
     cyc(40);
@@ -612,6 +611,7 @@ static void race_flag_p1(Carried *cr, uint32_t b)
 
 static void race_flag_p2(Carried *cr, uint32_t b)
 {
+    (void)b;
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x01);
     set_p(cr, nz8(cr->p, 0x01));
     cyc(40);
@@ -1269,7 +1269,7 @@ static void stunt_count_byte(Carried *cr, uint32_t b)
 }
 
 /* DEC $0E3F (8-bit); at 0, $0E41 = 0. */
-static void stunt_count_down(Carried *cr, uint32_t b, uint32_t lead)
+static void stunt_count_down(Carried *cr, uint32_t lead)
 {
     cyc(lead);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0E3F)) - 1);
@@ -1430,7 +1430,7 @@ void StuntPanelCount(Carried *cr)
     stunt_count_byte(cr, b);
     w_GsuF15BTwoLines(cr);
     r_sep(cr, P_M | P_X);
-    stunt_count_down(cr, b, 66);
+    stunt_count_down(cr, 66);
 }
 
 void abi_StuntPanelCount(void)
@@ -1461,7 +1461,7 @@ void StuntPanelShow(Carried *cr)
     stunt_count_byte(cr, b);
     w_GlyphRowsAt32(cr);
     r_sep(cr, P_M);
-    stunt_count_down(cr, b, 46);
+    stunt_count_down(cr, 46);
 }
 
 void abi_StuntPanelShow(void)
@@ -2203,7 +2203,7 @@ void abi_TimeUpPhaseRace(void)
 
 /* SEP #$20, LDA $0DD4: on at RaceRestart when set, else at
    RaceEndVideoReset (jumps). */
-static void race_end_go_on(Carried *cr, uint32_t b)
+static void race_end_go_on(Carried *cr)
 {
     r_sep(cr, P_M);
     cyc(46);
@@ -2227,7 +2227,6 @@ static void race_end_go_on(Carried *cr, uint32_t b)
  */
 void TimeUpPhaseEnd(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     r_sep(cr, P_M);
@@ -2239,7 +2238,7 @@ void TimeUpPhaseEnd(Carried *cr)
         cyc(68);
         wr8(0x7E0000 | W(wram_0D59), 0x00);
         (cyc(46), ChampionshipScreenLoop(cr));
-        race_end_go_on(cr, b);
+        race_end_go_on(cr);
         return;
     }
     v = (uint8_t)(v - 1);
@@ -2328,7 +2327,7 @@ void abi_RaceEndCountdownFadeOn(void);
 void abi_RaceEndCountdownOn(void);
 
 /* LDA $0D52 until set (the vertical blank), then clear it. */
-static void race_end_vblank(Carried *cr, uint32_t b, uint32_t branch)
+static void race_end_vblank(Carried *cr, uint32_t branch)
 {
     cyc(branch);                        /* the branch back to the top, if any */
     do {
@@ -2352,12 +2351,11 @@ static void race_end_vblank(Carried *cr, uint32_t b, uint32_t branch)
  */
 void RaceEndCountdownFade(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     uint32_t branch = 0;
 
     for (;;) {
-        race_end_vblank(cr, b, branch);
+        race_end_vblank(cr, branch);
         branch = 22;
         cyc(24);
         r_lda8(cr, 0x7E0000 | W(wram_0E56));
@@ -2421,12 +2419,11 @@ void abi_RaceEndCountdownFade(void)
  */
 void RaceEndCountdown(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     uint32_t branch = 0;
 
     do {
-        race_end_vblank(cr, b, branch);
+        race_end_vblank(cr, branch);
         branch = 0;
         cyc(24);
         v = (uint8_t)(rd8(0x7E0000 | W(wram_0E5A)) - 1);
@@ -2462,7 +2459,7 @@ void abi_RaceEndCountdown(void)
  */
 void RaceEndCountdownFadeOn(Carried *cr)
 {
-    race_end_go_on(cr, (uint32_t)cr->db << 16);
+    race_end_go_on(cr);
 }
 
 void abi_RaceEndCountdownFadeOn(void)
@@ -2487,7 +2484,7 @@ void abi_RaceEndCountdownFadeOn(void)
  */
 void RaceEndCountdownOn(Carried *cr)
 {
-    race_end_go_on(cr, (uint32_t)cr->db << 16);
+    race_end_go_on(cr);
 }
 
 void abi_RaceEndCountdownOn(void)

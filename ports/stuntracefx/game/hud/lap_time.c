@@ -319,7 +319,7 @@ void abi_TimeUnpackBcdLong(void)
    decimal flag is as the caller set it. dp: direct page
    operands (TimeAddToTotal), else absolute,X (TimeAddToNext). Returns the
    last byte (A's low byte on exit). */
-static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t *p)
+static uint8_t time_add(uint16_t x, uint32_t to[3], int dp, uint8_t *p)
 {
     uint8_t v;
     int big;
@@ -394,9 +394,10 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
  */
 uint8_t TimeAddToTotal(uint8_t bank, uint16_t x, uint8_t *p)
 {
+    (void)bank;
     uint32_t to[3] = {0x0000F1, W(dp_f2), W(dp_f3)};
 
-    return time_add((uint32_t)bank << 16, x, to, 1, p);
+    return time_add(x, to, 1, p);
 }
 
 void TimeAddToTotal_cr(Carried *cr)
@@ -430,10 +431,10 @@ void abi_TimeAddToTotal(void)
  */
 uint8_t TimeAddToNext(uint8_t bank, uint16_t x, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint32_t to[3] = {0x7E0000 | (uint16_t)(W(record_times) + 3 + x), 0x7E0000 | (uint16_t)(W(record_times) + 4 + x), 0x7E0000 | (uint16_t)(W(record_times) + 5 + x)};
 
-    return time_add(b, x, to, 0, p);
+    return time_add(x, to, 0, p);
 }
 
 void TimeAddToNext_cr(Carried *cr)
@@ -591,7 +592,7 @@ void abi_TimeRunningTotals(void)
 static uint8_t exit_x;
 
 /* LDA $0D4A, ASL x3, CLC, ADC $0D4A (8-bit): the course times nine. */
-static uint8_t course_times_9(uint8_t bank, uint8_t *p)
+static uint8_t course_times_9(uint8_t *p)
 {
     uint8_t a;
     int i;
@@ -638,7 +639,8 @@ static uint8_t record_slot_copy(uint8_t x, uint8_t *p)
  */
 uint8_t RecordSlotCopy0(uint8_t bank, uint8_t *p)
 {
-    uint8_t a = course_times_9(bank, p);
+    (void)bank;
+    uint8_t a = course_times_9(p);
 
     cyc(2);
     cyc(2);
@@ -679,7 +681,8 @@ void abi_RecordSlotCopy0(void)
  */
 uint8_t RecordSlotCopy3(uint8_t bank, uint8_t *p)
 {
-    uint8_t a = course_times_9(bank, p);
+    (void)bank;
+    uint8_t a = course_times_9(p);
 
     return record_slot_copy(alu_adc8(a, 0x03, p), p);
 }
@@ -708,7 +711,7 @@ void abi_RecordSlotCopy3(void)
 }
 
 /* LDA $0D4A, ASL, CLC, ADC $0D4A, ASL x3 (8-bit): the course times 24. */
-static uint8_t course_times_24(uint8_t bank, uint8_t *p)
+static uint8_t course_times_24(uint8_t *p)
 {
     uint8_t a;
     int i;
@@ -764,7 +767,7 @@ uint8_t RecordShiftFrom0(uint8_t bank, uint8_t *p)
 
     cyc(46);
     RecordSlotCopy0(bank, p);
-    a = course_times_24(bank, p);
+    a = course_times_24(p);
     cyc(6);
     return times_slot_copy(a, p);
 }
@@ -807,7 +810,7 @@ uint8_t RecordShiftFrom1(uint8_t bank, uint8_t *p)
 
     cyc(46);
     RecordSlotCopy3(bank, p);
-    a = course_times_24(bank, p);
+    a = course_times_24(p);
     return times_slot_copy(alu_adc8(a, 0x08, p), p);
 }
 
@@ -837,7 +840,7 @@ void abi_RecordShiftFrom1(void)
 /* STA $F5, then the record entry at $70:FC6D + course * 9 + $F5 gets the
    name bytes $0F11, $0F12 and the car $0D89. Returns the car (A's low
    byte on exit); exit_x = the entry's offset. */
-static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
+static uint8_t record_name_store(uint8_t slot, uint8_t *p)
 {
     uint8_t a, x, v;
     int i;
@@ -890,8 +893,9 @@ static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
  */
 uint8_t RecordNameStore0(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
-    return record_name_store(bank, 0x00, p);
+    return record_name_store(0x00, p);
 }
 
 void RecordNameStore0_cr(Carried *cr)
@@ -925,8 +929,9 @@ void abi_RecordNameStore0(void)
  */
 uint8_t RecordNameStore3(uint8_t bank, uint8_t *p)
 {
+    (void)bank;
     cyc(22);
-    return record_name_store(bank, 0x03, p);
+    return record_name_store(0x03, p);
 }
 
 void RecordNameStore3_cr(Carried *cr)
@@ -960,7 +965,8 @@ void abi_RecordNameStore3(void)
  */
 uint8_t RecordNameStore6(uint8_t bank, uint8_t *p)
 {
-    return record_name_store(bank, 0x06, p);
+    (void)bank;
+    return record_name_store(0x06, p);
 }
 
 void RecordNameStore6_cr(Carried *cr)
@@ -1314,11 +1320,11 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     cyc(22);
     cyc(16);
     wr8(W(bcd_digits), 0x00);
-    v = course_times_24(bank, &p);
+    v = course_times_24(&p);
     cyc(4);
     sum_into_f1(0x70FC88, v, 24, &p);
     cyc(44);
-    v = course_times_9(bank, &p);
+    v = course_times_9(&p);
     sum = sum_into_f1(0x70FC6D, v, 9, &p);
     cyc(68);
     xx = rd8(0x7E0000 | W(wram_0D4A));

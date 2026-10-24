@@ -271,6 +271,7 @@ void abi_ColoursRedDouble(void)
  */
 void ColoursClear(uint8_t bank)
 {
+    (void)bank;
     int x;
 
     cyc(56);
@@ -498,10 +499,11 @@ void abi_HardwareRegsInit02Long(void)
  * C set, N clear. Built: A = 1; X = the row address + $40 (forwards) or -
  * 2 (backwards), Y = $40; N, Z clear, C set, V from the last add.
  */
-static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, uint16_t *y, uint8_t *p);
+static uint16_t tile_row_pick(uint16_t a, int back, uint16_t *x, uint16_t *y, uint8_t *p);
 
 uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    (void)bank;
     uint16_t a;
     int back;
 
@@ -517,12 +519,12 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     back = (a & 0x8000) != 0;
     if (back)
         { cyc(44); a = (uint16_t)-a; }
-    return tile_row_pick(bank, a, back, x, y, p);
+    return tile_row_pick(a, back, x, y, p);
 }
 
 /* TileRowBuild from its row pick on: the level word a (made positive),
    read backwards with `back`. */
-static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, uint16_t *y, uint8_t *p)
+static uint16_t tile_row_pick(uint16_t a, int back, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint16_t t, i, w;
 
@@ -585,7 +587,7 @@ void abi_TileRowBuild(void)
 void TileRowBuildZero(Carried *cr)
 {
     cyc(30);
-    cr->a = tile_row_pick(cr->db, 0x0000, 0, &cr->x, &cr->y, &cr->p);
+    cr->a = tile_row_pick(0x0000, 0, &cr->x, &cr->y, &cr->p);
 }
 
 void abi_TileRowBuildZero(void)

@@ -932,6 +932,7 @@ static uint8_t unpack_high, unpack_y, unpack_x;   /* the adapter's: A's high byt
 
 uint8_t RecordsUnpackCourse(uint8_t bank)
 {
+    (void)bank;
     uint16_t x, a, min = 0, sec, hund = 0;
     uint8_t c, p;
     unsigned i;
@@ -1329,6 +1330,7 @@ static uint8_t dp_high_nibble(uint16_t d, uint8_t a)
  */
 uint8_t RecordTimeDigitsSmall(uint8_t bank, uint16_t d, uint16_t packed, uint16_t y)
 {
+    (void)bank;
     uint16_t min, sec;
     uint8_t v;
 
@@ -1389,6 +1391,7 @@ void abi_RecordTimeDigitsSmall(void)
  */
 uint8_t RecordScoreDigits(uint8_t bank, uint16_t d, uint16_t s, uint16_t y)
 {
+    (void)bank;
     static const uint16_t perfect[7] = {0x3619, 0x360E, 0x361B, 0x360F, 0x360E, 0x360C, 0x361D};
     uint8_t v;
     unsigned i;
@@ -2006,7 +2009,7 @@ static int cmp_sound;
 static uint8_t cmp_low, cmp_c;
 static uint16_t cmp_x;
 
-static void compare_result(uint32_t b, uint8_t r)
+static void compare_result(uint8_t r)
 {
     uint8_t v;
 
@@ -2042,7 +2045,7 @@ static uint8_t cmp_high;                /* A's high byte: $0F2B's */
 
 void RecordTimeCompare(uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint8_t v, m;
     uint16_t w, i;
 
@@ -2053,7 +2056,7 @@ void RecordTimeCompare(uint8_t bank, uint16_t x)
     if (w == 0xFFFF) {
         cyc(46);                        /* CMP #imm16, BEQ taken */
         cmp_c = P_C;
-        compare_result(b, 0x01);
+        compare_result(0x01);
         return;
     }
     cyc(92);
@@ -2081,13 +2084,13 @@ void RecordTimeCompare(uint8_t bank, uint16_t x)
         cmp_c = v >= m ? P_C : 0;
         if (v < m) {
             cyc(22);                    /* BCC taken */
-            compare_result(b, 0xFF);
+            compare_result(0xFF);
             return;
         }
         cyc(16);                        /* BCC not taken */
         if (v != m) {
             cyc(22);                    /* BNE taken */
-            compare_result(b, 0x01);
+            compare_result(0x01);
             return;
         }
         cyc(16);                        /* BNE not taken */
@@ -2095,7 +2098,7 @@ void RecordTimeCompare(uint8_t bank, uint16_t x)
     cmp_x = 5;
     cmp_c = P_C;
     cyc(54);                            /* INX, CPX.W, BCC not taken */
-    compare_result(b, 0x00);
+    compare_result(0x00);
 }
 
 void RecordTimeCompare_cr(Carried *cr)
@@ -2347,7 +2350,7 @@ static uint16_t records_offset(uint16_t d, uint16_t a)
 }
 
 /* LDA $0E3D, AND #$FF, STA $F3, CMP #$0C: the course, N, Z, C from the compare. */
-static uint16_t records_course(uint32_t b, uint16_t d)
+static uint16_t records_course(uint16_t d)
 {
     uint16_t a;
 
@@ -2365,7 +2368,7 @@ uint16_t RecordsLoadSpecialCourse(uint8_t bank, uint16_t d)
     uint16_t a;
 
     ld_xy = 0;
-    a = records_course(b, d);
+    a = records_course(d);
     ld_a = a;
     if (a < 0x000C)
         { cyc(88); return a; } else { cyc(46); }   /* CMP, BCC taken, RTS */
@@ -2492,7 +2495,7 @@ void RecordsLoadCourse(uint8_t bank, uint16_t d)
     uint32_t b = (uint32_t)bank << 16;
     uint16_t a, x;
 
-    a = records_course(b, d);
+    a = records_course(d);
     if (a < 0x000C)
         records_load_sorted(b, records_offset(d, a), 0);
     records_player_place(b);
@@ -2658,6 +2661,7 @@ static uint8_t special_add8(uint16_t d, uint8_t a)
  */
 uint8_t SpecialRecordsChecksum(uint8_t bank, uint16_t d)
 {
+    (void)bank;
     uint16_t a, x, y;
     uint8_t s;
     int i;
@@ -2968,6 +2972,7 @@ static uint8_t car12_flags;             /* N, Z, C, V as RecordCarTimes12 leaves
 
 uint16_t RecordCarTimes12(uint8_t bank)
 {
+    (void)bank;
     uint16_t a, m, r;
 
     cyc(24);
@@ -3195,6 +3200,7 @@ static uint16_t up_t, up_x, up_y, up_high;
 
 uint8_t TimeUpRecordUpdate(uint8_t bank)
 {
+    (void)bank;
     uint16_t a, sec, min, k, m, x, r, w;
     uint8_t v, p = 0;
 
@@ -3542,7 +3548,7 @@ static uint16_t rc_add(uint16_t a, uint16_t m)
     return r;
 }
 
-static uint16_t records_char_offset(uint8_t bank, uint32_t row_table, uint32_t char_table)
+static uint16_t records_char_offset(uint32_t row_table, uint32_t char_table)
 {
     uint16_t a, x;
 
@@ -3582,7 +3588,8 @@ static uint16_t records_char_offset(uint8_t bank, uint32_t row_table, uint32_t c
  */
 uint16_t RecordsCharOffsetStunt(uint8_t bank)
 {
-    return records_char_offset(bank, 0x07D8D4, 0x07D8DC);
+    (void)bank;
+    return records_char_offset(0x07D8D4, 0x07D8DC);
 }
 
 /* The registers the offset routines leave: A = Y = the offset. */
@@ -3620,7 +3627,8 @@ void abi_RecordsCharOffsetStunt(void)
  */
 uint16_t RecordsCharOffsetAll(uint8_t bank)
 {
-    return records_char_offset(bank, 0x07D8E3, 0x07D8EB);
+    (void)bank;
+    return records_char_offset(0x07D8E3, 0x07D8EB);
 }
 
 void RecordsCharOffsetAll_cr(Carried *cr)
@@ -3653,6 +3661,7 @@ void abi_RecordsCharOffsetAll(void)
  */
 uint16_t RecordsEntryLoad(uint8_t bank)
 {
+    (void)bank;
     uint16_t a, v;
 
     cyc(126);
@@ -3715,7 +3724,7 @@ void abi_RecordsEntryLoad(void)
 
 
 /* LDA $0FA6; ASL; TAX: the handler index, C from the shift. */
-static uint16_t records_char_index(uint8_t bank)
+static uint16_t records_char_index(void)
 {
     uint16_t v;
 
@@ -3814,7 +3823,7 @@ uint16_t RecordsCharTileStunt(Carried *cr, uint8_t bank)
 {
     uint16_t a;
 
-    switch (records_char_index(bank)) {
+    switch (records_char_index()) {
     case 0:
         return stunt_score_digit(0, 0x006D);
     case 2:
@@ -3934,7 +3943,7 @@ uint16_t RecordsCharTileAll(Carried *cr, uint8_t bank)
     uint16_t a;
     unsigned i;
 
-    switch (records_char_index(bank)) {
+    switch (records_char_index()) {
     case 0:
         cyc(60);
         a = rd16(W(time_total));

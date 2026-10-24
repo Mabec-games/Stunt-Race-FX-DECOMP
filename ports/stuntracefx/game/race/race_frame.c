@@ -51,18 +51,18 @@ void ViewParamsByPlayers(Carried *cr);
 void ViewParamsSpeedLong(Carried *cr);
 static void delay_4000(Carried *cr);
 static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, unsigned post);
-static void finish_tail(Carried *cr, uint32_t b, uint32_t pre, uint32_t post);
+static void finish_tail(Carried *cr, uint32_t pre, uint32_t post);
 static void frame_cmp8(Carried *cr, uint8_t m);
 static void frame_lda8_imm(Carried *cr, uint8_t v);
 static void frame_side0(Carried *cr);
 static void frame_start(Carried *cr);
 static void frame_time(Carried *cr, uint8_t db, uint8_t p0);
 static void frame_view_from(Carried *cr, uint16_t slot);
-static void pick_sound(Carried *cr, uint32_t b);
-static uint8_t race_load_0d63(Carried *cr, uint32_t b);
+static void pick_sound(Carried *cr);
+static uint8_t race_load_0d63(Carried *cr);
 static void race_load_copy(Carried *cr, uint16_t dst);
 static void race_load_gsu(Carried *cr, uint16_t y, uint16_t x);
-static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll);
+static void race_load_scroll(Carried *cr, uint16_t scroll);
 static void race_load_sound(Carried *cr, void (*load)(Carried *), uint16_t a, uint16_t y, int delay_after);
 static void race_load_views(Carried *cr, uint16_t x);
 static void view_params(Carried *cr, const uint8_t *v);
@@ -314,7 +314,7 @@ void abi_CarFinishSoundP2(void);
 
 /* RaceFinishPhasesTail ($07:AA4E): $0E58 = $30, $0E5B = $0E5F = 0 and
    sound 2 on port 0. */
-static void finish_tail(Carried *cr, uint32_t b, uint32_t pre, uint32_t post)
+static void finish_tail(Carried *cr, uint32_t pre, uint32_t post)
 {
     cyc(pre + 40);                      /* the jump in (BRA 22, JMP 24, or none), LDA #, STA */
     wr8(0x7E0000 | W(wram_0E58), 0x30);
@@ -329,7 +329,6 @@ static void finish_tail(Carried *cr, uint32_t b, uint32_t pre, uint32_t post)
 
 static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, unsigned post)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t y = cr->y;
     uint8_t lo, hi;
     int both = 0;
@@ -370,7 +369,7 @@ static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, uns
             wr8(0x7E0000 | W(wram_0DD6), p1);
         }
     }
-    finish_tail(cr, b, both ? 0 : 22, post);
+    finish_tail(cr, both ? 0 : 22, post);
 }
 
 
@@ -387,7 +386,6 @@ static void finish_phases(Carried *cr, uint8_t p1, uint8_t p2, unsigned sep, uns
  */
 void RaceFinishSplit(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     int one;
 
@@ -426,7 +424,7 @@ void RaceFinishSplit(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x08);
     set_p(cr, nz8(cr->p, 0x08));
     SoundPort0QueuePush_cr(cr);
-    finish_tail(cr, b, one ? 24 : 22, 34);
+    finish_tail(cr, one ? 24 : 22, 34);
 }
 
 void abi_RaceFinishSplit(void)
@@ -687,7 +685,7 @@ void abi_RecordsUnpackCourseRunning(void);
 
 /* The pick's sound: $0D8C = the handler at $18DB, $0D8B its sound index
    (HandlerSoundIndex), leaving M and X 8-bit. */
-static void pick_sound(Carried *cr, uint32_t b)
+static void pick_sound(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(32);
@@ -751,7 +749,7 @@ void RaceModeSetup(Carried *cr)
             cyc(24);
             wr8(0x7E0000 | W(wram_0E3E), 0x00);
             cyc(22);
-            pick_sound(cr, b);
+            pick_sound(cr);
             r_plp(cr, p0);
             cyc(30);
             return;
@@ -768,7 +766,7 @@ void RaceModeSetup(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
     wr16(0x7E0000 | W(scroll_value), 0x0000);
-    pick_sound(cr, b);
+    pick_sound(cr);
     for (i = 0; i < sizeof clear / sizeof clear[0]; i++)
         { cyc(24); wr8(b | clear[i], 0x00); }
     cyc(40);
@@ -1081,7 +1079,7 @@ static void race_load_views(Carried *cr, uint16_t x)
 }
 
 /* REP #$20, then $0E35, $0E37 (= scroll), $0E31 and $0E33 (word stores). */
-static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
+static void race_load_scroll(Carried *cr, uint16_t scroll)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(46);
@@ -1101,7 +1099,7 @@ static void race_load_scroll(Carried *cr, uint32_t b, uint16_t scroll)
 }
 
 /* SEP #$20, LDA $0D63: Z when it is clear. */
-static uint8_t race_load_0d63(Carried *cr, uint32_t b)
+static uint8_t race_load_0d63(Carried *cr)
 {
     r_sep(cr, P_M);
     cyc(22);
@@ -1197,13 +1195,13 @@ void RaceLoad(Carried *cr)
             cyc(22);                    /* BRA to $F21E */
         race_load_gsu(cr, 0xF83E, 0xF7E9);
         cyc(24);
-        race_load_scroll(cr, b, race_load_0d63(cr, b) ? 0x0000 : (cyc(6), 0x0050));
+        race_load_scroll(cr, race_load_0d63(cr) ? 0x0000 : (cyc(6), 0x0050));
         break;
     case 0xF256:
         race_load_views(cr, 0xF7F5);
         race_load_gsu(cr, 0xF83E, 0xF7EF);
         cyc(0);
-        race_load_scroll(cr, b, 0x0000);
+        race_load_scroll(cr, 0x0000);
         r_sep(cr, P_M);
         cyc(22);
         wr8(0x7E0000 | W(wram_0D48), 0x00);
@@ -1213,12 +1211,12 @@ void RaceLoad(Carried *cr)
         race_load_views(cr, 0xF7F8);
         race_load_gsu(cr, 0xF83E, 0xF7EC);
         cyc(0);
-        race_load_scroll(cr, b, 0x0000);
-        if (race_load_0d63(cr, b))
-            race_load_scroll(cr, b, 0x0000);
+        race_load_scroll(cr, 0x0000);
+        if (race_load_0d63(cr))
+            race_load_scroll(cr, 0x0000);
         else {
             cyc(6);
-            race_load_scroll(cr, b, 0x0050);
+            race_load_scroll(cr, 0x0050);
             r_sep(cr, P_M);
             cyc(22);
             wr8(0x7E0000 | W(wram_0D48), 0x00);
@@ -1408,7 +1406,6 @@ static void frame_time(Carried *cr, uint8_t db, uint8_t p0)
 void RaceFrameRun(Carried *cr)
 {
     uint8_t p0 = cr->p, db = cr->db;
-    uint32_t b;
 
     frame_start(cr);
     frame_view_from(cr, 0x0346);
@@ -1422,7 +1419,6 @@ void RaceFrameRun(Carried *cr)
     (cyc(62), WordCopyStep_cr(cr));
     (cyc(62), BackdropAnglesFromView_cr(cr));
     r_sep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
     frame_lda8_imm(cr, 0x01);
     cyc(62);
     wr8(0x7E0000 | W(draw_side), 0x01);
@@ -1441,7 +1437,6 @@ void RaceFrameRun(Carried *cr)
     (cyc(62), w_SpeedGaugeUpdate(cr));
     (cyc(62), NearCarSoundUpdate_cr(cr));
     r_rep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
     cyc(24);
     r_lda16(cr, 0x7E0000 | W(wram_1AE8));
     cyc(24);
@@ -1465,7 +1460,6 @@ void RaceFrameRun(Carried *cr)
     }
     w_GsuScreenToggle(cr);
     r_sep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
     cyc(46);
     wr8(0x7E0000 | W(wram_0357), 0x00);
     frame_time(cr, db, p0);
@@ -1514,7 +1508,6 @@ void abi_SpeedGauge2Update(void);
 void RaceFrameRunTwoPlayers(Carried *cr)
 {
     uint8_t p0 = cr->p, db = cr->db;
-    uint32_t b;
 
     frame_start(cr);
     r_sep(cr, P_M);
@@ -1532,7 +1525,6 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     (cyc(62), BackdropAnglesFromView_cr(cr));
     frame_view_from(cr, 0x034A);
     r_sep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
     frame_lda8_imm(cr, 0x01);
     cyc(62);
     wr8(0x7E0000 | W(draw_side), 0x01);
@@ -1556,7 +1548,6 @@ void RaceFrameRunTwoPlayers(Carried *cr)
     (cyc(62), ViewUpdateAndGsuAEF8_cr(cr));
     (cyc(62), BackdropAnglesFromView_cr(cr));
     r_rep(cr, P_M);
-    b = (uint32_t)cr->db << 16;
     cyc(24);
     r_lda16(cr, 0x7E0000 | W(view_06cf));
     r_sub16(cr, 0x0140);

@@ -86,9 +86,9 @@ void VramPictureRows1B0_cr(Carried *cr);
 void VramPictureRows2B0_cr(Carried *cr);
 void WindowClosedDigitStep(Carried *cr);
 static void abi_row_mark(Carried *cr, uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits);
-static void bg2_scroll_corner(Carried *cr, uint32_t b);
+static void bg2_scroll_corner(Carried *cr);
 static void palette_cycle_exit(Carried *cr, int r);
-static void stage_next(Carried *cr, uint32_t b);
+static void stage_next(Carried *cr);
 void GsuCF42To3000_cr(Carried *cr);
 void OamHide36And96_cr(Carried *cr);
 void OverlaySpritesStep_cr(Carried *cr);
@@ -249,6 +249,7 @@ void abi_VramDmaTileFromGsuRam(void)
  */
 static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
 {
+    (void)bank;
     unsigned i, s = 0;
     uint16_t t, mode;
 
@@ -583,6 +584,7 @@ void abi_TilemapPaletteFill(void)
  */
 int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 {
+    (void)bank;
     uint8_t phase, pal, frame;
     uint16_t mode, table;
 
@@ -971,7 +973,7 @@ void abi_TilemapRowToE3D7(void)
 uint16_t ObjectLinkFlag4000Step(void);
 
 /* The body of BackdropRowsUpdate; returns A as the code leaves it. */
-static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
+static uint16_t backdrop_rows_update(uint16_t *xo, uint16_t *yo)
 {
     cyc(76);
     uint16_t sel = rd16(W(gsu_buffer_select)), x = (uint16_t)(sel << 1), y, h, s, a, end, mb;
@@ -1055,7 +1057,8 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
  */
 uint16_t BackdropRowsUpdate(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    return backdrop_rows_update(bank, x, y);
+    (void)bank;
+    return backdrop_rows_update(x, y);
 }
 
 void BackdropRowsUpdate_cr(Carried *cr)
@@ -1094,6 +1097,7 @@ void abi_BackdropRowsUpdate(void)
  */
 uint16_t BackdropAnglesFromView(uint8_t bank)
 {
+    (void)bank;
     cyc(98);
     uint16_t v = rd16(0x7E0000 | W(wram_0664)), w;
     int i;
@@ -1533,6 +1537,7 @@ void abi_DigitTiles1184(void)
  */
 void TimesKeepAndAdvance(uint8_t bank)
 {
+    (void)bank;
     unsigned i;
 
     cyc(22);
@@ -1626,7 +1631,7 @@ void abi_GsuCF42To3000(void);
 
 /* SEP #$20 / REP #$20 around: BG2's scroll to (-24, -32) for the
    championship screens ($0D92 = $FFE8, $0D8E = $FFE0). */
-static void bg2_scroll_corner(Carried *cr, uint32_t b)
+static void bg2_scroll_corner(Carried *cr)
 {
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0xFFE0);
@@ -1638,7 +1643,7 @@ static void bg2_scroll_corner(Carried *cr, uint32_t b)
 }
 
 /* INC $0D59 (8-bit). */
-static void stage_next(Carried *cr, uint32_t b)
+static void stage_next(Carried *cr)
 {
     cyc(24);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D59)) + 1);
@@ -1707,7 +1712,7 @@ void ChampionshipScreenStep(Carried *cr)
         cyc(24);
         wr8(0x7E0000 | W(wram_10A2), 0x00);
         (cyc(62), WindowSlideUpSound_cr(cr));
-        stage_next(cr, b);
+        stage_next(cr);
         (cyc(46), OamHide36And96_cr(cr));
         break;
     case 0xBA56:
@@ -1718,17 +1723,17 @@ void ChampionshipScreenStep(Carried *cr)
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? (cyc(32), P_C) : (cyc(38), 0))));
         if (v != 0x05)
             break;
-        stage_next(cr, b);
-        bg2_scroll_corner(cr, b);
+        stage_next(cr);
+        bg2_scroll_corner(cr);
         break;
     case 0xBA3A:
-        bg2_scroll_corner(cr, b);
+        bg2_scroll_corner(cr);
         r_sep(cr, P_M);
         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x5C);
         set_p(cr, nz8(cr->p, 0x5C));
         cyc(62);
         ppu_wr(b | 0x2108, 0x5C);
-        stage_next(cr, b);
+        stage_next(cr);
         cyc(24);
         wr8(0x7E0000 | W(wram_19DF), 0x00);
         break;
@@ -1737,7 +1742,7 @@ void ChampionshipScreenStep(Carried *cr)
         cyc(46);
         r_lda8(cr, 0x7E0000 | W(window_hdma_off));
         if (!(uint8_t)cr->a)
-            { cyc(16); stage_next(cr, b); } else { cyc(22); }
+            { cyc(16); stage_next(cr); } else { cyc(22); }
         break;
     case 0xBA9A: {
         uint8_t p1, db1;
@@ -1769,7 +1774,7 @@ void ChampionshipScreenStep(Carried *cr)
         DigitTiles1184_cr(cr);
         r_sep(cr, P_M);
         cyc(22);
-        stage_next(cr, (uint32_t)cr->db << 16);
+        stage_next(cr);
         b = (uint32_t)cr->db << 16;
         cyc(24);
         r_lda8(cr, 0x7E0000 | W(wram_0D45));
@@ -1829,12 +1834,10 @@ void abi_OverlaySpritesStep(void);
  */
 void ChampionshipScreenLoop(Carried *cr)
 {
-    uint32_t b;
 
     cyc(0);
     do {
         r_sep(cr, P_M | P_X);
-        b = (uint32_t)cr->db << 16;
         do
             { cyc(24); r_lda8(cr, 0x7E0000 | W(wram_0D52)); }
         while (cyc_loop(22, !(uint8_t)cr->a));
@@ -1842,7 +1845,6 @@ void ChampionshipScreenLoop(Carried *cr)
         wr8(0x7E0000 | W(wram_0D52), 0x00);
         (cyc(46), ChampionshipScreenStep(cr));
         (cyc(62), OverlaySpritesStep_cr(cr));
-        b = (uint32_t)cr->db << 16;
         r_rep(cr, P_M);
         cyc(24);
         wr16(0x7E0000 | W(joy1_pressed_copy), 0x0000);

@@ -94,6 +94,7 @@ void abi_GsuParamsUpdate(void)
  */
 uint16_t GsuParamsFromDp(uint8_t bank)
 {
+    (void)bank;
     static const uint8_t from[8] = {0xCE, 0xD0, 0x2A, 0x2E, 0x2C, 0x30, 0x32, 0x34};
     static const uint32_t to[8] = {0x700034, 0x700036, 0x700038, 0x70003A, 0x70003C, 0x70003E, 0x700092, 0x700094};
     uint16_t v = 0;
@@ -229,6 +230,7 @@ void abi_GsuParam216B(void)
  */
 uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
 {
+    (void)bank;
     uint32_t t;
     uint16_t a, base, s, v = 0;
     unsigned i;
@@ -927,6 +929,7 @@ void abi_GsuBytes200_0F080E(void)
  */
 uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
 {
+    (void)bank;
     uint32_t t;
     uint16_t a, last, base;
 

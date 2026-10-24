@@ -223,6 +223,7 @@ static void heading_regs(Carried *cr, uint8_t v)
  */
 uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
 {
+    (void)bank;
     uint8_t i, v;
 
     head_v = -1;
@@ -268,6 +269,7 @@ void abi_HeadingFlat(void)
  */
 uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
 {
+    (void)bank;
     uint8_t i, v;
 
     head_v = -1;
@@ -316,6 +318,7 @@ void abi_HeadingFlatMirrored(void)
  */
 uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
 {
+    (void)bank;
     uint8_t h, pitch, v;
 
     head_v = -1;
@@ -389,6 +392,7 @@ static uint8_t pitched_1f7c(uint16_t x, uint16_t y)
  */
 uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
 {
+    (void)bank;
 
     head_v = -1;
     cyc(30);
@@ -460,6 +464,7 @@ void abi_HeadingPitchedFrom1F7C(void)
  */
 uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 {
+    (void)bank;
     uint8_t i, v;
 
     head_v = -1;
@@ -505,6 +510,7 @@ void abi_HeadingFlatQuarterTurn(void)
  */
 uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 {
+    (void)bank;
     uint8_t i, v;
 
     head_v = -1;
@@ -555,7 +561,7 @@ static uint16_t add16(uint16_t a, uint16_t m)
 
 /* Object X's position (+$0C, +$0E, +$10) plus the words at $02, $08 and
    $94, in that order; returns the new +$10. */
-static uint16_t move_by(uint8_t bank, uint16_t x)
+static uint16_t move_by(uint16_t x)
 {
     uint16_t v;
 
@@ -614,11 +620,12 @@ static void double_vector(void)
  */
 uint16_t ObjectMoveByVectorTimes4(uint8_t bank, uint16_t x)
 {
+    (void)bank;
     uint16_t v;
 
     (cyc(22), double_vector());
     double_vector();
-    v = move_by(bank, x);
+    v = move_by(x);
     cyc(66);
     return v;
 }
@@ -650,10 +657,11 @@ void abi_ObjectMoveByVectorTimes4(void)
  */
 uint16_t ObjectMoveByVectorTimes2(uint8_t bank, uint16_t x)
 {
+    (void)bank;
     uint16_t v;
 
     (cyc(22), double_vector());
-    v = move_by(bank, x);
+    v = move_by(x);
     cyc(66);
     return v;
 }
@@ -685,7 +693,8 @@ void abi_ObjectMoveByVectorTimes2(void)
  */
 uint16_t ObjectMoveByVector(uint8_t bank, uint16_t x)
 {
-    uint16_t v = move_by(bank, x);
+    (void)bank;
+    uint16_t v = move_by(x);
 
     cyc(66);
     return v;
@@ -716,7 +725,7 @@ static int vel_carry;
 /* Object X's velocity (+$2E, +$30, +$32) from the vector at $02, $08, $94
    after HeadingPitchedFrom1F7C, each word shifted left `shift` times (each
    shift a 16-bit ASL of A). Returns A, the last word. */
-static uint16_t velocity_from_vector(uint8_t bank, uint16_t x, uint16_t y, int shift)
+static uint16_t velocity_from_vector(uint16_t x, uint16_t y, int shift)
 {
     static const uint32_t from[3] = {W(dp_02), W(dp_08), W(dp_94)};
     uint16_t v = 0;
@@ -765,7 +774,8 @@ static void vel_regs(Carried *cr, uint16_t v)
  */
 uint16_t ObjectVelocityFromHeading(uint8_t bank, uint16_t x, uint16_t y)
 {
-    return velocity_from_vector(bank, x, y, 0);
+    (void)bank;
+    return velocity_from_vector(x, y, 0);
 }
 
 void ObjectVelocityFromHeading_cr(Carried *cr)
@@ -795,7 +805,8 @@ void abi_ObjectVelocityFromHeading(void)
  */
 uint16_t ObjectVelocityFromHeadingTimes2(uint8_t bank, uint16_t x, uint16_t y)
 {
-    return velocity_from_vector(bank, x, y, 1);
+    (void)bank;
+    return velocity_from_vector(x, y, 1);
 }
 
 void ObjectVelocityFromHeadingTimes2_cr(Carried *cr)
@@ -825,7 +836,8 @@ void abi_ObjectVelocityFromHeadingTimes2(void)
  */
 uint16_t ObjectVelocityFromHeadingTimes4(uint8_t bank, uint16_t x, uint16_t y)
 {
-    return velocity_from_vector(bank, x, y, 2);
+    (void)bank;
+    return velocity_from_vector(x, y, 2);
 }
 
 void ObjectVelocityFromHeadingTimes4_cr(Carried *cr)
@@ -855,7 +867,8 @@ void abi_ObjectVelocityFromHeadingTimes4(void)
  */
 uint16_t ObjectVelocityFromHeadingTimes8(uint8_t bank, uint16_t x, uint16_t y)
 {
-    return velocity_from_vector(bank, x, y, 3);
+    (void)bank;
+    return velocity_from_vector(x, y, 3);
 }
 
 void ObjectVelocityFromHeadingTimes8_cr(Carried *cr)
@@ -890,6 +903,7 @@ void abi_ObjectVelocityFromHeadingTimes8(void)
  */
 uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
 {
+    (void)bank;
     uint16_t v;
 
     cyc(16);

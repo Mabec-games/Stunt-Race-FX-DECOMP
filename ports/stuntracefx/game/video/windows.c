@@ -53,7 +53,7 @@ void WindowsColourSub81_cr(Carried *cr);
 void WindowsColourSubtract3(Carried *cr);
 void WindowsColourWindowOnly_cr(Carried *cr);
 void WindowsSetupSelect_cr(Carried *cr);
-static void bob_setup(Carried *cr, uint32_t b);
+static void bob_setup(Carried *cr);
 static int bob_window(Carried *cr, uint8_t x, uint16_t at);
 void ObjectLinkEventTrigger2(Carried *cr);
 void ObjectLinkEventTrigger_cr(Carried *cr);
@@ -837,7 +837,7 @@ void abi_ObjectLinkEventTrigger(void);
 void abi_ObjectLinkEventTrigger2(void);
 
 /* Bit 5 of $0D45 cleared and window setup 2 ($19A9). */
-static void bob_setup(Carried *cr, uint32_t b)
+static void bob_setup(Carried *cr)
 {
     uint8_t v;
 
@@ -866,7 +866,6 @@ static void bob_setup(Carried *cr, uint32_t b)
 void BobWindowsRun(Carried *cr)
 {
     uint8_t p0 = cr->p, db0 = cr->db, v;
-    uint32_t b = 0x7E0000;
 
     cr->db = 0x7E;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -885,7 +884,7 @@ void BobWindowsRun(Carried *cr)
     cyc(cr->p & P_Z ? 110 : 126);       /* beq taken at lda.w $1A24, not bne at $0DA4 */
     v = (uint8_t)(rd8(0x7E0000 | W(wram_0DA4)) & 0x80);
     if (v) {
-        bob_setup(cr, b);
+        bob_setup(cr);
         BobWindow0(cr);
     }
     if (cr->p & P_M) {
@@ -907,7 +906,7 @@ void BobWindowsRun(Carried *cr)
     cyc(46);
     v = (uint8_t)(rd8(0x7E0000 | W(wram_0DA6)) & 0x80);
     if (v) {
-        bob_setup(cr, b);
+        bob_setup(cr);
         (cyc(46), BobWindow1(cr));
     } else { cyc(38); }
 out:

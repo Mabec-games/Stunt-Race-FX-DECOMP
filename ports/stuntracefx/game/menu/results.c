@@ -217,6 +217,7 @@ void abi_ResultsWaitThenRise(void)
    most $66, kept at $1921, the scroll $11EF = $66 - it; 1 when it is $66. */
 static int rise(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
+    (void)bank;
     uint16_t kept;
 
     cyc(22);
@@ -480,6 +481,7 @@ void abi_ResultsPlaceWait(void)
  */
 void ResultsCarIndex(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
+    (void)bank;
     uint16_t v;
 
     byte_of(a, p, W(wram_0D4A));
@@ -588,6 +590,7 @@ void abi_ResultsPlaceCar(void)
  */
 void ResultsGroupPalette(uint8_t bank, uint16_t x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
+    (void)bank;
     uint16_t obj = x;
 
     lda(a, p, rd16(cyc_then(52, fld(x, 0x12))));
@@ -745,7 +748,7 @@ void abi_ResultsLeaderBlinkResume(void)
 }
 
 /* Y = the A, B or Start presses ($118B AND $9000), with N, Z (TYA, AND). */
-static uint16_t pressed(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p)
+static uint16_t pressed(uint16_t *a, uint16_t *y, uint8_t *p)
 {
     *y = rd16(cyc_then(24, (0x7E0000 | W(menu_joy1_pressed))));
     *a = *y;
@@ -783,7 +786,7 @@ static void end_screen(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint
  */
 void ResultsWaitButton(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    if (!pressed(bank, a, y, p))
+    if (!pressed(a, y, p))
         { cyc(100); return; } else { cyc(52); }
     byte_of(a, p, W(wram_0DD6));
     cmp(*a, p, 0x0008);
@@ -873,7 +876,7 @@ void abi_ResultsRiseAgain(void)
  */
 void ResultsWaitEnd(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    if (!pressed(bank, a, y, p))
+    if (!pressed(a, y, p))
         { cyc(100); return; }
     end_screen(bank, x, a, y, p);
 }
@@ -1300,7 +1303,7 @@ void abi_ResultsTimeDigits(void)
 /* The leader's place test of ResultsInitials and ResultsLapTimes: when
    $0FAC is the object's field `field` and the championship is over, the
    object starts ResultsLeaderBlink; otherwise it stops. */
-static void leader_or_stop(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t field)
+static void leader_or_stop(uint16_t *x, uint16_t *a, uint8_t *p, uint16_t field)
 {
     *x = rd16(cyc_then(24, (0x7E0000 | W(actor_current))));
     *p = nz16(*p, *x);
@@ -1364,7 +1367,7 @@ void ResultsInitials(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_
         and_imm(a, p, 0x001F);
         ResultsLetterTiles(bank, *x, a, p);
     }
-    leader_or_stop(bank, x, a, p, 0x22);
+    leader_or_stop(x, a, p, 0x22);
 }
 
 /* ResultsInitials on carried registers. */
@@ -1542,7 +1545,7 @@ void ResultsLapTimes(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint16
     cyc(32);
     lda(a, p, rd16(W(record_times) + (uint32_t)*x));
     (cyc(46), ResultsBcdPair(bank, *x, a, p));
-    leader_or_stop(bank, x, a, p, 0x20);
+    leader_or_stop(x, a, p, 0x20);
 }
 
 /* ResultsLapTimes on carried registers. */

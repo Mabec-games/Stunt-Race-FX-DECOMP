@@ -14,6 +14,7 @@
 /* A field of the object at offset `obj` in the data bank. */
 static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
 {
+    (void)bank;
     return 0x7E0000 | (uint16_t)(W(obj_base) + off + obj);
 }
 

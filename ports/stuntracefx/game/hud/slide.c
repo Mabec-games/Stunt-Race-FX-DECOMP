@@ -162,7 +162,7 @@ static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
 }
 
 /* Panel B's Y ($0E0B - $0D) for its two sprite pairs, and + $10. */
-static uint8_t hud_panel_b_y(uint32_t b)
+static uint8_t hud_panel_b_y(void)
 {
     uint8_t v = lda8(0x7E0000 | W(map_b_y_w));
     int c = 0;
@@ -251,6 +251,7 @@ static uint8_t out_cv, out_nz;          /* the adapter's: C and V, and the value
 
 uint8_t HudSlideOut(uint8_t bank)
 {
+    (void)bank;
     uint8_t v = lda8(0x7E0000 | W(hud_slide)), r;
 
     r = sbc8i(v, 0x04);
@@ -463,7 +464,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
             } else { cyc(108); }
         }
         wr8(0x7E0000 | W(map_b_y_w), v);
-        step_a = hud_panel_b_y(b);
+        step_a = hud_panel_b_y();
         break;
     case 0x08:
     case 0x0A:

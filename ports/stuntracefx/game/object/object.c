@@ -20,6 +20,7 @@ void abi_ObjectAttachSpawn(void);
 /* A field of the object at offset `obj` in the data bank. */
 static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
 {
+    (void)bank;
     return 0x7E0000 | (uint16_t)(W(obj_base) + off + obj);
 }
 
@@ -132,7 +133,7 @@ void ObjectRunHandlerB(Carried *cr, uint8_t bank, uint16_t obj);
 void ObjectsRunHandlers(Carried *cr);
 static void abi_triggers_from(Carried *cr, uint16_t rec, uint16_t x);
 static void add_random(Carried *cr, uint32_t b, uint16_t off, uint16_t mask);
-static void camera_turn_negated(Carried *cr, uint32_t b, uint16_t camera);
+static void camera_turn_negated(Carried *cr, uint16_t camera);
 static uint32_t car_field(Carried *cr, uint16_t off);
 static void child(Carried *cr, uint16_t off);
 static uint8_t cmp8_flags(Carried *cr, uint8_t a, uint8_t m);
@@ -145,7 +146,7 @@ static void passed_tail(Carried *cr, unsigned extra);
 static void release(Carried *cr);
 static int run_handler(Carried *cr, uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record);
 static void set_handler(Carried *cr, uint16_t o, uint16_t h);
-static void spawn_sparkle(Carried *cr, uint32_t b);
+static void spawn_sparkle(Carried *cr);
 static void swap_xy(Carried *cr);
 static void w_GsuRecordFlag4(Carried *cr);
 static void w_GsuRecordFromObject(Carried *cr);
@@ -501,6 +502,7 @@ void abi_ObjectLinkFlag4000Step(void)
  */
 int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p)
 {
+    (void)bank;
     cyc(54);
     uint16_t m = rd16(0x702476);
 
@@ -561,6 +563,7 @@ static uint8_t add8(uint8_t a, uint8_t b, uint8_t *p)
  */
 uint8_t ObjectTableE8AF(uint8_t bank, uint8_t a, uint16_t obj, uint8_t *p)
 {
+    (void)bank;
 
     cyc(44);
     a = add8(a, rd8(0x7E0000 | (uint16_t)(W(obj_15) + obj)), p);
@@ -602,6 +605,7 @@ void abi_ObjectTableE8AF(void)
  */
 uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p)
 {
+    (void)bank;
     cyc(98);
     uint8_t f = rd8(0x7E0000 | (uint16_t)(W(obj_15) + obj)), s = rd8(cyc_then(38, 0x7E0000 | W(wram_1F5A))), d = (uint8_t)(f - s), v;
 
@@ -760,6 +764,7 @@ static uint16_t asr1c(uint16_t v, uint8_t *p)
  */
 uint16_t ObjectVelocityFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
 {
+    (void)bank;
     cyc(30);
     uint16_t rec = rd16(cyc_then(52, 0x7E0000 | (uint16_t)(W(obj_22) + rd16(0x7E0000 | (uint16_t)(W(obj_27) + obj))))), v;
 
@@ -867,6 +872,7 @@ void abi_ObjectBucketRemove(void)
  */
 uint16_t ObjectSet5DByKind(uint8_t bank, uint16_t obj, uint8_t kind, uint8_t *p)
 {
+    (void)bank;
     uint16_t v = kind == 1 ? 0x9163 : (cyc(32), kind == 2 ? 0x9335 : (cyc(26), kind == 3 ? (cyc(6), 0x9507) : 0x8F91));
     uint8_t last = kind == 1 ? 1 : kind == 2 ? 2 : 3;
 
@@ -1126,6 +1132,7 @@ void abi_ObjectInit(void)
  */
 uint16_t ObjectPlaceAll(uint8_t bank)
 {
+    (void)bank;
     cyc(136);
     uint16_t n = rd16(W(object_list_b_len)), i = 0, a = 0, x, y;
 
@@ -2257,6 +2264,7 @@ void abi_ObjectAlloc(void)
  */
 int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y)
 {
+    (void)bank;
     uint8_t n;
     uint16_t ax, rx = 0, ry = 0;
     int got;
@@ -2683,7 +2691,6 @@ void abi_ObjectReleaseY(void)
  */
 void ObjectsRunHandlers(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t db = cr->db, v;
     uint16_t x, y = cr->y;
 
@@ -2694,7 +2701,6 @@ void ObjectsRunHandlers(Carried *cr)
     if (!v)
         { cyc(40); wr8(0x7E0000 | W(wram_05EA), cyc_then(6, (uint8_t)(rd8(0x7E0000 | W(wram_05EA)) + 1))); } else { cyc(22); }
     cr->db = 0x7E;
-    b = 0x7E0000;
     cyc(134);
     x = rd16(0x7E0000 | W(wram_0329));
     while (x) {
@@ -2723,7 +2729,6 @@ void ObjectsRunHandlers(Carried *cr)
                 set_p(cr, (uint8_t)((nz8(cr->p, v) | P_M) & ~P_X));
                 (cyc(62), ObjectRunHandlerA_cr(cr));
             }
-            b = (uint32_t)cr->db << 16;
             cyc(24);
             v = rd8(0x7E0000 | W(wram_035C));
             cr->a = (uint16_t)((cr->a & 0xFF00) | v);
@@ -2936,6 +2941,7 @@ void abi_ObjectSpawnFromScript(void)
  */
 uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p)
 {
+    (void)bank;
     cyc(30);
     uint8_t v = rd8(0x7E0000 | (uint16_t)(W(obj_48) + obj));
 
@@ -3130,7 +3136,7 @@ static void swap_xy(Carried *cr)
 
 /* A new object (kind $A158) with handler $08:EA6B at object X's position,
    X as its +$06 and put in its bucket. */
-static void spawn_sparkle(Carried *cr, uint32_t b)
+static void spawn_sparkle(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cr->a = 0xA158;
@@ -3170,11 +3176,10 @@ static void spawn_sparkle(Carried *cr, uint32_t b)
  */
 void ObjectSpawnSparklePair(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(44);
-    spawn_sparkle(cr, b);
-    spawn_sparkle(cr, b);
+    spawn_sparkle(cr);
+    spawn_sparkle(cr);
 }
 
 void abi_ObjectSpawnSparklePair(void)
@@ -4465,7 +4470,7 @@ static uint8_t neg8(Carried *cr, uint8_t a)
 
 /* PHX, LDX #camera, LDA $11,X, EOR #$FF, INC A, STA $1F5A, PLX: minus the
    camera's turn (its byte +$11), kept at $1F5A. */
-static void camera_turn_negated(Carried *cr, uint32_t b, uint16_t camera)
+static void camera_turn_negated(Carried *cr, uint16_t camera)
 {
     uint16_t x = cr->x;
     uint8_t v;
@@ -4497,11 +4502,10 @@ static void camera_turn_negated(Carried *cr, uint32_t b, uint16_t camera)
  */
 void ObjectBillboardTilt(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t y = cr->y, w;
     uint8_t a, c;
 
-    camera_turn_negated(cr, b, W(menu_1a64));
+    camera_turn_negated(cr, W(menu_1a64));
     {
         uint16_t x = cr->x;
 
@@ -4574,7 +4578,7 @@ void ObjectBillboardTilt(Carried *cr)
     r_lda8(cr, 0x7E0000 | W(wram_0D62));
     if (!(uint8_t)cr->a)
         { cyc(64); return; }
-    camera_turn_negated(cr, b, W(view_b));
+    camera_turn_negated(cr, W(view_b));
     ObjectTableC056_cr(cr);
     r_lda8(cr, 0x7E0000 | W(wram_1F5A));
     a = (uint8_t)(cr->a | 0x80);
@@ -5604,12 +5608,10 @@ void abi_ObjectListClear(void)
  */
 void PlayerLinkSet27(Carried *cr)
 {
-    uint32_t b;
     uint8_t a;
 
     r_sep(cr, P_M);
     r_rep(cr, P_X);
-    b = (uint32_t)cr->db << 16;
     cyc(46);
     cr->y = rd16(0x7E0000 | W(wram_0346));
     set_p(cr, nz16(cr->p, cr->y));

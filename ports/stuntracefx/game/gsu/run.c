@@ -376,14 +376,12 @@ static void run_cmp8(Carried *cr, uint8_t v, uint8_t m)
 void HudFrameWhileGsuRuns(Carried *cr)
 {
     cyc(62);
-    uint32_t b;
     uint8_t v;
 
     w_SlideStep(cr);
     (cyc(62), FadeValueStep_cr(cr));
     (cyc(62), DataBankTest_cr(cr));
     r_sep(cr, P_M | P_X);
-    b = (uint32_t)cr->db << 16;
     cyc(24);
     r_lda8(cr, 0x7E0000 | W(wram_0D62));
     if ((uint8_t)cr->a) {

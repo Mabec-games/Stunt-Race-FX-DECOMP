@@ -125,6 +125,7 @@ void abi_MenuChoiceRepeat(void)
  */
 int MenuWaitFor0357(uint8_t bank, uint16_t rec)
 {
+    (void)bank;
     cyc(46);
     if (!rd8(0x7E0000 | W(wram_0357)))
         { cyc(22); return 0; }
@@ -170,6 +171,7 @@ void abi_MenuWaitFor0357(void)
  */
 void MenuSetExit(uint8_t bank)
 {
+    (void)bank;
     cyc(70);
     wr16(0x7E0000 | W(menu_exit), 0x0001);
     cyc(42);
@@ -204,6 +206,7 @@ void abi_MenuSetExit(void)
  */
 void MenuSet1A66(uint8_t bank, uint16_t i)
 {
+    (void)bank;
     cyc(134);
     wr16(0x7E0000 | W(wram_1A66), cyc_then(54, rd16(W(table_116c) + (uint16_t)(i << 1))));
     cyc(106);
@@ -306,6 +309,7 @@ uint8_t SaveChecksum(void);
  */
 uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
 {
+    (void)bank;
     uint16_t v;
 
     cyc(76);
@@ -371,6 +375,7 @@ static uint16_t save_mode;              /* the mode save_selection last saw */
 
 static uint16_t save_selection(uint8_t bank, uint16_t *x)
 {
+    (void)bank;
     cyc(32);
     uint16_t mode = rd16(W(wram_18C3)), v;
 
@@ -473,7 +478,7 @@ void SoundPort0QueuePush(uint8_t command);
  * Entry: M 16-bit, X 16-bit. Exit: A = $18F5; Y = $118B; N, Z from A; M
  * 16-bit.
  */
-static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
+static uint16_t menu_choice_up_down(uint16_t *y)
 {
     uint16_t pad, a;
 
@@ -507,22 +512,24 @@ static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
 
 uint16_t MenuChoiceUpDown(uint8_t bank)
 {
+    (void)bank;
     uint16_t y;
 
-    return menu_choice_up_down(bank, &y);
+    return menu_choice_up_down(&y);
 }
 
 /* As MenuChoiceUpDown, with the Y it leaves (the pad word it read). */
 uint16_t MenuChoiceUpDownY(uint8_t bank, uint16_t *y)
 {
-    return menu_choice_up_down(bank, y);
+    (void)bank;
+    return menu_choice_up_down(y);
 }
 
 void MenuChoiceUpDown_cr(Carried *cr)
 {
     uint16_t y;
 
-    cr->a = menu_choice_up_down(cr->db, &y);
+    cr->a = menu_choice_up_down(&y);
     cr->y = y;
     set_p(cr, (uint8_t)(nz16(cr->p, cr->a) & ~P_M));
 }
@@ -590,6 +597,7 @@ static uint16_t mc_pad;                 /* the pad word pad_bit last read */
 /* REP #$20, LDA $0D1A, BIT #bit, SEP #$20: whether that button is held. */
 static int pad_bit(uint32_t b, uint16_t bit)
 {
+    (void)b;
     cyc(62);
     mc_pad = rd16(0x7E0000 | W(joy1_pressed_copy));
     if (!(mc_pad & bit))
@@ -736,7 +744,7 @@ static int cs_c;                        /* C as the car steps leave it, or -1 */
 
 /* The fourth car is there in HUD mode 3 ($0D2B, read as X) or once bit 2
    of $70:FC0B is set: LDX, CPX #3, then LDA.L, BIT #4. 2 for mode 3. */
-static int fourth_car(uint32_t b)
+static int fourth_car(void)
 {
     uint8_t x;
 
@@ -770,7 +778,7 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2, unsigned wide)
         v = (uint8_t)(v + 1);
         cs_c = v >= 0x03;
         if (v == 0x03) {
-            four = fourth_car(b);
+            four = fourth_car();
             v = four ? 0x03 : 0x00;
         } else if (v > 0x03)
             v = 0x00;
@@ -779,7 +787,7 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2, unsigned wide)
         v = (uint8_t)(v - 1);
         if (v & 0x80) {
             cyc(40);
-            four = fourth_car(b);
+            four = fourth_car();
             v = four ? (cyc(2), 0x03) : (cyc(2), 0x02);
         }
     }

@@ -378,6 +378,7 @@ void abi_PaletteLoad16(void)
  */
 uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
 {
+    (void)bank;
     cyc(90);
     uint8_t v = rd8(0x7E0000 | W(wram_0D22));
 
@@ -701,6 +702,7 @@ static void blend_split(uint32_t at, uint32_t dp)
  */
 uint16_t ColourBlend(uint8_t bank)
 {
+    (void)bank;
     uint16_t r, g, bl, m, s, t, f, a;
     uint8_t cv = 0;
 
@@ -818,6 +820,7 @@ static int kept_v;
  */
 uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y, uint16_t *xo, int *stepped)
 {
+    (void)bank;
     uint8_t t, step = 0, v, d;
     unsigned s;
     int up;
@@ -1185,6 +1188,7 @@ static int status_c_kept;
  */
 uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
 {
+    (void)bank;
     uint16_t flags, t = 0, a, x;
     uint8_t v;
     int table = 0;
@@ -1456,7 +1460,7 @@ static int fade_c, fade_v;
 
 /* One colour part of PaletteFadeStep: the part (mask m) of the colour at
    $0722+Y moved one step toward the same part at $02:D65A+X. */
-static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step, uint16_t x, uint16_t y)
+static uint16_t fade_part(uint16_t m, uint16_t step, uint16_t x, uint16_t y)
 {
     uint16_t a, c;
 
@@ -1514,7 +1518,7 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step, uint16_t x, uin
  */
 int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t n, a, x, y, t;
     uint8_t v;
 
@@ -1536,13 +1540,13 @@ int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
     for (;;) {
         cyc(30);
         n = a;
-        t = fade_part(b, 0x7C00, 0x0400, x, y);
+        t = fade_part(0x7C00, 0x0400, x, y);
         cyc(30);
         wr16(W(dp_3e), t);
-        t = fade_part(b, 0x03E0, 0x0020, x, y);
+        t = fade_part(0x03E0, 0x0020, x, y);
         cyc(30);
         wr16(W(dp_40), t);
-        a = fade_part(b, 0x001F, 1, x, y);
+        a = fade_part(0x001F, 1, x, y);
         cyc(30);
         a |= rd16(W(dp_3e));
         cyc(16);
@@ -1600,7 +1604,7 @@ void abi_PaletteFadeStep(void)
 /* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the
    cycle's next step and its table offset (with X 16-bit, TAX also takes
    A's high byte). Returns A; *x is the offset. */
-static uint16_t palette_cycle_step(uint32_t b, uint16_t a, int index8, uint16_t *x)
+static uint16_t palette_cycle_step(uint16_t a, int index8, uint16_t *x)
 {
     cyc(56);
     uint8_t v = (uint8_t)(rd8(0x7E0000 | W(wram_0D30)) + 1);
@@ -1659,7 +1663,7 @@ uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo)
     c = rd8(0x7E0000 | W(course));
     a = (uint16_t)((a & 0xFF00) | c);
     if (c == 0x03) {
-        a = palette_cycle_step(b, a, index8, &x);
+        a = palette_cycle_step(a, index8, &x);
         *xo = x;
         cyc(22);                        /* REP #$20 */
         for (i = 0; i < 4; i++) {
@@ -1673,7 +1677,7 @@ uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo)
         cyc(24);                        /* JMP */
     } else if (c == 0x07) {
         cyc(44);
-        a = palette_cycle_step(b, a, index8, &x);
+        a = palette_cycle_step(a, index8, &x);
         *xo = x;
         cyc(22);                        /* REP #$20 */
         for (i = 0; i < 4; i++)
@@ -1686,7 +1690,7 @@ uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo)
         cyc(24);                        /* JMP */
     } else if (c == 0x0B) {
         cyc(100);
-        a = palette_cycle_step(b, a, index8, &x);
+        a = palette_cycle_step(a, index8, &x);
         *xo = x;
         cyc(32);
         v = rd8(W(wram_7F3460));

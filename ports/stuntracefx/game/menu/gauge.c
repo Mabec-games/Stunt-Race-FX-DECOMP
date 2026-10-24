@@ -148,6 +148,7 @@ static const uint16_t gauge_offsets[5] = {0x0000, 0x0098, 0x0130, 0x01C8, 0x0260
  */
 uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
 {
+    (void)bank;
     uint16_t obj, kind, off = 0;
     unsigned i;
 
@@ -383,6 +384,7 @@ void abi_SpeedGaugeUpdate(void)
  */
 uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
 {
+    (void)bank;
     uint16_t x, g, t, v;
 
     cyc(60);
