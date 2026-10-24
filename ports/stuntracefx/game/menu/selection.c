@@ -20,7 +20,7 @@
 uint16_t MenuRowPosition(uint16_t rec, uint8_t *p)
 {
     cyc(116);
-    uint16_t a = (uint16_t)((uint16_t)(2 - rd16(W(wram_18ED))) << 4), b = rd16(cyc_then(92, (uint16_t)(rec + 0x12)));
+    uint16_t a = (uint16_t)((uint16_t)(2 - rd16(W(wram_18ED))) << 4), b = rd16(cyc_then(92, (uint16_t)(rec + W(actor_12))));
     unsigned s = (unsigned)a + b;
 
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : (cyc(70), 0)) | ((~(a ^ b) & (a ^ (uint16_t)s) & 0x8000) ? P_V : 0));
@@ -133,7 +133,7 @@ int MenuWaitFor0357(uint8_t bank, uint16_t rec)
     cyc(56);
     wr16(W(menu_1907), 0x0000);
     cyc(46);
-    wr16((uint16_t)(rec + 0x08), 0xBCF1);
+    wr16((uint16_t)(rec + W(actor_handler)), 0xBCF1);
     return 1;
 }
 
@@ -556,11 +556,11 @@ void MenuSelectStart(uint16_t rec)
 {
     MenuStateInit();
     cyc(46);
-    wr16((uint16_t)(rec + 0x08), 0xB814);
+    wr16((uint16_t)(rec + W(actor_handler)), 0xB814);
     cyc(46);
-    wr16((uint16_t)(rec + 0x22), 0xFF00);
+    wr16((uint16_t)(rec + W(actor_22)), 0xFF00);
     cyc(46);
-    wr16((uint16_t)(rec + 0x20), 0x0000);
+    wr16((uint16_t)(rec + W(actor_20)), 0x0000);
     cyc(42);
 }
 

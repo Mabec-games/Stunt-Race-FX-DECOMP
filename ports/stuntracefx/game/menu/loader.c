@@ -43,7 +43,7 @@ static uint16_t next_step(uint8_t bank, uint16_t next)
     uint16_t x = rd16((uint32_t)bank << 16 | 0x11F9);
 
     cyc(46);
-    wr16((uint16_t)(x + 0x08), next);
+    wr16((uint16_t)(x + W(actor_handler)), next);
     return x;
 }
 

@@ -149,15 +149,15 @@ static void kind4_animation(Carried *cr, uint16_t anim)
     (cyc(70), MenuActorFind_cr(cr));
     x = cr->x;
     cyc(22);
-    cr->a = rd16(ACTOR(x, 0x14));
+    cr->a = rd16(ACTOR(x, W(actor_anim)));
     if (cr->a != anim) {
         cr->a = anim;
         cyc(86);
-        wr16(ACTOR(x, 0x14), anim);
+        wr16(ACTOR(x, W(actor_anim)), anim);
         cyc(22);
-        wr16(ACTOR(x, 0x16), 0x0000);
+        wr16(ACTOR(x, W(actor_anim_pos)), 0x0000);
         cyc(22);
-        wr16(ACTOR(x, 0x18), 0x0000);
+        wr16(ACTOR(x, W(actor_anim_timer)), 0x0000);
     } else { cyc(46); }
 }
 
@@ -182,7 +182,7 @@ void MenuPreviewIdle(Carried *cr)
     cr->x = x;
     cr->a = 0xBCD2;
     cyc(46);
-    wr16(ACTOR(x, 0x08), 0xBCD2);
+    wr16(ACTOR(x, W(actor_handler)), 0xBCD2);
     (cyc(46), MenuChoiceRepeat_cr(cr));
     cyc(74);                            /* RTS, the LDA long's fetch */
     cr->a = rd16(W(selection_prev));
@@ -228,9 +228,9 @@ void MenuPreviewStart(Carried *cr)
     x = rd16(W(actor_current));
     cr->x = x;
     cyc(46);
-    wr16(ACTOR(x, 0x08), 0xBD55);
+    wr16(ACTOR(x, W(actor_handler)), 0xBD55);
     cyc(46);
-    wr16(ACTOR(x, 0x0A), 0x0014);
+    wr16(ACTOR(x, W(actor_0a)), 0x0014);
     kind4_animation(cr, 0x00D8);
     groups_45(cr, 0x0000);
     hdma_on(cr, 0xC0);
@@ -271,13 +271,13 @@ void MenuPreviewCountdown(Carried *cr)
     uint16_t x = cr->x, n, keys;
 
     cyc(22);
-    n = rd16(ACTOR(x, 0x0A));
+    n = rd16(ACTOR(x, W(actor_0a)));
     cr->a = n;
     if (n) {
         n = (uint16_t)(n - 1);
         cr->a = n;
         cyc(52);
-        wr16(ACTOR(x, 0x0A), n);
+        wr16(ACTOR(x, W(actor_0a)), n);
         if (n == 0x0013 || (cyc(40), n == 0x000E) || (cyc(40), n == 0x0009) || (cyc(34), n == 0x0004)) {
             cyc(108);
             set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -286,7 +286,7 @@ void MenuPreviewCountdown(Carried *cr)
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         } else { cyc(22); }
         cyc(52);
-        n = rd16(ACTOR(x, 0x0A));
+        n = rd16(ACTOR(x, W(actor_0a)));
         cr->a = n;
         if (!n)
             { cyc(16); kind4_animation(cr, 0x0090); } else { cyc(22); }
@@ -317,7 +317,7 @@ void MenuPreviewCountdown(Carried *cr)
         x = rd16(W(actor_current));
         cr->x = x;
         cyc(46);
-        wr16(ACTOR(x, 0x08), 0xBE29);
+        wr16(ACTOR(x, W(actor_handler)), 0xBE29);
         cyc(56);
         wr16(W(menu_1905), 0x0001);
         cyc(56);
@@ -1135,7 +1135,7 @@ void MenuPreviewBackOut(Carried *cr)
     cr->x = x;
     cr->a = 0xBE65;
     cyc(46);
-    wr16(ACTOR(x, 0x08), 0xBE65);
+    wr16(ACTOR(x, W(actor_handler)), 0xBE65);
     cr->a = 0x0000;
     cyc(56);
     wr16(W(selection_out), 0x0000);
@@ -1231,9 +1231,9 @@ void MenuPreviewBackEnd(Carried *cr)
     x = rd16((uint32_t)cr->db << 16 | 0x11F9);
     cr->x = x;
     cyc(46);
-    wr16(ACTOR(x, 0x08), 0xBA4E);
+    wr16(ACTOR(x, W(actor_handler)), 0xBA4E);
     cyc(46);
-    wr16(ACTOR(x, 0x0A), 0x0014);
+    wr16(ACTOR(x, W(actor_0a)), 0x0014);
     kind4_animation(cr, 0x00CE);
     groups_45(cr, 0x0000);
     cr->a = 0x0000;

@@ -23,13 +23,13 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(68);
     if (rd16(OBJ(o, OBJ_OFF(obj_24))) & 0x0080) {
         cyc(70);
-        wr16(REC(r, 0x12), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_x)))));
+        wr16(REC(r, W(draw_x)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_x)))));
         cyc(30);
-        wr16(REC(r, 0x10), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_y)))));
+        wr16(REC(r, W(draw_y)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_y)))));
         cyc(30);
-        wr16(REC(r, 0x14), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_z)))));
+        wr16(REC(r, W(draw_z)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_z)))));
         cyc(54);
-        wr16(REC(r, 0x02), 0xF060);
+        wr16(REC(r, W(draw_depth)), 0xF060);
         cyc(22);                        /* BRA */
     } else {
         cyc(76);
@@ -37,51 +37,51 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(30);
         a = (uint16_t)(a - rd16(W(dp_c7)));
         cyc(30);
-        wr16(REC(r, 0x10), a);
+        wr16(REC(r, W(draw_y)), a);
         if (a & 0x8000)
             { cyc(32); a = (uint16_t)(~a + 1); }
         cyc(66);
-        wr16(REC(r, 0x02), (uint16_t)(a << 1));
+        wr16(REC(r, W(draw_depth)), (uint16_t)(a << 1));
         cyc(30);
         t = (rd16(OBJ(o, OBJ_OFF(obj_09))) & 0x0001) ? (cyc(16), 0x1F40) : 0x0000;
         cyc(114);
-        wr16(REC(r, 0x02), cyc_then(30, (uint16_t)(t + rd16(REC(r, 0x02)))));
+        wr16(REC(r, W(draw_depth)), cyc_then(30, (uint16_t)(t + rd16(REC(r, W(draw_depth))))));
         cyc(30);
         a = rd16(OBJ(o, OBJ_OFF(obj_pos_x)));
         cyc(30);
-        wr16(REC(r, 0x12), cyc_then(30, (uint16_t)(a - rd16(W(dp_c5)))));
+        wr16(REC(r, W(draw_x)), cyc_then(30, (uint16_t)(a - rd16(W(dp_c5)))));
         cyc(30);
         a = rd16(OBJ(o, OBJ_OFF(obj_pos_z)));
         cyc(30);
-        wr16(REC(r, 0x14), cyc_then(30, (uint16_t)(a - rd16(W(dp_c9)))));
+        wr16(REC(r, W(draw_z)), cyc_then(30, (uint16_t)(a - rd16(W(dp_c9)))));
     }
     cyc(30);
-    wr16(REC(r, 0x08), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_04)))));
+    wr16(REC(r, W(draw_model)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_04)))));
     cyc(30);
-    wr16(REC(r, 0x04), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_14)))));
+    wr16(REC(r, W(draw_angle_a)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_14)))));
     cyc(30);
-    wr16(REC(r, 0x05), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_15)))));
+    wr16(REC(r, W(draw_angle_b)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_15)))));
     cyc(30);
-    wr16(REC(r, 0x06), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_16)))));
+    wr16(REC(r, W(draw_angle_c)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_16)))));
     cyc(30);
     if (rd16(OBJ(o, OBJ_OFF(obj_24))) & 0x0004) {
         cyc(106);
-        wr16(REC(r, 0x0A), o);
+        wr16(REC(r, W(draw_link)), o);
         cyc(52);
-        wr8(REC(r, 0x0C), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_48)))));
+        wr8(REC(r, W(draw_link_48)), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_48)))));
         cyc(30);
-        wr8(REC(r, 0x0D), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_49)))));
+        wr8(REC(r, W(draw_link_49)), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_49)))));
         cyc(30);
-        wr8(REC(r, 0x0E), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_4a)))));
+        wr8(REC(r, W(draw_link_4a)), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_4a)))));
         cyc(22);                        /* BRA */
     } else {
         cyc(114);
-        wr8(REC(r, 0x18), 0x00);
+        wr8(REC(r, W(draw_no_link)), 0x00);
     }
     cyc(30);
     v = rd8(OBJ(o, OBJ_OFF(obj_24)));
     cyc(30);
-    wr8(REC(r, 0x07), v);
+    wr8(REC(r, W(draw_flags)), v);
     cyc(46);
     wr8(OBJ(o, OBJ_OFF(obj_24)), (uint8_t)(v & 0xFD));
     cyc(30);
@@ -89,7 +89,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     if (!(v & 0x80))
         { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
     cyc(46);
-    wr8(REC(r, 0x19), (uint8_t)(v & 0x7F));
+    wr8(REC(r, W(draw_palette)), (uint8_t)(v & 0x7F));
     cyc(24);
     if (rd8((0x7E0000 | W(draw_side)))) {
         cyc(46);
@@ -104,18 +104,18 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
             { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
     }
     cyc(46);
-    wr8(REC(r, 0x1A), (uint8_t)(v & 0x7F));
+    wr8(REC(r, W(draw_frame)), (uint8_t)(v & 0x7F));
     cyc(30);
-    wr8(REC(r, 0x1B), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_3a)))));
+    wr8(REC(r, W(draw_kind)), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_3a)))));
     cyc(30);
-    wr8(REC(r, 0x1C), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_5f)))));
+    wr8(REC(r, W(draw_5f)), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_5f)))));
     cyc(30);
-    wr8(REC(r, 0x1D), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_60)))));
+    wr8(REC(r, W(draw_60)), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_60)))));
     cyc(52);
-    wr16(REC(r, 0x16), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_5d)))));
+    wr16(REC(r, W(draw_anim)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_5d)))));
     cyc(90);
     wr16((0x7E0000 | W(draw_count)), cyc_then(14, (uint16_t)(rd16((0x7E0000 | W(draw_count))) + 1)));
-    return (uint16_t)(r + 0x1E);
+    return (uint16_t)(r + W(draw_60) + 1);
 }
 
 /* Whether object `o` is drawn: not when bit 5 of +$24 is set; with bit 6

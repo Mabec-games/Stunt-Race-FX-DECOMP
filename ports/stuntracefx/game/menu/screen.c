@@ -857,16 +857,16 @@ static uint16_t cross_fade(uint8_t bank, uint16_t n, uint16_t *factor)
 int MenuCrossFadeStep(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *factor)
 {
     cyc(22);
-    uint16_t n = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) + 1);
+    uint16_t n = (uint16_t)(rd16((uint16_t)(rec + W(actor_0a))) + 1);
 
     if (n == 0x0040) {
         *a = 0xCE89;
         cyc(106);
-        wr16((uint16_t)(rec + 0x08), *a);
+        wr16((uint16_t)(rec + W(actor_handler)), *a);
         return 0;
     }
     cyc(76);
-    wr16((uint16_t)(rec + 0x0A), n);
+    wr16((uint16_t)(rec + W(actor_0a)), n);
     *a = cross_fade(bank, n, factor);
     return 1;
 }
@@ -997,12 +997,12 @@ int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *factor)
     static const struct { uint32_t reg; uint8_t v; } set[] = {
         {BG12NBA, 0x70}, {BG2SC, 0x7D}, {BGMODE, 0x03}, {TM, 0x02}, {HDMAEN, 0x00}};
     cyc(22);
-    uint16_t n = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 2);
+    uint16_t n = (uint16_t)(rd16((uint16_t)(rec + W(actor_0a))) - 2);
     unsigned i;
 
     if (!(n & 0x8000)) {
         cyc(66);
-        wr16((uint16_t)(rec + 0x0A), n);
+        wr16((uint16_t)(rec + W(actor_0a)), n);
         *a = cross_fade(bank, n, factor);
         return 1;
     }
@@ -1020,7 +1020,7 @@ int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *factor)
         { cyc(212); FrameByteWritePush(bank, (uint16_t)set[i].reg, set[i].v); cyc(108); }
     *a = 0xD1F7;
     cyc(104);
-    wr16((uint16_t)(rec + 0x08), *a);
+    wr16((uint16_t)(rec + W(actor_handler)), *a);
     return 0;
 }
 

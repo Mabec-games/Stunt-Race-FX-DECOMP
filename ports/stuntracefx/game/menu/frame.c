@@ -289,7 +289,7 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
         cyc(74);
         x = rd16(W(actor_list) + i);
         cyc(22);
-        if (rd8((uint16_t)(x + 0x1A)) == rd8(cyc_then(24, W(scratch_11e1))))
+        if (rd8((uint16_t)(x + W(actor_kind))) == rd8(cyc_then(24, W(scratch_11e1))))
             break; else { cyc(28); }
     }
     return x;
@@ -334,19 +334,19 @@ void MenuRegionPal(Carried *cr, uint16_t a, uint16_t x)
 
     x = actor_find8(0x0F, x);
     cyc(80);
-    if (rd8((uint16_t)(x + 0x14)) != 0x1E) {
+    if (rd8((uint16_t)(x + W(actor_anim))) != 0x1E) {
         cyc(70);
-        wr8((uint16_t)(x + 0x14), 0x1E);
+        wr8((uint16_t)(x + W(actor_anim)), 0x1E);
         cyc(22);
-        wr8((uint16_t)(x + 0x16), 0x00);
+        wr8((uint16_t)(x + W(actor_anim_pos)), 0x00);
         cyc(22);
-        wr8((uint16_t)(x + 0x18), 0x00);
+        wr8((uint16_t)(x + W(actor_anim_timer)), 0x00);
     }
     cyc(38);
-    wr8((uint16_t)(x + 0x06), 0x60);
+    wr8((uint16_t)(x + W(actor_06)), 0x60);
     x = actor_find8(0x10, x);
     cyc(80);
-    wr8((uint16_t)(x + 0x10), 0x00);
+    wr8((uint16_t)(x + W(actor_10)), 0x00);
     y = cr->y;
     run_actors(cr, 0x00, a, cr->p, &x, &y);
     cyc(62);
@@ -457,15 +457,15 @@ uint16_t MenuHeldRestart(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *y, ui
     } else { cyc(116); }
     MenuActorFind(bank, 0x000F, &rec, y, &found);
     cyc(22);
-    a = rd16((uint16_t)(rec + 0x14));
+    a = rd16((uint16_t)(rec + W(actor_anim)));
     found = (uint8_t)((found & ~P_C) | (a >= 0x0018 ? P_C : 0));
     if (a != 0x0018) {
         cyc(86);
-        wr16((uint16_t)(rec + 0x14), 0x0018);
+        wr16((uint16_t)(rec + W(actor_anim)), 0x0018);
         cyc(22);
-        wr16((uint16_t)(rec + 0x16), 0x0000);
+        wr16((uint16_t)(rec + W(actor_anim_pos)), 0x0000);
         cyc(22);
-        wr16((uint16_t)(rec + 0x18), 0x0000);
+        wr16((uint16_t)(rec + W(actor_anim_timer)), 0x0000);
     }
     *x = rec;
     now = (uint8_t)(found & ~(P_M | P_X));

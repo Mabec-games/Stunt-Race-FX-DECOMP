@@ -322,17 +322,17 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
 static uint16_t start_anim(uint16_t rec, uint16_t v, uint8_t *p)
 {
     cyc(22);
-    uint16_t a = rd16((uint16_t)(rec + 0x14));
+    uint16_t a = rd16((uint16_t)(rec + W(actor_anim)));
 
     *p = cmp16(*p, a, v);
     if (a == v)
         return a;
     cyc(40);
-    wr16((uint16_t)(rec + 0x14), v);
+    wr16((uint16_t)(rec + W(actor_anim)), v);
     cyc(22);
-    wr16((uint16_t)(rec + 0x16), 0x0000);
+    wr16((uint16_t)(rec + W(actor_anim_pos)), 0x0000);
     cyc(22);
-    wr16((uint16_t)(rec + 0x18), 0x0000);
+    wr16((uint16_t)(rec + W(actor_anim_timer)), 0x0000);
     *p = nz16(*p, v);
     return v;
 }
@@ -484,7 +484,7 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
         a = r;
     }
     cyc(130);
-    wr16((uint16_t)(*x + 0x02), a);
+    wr16((uint16_t)(*x + W(actor_02)), a);
     *x = rd16(cyc_then(24, dbw(bank, W(actor_current))));
     *p = nz16(*p, *x);
     return a;
@@ -743,11 +743,11 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(56);
     wr16(W(word_list_a_size), 0x0000);
     cyc(46);
-    wr16((uint16_t)(*x + 0x08), 0xBA4E);
+    wr16((uint16_t)(*x + W(actor_handler)), 0xBA4E);
     cyc(22);
-    wr16((uint16_t)(*x + 0x0A), 0x0000);
+    wr16((uint16_t)(*x + W(actor_0a)), 0x0000);
     cyc(46);
-    wr16((uint16_t)(*x + 0x1E), 0x0001);
+    wr16((uint16_t)(*x + W(actor_1e)), 0x0001);
     cyc(70);
     MenuActorFind(bank, 0x0004, x, y, p);
     start_anim(*x, 0x008A, p);
@@ -815,9 +815,9 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     set10(bank, 0x000D, 0xFFFF, x, y, p);
     set10(bank, 0x000E, 0xFFFF, x, y, p);
     cyc(46);
-    wr16((uint16_t)(*x + 0x08), 0xC225);
+    wr16((uint16_t)(*x + W(actor_handler)), 0xC225);
     cyc(46);
-    wr16((uint16_t)(*x + 0x1E), 0x0001);
+    wr16((uint16_t)(*x + W(actor_1e)), 0x0001);
     cyc(56);
     wr16(W(word_list_a_size), 0x0000);
     return settings_leave(bank, x, y, p);
@@ -898,9 +898,9 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         }
     }
     cyc(92);
-    wr16((uint16_t)(*x + 0x08), 0xC5EF);
+    wr16((uint16_t)(*x + W(actor_handler)), 0xC5EF);
     cyc(22);
-    wr16((uint16_t)(*x + 0x0A), 0x0000);
+    wr16((uint16_t)(*x + W(actor_0a)), 0x0000);
     cyc(70);
     *x = MenuActorSpawn(bank, 0x0270, &a, y, p);
     cyc(32);

@@ -291,12 +291,53 @@ def name_offsets(t, names, known):
     return OFFSET.sub(f, t)
 
 
+RECORD = re.compile(r'(\(uint16_t\)\((?:\*?x|rec|cr->x|r) \+ |\b(?:ACTOR|CAM|REC)\((?:x|r), )0x([0-9A-Fa-f]{1,2})(?=\))')
+# Records other than the object table, by the prefix of their fields'
+# names; names on the same offsets that are not fields are left out.
+FAMILIES = {'actor': 'actor_', 'cam': 'cam_', 'draw': 'draw_'}
+NOT_FIELDS = {'cam_tmp_a', 'cam_tmp_b', 'cam_tmp_c', 'cam_target_obj', 'cam_mode', 'cam_lag',
+              'cam_offset_x', 'cam_offset_y', 'cam_offset_z', 'draw_count', 'draw_object',
+              'draw_next', 'draw_side'}
+
+
+def name_records(t, family):
+    """Fields of a record table the asm spells as names on an index
+    (LDA !actor_0a,X; LDA !cam_turn,X): the record pointer plus the field's
+    name, (uint16_t)(x + W(actor_0a)), CAM(r, W(cam_turn)). An offset with
+    no name of its own is a word or byte into the field below it, as the
+    asm writes it (!cam_lead+2,X): W(cam_lead) + 2."""
+    by = {}
+    for n, v, *_ in entries():
+        if n.startswith(FAMILIES[family]) and n not in NOT_FIELDS and v < 0x100:
+            by.setdefault(v, []).append(n)
+
+    def f(m):
+        v = int(m.group(2), 16)
+        for k in (0, 1, 2, 3, 4):
+            ns = by.get(v - k)
+            if ns:
+                break
+        if len(ns) != 1:
+            raise SystemExit('no single %s field at %s: %s' % (family, m.group(0), ns))
+        return m.group(1) + 'W(%s)' % ns[0] + (' + %d' % k if k else '')
+    return RECORD.sub(f, t)
+
+
 def main(argv):
     if argv == ['header']:
         write_header()
         return 0
     if argv == ['--meter']:
         meter(sorted(glob.glob(os.path.join(G, '*', '*.c'))))
+        return 0
+    if argv and argv[0] == '--records':
+        for f in argv[2:]:
+            p = os.path.join(G, f)
+            t = open(p).read()
+            n = name_records(t, argv[1])
+            if n != t:
+                open(p, 'w').write(ensure_include(n))
+                print('records named', f)
         return 0
     if argv and argv[0] == '--offsets':
         for f in argv[1:]:
