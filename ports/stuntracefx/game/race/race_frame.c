@@ -67,12 +67,15 @@ static void race_load_views(Carried *cr, uint16_t x);
 static void view_params(Carried *cr, const uint8_t *v);
 static void w_ApuUpload(Carried *cr);
 static void w_DebugShowErrors(Carried *cr);
+void FrameRunGsu8FCA(Carried *cr);
 static void w_FrameRunGsu8FCA(Carried *cr);
 static void w_GsuScreenFlip(Carried *cr);
 static void w_GsuScreenFlipMenu(Carried *cr);
 static void w_GsuScreenToggle(Carried *cr);
 static void w_LoopLeaveWhenEnded(Carried *cr);
+void ObjectsRunHandlers(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
+void ReturnOnly_cr(Carried *cr);
 static void w_ReturnOnly(Carried *cr);
 static void w_SpeedGauge2Update(Carried *cr);
 static void w_SpeedGaugeUpdate(Carried *cr);
@@ -1923,23 +1926,10 @@ void abi_AttractCourseSetup(void)
     cpu.db = r.db;
 }
 
-/* FrameRunGsu8FCA, still in registers: its call with the registers loaded and taken
-   back. */
+/* FrameRunGsu8FCA on the carried registers. */
 static void w_FrameRunGsu8FCA(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_FrameRunGsu8FCA();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    FrameRunGsu8FCA(cr);
 }
 
 /* GsuScreenFlip as its adapter leaves the registers. */
@@ -1949,23 +1939,10 @@ static void w_GsuScreenFlip(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_Z)) | P_M));
 }
 
-/* ObjectsRunHandlers, still in registers: its call with the registers loaded and taken
-   back. */
+/* ObjectsRunHandlers on the carried registers. */
 static void w_ObjectsRunHandlers(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ObjectsRunHandlers();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    ObjectsRunHandlers(cr);
 }
 
 /* ApuUpload as its adapter leaves the registers. */
@@ -1979,23 +1956,10 @@ static void w_ApuUpload(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~(P_N | P_V)) | P_Z | P_C | P_M));
 }
 
-/* ReturnOnly, still in registers: its call with the registers loaded and taken
-   back. */
+/* ReturnOnly on the carried registers. */
 static void w_ReturnOnly(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ReturnOnly();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    ReturnOnly_cr(cr);
 }
 
 /* DebugShowErrors as its adapter leaves the registers. */

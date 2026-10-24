@@ -2672,9 +2672,24 @@ void abi_PhaseGlyphsFourA(void)
  * HOW: RTS (RaceEndWindowNine's last).
  * Entry: any widths. Exit: every register unchanged.
  */
+/* PhaseNothingEBDC on carried registers: its cycles, nothing else. */
+void PhaseNothingEBDC_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_PhaseNothingEBDC(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PhaseNothingEBDC_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_RaceEndLeave(void);

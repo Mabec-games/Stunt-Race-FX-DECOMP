@@ -54,6 +54,7 @@ static void boot_run(Carried *cr, int from);
 static void boot_stack(Carried *cr);
 static void w_ApuUploadBank19(Carried *cr);
 static void w_CourseDataPointer(Carried *cr);
+void KeepRegisters_cr(Carried *cr);
 static void w_KeepRegisters(Carried *cr);
 static void w_SpriteSlot1Countdown(Carried *cr);
 void AttractCourseSetup(Carried *cr);
@@ -763,23 +764,10 @@ static void w_CourseDataPointer(Carried *cr)
     set_p(cr, (uint8_t)((nz16(p, x) & ~P_X) | P_M));
 }
 
-/* KeepRegisters, still in registers: its call with the registers loaded and taken
-   back. */
+/* KeepRegisters on the carried registers. */
 static void w_KeepRegisters(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_KeepRegisters();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    KeepRegisters_cr(cr);
 }
 
 /* SpriteSlot1Countdown as its adapter leaves the registers. */

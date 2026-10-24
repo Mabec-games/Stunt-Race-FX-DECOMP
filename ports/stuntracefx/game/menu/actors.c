@@ -3713,39 +3713,47 @@ void abi_MenuOamBuild(void)
  * byte 0 when there are none); Y = the last offset - 2; P and DB
  * unchanged.
  */
-void MenuActorsRun(void)
+void MenuActorsRun(Carried *cr)
 {
-    uint8_t p = cpu.p, db = cpu.db;
+    uint8_t p = cr->p, db = cr->db;
     uint16_t y;
     uint32_t t;
 
-    cpu.a &= 0xFF00;
-    cpu.db = 0x00;
-    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
+    cr->a &= 0xFF00;
+    cr->db = 0x00;
+    set_p(cr, (uint8_t)((cr->p & ~(P_M | P_X | P_N)) | P_Z));
     cyc(200);
     y = (uint16_t)(rd16(LIVE_LEN) - 2);
     /* into the body: 68 the first time, 74 going round */
     for (t = 68; cyc_loop(t, !(y & 0x8000)); t = 74) {
         wr16(0x0011FB, y);
         cyc(30);
-        cpu.x = rd16(LIVE_LIST + y);
+        cr->x = rd16(LIVE_LIST + y);
         cyc(24);
-        wr16(CURRENT, cpu.x);
-        cpu.y = y;
-        cpu.p = nz16(cpu.p, cpu.x);
+        wr16(CURRENT, cr->x);
+        cr->y = y;
+        cr->p = nz16(cr->p, cr->x);
         cyc(46);
-        call_routine(0x0B0000 | rd16(0x0B0000 | (uint16_t)(cpu.x + 0x08)), 0);
+        carried_call(cr, 0x0B0000 | rd16(0x0B0000 | (uint16_t)(cr->x + 0x08)), 0);
         cyc(24);
         y = (uint16_t)(rd16(0x0011FB) - 2);
     }
     cyc(144);
-    cpu.y = y;
-    cpu.db = db;
-    cpu.p = p;
+    cr->y = y;
+    cr->db = db;
+    set_p(cr, p);
 }
 
 void abi_MenuActorsRun(void)
 {
-    MenuActorsRun();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorsRun(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 

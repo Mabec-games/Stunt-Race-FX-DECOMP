@@ -196,11 +196,11 @@ void abi_MenuWaitFrame(void)
     cpu.db = r.db;
 }
 
-void MenuActorsRun(void);
+void MenuActorsRun(Carried *cr);
 uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
 void MenuScreenOpen0(Carried *cr);
 
-/* The objects run (MenuActorsRun, still in registers) with A, P = p and the
+/* The objects run (MenuActorsRun) with A, P = p and the
    data bank going in, X passing through when there are none; the X and Y
    they leave come back in *x and *y. */
 static void run_actors(Carried *cr, uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y)
@@ -579,22 +579,9 @@ void abi_MenuScreen0Run(void)
     cpu.db = r.db;
 }
 
-/* MenuActorsRun, still in registers: its call with the registers loaded and taken
-   back. */
+/* MenuActorsRun on the carried registers. */
 static void w_MenuActorsRun(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuActorsRun();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    MenuActorsRun(cr);
 }
 

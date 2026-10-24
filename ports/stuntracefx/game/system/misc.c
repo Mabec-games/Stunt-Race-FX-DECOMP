@@ -57,7 +57,9 @@ static void w_GsuRun(Carried *cr);
 static void w_KeepRegisters(Carried *cr);
 static void w_ObjectLinkedSet1A(Carried *cr);
 static void w_ObjectPlaceAll(Carried *cr);
+void ObjectsRunHandlers(Carried *cr);
 static void w_ObjectsRunHandlers(Carried *cr);
+void PlayerStatsAndPaletteAnimate(Carried *cr);
 static void w_PlayerStatsAndPaletteAnimate(Carried *cr);
 void AttractCourseSetup(Carried *cr);
 void BootSoftRestart(Carried *cr);
@@ -135,9 +137,24 @@ void KeepRegisters(void)
 {
 }
 
+/* KeepRegisters on carried registers: its cycles, nothing else. */
+void KeepRegisters_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(138);
+}
+
 void abi_KeepRegisters(void)
 {
-    cyc(138);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    KeepRegisters_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -150,9 +167,24 @@ void ReturnOnly(void)
 {
 }
 
+/* ReturnOnly on carried registers: its cycles, nothing else. */
+void ReturnOnly_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_ReturnOnly(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ReturnOnly_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -1192,7 +1224,7 @@ static void w_GsuRun(Carried *cr)
 /* KeepRegisters as its adapter leaves the registers. */
 static void w_KeepRegisters(Carried *cr)
 {
-    cyc(138);
+    KeepRegisters_cr(cr);
 }
 
 /* ObjectLinkedSet1A as its adapter leaves the registers. */
@@ -1209,40 +1241,14 @@ static void w_ObjectPlaceAll(Carried *cr)
     set_p(cr, (cr->p & P_X) ? nz8(cr->p, (uint8_t)cr->x) : nz16(cr->p, cr->x));
 }
 
-/* ObjectsRunHandlers, still in registers: its call with the registers loaded and taken
-   back. */
+/* ObjectsRunHandlers on the carried registers. */
 static void w_ObjectsRunHandlers(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_ObjectsRunHandlers();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    ObjectsRunHandlers(cr);
 }
 
-/* PlayerStatsAndPaletteAnimate, still in registers: its call with the registers loaded and taken
-   back. */
+/* PlayerStatsAndPaletteAnimate on the carried registers. */
 static void w_PlayerStatsAndPaletteAnimate(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_PlayerStatsAndPaletteAnimate();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    PlayerStatsAndPaletteAnimate(cr);
 }

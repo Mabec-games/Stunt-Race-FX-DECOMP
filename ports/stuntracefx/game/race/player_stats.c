@@ -171,6 +171,7 @@ static void w_GlyphRowsAt32(Carried *cr);
 static void w_GlyphRowsAt56(Carried *cr);
 static void w_GsuF15BTwoLines(Carried *cr);
 static void w_GsuRecordBits60(Carried *cr);
+void PhaseNothingEBDC_cr(Carried *cr);
 static void w_PhaseNothingEBDC(Carried *cr);
 static void w_PlayerStatsFromRecord(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
@@ -2545,21 +2546,8 @@ static void w_GlyphRowsAt56(Carried *cr)
     set_p(cr, (uint8_t)(nz8(cr->p, cr->db) & ~(P_M | P_X)));
 }
 
-/* PhaseNothingEBDC, still in registers: its call with the registers loaded and taken
-   back. */
+/* PhaseNothingEBDC on the carried registers. */
 static void w_PhaseNothingEBDC(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_PhaseNothingEBDC();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    PhaseNothingEBDC_cr(cr);
 }

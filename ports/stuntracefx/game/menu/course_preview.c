@@ -52,6 +52,7 @@ static void preview_picture(Carried *cr, uint16_t vram, uint16_t pic);
 static void wr_m(Carried *cr, uint32_t a, uint16_t v);
 static void w_ApproachTargetFull(Carried *cr);
 static void w_ApproachTargetZero(Carried *cr);
+void MenuActorsRun(Carried *cr);
 static void w_MenuActorsRun(Carried *cr);
 static void w_MenuChoicePressesP2(Carried *cr);
 static void w_SaveChecksum(Carried *cr);
@@ -1262,23 +1263,10 @@ static void w_MenuChoicePressesP2(Carried *cr)
     set_p(cr, p);
 }
 
-/* MenuActorsRun, still in registers: its call with the registers loaded and taken
-   back. */
+/* MenuActorsRun on the carried registers. */
 static void w_MenuActorsRun(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuActorsRun();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    MenuActorsRun(cr);
 }
 
 /* ApproachTargetZero as its adapter leaves the registers. */

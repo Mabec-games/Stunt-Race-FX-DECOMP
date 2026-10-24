@@ -6,6 +6,8 @@
  */
 #include "machine.h"
 #include "wram.h"
+#include "carried.h"
+
 
 /*
  * @routine 07:AA6E OamTextLine
@@ -74,15 +76,38 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
     *ap = (uint16_t)((*ap & 0xFF00) | attr);
 }
 
-void abi_OamTextLine(void)
+void OamTextLine_cr(Carried *cr);
+void OamTextLineLong_cr(Carried *cr);
+void SpriteTextAt8152_cr(Carried *cr);
+void SpriteTextAt8152B_cr(Carried *cr);
+void SpriteTextAt8152C_cr(Carried *cr);
+void SpriteTextAt8952_cr(Carried *cr);
+void SpriteTextAt8952B_cr(Carried *cr);
+void SpriteTextAt895E_cr(Carried *cr);
+static void abi_sprite_text_line_at(Carried *cr, uint8_t x, uint8_t y);
+
+void OamTextLine_cr(Carried *cr)
 {
     uint16_t x, y, a;
 
-    OamTextLine(cpu.db, &x, &y, &a);
-    cpu.a = a;
-    cpu.x = cpu.p & P_X ? (uint16_t)(x & 0xFF) : x;
-    cpu.y = cpu.p & P_X ? (uint16_t)(y & 0xFF) : y;
+    OamTextLine(cr->db, &x, &y, &a);
+    cr->a = a;
+    cr->x = cr->p & P_X ? (uint16_t)(x & 0xFF) : x;
+    cr->y = cr->p & P_X ? (uint16_t)(y & 0xFF) : y;
     cyc(86);
+}
+
+void abi_OamTextLine(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamTextLine_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -97,14 +122,27 @@ void OamTextLineLong(uint16_t *xp, uint16_t *yp, uint16_t *ap)
     OamTextLine(0x07, xp, yp, ap);
 }
 
-void abi_OamTextLineLong(void)
+void OamTextLineLong_cr(Carried *cr)
 {
     uint16_t x, y, a;
 
     OamTextLineLong(&x, &y, &a);
-    cpu.a = a;
-    cpu.x = cpu.p & P_X ? (uint16_t)(x & 0xFF) : x;
-    cpu.y = cpu.p & P_X ? (uint16_t)(y & 0xFF) : y;
+    cr->a = a;
+    cr->x = cr->p & P_X ? (uint16_t)(x & 0xFF) : x;
+    cr->y = cr->p & P_X ? (uint16_t)(y & 0xFF) : y;
+}
+
+void abi_OamTextLineLong(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    OamTextLineLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The body the entries below share ($02:FC1C): text line $0E3D as sprites
@@ -136,15 +174,15 @@ static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp
 
 /* For the abi_ wrappers: A = 0, M 16-bit, Z set, N clear; C and V from the
    subtract that made the Y position (C set, V set for every entry here). */
-static void abi_sprite_text_line_at(uint8_t x, uint8_t y)
+static void abi_sprite_text_line_at(Carried *cr, uint8_t x, uint8_t y)
 {
     uint16_t xo, yo;
 
-    sprite_text_line_at(cpu.db, x, y, &xo, &yo);
-    cpu.a = 0x0000;
-    cpu.x = cpu.p & P_X ? (uint16_t)(xo & 0xFF) : xo;
-    cpu.y = cpu.p & P_X ? (uint16_t)(yo & 0xFF) : yo;
-    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_M)) | P_Z | P_C | P_V));
+    sprite_text_line_at(cr->db, x, y, &xo, &yo);
+    cr->a = 0x0000;
+    cr->x = cr->p & P_X ? (uint16_t)(xo & 0xFF) : xo;
+    cr->y = cr->p & P_X ? (uint16_t)(yo & 0xFF) : yo;
+    set_p(cr, (uint8_t)(((cr->p & ~(P_N | P_M)) | P_Z | P_C | P_V)));
 }
 
 /*
@@ -163,10 +201,23 @@ void SpriteTextAt895E(uint8_t bank)
     sprite_text_line_at(bank, 0x89, 0x5E, &x, &y);
 }
 
-void abi_SpriteTextAt895E(void)
+void SpriteTextAt895E_cr(Carried *cr)
 {
     cyc(68);
-    abi_sprite_text_line_at(0x89, 0x5E);
+    abi_sprite_text_line_at(cr, 0x89, 0x5E);
+}
+
+void abi_SpriteTextAt895E(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteTextAt895E_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -182,10 +233,23 @@ void SpriteTextAt8152(uint8_t bank)
     sprite_text_line_at(bank, 0x81, 0x52, &x, &y);
 }
 
-void abi_SpriteTextAt8152(void)
+void SpriteTextAt8152_cr(Carried *cr)
 {
     cyc(68);
-    abi_sprite_text_line_at(0x81, 0x52);
+    abi_sprite_text_line_at(cr, 0x81, 0x52);
+}
+
+void abi_SpriteTextAt8152(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteTextAt8152_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -199,10 +263,23 @@ void SpriteTextAt8152B(uint8_t bank)
     SpriteTextAt8152(bank);
 }
 
-void abi_SpriteTextAt8152B(void)
+void SpriteTextAt8152B_cr(Carried *cr)
 {
     cyc(68);
-    abi_sprite_text_line_at(0x81, 0x52);
+    abi_sprite_text_line_at(cr, 0x81, 0x52);
+}
+
+void abi_SpriteTextAt8152B(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteTextAt8152B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -219,10 +296,23 @@ void SpriteTextAt8952(uint8_t bank)
     sprite_text_line_at(bank, 0x89, 0x52, &x, &y);
 }
 
-void abi_SpriteTextAt8952(void)
+void SpriteTextAt8952_cr(Carried *cr)
 {
     cyc(68);
-    abi_sprite_text_line_at(0x89, 0x52);
+    abi_sprite_text_line_at(cr, 0x89, 0x52);
+}
+
+void abi_SpriteTextAt8952(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteTextAt8952_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -237,10 +327,23 @@ void SpriteTextAt8152C(uint8_t bank)
     SpriteTextAt8152(bank);
 }
 
-void abi_SpriteTextAt8152C(void)
+void SpriteTextAt8152C_cr(Carried *cr)
 {
     cyc(68);
-    abi_sprite_text_line_at(0x81, 0x52);
+    abi_sprite_text_line_at(cr, 0x81, 0x52);
+}
+
+void abi_SpriteTextAt8152C(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteTextAt8152C_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -255,8 +358,22 @@ void SpriteTextAt8952B(uint8_t bank)
     SpriteTextAt8952(bank);
 }
 
-void abi_SpriteTextAt8952B(void)
+void SpriteTextAt8952B_cr(Carried *cr)
 {
     cyc(46);
-    abi_sprite_text_line_at(0x89, 0x52);
+    abi_sprite_text_line_at(cr, 0x89, 0x52);
 }
+
+void abi_SpriteTextAt8952B(void)
+{
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SpriteTextAt8952B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
+}
+

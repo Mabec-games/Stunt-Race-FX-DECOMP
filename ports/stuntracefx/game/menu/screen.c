@@ -1053,7 +1053,7 @@ void abi_MenuCrossFadeOut(void)
 void SoundPort0QueuePush(uint8_t command);
 void MenuActorPoolInit(uint8_t bank);
 uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y);
-void MenuActorsRun(void);
+void MenuActorsRun(Carried *cr);
 uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
 
 /* The end of a menu screen's opening, with DB = 0: an empty object pool,
@@ -2110,23 +2110,10 @@ void abi_MenuScrollZeroBg12(void)
     cpu.db = r.db;
 }
 
-/* MenuActorsRun, still in registers: its call with the registers loaded and taken
-   back. */
+/* MenuActorsRun on the carried registers. */
 static void w_MenuActorsRun(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_MenuActorsRun();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    MenuActorsRun(cr);
 }
 
 /* SaveChecksum as its adapter leaves the registers. */

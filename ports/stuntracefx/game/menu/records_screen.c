@@ -117,9 +117,13 @@ static void speed_alt_top_show(Carried *cr, int pushed);
 static void speed_bottom_show(Carried *cr, int pushed);
 static void speed_top_show(Carried *cr, int pushed);
 static void w_OamClassName(Carried *cr);
+void SpriteTextAt8152_cr(Carried *cr);
 static void w_SpriteTextAt8152(Carried *cr);
+void SpriteTextAt8152B_cr(Carried *cr);
 static void w_SpriteTextAt8152B(Carried *cr);
+void SpriteTextAt8952_cr(Carried *cr);
 static void w_SpriteTextAt8952(Carried *cr);
+void SpriteTextAt895E_cr(Carried *cr);
 static void w_SpriteTextAt895E(Carried *cr);
 void ColourMathA7Start_cr(Carried *cr);
 void CourseScreenState8(Carried *cr);
@@ -1824,23 +1828,10 @@ void abi_AllRecordsScreen(void)
     cpu.db = r.db;
 }
 
-/* SpriteTextAt895E, still in registers: its call with the registers loaded and taken
-   back. */
+/* SpriteTextAt895E on the carried registers. */
 static void w_SpriteTextAt895E(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpriteTextAt895E();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    SpriteTextAt895E_cr(cr);
 }
 
 /* OamClassName as its adapter leaves the registers. */
@@ -1853,59 +1844,20 @@ static void w_OamClassName(Carried *cr)
     cr->y = (cr->p & P_X) ? (uint8_t)y : y;
 }
 
-/* SpriteTextAt8152, still in registers: its call with the registers loaded and taken
-   back. */
+/* SpriteTextAt8152 on the carried registers. */
 static void w_SpriteTextAt8152(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpriteTextAt8152();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    SpriteTextAt8152_cr(cr);
 }
 
-/* SpriteTextAt8152B, still in registers: its call with the registers loaded and taken
-   back. */
+/* SpriteTextAt8152B on the carried registers. */
 static void w_SpriteTextAt8152B(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpriteTextAt8152B();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    SpriteTextAt8152B_cr(cr);
 }
 
-/* SpriteTextAt8952, still in registers: its call with the registers loaded and taken
-   back. */
+/* SpriteTextAt8952 on the carried registers. */
 static void w_SpriteTextAt8952(Carried *cr)
 {
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    abi_SpriteTextAt8952();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    SpriteTextAt8952_cr(cr);
 }
