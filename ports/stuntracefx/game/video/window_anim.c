@@ -272,7 +272,7 @@ uint8_t WindowStep3437By3(uint8_t bank, uint8_t *x, uint8_t *p)
     uint8_t v = rd8(a), r;
 
     *p &= (uint8_t)~P_C;
-    r = op_adc8(v, 0x03, p);
+    r = alu_adc8(v, 0x03, p);
     if (*p & P_C) {
         cyc(24);
         *x = (uint8_t)(*x + 1);

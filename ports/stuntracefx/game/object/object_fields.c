@@ -101,21 +101,21 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     v = rd16(b | (uint16_t)(0x200C + from));
     *p &= (uint8_t)~P_C;
     cyc(30);
-    v = op_adc16(v, rd16(0x000004), p);
+    v = alu_adc16(v, rd16(0x000004), p);
     cyc(30);
     wr16(b | (uint16_t)(0x200C + to), v);
     cyc(30);
     v = rd16(b | (uint16_t)(0x2010 + from));
     *p &= (uint8_t)~P_C;
     cyc(38);
-    v = op_adc16(v, rd16(b | 0x05F2), p);
+    v = alu_adc16(v, rd16(b | 0x05F2), p);
     cyc(30);
     wr16(b | (uint16_t)(0x2010 + to), v);
     cyc(30);
     v = rd16(b | (uint16_t)(0x200E + from));
     *p &= (uint8_t)~P_C;
     cyc(30);
-    v = op_adc16(v, rd16(0x00000A), p);
+    v = alu_adc16(v, rd16(0x00000A), p);
     cyc(30);
     wr16(b | (uint16_t)(0x200E + to), v);
     return v;
@@ -167,7 +167,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     v = rd8(b | (uint16_t)(0x2017 + obj));
     *p |= P_C;
     cyc(38);
-    d = op_sbc8(v, rd8(b | 0x1F2B), p);
+    d = alu_sbc8(v, rd8(b | 0x1F2B), p);
     if (!d) {
         cyc(64);                        /* BEQ taken, SEC, RTL */
         *p |= P_C;
@@ -191,11 +191,11 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
             if ((uint8_t)(v - s) & 0x80) {
                 *p &= (uint8_t)~P_C;
                 cyc(68);
-                v = op_adc8(v, rd8(FIELDS_SCRATCH), p);
+                v = alu_adc8(v, rd8(FIELDS_SCRATCH), p);
             } else {
                 *p |= P_C;
                 cyc(62);
-                v = op_sbc8(v, rd8(FIELDS_SCRATCH), p);
+                v = alu_sbc8(v, rd8(FIELDS_SCRATCH), p);
                 cyc(6);
             }
         } else {

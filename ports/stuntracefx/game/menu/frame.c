@@ -87,9 +87,9 @@ uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
     a = (uint16_t)(a >> 1);
     p &= (uint8_t)~P_C;
     cyc(74);
-    a = op_adc16(a, rd16(b | 0x1189), &p);
+    a = alu_adc16(a, rd16(b | 0x1189), &p);
     cyc(24);
-    a = op_adc16(a, rd16(b | 0x1189), &p);
+    a = alu_adc16(a, rd16(b | 0x1189), &p);
     cyc(24);
     a ^= rd16(b | 0x11DD);
     cyc(24);

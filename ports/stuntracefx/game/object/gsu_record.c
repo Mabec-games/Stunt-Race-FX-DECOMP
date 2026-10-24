@@ -2785,7 +2785,7 @@ uint16_t ObjectSyncFromRecordFall(uint8_t bank, uint16_t obj, uint16_t *y, uint8
     v = rd16(0x700020 + rec);
     *p &= (uint8_t)~P_C;
     cyc(44);
-    v = op_adc16(v, rd16(b | (uint16_t)(0x2030 + obj)), p);
+    v = alu_adc16(v, rd16(b | (uint16_t)(0x2030 + obj)), p);
     cyc(30);
     wr16(b | (uint16_t)(0x200E + obj), v);
     cyc(32);

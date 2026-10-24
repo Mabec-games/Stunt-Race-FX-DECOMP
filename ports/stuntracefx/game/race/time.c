@@ -187,11 +187,11 @@ uint8_t RaceTimeInit(uint8_t bank, uint8_t *x, uint8_t *p)
             cyc(40);
             v = rd8(b | 0x0E3D);
             *p |= P_C;
-            v = op_sbc8(v, 0x0C, p);
+            v = alu_sbc8(v, 0x0C, p);
             v = asl8(asl8(v, p), p);
             *p &= (uint8_t)~P_C;
             cyc(80);
-            v = op_adc8(v, rd8(b | 0x0D89), p);
+            v = alu_adc8(v, rd8(b | 0x0D89), p);
             *x = v;
             cyc(14);
             v = rd8((uint32_t)(0x03D8A3 + *x));
@@ -265,11 +265,11 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
     a = rd16(b | 0x0E62);
     p &= (uint8_t)~P_C;
     cyc(38);
-    a = op_adc16(a, rd16(b | 0x0D29), &p);
+    a = alu_adc16(a, rd16(b | 0x0D29), &p);
     cyc(24);
     wr16(b | 0x0E62, a);
     cyc(24);
-    a = op_adc16(rd16(b | 0x0E64), 0x0000, &p);
+    a = alu_adc16(rd16(b | 0x0E64), 0x0000, &p);
     cyc(48);
     wr16(b | 0x0E64, a);
     acc = a;
@@ -279,7 +279,7 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
         wr16(b | 0x0E64, 0x0000);
         p &= (uint8_t)~P_C;
         cyc(24);
-        a = op_adc16(rd16(b | 0x0E66), 0x0001, &p);
+        a = alu_adc16(rd16(b | 0x0E66), 0x0001, &p);
         cyc(62);
         wr16(b | 0x0E66, a);
         acc = a;
@@ -298,7 +298,7 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
     a = rd16(b | 0x0E68);
     p |= P_C;
     cyc(38);
-    a = op_sbc16(a, rd16(b | 0x0D29), &p);
+    a = alu_sbc16(a, rd16(b | 0x0D29), &p);
     acc = a;
     cyc(40);
     wr16(b | 0x0E68, a);
@@ -308,7 +308,7 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
         acc = a;
         if (a) {
             p |= P_C;
-            acc = op_sbc16(a, 0x0001, &p);
+            acc = alu_sbc16(a, 0x0001, &p);
             cyc(72);
             wr16(b | 0x0E70, acc);
         } else {

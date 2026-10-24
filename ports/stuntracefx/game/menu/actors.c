@@ -866,13 +866,13 @@ static uint16_t add32(uint16_t rec, uint8_t to, uint8_t from, uint8_t *p)
 
     *p &= (uint8_t)~P_C;
     cyc(36);
-    a = op_adc16(a, rd16((uint16_t)(rec + from)), p);
+    a = alu_adc16(a, rd16((uint16_t)(rec + from)), p);
     cyc(22);
     wr16((uint16_t)(rec + to), a);
     cyc(22);
     a = rd16((uint16_t)(rec + to + 2));
     cyc(22);
-    a = op_adc16(a, rd16((uint16_t)(rec + from + 2)), p);
+    a = alu_adc16(a, rd16((uint16_t)(rec + from + 2)), p);
     cyc(22);
     wr16((uint16_t)(rec + to + 2), a);
     return a;
@@ -984,7 +984,7 @@ void MenuActorsKind2Lower(uint8_t bank, uint16_t *x, uint16_t *y_out, uint16_t *
             cyc(62);
             *a = rd16((uint16_t)(*x + 0x06));
             *p &= (uint8_t)~P_C;
-            *a = op_adc16(*a, 0x000C, p);
+            *a = alu_adc16(*a, 0x000C, p);
             cyc(60);
             wr16((uint16_t)(*x + 0x06), *a);
         } else { cyc(46); }

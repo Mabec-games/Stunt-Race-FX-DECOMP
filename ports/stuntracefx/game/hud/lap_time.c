@@ -55,7 +55,7 @@ static uint16_t transfer(uint16_t v, uint8_t *p)
 static uint16_t add16(uint16_t a, uint16_t m, uint8_t *p)
 {
     *p &= (uint8_t)~P_C;
-    return op_adc16(a, m, p);
+    return alu_adc16(a, m, p);
 }
 
 /* ASL A (16-bit), C the bit out. */
@@ -142,7 +142,7 @@ uint16_t BinaryToBcd(uint16_t v, uint8_t *p)
                 cyc(46);                /* CMP, BCC taken */
                 break;
             }
-            v = op_sbc16(v, unit[i], p);
+            v = alu_sbc16(v, unit[i], p);
             saved = v;                  /* PHA, the count, PLA */
             cyc(104);
             v = rd16(0x0000F1);
@@ -333,23 +333,23 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
         return v;
     *p &= (uint8_t)~P_C;
     cyc(46 + kr);                       /* CMP, BEQ, CLC, ADC's fetch */
-    v = op_adc8(v, rd8(to[0]), p);
+    v = alu_adc8(v, rd8(to[0]), p);
     cyc(kw);
     wr8(to[0], v);
     cyc(24 + xw);
     v = rd8(b | (uint16_t)(0x0F77 + x));
     cyc(kr);
-    v = op_adc8(v, rd8(to[1]), p);
+    v = alu_adc8(v, rd8(to[1]), p);
     if (*p & P_C) {
         *p |= P_C;
-        v = op_sbc8(v, 0x60, p);
+        v = alu_sbc8(v, 0x60, p);
         cyc(30 + kw);
         wr8(to[1], v);
         cyc(kr);
         v = rd8(to[2]);
         *p &= (uint8_t)~P_C;
         cyc(30 + kw);
-        wr8(to[2], op_adc8(v, 0x01, p));
+        wr8(to[2], alu_adc8(v, 0x01, p));
         cyc(kr);
         v = rd8(to[1]);
         cyc(kw);
@@ -358,20 +358,20 @@ static uint8_t time_add(uint32_t b, uint16_t x, uint32_t to[3], int dp, uint8_t 
     *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0x60)) & ~P_C) | (v >= 0x60 ? P_C : 0));
     big = v >= 0x60;
     if (big) {
-        v = op_sbc8(v, 0x60, p);
+        v = alu_sbc8(v, 0x60, p);
         cyc(32 + kw);
         wr8(to[1], v);
         cyc(kr);
         v = rd8(to[2]);
         *p &= (uint8_t)~P_C;
         cyc(30 + kw);
-        wr8(to[2], op_adc8(v, 0x01, p));
+        wr8(to[2], alu_adc8(v, 0x01, p));
     }
     *p &= (uint8_t)~P_C;
     cyc((big ? 38 : 76) + xw);
     v = rd8(b | (uint16_t)(0x0F78 + x));
     cyc(kr);
-    v = op_adc8(v, rd8(to[2]), p);
+    v = alu_adc8(v, rd8(to[2]), p);
     cyc(kw);
     wr8(to[2], v);
     cyc(42);
@@ -603,7 +603,7 @@ static uint8_t course_times_9(uint8_t bank, uint8_t *p)
         a = asl8(a, p);
     *p &= (uint8_t)~P_C;
     cyc(80);
-    return op_adc8(a, rd8(b | 0x0D4A), p);
+    return alu_adc8(a, rd8(b | 0x0D4A), p);
 }
 
 /* TAX, LDY #3, then three bytes from $70:FC6D + X to $70:FC70 + X. Returns
@@ -682,7 +682,7 @@ uint8_t RecordSlotCopy3(uint8_t bank, uint8_t *p)
 {
     uint8_t a = course_times_9(bank, p);
 
-    return record_slot_copy(op_adc8(a, 0x03, p), p);
+    return record_slot_copy(alu_adc8(a, 0x03, p), p);
 }
 
 void RecordSlotCopy3_cr(Carried *cr)
@@ -720,7 +720,7 @@ static uint8_t course_times_24(uint8_t bank, uint8_t *p)
     a = asl8(a, p);
     *p &= (uint8_t)~P_C;
     cyc(52);
-    a = op_adc8(a, rd8(b | 0x0D4A), p);
+    a = alu_adc8(a, rd8(b | 0x0D4A), p);
     cyc(2);
     for (i = 0; cyc_loop(12, i < 3); i++)
         a = asl8(a, p);
@@ -810,7 +810,7 @@ uint8_t RecordShiftFrom1(uint8_t bank, uint8_t *p)
     cyc(46);
     RecordSlotCopy3(bank, p);
     a = course_times_24(bank, p);
-    return times_slot_copy(op_adc8(a, 0x08, p), p);
+    return times_slot_copy(alu_adc8(a, 0x08, p), p);
 }
 
 void RecordShiftFrom1_cr(Carried *cr)
@@ -854,9 +854,9 @@ static uint8_t record_name_store(uint8_t bank, uint8_t slot, uint8_t *p)
         a = asl8(a, p);
     *p &= (uint8_t)~P_C;
     cyc(80);
-    a = op_adc8(a, rd8(b | 0x0D4A), p);
+    a = alu_adc8(a, rd8(b | 0x0D4A), p);
     cyc(16);
-    a = op_adc8(a, rd8(0x0000F5), p);
+    a = alu_adc8(a, rd8(0x0000F5), p);
     x = a;
     *p = nz8(*p, a);
     cyc(38);
@@ -1196,7 +1196,7 @@ static uint8_t sum_into_f1(uint32_t addr, uint8_t x, unsigned n, uint8_t *p)
         first = 0;
         a = rd8(addr + x);
         cyc(16);
-        a = op_adc8(a, rd8(0x0000F1), p);
+        a = alu_adc8(a, rd8(0x0000F1), p);
         cyc(16);
         wr8(0x0000F1, a);
         x++;
@@ -1292,11 +1292,11 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     w = asl16(rd16(b | 0x0D4A), &p);
     p &= (uint8_t)~P_C;
     cyc(52);
-    w = (uint16_t)(op_adc16(w, rd16(b | 0x0D4A), &p) & 0x00FF);
+    w = (uint16_t)(alu_adc16(w, rd16(b | 0x0D4A), &p) & 0x00FF);
     for (i = 0; i < 3; i++)
         w = asl16(w, &p);
     cyc(82);
-    w = op_adc16(w, rd16(0x0000F7), &p);
+    w = alu_adc16(w, rd16(0x0000F7), &p);
     cyc(16);
     wr16(0x0000F7, w);
     aa = a;
