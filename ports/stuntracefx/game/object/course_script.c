@@ -53,13 +53,13 @@ static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint
     cyc(60);
     wr16(b | slot, o);
     cyc(48);
-    wr8(OBJ_FIELD(o, 0x36), 0x03);
+    wr8(OBJ_FIELD(o, OBJ_OFF(obj_36)), 0x03);
     cyc(78);
-    wr16(OBJ_FIELD(o, 0x4F), link);
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_link_w)), link);
     cyc(78);
-    wr16(OBJ_FIELD(o, 0x1A), rd16(b | (uint16_t)(0x8001 + y)));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_1a_w)), rd16(b | (uint16_t)(0x8001 + y)));
     cyc(78);
-    wr16(OBJ_FIELD(o, 0x1B), rd16(b | (uint16_t)(0x8002 + y)));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_1b_long)), rd16(b | (uint16_t)(0x8002 + y)));
 }
 
 /*
@@ -125,33 +125,33 @@ void CourseScriptRun(Carried *cr)
         case 0x8055:                                   /* $0C */
             o = spawn(cr, y);
             cyc(54);
-            wr8(OBJ_FIELD(o, 0x09), cyc_then(48, (uint8_t)(rd8(OBJ_FIELD(o, 0x09)) | 0x01)));
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_09)), cyc_then(48, (uint8_t)(rd8(OBJ_FIELD(o, OBJ_OFF(obj_09))) | 0x01)));
             cyc(22);                                   /* REP */
             x = (uint16_t)(y + 0x16);
             break;
         case 0x806F:                                   /* $10, not reached */
             o = spawn(cr, y);
             cyc(52);
-            wr16(OBJ_FIELD(o, 0x27), cyc_then(32, rd16(b | (uint16_t)(0x8016 + y))));
+            wr16(OBJ_FIELD(o, OBJ_OFF(obj_27)), cyc_then(32, rd16(b | (uint16_t)(0x8016 + y))));
             cyc(24);
             a = (uint16_t)(rd16(b | W(spawn_counter)) + 1);
             cyc(38);
             wr16(b | W(spawn_counter), a);
             cyc(32);
-            wr16(OBJ_FIELD(o, 0x29), a);
+            wr16(OBJ_FIELD(o, OBJ_OFF(obj_29)), a);
             x = (uint16_t)(y + 0x18);
             break;
         case 0x808F:                                   /* $0A */
             o = spawn(cr, y);
             cyc(92);
             v = rd8(b | (uint16_t)(0x8016 + y));
-            wr8(OBJ_FIELD(o, 0x48), v);
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_48)), v);
             cyc(48);
-            wr8(OBJ_FIELD(o, 0x5A), (uint8_t)(v | 0x80));
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_5a)), (uint8_t)(v | 0x80));
             cyc(70);
-            wr8(OBJ_FIELD(o, 0x49), rd8(b | (uint16_t)(0x8017 + y)));
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_49)), rd8(b | (uint16_t)(0x8017 + y)));
             cyc(70);
-            wr8(OBJ_FIELD(o, 0x4A), rd8(b | (uint16_t)(0x8018 + y)));
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_4a)), rd8(b | (uint16_t)(0x8018 + y)));
             cyc(22);                                   /* REP */
             x = (uint16_t)(y + 0x19);
             break;
@@ -209,11 +209,11 @@ void CourseScriptRun(Carried *cr)
             if (rd8(b | (uint16_t)(0x8018 + y)) & 0x02)
                 { cyc(18); wr16(b | W(wram_034A), o); }
             cyc(48);
-            wr8(OBJ_FIELD(o, 0x36), 0x04);
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_36)), 0x04);
             cyc(70);
-            wr8(OBJ_FIELD(o, 0x15), rd8(b | (uint16_t)(0x8019 + y)));
+            wr8(OBJ_FIELD(o, OBJ_OFF(obj_15)), rd8(b | (uint16_t)(0x8019 + y)));
             cyc(100);
-            wr16(OBJ_FIELD(o, 0x27), rd16(b | (uint16_t)(0x8016 + y)));
+            wr16(OBJ_FIELD(o, OBJ_OFF(obj_27)), rd16(b | (uint16_t)(0x8016 + y)));
             cyc(106);
             a = rd16(W(object_list_b_len));
             if (a != 0x0008) {

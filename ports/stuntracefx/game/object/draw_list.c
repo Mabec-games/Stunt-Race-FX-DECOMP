@@ -21,19 +21,19 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     uint8_t v;
 
     cyc(68);
-    if (rd16(OBJ(o, 0x24)) & 0x0080) {
+    if (rd16(OBJ(o, OBJ_OFF(obj_24))) & 0x0080) {
         cyc(70);
-        wr16(REC(r, 0x12), cyc_then(30, rd16(OBJ(o, 0x0C))));
+        wr16(REC(r, 0x12), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_x)))));
         cyc(30);
-        wr16(REC(r, 0x10), cyc_then(30, rd16(OBJ(o, 0x0E))));
+        wr16(REC(r, 0x10), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_y)))));
         cyc(30);
-        wr16(REC(r, 0x14), cyc_then(30, rd16(OBJ(o, 0x10))));
+        wr16(REC(r, 0x14), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_pos_z)))));
         cyc(54);
         wr16(REC(r, 0x02), 0xF060);
         cyc(22);                        /* BRA */
     } else {
         cyc(76);
-        a = rd16(OBJ(o, 0x0E));
+        a = rd16(OBJ(o, OBJ_OFF(obj_pos_y)));
         cyc(30);
         a = (uint16_t)(a - rd16(W(dp_c7)));
         cyc(30);
@@ -43,49 +43,49 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(66);
         wr16(REC(r, 0x02), (uint16_t)(a << 1));
         cyc(30);
-        t = (rd16(OBJ(o, 0x09)) & 0x0001) ? (cyc(16), 0x1F40) : 0x0000;
+        t = (rd16(OBJ(o, OBJ_OFF(obj_09))) & 0x0001) ? (cyc(16), 0x1F40) : 0x0000;
         cyc(114);
         wr16(REC(r, 0x02), cyc_then(30, (uint16_t)(t + rd16(REC(r, 0x02)))));
         cyc(30);
-        a = rd16(OBJ(o, 0x0C));
+        a = rd16(OBJ(o, OBJ_OFF(obj_pos_x)));
         cyc(30);
         wr16(REC(r, 0x12), cyc_then(30, (uint16_t)(a - rd16(W(dp_c5)))));
         cyc(30);
-        a = rd16(OBJ(o, 0x10));
+        a = rd16(OBJ(o, OBJ_OFF(obj_pos_z)));
         cyc(30);
         wr16(REC(r, 0x14), cyc_then(30, (uint16_t)(a - rd16(W(dp_c9)))));
     }
     cyc(30);
-    wr16(REC(r, 0x08), cyc_then(30, rd16(OBJ(o, 0x04))));
+    wr16(REC(r, 0x08), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_04)))));
     cyc(30);
-    wr16(REC(r, 0x04), cyc_then(30, rd16(OBJ(o, 0x14))));
+    wr16(REC(r, 0x04), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_14)))));
     cyc(30);
-    wr16(REC(r, 0x05), cyc_then(30, rd16(OBJ(o, 0x15))));
+    wr16(REC(r, 0x05), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_15)))));
     cyc(30);
-    wr16(REC(r, 0x06), cyc_then(30, rd16(OBJ(o, 0x16))));
+    wr16(REC(r, 0x06), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_16)))));
     cyc(30);
-    if (rd16(OBJ(o, 0x24)) & 0x0004) {
+    if (rd16(OBJ(o, OBJ_OFF(obj_24))) & 0x0004) {
         cyc(106);
         wr16(REC(r, 0x0A), o);
         cyc(52);
-        wr8(REC(r, 0x0C), cyc_then(30, rd8(OBJ(o, 0x48))));
+        wr8(REC(r, 0x0C), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_48)))));
         cyc(30);
-        wr8(REC(r, 0x0D), cyc_then(30, rd8(OBJ(o, 0x49))));
+        wr8(REC(r, 0x0D), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_49)))));
         cyc(30);
-        wr8(REC(r, 0x0E), cyc_then(30, rd8(OBJ(o, 0x4A))));
+        wr8(REC(r, 0x0E), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_4a)))));
         cyc(22);                        /* BRA */
     } else {
         cyc(114);
         wr8(REC(r, 0x18), 0x00);
     }
     cyc(30);
-    v = rd8(OBJ(o, 0x24));
+    v = rd8(OBJ(o, OBJ_OFF(obj_24)));
     cyc(30);
     wr8(REC(r, 0x07), v);
     cyc(46);
-    wr8(OBJ(o, 0x24), (uint8_t)(v & 0xFD));
+    wr8(OBJ(o, OBJ_OFF(obj_24)), (uint8_t)(v & 0xFD));
     cyc(30);
-    v = rd8(OBJ(o, 0x5A));
+    v = rd8(OBJ(o, OBJ_OFF(obj_5a)));
     if (!(v & 0x80))
         { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
     cyc(46);
@@ -93,26 +93,26 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     cyc(24);
     if (rd8((0x7E0000 | W(draw_side)))) {
         cyc(46);
-        v = rd8(OBJ(o, 0x19));
+        v = rd8(OBJ(o, OBJ_OFF(obj_19)));
         if (!(v & 0x80))
             { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); }
         cyc(22);
     } else {
         cyc(52);
-        v = rd8(OBJ(o, 0x18));
+        v = rd8(OBJ(o, OBJ_OFF(obj_18)));
         if (!(v & 0x80))
             { cyc(40); v = rd8(0x7E0000 | W(wram_05E9)); } else { cyc(22); }
     }
     cyc(46);
     wr8(REC(r, 0x1A), (uint8_t)(v & 0x7F));
     cyc(30);
-    wr8(REC(r, 0x1B), cyc_then(30, rd8(OBJ(o, 0x3A))));
+    wr8(REC(r, 0x1B), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_3a)))));
     cyc(30);
-    wr8(REC(r, 0x1C), cyc_then(30, rd8(OBJ(o, 0x5F))));
+    wr8(REC(r, 0x1C), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_5f)))));
     cyc(30);
-    wr8(REC(r, 0x1D), cyc_then(30, rd8(OBJ(o, 0x60))));
+    wr8(REC(r, 0x1D), cyc_then(30, rd8(OBJ(o, OBJ_OFF(obj_60)))));
     cyc(52);
-    wr16(REC(r, 0x16), cyc_then(30, rd16(OBJ(o, 0x5D))));
+    wr16(REC(r, 0x16), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_5d)))));
     cyc(90);
     wr16((0x7E0000 | W(draw_count)), cyc_then(14, (uint16_t)(rd16((0x7E0000 | W(draw_count))) + 1)));
     return (uint16_t)(r + 0x1E);
@@ -124,14 +124,14 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
 static int drawn(uint16_t o)
 {
     cyc(30);
-    uint8_t f = rd8(OBJ(o, 0x24));
+    uint8_t f = rd8(OBJ(o, OBJ_OFF(obj_24)));
     int16_t n;
 
     if (f & 0x20)
         return 0;
     if (f & 0x40) {
         cyc(94);
-        if (rd8(OBJ(o, 0x26)) == 0x02) {
+        if (rd8(OBJ(o, OBJ_OFF(obj_26))) == 0x02) {
             cyc(62);
             if (rd8((0x7E0000 | W(draw_side))))
                 return 0;
@@ -144,7 +144,7 @@ static int drawn(uint16_t o)
     if (n >= 0)
         { cyc(8); return 0; }
     cyc(76);
-    return cyc_then(8, rd16(OBJ(o, 0x04)) != 0xA040);
+    return cyc_then(8, rd16(OBJ(o, OBJ_OFF(obj_04))) != 0xA040);
 }
 
 /*
@@ -179,7 +179,7 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
         }
         next = 0;
         cyc(52);
-        o = rd16(OBJ(o, 0x3C));
+        o = rd16(OBJ(o, OBJ_OFF(obj_bucket_next)));
     } while (cyc_loop(60, o));
     cyc(52);
     wr16(W(draw_next), r);
@@ -278,7 +278,7 @@ ObjectDrawListEnd ObjectDrawListClear08(uint16_t y, uint16_t x)
     ObjectDrawListEnd e = {0, 0};
 
     cyc(52);
-    wr8(OBJ(y, 0x08), cyc_then(46, (uint8_t)(rd8(OBJ(y, 0x08)) & 0xFD)));
+    wr8(OBJ(y, OBJ_OFF(obj_08)), cyc_then(46, (uint8_t)(rd8(OBJ(y, OBJ_OFF(obj_08))) & 0xFD)));
     draw_bucket(y, x, 1);
     draw_triggers(66, &e);
     return e;

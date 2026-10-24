@@ -8,7 +8,11 @@
 #ifndef STUNTRACEFX_WRAM_NAMES_H
 #define STUNTRACEFX_WRAM_NAMES_H
 
+#include <stdint.h>
+
 #define W(name) WRAM_##name
+/* An object-table field's offset in its record (the name of record 0's field). */
+#define OBJ_OFF(name) ((uint16_t)W(name) - W(obj_base))
 
 /* Sound upload stream (audio/apu_upload.asm): long pointer and its bank byte. */
 #define WRAM_apu_stream_ptr 0x0000FBu

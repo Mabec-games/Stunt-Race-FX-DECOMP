@@ -1195,7 +1195,7 @@ void abi_ObjectPlaceAll(void)
  */
 int ObjectCountStep5F(uint8_t bank, uint16_t obj, uint8_t *a, uint8_t *p)
 {
-    uint32_t c = field(bank, obj, 0x49), f = field(bank, obj, 0x5F), b = (uint32_t)bank << 16;
+    uint32_t c = field(bank, obj, OBJ_OFF(obj_49)), f = field(bank, obj, OBJ_OFF(obj_5f)), b = (uint32_t)bank << 16;
     uint8_t n, lim, v, d, r;
 
     cyc(30);
@@ -1300,33 +1300,33 @@ uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
     uint8_t k;
 
     cyc(76);
-    dx = magnitude(sub16v(rd16(b | W(wram_1A6C)), rd16(cyc_then(44, field(bank, obj, 0x0C))), p));
+    dx = magnitude(sub16v(rd16(b | W(wram_1A6C)), rd16(cyc_then(44, field(bank, obj, OBJ_OFF(obj_pos_x)))), p));
     cyc(46);
     wr16(b | W(group_trigger_pos), dx);
     cyc(30);
-    dz = magnitude(sub16v(rd16(b | W(wram_1A70)), rd16(cyc_then(44, field(bank, obj, 0x10))), p));
+    dz = magnitude(sub16v(rd16(b | W(wram_1A70)), rd16(cyc_then(44, field(bank, obj, OBJ_OFF(obj_pos_z)))), p));
     s = (unsigned)dz + dx;
     sum = (uint16_t)s;
     *p = (uint8_t)((*p & ~P_V) | ((~(dz ^ dx) & (dz ^ sum) & 0x8000) ? P_V : 0));
     if ((uint16_t)(sum - 0x1194) & 0x8000) {
-        wr8(field(bank, obj, 0x24), cyc_then(46, rd8(cyc_then(168, field(bank, obj, 0x24))) & 0xF7));
-        wr8(field(bank, obj, 0x5F), cyc_then(46, 0x00));
-        return cyc_then(64, ObjectSet5DByKind(bank, obj, rd8(cyc_then(30, field(bank, obj, 0x49))), p));
+        wr8(field(bank, obj, OBJ_OFF(obj_24)), cyc_then(46, rd8(cyc_then(168, field(bank, obj, OBJ_OFF(obj_24)))) & 0xF7));
+        wr8(field(bank, obj, OBJ_OFF(obj_5f)), cyc_then(46, 0x00));
+        return cyc_then(64, ObjectSet5DByKind(bank, obj, rd8(cyc_then(30, field(bank, obj, OBJ_OFF(obj_49)))), p));
     }
-    k = (uint8_t)(rd8(cyc_then(174, field(bank, obj, 0x18))) & 0x03);
-    wr8(field(bank, obj, 0x18), cyc_then(46, k));
+    k = (uint8_t)(rd8(cyc_then(174, field(bank, obj, OBJ_OFF(obj_18)))) & 0x03);
+    wr8(field(bank, obj, OBJ_OFF(obj_18)), cyc_then(46, k));
     cyc(54);
-    k = (uint8_t)(((uint8_t)(rd8(b | W(wram_1A75)) + rd8(cyc_then(44, field(bank, obj, 0x15)))) >> 3 & 0xFC) | 0x80 | k);
-    wr8(field(bank, obj, 0x18), cyc_then(142, k));
-    wr8(field(bank, obj, 0x24), cyc_then(46, rd8(cyc_then(30, field(bank, obj, 0x24))) | 0x08));
-    wr8(field(bank, obj, 0x3A), cyc_then(46, 0x00));
-    wr8(field(bank, obj, 0x5F), cyc_then(46, 0x32));
-    dx = (uint16_t)(rd8(cyc_then(30, field(bank, obj, 0x49))) << 1);
+    k = (uint8_t)(((uint8_t)(rd8(b | W(wram_1A75)) + rd8(cyc_then(44, field(bank, obj, OBJ_OFF(obj_15))))) >> 3 & 0xFC) | 0x80 | k);
+    wr8(field(bank, obj, OBJ_OFF(obj_18)), cyc_then(142, k));
+    wr8(field(bank, obj, OBJ_OFF(obj_24)), cyc_then(46, rd8(cyc_then(30, field(bank, obj, OBJ_OFF(obj_24)))) | 0x08));
+    wr8(field(bank, obj, OBJ_OFF(obj_3a)), cyc_then(46, 0x00));
+    wr8(field(bank, obj, OBJ_OFF(obj_5f)), cyc_then(46, 0x32));
+    dx = (uint16_t)(rd8(cyc_then(30, field(bank, obj, OBJ_OFF(obj_49)))) << 1);
     s = (unsigned)dx + 0x99A3;
     sum = (uint16_t)s;
     *p = (uint8_t)((nz16(*p, sum) & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
                    | ((~(dx ^ 0x99A3) & (dx ^ sum) & 0x8000) ? P_V : 0));
-    wr16(field(bank, obj, 0x5D), cyc_then(128, sum));
+    wr16(field(bank, obj, OBJ_OFF(obj_5d)), cyc_then(128, sum));
     return sum;
 }
 
@@ -1429,15 +1429,15 @@ uint16_t ObjectRecordFlag70Step(Carried *cr, uint8_t bank, uint16_t obj, uint16_
     uint16_t rec, w;
 
     if (!flag) {
-        n = rd8(cyc_then(46, field(bank, obj, 0x48)));
+        n = rd8(cyc_then(46, field(bank, obj, OBJ_OFF(obj_48))));
         if (n) {
-            wr8(field(bank, obj, 0x48), cyc_then(66, (uint8_t)(n - 1)));
+            wr8(field(bank, obj, OBJ_OFF(obj_48)), cyc_then(66, (uint8_t)(n - 1)));
             *p = nz8(*p, (uint8_t)(n - 1));
             cyc(68);                    /* JMP to the RTL, RTL */
             return (uint16_t)((a & 0xFF00) | n);
         } else { cyc(26); }
     }
-    rec = rd16(cyc_then(104, field(bank, obj, 0x22)));
+    rec = rd16(cyc_then(104, field(bank, obj, OBJ_OFF(obj_22))));
     if (!rec) {
         /* The JSL at $08:B5F6 after REP #$20, PHX, LDA +$22,X: A = 0
            16-bit, X the object, Z set. */
@@ -1494,7 +1494,7 @@ static uint8_t cmp8(uint8_t p, uint8_t a, uint8_t m)
 static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr, int k)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t y = rd16(cyc_then(52, field(bank, obj, 0x4F)));
+    uint16_t y = rd16(cyc_then(52, field(bank, obj, OBJ_OFF(obj_link_w))));
 
     if (k >= 0) {
         cyc(24);
@@ -1527,7 +1527,7 @@ static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr, in
 uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint16_t *y, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint8_t f = rd8(cyc_then(52, field(bank, obj, 0x25))), v, k;
+    uint8_t f = rd8(cyc_then(52, field(bank, obj, OBJ_OFF(obj_25)))), v, k;
     uint16_t rec, w;
 
     if (f & 0x08) {
@@ -1539,7 +1539,7 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
     v = rd8(b | (uint16_t)(0x0DD6 + *y));
     *p = cmp8(*p, v, 0x08);
     if (v == 0x08) {
-        rec = rd16(cyc_then(113, field(bank, obj, 0x22)));
+        rec = rd16(cyc_then(113, field(bank, obj, OBJ_OFF(obj_22))));
         cyc(46);
         wr16(0x700064 + rec, cyc_then(56, (uint16_t)(rd16(0x700064 + rec) | 0x0008)));
         cyc(32);
@@ -1557,7 +1557,7 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
         if (v != 0x0C)
             { cyc(25); *p = cmp8(*p, v, 0x0A); }
         if (v == 0x0C || v == 0x0A) {
-            rec = rd16(cyc_then(138, field(bank, obj, 0x22)));
+            rec = rd16(cyc_then(138, field(bank, obj, OBJ_OFF(obj_22))));
             cyc(46);
             w = (uint16_t)(rd16(0x700042 + rec) & 0xFBCF);
             cyc(56);
@@ -1585,8 +1585,8 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
     cyc(68);
     if (!(rd16(b | W(wram_1AEE)) & 0x0001))
         { cyc(124); a = GsuRecordWords88(); } else { cyc(68); }
-    f = (uint8_t)(rd8(cyc_then(30, field(bank, obj, 0x25))) | 0x08);
-    wr8(field(bank, obj, 0x25), cyc_then(46, f));
+    f = (uint8_t)(rd8(cyc_then(30, field(bank, obj, OBJ_OFF(obj_25)))) | 0x08);
+    wr8(field(bank, obj, OBJ_OFF(obj_25)), cyc_then(46, f));
     *p = nz8(*p, f);
     return (uint16_t)((a & 0xFF00) | f);
 }
@@ -1635,14 +1635,14 @@ static uint16_t object_attach_linked(uint8_t bank, uint16_t obj, uint16_t other,
     uint16_t blk, kind, t, add = 0, m;
     unsigned i, s;
 
-    wr16(field(bank, obj, 0x4F), cyc_then(66, other));
-    blk = rd16(cyc_then(30, field(bank, other, 0x4F)));
+    wr16(field(bank, obj, OBJ_OFF(obj_link_w)), cyc_then(66, other));
+    blk = rd16(cyc_then(30, field(bank, other, OBJ_OFF(obj_link_w))));
     cyc(24);
     wr16(b | W(wram_1F4E), blk);
-    kind = rd16(cyc_then(30, field(bank, other, 0x1A)));
+    kind = rd16(cyc_then(30, field(bank, other, OBJ_OFF(obj_1a_w))));
     cyc(24);
     wr16(b | W(wram_1F4C), kind);
-    wr16(field(bank, other, 0x06), cyc_then(44, obj));
+    wr16(field(bank, other, OBJ_OFF(obj_06)), cyc_then(44, obj));
     cyc(24);
     blk = rd16(b | W(wram_1F4E));
     *y = blk;
@@ -2342,9 +2342,9 @@ uint16_t ObjectFree(uint8_t bank, uint16_t obj)
 
     cyc(144);
     ObjectBucketRemove(obj);
-    prev = rd16(cyc_then(52, field(bank, obj, 0x02)));
+    prev = rd16(cyc_then(52, field(bank, obj, OBJ_OFF(obj_02))));
     if (!prev) {
-        next = rd16(cyc_then(46, field(bank, obj, 0x00)));
+        next = rd16(cyc_then(46, field(bank, obj, OBJ_OFF(obj_base))));
         cyc(24);
         wr16(b | W(wram_0329), next);
         cyc(54);
@@ -2352,7 +2352,7 @@ uint16_t ObjectFree(uint8_t bank, uint16_t obj)
         cyc(24);
         wr16(b | W(wram_032B), 0x0000);
     } else {
-        next = rd16(cyc_then(82, field(bank, obj, 0x00)));
+        next = rd16(cyc_then(82, field(bank, obj, OBJ_OFF(obj_base))));
         cyc(44);
         wr16(b | (uint16_t)(W(obj_base) + prev), next);
         if (next)
@@ -2362,7 +2362,7 @@ uint16_t ObjectFree(uint8_t bank, uint16_t obj)
     }
     cyc(46);
     head = rd16(b | W(wram_032D));
-    wr16(field(bank, obj, 0x00), cyc_then(30, head));
+    wr16(field(bank, obj, OBJ_OFF(obj_base)), cyc_then(30, head));
     cyc(24);
     wr16(b | W(wram_032D), obj);
     cyc(164);
@@ -2847,68 +2847,68 @@ void ObjectSpawnFromScript(Carried *cr)
     o = cr->x;
     rm = rom_word_at(b + 0x8000 + y);
     cyc(90);
-    wr8(OBJ_FIELD(o, 0x15), cyc_then(32, rd8(W(wram_1AF4))));
+    wr8(OBJ_FIELD(o, OBJ_OFF(obj_15)), cyc_then(32, rd8(W(wram_1AF4))));
     cyc(52);
-    wr16(OBJ_FIELD(o, 0x04), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8007 + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_04)), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8007 + y))));
     cyc(30);
-    wr16(OBJ_FIELD(o, 0x20), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8009 + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_20)), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8009 + y))));
     cyc(30);
-    wr16(OBJ_FIELD(o, 0x0C), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8001 + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_pos_x)), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8001 + y))));
     cyc(30 + rm);
-    wr16(OBJ_FIELD(o, 0x0E), cyc_then(32, rd16(b | (uint16_t)(0x8003 + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_pos_y)), cyc_then(32, rd16(b | (uint16_t)(0x8003 + y))));
     cyc(30 + rm);
-    wr16(OBJ_FIELD(o, 0x10), cyc_then(32, rd16(b | (uint16_t)(0x8005 + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_pos_z)), cyc_then(32, rd16(b | (uint16_t)(0x8005 + y))));
     cyc(30 + rm);
-    wr16(OBJ_FIELD(o, 0x1A), cyc_then(32, rd16(b | (uint16_t)(0x800B + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_1a_w)), cyc_then(32, rd16(b | (uint16_t)(0x800B + y))));
     cyc(30 + rm);
-    wr16(OBJ_FIELD(o, 0x1B), cyc_then(32, rd16(b | (uint16_t)(0x800C + y))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_1b_long)), cyc_then(32, rd16(b | (uint16_t)(0x800C + y))));
     cyc(30 + rm);
     w = rd16(b | (uint16_t)(0x8014 + y));
     cyc(32);
-    wr16(OBJ_FIELD(o, 0x06), w);
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_06)), w);
     if (w & 0x0200) {
         cyc(234);
-        r = rd16(OBJ_FIELD(o, 0x20));
+        r = rd16(OBJ_FIELD(o, OBJ_OFF(obj_20)));
         /* the words are ROM (two reads of 8 the C states) or work RAM */
         cyc(44);
-        wr16(OBJ_FIELD(o, 0x53), cyc_then(32 + rom_word((uint16_t)(0x000A + r)), rd16((uint16_t)(0x000A + r))));
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_53)), cyc_then(32 + rom_word((uint16_t)(0x000A + r)), rd16((uint16_t)(0x000A + r))));
         cyc(30);
-        wr16(OBJ_FIELD(o, 0x55), cyc_then(32 + rom_word((uint16_t)(0x000C + r)), rd16((uint16_t)(0x000C + r))));
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_55)), cyc_then(32 + rom_word((uint16_t)(0x000C + r)), rd16((uint16_t)(0x000C + r))));
         cyc(30);
-        wr16(OBJ_FIELD(o, 0x57), cyc_then(32 + rom_word((uint16_t)(0x000E + r)), rd16((uint16_t)(0x000E + r))));
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), cyc_then(32 + rom_word((uint16_t)(0x000E + r)), rd16((uint16_t)(0x000E + r))));
         cyc(94);
     } else { cyc(76); }
     t = rd16(b | (uint16_t)(0x800E + y));
     cyc(46 + rm);
-    wr16(OBJ_FIELD(o, 0x53), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, 0x53)))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_53)), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, OBJ_OFF(obj_53))))));
     cyc(30);
     t = rd16(b | (uint16_t)(0x8010 + y));
     cyc(46 + rm);
-    wr16(OBJ_FIELD(o, 0x55), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, 0x55)))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_55)), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, OBJ_OFF(obj_55))))));
     cyc(30);
     t = rd16(b | (uint16_t)(0x8012 + y));
     cyc(46 + rm);
-    wr16(OBJ_FIELD(o, 0x57), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, 0x57)))));
+    wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, OBJ_OFF(obj_57))))));
     cyc(32);
     w = (uint16_t)(rd16(W(wram_1AF4)) & 0x00FF);
     if (w != 0x0000 && (cyc(40), w != 0x0080)) {
         cyc(72);
-        t = rd16(OBJ_FIELD(o, 0x53));
+        t = rd16(OBJ_FIELD(o, OBJ_OFF(obj_53)));
         cyc(62);
-        u = rd16(OBJ_FIELD(o, 0x57));
+        u = rd16(OBJ_FIELD(o, OBJ_OFF(obj_57)));
         cyc(32);
-        wr16(OBJ_FIELD(o, 0x53), u);
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_53)), u);
         cyc(68);
-        wr16(OBJ_FIELD(o, 0x57), t);
+        wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), t);
     } else { cyc(46); }
     cyc(62);
     cr->x = o;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     ObjectRebucket_cr(cr);
     cyc(76);
-    bank = rd8(OBJ_FIELD(o, 0x1C));
+    bank = rd8(OBJ_FIELD(o, OBJ_OFF(obj_1c)));
     cyc(134);
-    w = (uint16_t)(rd16(OBJ_FIELD(o, 0x1A)) - 0x8000);
+    w = (uint16_t)(rd16(OBJ_FIELD(o, OBJ_OFF(obj_1a_w))) - 0x8000);
     cyc(104);
     v = rd8((uint32_t)bank << 16 | (uint16_t)(0x8000 + w));
     cr->x = o;
@@ -2917,7 +2917,7 @@ void ObjectSpawnFromScript(Carried *cr)
     set_p(cr, (uint8_t)((cr->p & ~(P_C | P_V)) | (v >= 0xEA ? P_C : (cyc(74), 0)) | ((w & 0x8000) ? P_V : (cyc(8), 0))));
     if (v == 0xEA) {
         cyc(116);
-        wr8(OBJ_FIELD(o, 0x36), 0x03);
+        wr8(OBJ_FIELD(o, OBJ_OFF(obj_36)), 0x03);
         v = 0x03;
     }
     cyc(92);
