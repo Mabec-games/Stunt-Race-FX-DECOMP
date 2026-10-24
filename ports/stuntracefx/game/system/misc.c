@@ -205,7 +205,7 @@ uint8_t ReadTable9022(uint8_t bank)
     for (i = 0; i < 0x80; i++)
         v = rd8((uint32_t)bank << 16 | (uint16_t)(0x9022 + 2 * i));
     cyc(108);
-    wr8(W(wram_0064), 0);
+    WR8(wram_0064, 0);
     return v;
 }
 
@@ -280,11 +280,11 @@ void abi_Set0D37FromTable(void)
 void Set7EBC2BTrio(uint8_t v)
 {
     cyc(76);
-    wr8(W(wram_7EBC2B), v);
+    WR8(wram_7EBC2B, v);
     cyc(32);
-    wr8(W(wram_7EBC2D), v);
+    WR8(wram_7EBC2D, v);
     cyc(32);
-    wr8(W(wram_7EBC2F), v);
+    WR8(wram_7EBC2F, v);
     cyc(72);
 }
 
@@ -422,7 +422,7 @@ void Set7EFFA6Sequence(void)
 
     cyc(44);
     for (i = 0; i < 4; i++)
-        { cyc(56); wr16(W(wram_7EFFA6) + 2 * i, (uint16_t)(i + 1)); }
+        { cyc(56); WR16X(wram_7EFFA6, 2 * i, (uint16_t)(i + 1)); }
     cyc(72);
 }
 
@@ -897,7 +897,7 @@ void DemoRun(Carried *cr)
     cr->x = RD16(wram_1A57);
     cyc(80);
     r_lda16(cr, 0x038004 + cr->x);
-    wr16(W(wram_18DB), cr->a);
+    WR16(wram_18DB, cr->a);
     r_lda16_imm(cr, 0x0000);
     cyc(10);
     WR16(hud_mode, 0x0000);
@@ -932,7 +932,7 @@ void DemoRun(Carried *cr)
     hw_wr(b | 0x3039, 0x01);
     demo_lda8(cr, 0x01);
     cyc(8);
-    wr8(W(palette_saved), 0x01);
+    WR8(palette_saved, 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(76);
     AttractCourseSetup(cr);
@@ -1074,10 +1074,10 @@ void DemoRun(Carried *cr)
                 cr->x = 0x1A64;
                 r_lda16(cr, cyc_then(70, dp_addr(cr, 0x02)));
                 cyc(32);
-                wr16(W(dp_08) + cr->x, cr->a);
+                WR16X(dp_08, cr->x, cr->a);
                 r_lda16(cr, cyc_then(16, dp_addr(cr, 0x94)));
                 cyc(32);
-                wr16(W(dp_0c) + cr->x, cr->a);
+                WR16X(dp_0c, cr->x, cr->a);
                 db = cr->db;
                 demo_camera(cr, db);
                 cr->x = x;
@@ -1092,13 +1092,13 @@ void DemoRun(Carried *cr)
                 x = cr->x;
                 cr->x = 0x1A64;
                 cyc(86);
-                v = rd16(W(dp_0a) + cr->x);
+                v = RD16X(dp_0a, cr->x);
                 p = (uint8_t)(cr->p & ~P_C);
                 w = alu_adc16(v, rd16(cyc_then(30, dp_addr(cr, 0x08))), &p);
                 set_p(cr, p);
                 cr->a = w;
                 cyc(32);
-                wr16(W(dp_0a) + cr->x, w);
+                WR16X(dp_0a, cr->x, w);
                 db = cr->db;
                 demo_camera(cr, db);
                 cr->x = x;

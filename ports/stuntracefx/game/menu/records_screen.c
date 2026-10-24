@@ -286,7 +286,7 @@ void RecordsMenuBack(Carried *cr)
     r_sep(cr, P_M);
     lda8(cr, 0xF0);
     cyc(70);
-    wr8(W(wram_0E92), 0xF0);
+    WR8(wram_0E92, 0xF0);
     r_rep(cr, P_M);
     cyc(42);
 }
@@ -731,7 +731,7 @@ static void speed_alt_leave(Carried *cr)
     (cyc(62), OamBufferHideLargeLong_cr(cr));
     lda8(cr, 0xF0);
     cyc(48);
-    wr8(W(wram_0E92), 0xF0);
+    WR8(wram_0E92, 0xF0);
     cyc(42);                            /* RTS */
 }
 
@@ -1496,7 +1496,7 @@ void SpeedRecordsLeaveCar(Carried *cr)
     r_rep(cr, P_M);
     r_lda16_imm(cr, 0x8669);
     cyc(18);
-    wr16(W(wram_18DB), 0x8669);
+    WR16(wram_18DB, 0x8669);
     r_sep(cr, P_M);
     (cyc(84), ColourMathA7Start_cr(cr));
     cyc(86);

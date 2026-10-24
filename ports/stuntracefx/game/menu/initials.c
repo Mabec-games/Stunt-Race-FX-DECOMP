@@ -82,67 +82,67 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *p = nz16(*p, a);
     if (a) {
         cyc(72);
-        a = rd16(W(wram_18ED));
+        a = RD16(wram_18ED);
         *p = nz16(*p, a);
         if (a) {
             cyc(16);
             sound0(bank, 0x46, p);
             MenuRowPalette5(bank, x, y, p);
             cyc(32);
-            a = (uint16_t)(rd16(W(wram_18ED)) - 1);
+            a = (uint16_t)(RD16(wram_18ED) - 1);
             *p = nz16(*p, a);
             cyc(46);
-            wr16(W(wram_18ED), a);
+            WR16(wram_18ED, a);
         }
     } else { cyc(46); }
     a = rd16(cyc_then(24, (WA(wram_118F)))) & 0x0100;
     *p = nz16(*p, a);
     if (a) {
         cyc(72);
-        a = rd16(W(wram_18ED));
+        a = RD16(wram_18ED);
         *p = cmp16(*p, a, 0x0002);
         if (a != 0x0002) {
             cyc(40);
             sound0(bank, 0x46, p);
             MenuRowPalette5(bank, x, y, p);
             cyc(32);
-            a = (uint16_t)(rd16(W(wram_18ED)) + 1);
+            a = (uint16_t)(RD16(wram_18ED) + 1);
             *p = nz16(*p, a);
             cyc(46);
-            wr16(W(wram_18ED), a);
+            WR16(wram_18ED, a);
         }
     } else { cyc(46); }
     cyc(32);
-    a = rd16(W(wram_18ED));
+    a = RD16(wram_18ED);
     *p = (uint8_t)((*p & ~P_C) | (a & 0x8000 ? P_C : 0));
     *x = (uint16_t)(a << 1);
     *p = nz16(*p, *x);
 
     cyc(60);
-    rep = hold_repeats(rd16(W(joy1_held)) & 0x0800, W(wram_190B), p, &a);
+    rep = hold_repeats(RD16(joy1_held) & 0x0800, W(wram_190B), p, &a);
     if (!rep) {
         a = rd16((WA(wram_118F))) & 0x0800;
         *p = nz16(*p, a);
     }
     if (rep || a) {
         cyc(96);
-        wr16(W(wram_190B), 0x0000);
+        WR16(wram_190B, 0x0000);
         sound0(bank, 0x45, p);
         cyc(54);
-        v = (uint16_t)(rd16(W(wram_18EF) + *x) + 1);
+        v = (uint16_t)(RD16X(wram_18EF, *x) + 1);
         *p = cmp16(*p, v, 0x001A);
         if (v == 0x001A) {
             v = 0x0000;
             *p = nz16(*p, v);
         }
         cyc(92);
-        wr16(W(wram_18EF) + *x, v);
+        WR16X(wram_18EF, *x, v);
         cyc(64);
         return v;
     }
 
     cyc(78);
-    rep = hold_repeats(rd16(W(joy1_held)) & 0x0400, W(wram_190D), p, &a);
+    rep = hold_repeats(RD16(joy1_held) & 0x0400, W(wram_190D), p, &a);
     if (!rep) {
         a = rd16((WA(wram_118F))) & 0x0400;
         *p = nz16(*p, a);
@@ -150,17 +150,17 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             { cyc(88); return a; }
     }
     cyc(96);
-    wr16(W(wram_190D), 0x0000);
+    WR16(wram_190D, 0x0000);
     sound0(bank, 0x45, p);
     cyc(54);
-    v = (uint16_t)(rd16(W(wram_18EF) + *x) - 1);
+    v = (uint16_t)(RD16X(wram_18EF, *x) - 1);
     *p = cmp16(*p, v, 0xFFFF);
     if (v == 0xFFFF) {
         v = 0x0019;
         *p = nz16(*p, v);
     }
     cyc(92);
-    wr16(W(wram_18EF) + *x, v);
+    WR16X(wram_18EF, *x, v);
     cyc(42);
     return v;
 }
@@ -223,12 +223,12 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     wr16((WA(menu_joy1_pressed)), cyc_then(24, 0x0000));
     cyc(32);
-    i = (uint16_t)(rd16(W(word_list_a_size)) - 2);
+    i = (uint16_t)(RD16(word_list_a_size) - 2);
     if (!(i & 0x8000)) {
         do {
             *x = i;
             cyc(90);
-            v = rd16(W(word_list_a) + i);
+            v = RD16X(word_list_a, i);
             wr16((WA(wram_118F)), cyc_then(24, v));
             v |= rd16(cyc_then(24, (WA(menu_joy1_pressed))));
             wr16((WA(menu_joy1_pressed)), cyc_then(24, v));
@@ -237,7 +237,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             i = (uint16_t)(i - 2);
         } while (cyc_loop(42, !(i & 0x8000)));
         cyc(136);
-        wr16(W(word_list_a_size), 0x0000);
+        WR16(word_list_a_size, 0x0000);
     }
     cyc(70);
     MenuActorFind(bank, 0x0009, x, y, p);
@@ -348,7 +348,7 @@ void MenuInitialsFrame(Carried *cr)
     (cyc(8), RaceFrameStep(cr));
     cr->a = 0x0001;
     cyc(56);
-    wr16(W(wram_18FD), 0x0001);
+    WR16(wram_18FD, 0x0001);
     (cyc(46), MenuInitialsPresses_cr(cr));
     cyc(24);
     pad = RD16(menu_joy1_pressed);
@@ -393,7 +393,7 @@ void MenuInitialsFrame(Carried *cr)
         kind_anim(cr, 0x0004, 0x008A);
         cr->a = 0x0000;
         cyc(56);
-        wr16(W(word_list_a_size), 0x0000);
+        WR16(word_list_a_size, 0x0000);
         sound_port0(cr, 0x47);
         cyc(64);
         return;
@@ -403,7 +403,7 @@ void MenuInitialsFrame(Carried *cr)
     if (cr->p & P_Z)
         { cyc(204); return; }
     cyc(200);
-    cr->a = rd16(W(wram_18C3));
+    cr->a = RD16(wram_18C3);
     r_cmp16(cr, 0x0000);
     if (cr->a != 0)
         { cyc(88); return; } else { cyc(40); }
@@ -418,7 +418,7 @@ void MenuInitialsFrame(Carried *cr)
     wr16(dpx(cr, 0x08), cyc_then(46, 0xBFB8));
     cr->a = 0x0000;
     cyc(56);
-    wr16(W(word_list_a_size), 0x0000);
+    WR16(word_list_a_size, 0x0000);
     set_p(cr, nz16(cr->p, 0));
     cyc(42);
 }
@@ -513,7 +513,7 @@ void MenuSettingsFrame(Carried *cr)
     cr->a = 0x0001;
     set_p(cr, nz16(cr->p, 1));
     cyc(56);
-    wr16(W(wram_18FD), 0x0001);
+    WR16(wram_18FD, 0x0001);
     cyc(24);
     cr->x = RD16(actor_current);
     (cyc(46), w_MenuChoicePressesP1(cr));
@@ -569,17 +569,17 @@ void MenuSettingsFrame(Carried *cr)
                 wr16(dpx(cr, 0x08), cyc_then(46, 0xBC9A));
                 cr->a = 0x0001;
                 cyc(56);
-                wr16(W(menu_1905), 0x0001);
+                WR16(menu_1905, 0x0001);
                 cr->a = 0x0028;
                 cyc(56);
-                wr16(W(menu_1907), 0x0028);
+                WR16(menu_1907, 0x0028);
                 cr->a = 0x464A;
                 cyc(56);
-                wr16(W(wram_7EFD65), 0x464A);
+                WR16(wram_7EFD65, 0x464A);
                 cr->a = 0x0000;
                 set_p(cr, nz16(cr->p, 0));
                 cyc(56);
-                wr16(W(word_list_b_size), 0x0000);
+                WR16(word_list_b_size, 0x0000);
                 r_sep(cr, P_M);
                 cr->a = (uint16_t)((cr->a & 0xFF00) | 0xE0);
                 set_p(cr, nz8(cr->p, 0xE0));
@@ -600,9 +600,9 @@ void MenuSettingsFrame(Carried *cr)
             cr->a = 0x0000;
             set_p(cr, nz16(cr->p, 0));
             cyc(78);
-            wr16(W(wram_190B), 0x0000);
+            WR16(wram_190B, 0x0000);
             cyc(32);
-            wr16(W(wram_190D), 0x0000);
+            WR16(wram_190D, 0x0000);
             set10(cr, 0x0005, 0xFFFF);
             kinds67_anim(cr);
             cyc(36);
@@ -613,7 +613,7 @@ void MenuSettingsFrame(Carried *cr)
             cr->a = 0x0000;
             set_p(cr, nz16(cr->p, 0));
             cyc(56);
-            wr16(W(word_list_a_size), 0x0000);
+            WR16(word_list_a_size, 0x0000);
             cyc(42);
             return;
         }

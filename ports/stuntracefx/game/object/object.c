@@ -35,10 +35,10 @@ static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
 uint16_t ObjectLinkedSet1A(uint16_t obj, uint16_t value)
 {
     cyc(62);
-    uint16_t linked = rd16(W(obj_link) + obj);
+    uint16_t linked = RD16X(obj_link, obj);
 
     cyc(82);
-    wr16(W(obj_1a) + linked, value);
+    WR16X(obj_1a, linked, value);
     cyc(44);
     return linked;
 }
@@ -456,20 +456,20 @@ void abi_ObjectPoolInit(void)
 uint16_t ObjectLinkFlag4000Step(void)
 {
     cyc(98);
-    uint16_t x = rd16(W(wram_0346)), a;
+    uint16_t x = RD16(wram_0346), a;
 
     cyc(32);
-    x = rd16(W(obj_link) + x);
+    x = RD16X(obj_link, x);
     cyc(46);
-    x = rd16(W(obj_link) + x);
+    x = RD16X(obj_link, x);
     cyc(46);
     a = rd16(0x000000 + x) & 0x4000;
     if (!a)
         { cyc(46); return a; }
     cyc(72);
-    a = (uint16_t)(rd16(W(wram_06CD)) + 8);
+    a = (uint16_t)(RD16(wram_06CD) + 8);
     cyc(70);
-    wr16(W(wram_06CD), a);
+    WR16(wram_06CD, a);
     return a;
 }
 
@@ -651,18 +651,18 @@ void abi_ObjectTableC056(void)
 static int object_list_append(uint16_t obj, uint16_t *len)
 {
     cyc(128);
-    uint16_t n = rd16(W(object_list_len));
+    uint16_t n = RD16(object_list_len);
 
     *len = n;
     if (n == 0x0040)
         return 0;
     cyc(100);
-    wr16(W(object_list) + n, obj);
+    WR16X(object_list, n, obj);
     n = (uint16_t)(n + 2);
     cyc(74);
-    wr16(W(object_list_len), n);
+    WR16(object_list_len, n);
     cyc(56);
-    wr16(W(object_list) + n, 0x0000);
+    WR16X(object_list, n, 0x0000);
     return 1;
 }
 
@@ -709,22 +709,22 @@ void abi_ObjectListAppend(void)
 void ObjectBucketInsert(uint16_t obj)
 {
     cyc(222);
-    uint16_t bucket = rd16(W(obj_bucket_long) + obj), head;
+    uint16_t bucket = RD16X(obj_bucket_long, obj), head;
 
     cyc(30);
     wr16(0x7E0000 | W(obj_bucket_prev) + obj, 0x0000);
     cyc(60);
-    head = rd16(W(object_buckets) + bucket);
+    head = RD16X(object_buckets, bucket);
     cyc(30);
     wr16(0x7E0000 | W(obj_bucket_next) + obj, head);
     if (head) {
         cyc(32);
-        wr16(W(dp_40), obj);
+        WR16(dp_40, obj);
         cyc(30);
-        wr16(0x7E0000 | W(obj_bucket_prev) + head, cyc_then(30, rd16(W(dp_40))));
+        wr16(0x7E0000 | W(obj_bucket_prev) + head, cyc_then(30, RD16(dp_40)));
     } else { cyc(8); }
     cyc(60);
-    wr16(W(object_buckets) + bucket, obj);
+    WR16X(object_buckets, bucket, obj);
 }
 
 void ObjectBucketInsert_cr(Carried *cr)
@@ -833,11 +833,11 @@ uint16_t ObjectBucketRemove(uint16_t obj)
         return prev;
     }
     cyc(52);
-    bucket = rd16(W(obj_bucket_long) + obj);  /* the bucket before the next object */
+    bucket = RD16X(obj_bucket_long, obj);  /* the bucket before the next object */
     cyc(44);
     next = rd16(0x7E0000 | W(obj_bucket_next) + obj);
     cyc(32);
-    wr16(W(object_buckets) + bucket, next);
+    WR16X(object_buckets, bucket, next);
     if (next)
         { cyc(60); wr16(0x7E0000 | W(obj_bucket_prev) + next, 0x0000); } else { cyc(22); }
     cyc(144);
@@ -946,7 +946,7 @@ void abi_ObjectSet5DByKindLong(void)
 uint16_t ObjectPlaceFromTable(uint8_t list, uint8_t entry, uint16_t *x, uint16_t *y)
 {
     cyc(416);
-    uint16_t obj = rd16(W(object_list_b) + (uint16_t)((list - 1) << 1)), t = (uint16_t)((uint16_t)(entry - 1) << 3), a, w = 0;
+    uint16_t obj = RD16X(object_list_b, (uint16_t)((list - 1) << 1)), t = (uint16_t)((uint16_t)(entry - 1) << 3), a, w = 0;
     unsigned i;
 
     cyc(182);
@@ -957,23 +957,23 @@ uint16_t ObjectPlaceFromTable(uint8_t list, uint8_t entry, uint16_t *x, uint16_t
         cyc(40);
         for (i = 0; i < 3; i++) {
             cyc(30);
-            w = rd16(W(script_records) + 2 * i + t);
+            w = RD16X(script_records, 2 * i + t);
             cyc(30);
-            wr16(W(obj_pos_x_long) + 2 * i + obj, w);
+            WR16X(obj_pos_x_long, 2 * i + obj, w);
         }
         cyc(52);
-        a = (uint16_t)((w & 0xFF00) | rd8(W(wram_7EFF6C) + t));
+        a = (uint16_t)((w & 0xFF00) | RD8X(wram_7EFF6C, t));
         cyc(30);
-        wr8(W(obj_15_long) + obj, (uint8_t)a);
+        WR8X(obj_15_long, obj, (uint8_t)a);
     } else { cyc(46); }
     cyc(46);
     a = (uint16_t)((a & 0xFF00) | rd8((WA(group_trigger_pos))));
     cyc(30);
-    wr8(W(obj_49_long) + obj, (uint8_t)a);
+    WR8X(obj_49_long, obj, (uint8_t)a);
     cyc(24);
     a = (uint16_t)((a & 0xFF00) | RD8(wram_1F4C));
     cyc(30);
-    wr8(W(obj_4a_long) + obj, (uint8_t)a);
+    WR8X(obj_4a_long, obj, (uint8_t)a);
     *x = t;
     *y = obj;
     cyc(100);
@@ -1086,13 +1086,13 @@ void ObjectInit(uint16_t obj)
 
     cyc(234);
     for (i = 0; i < 0x2F; i++)
-        { cyc(94); wr16(W(obj_04_long) + 2 * i + obj, 0x0000); }
+        { cyc(94); WR16X(obj_04_long, 2 * i + obj, 0x0000); }
     cyc(184);
-    wr16(W(obj_bucket_long) + obj, 0x0000);
+    WR16X(obj_bucket_long, obj, 0x0000);
     cyc(62);
     ObjectBucketInsert(obj);
     cyc(212);
-    wr8(W(obj_36_long) + obj, 0x00);
+    WR8X(obj_36_long, obj, 0x00);
     cyc(46);
     wr8(0x7E0000 | W(obj_59) + obj, 0x69);
     cyc(152);
@@ -1135,32 +1135,32 @@ uint16_t ObjectPlaceAll(uint8_t bank)
 {
     (void)bank;
     cyc(136);
-    uint16_t n = rd16(W(object_list_b_len)), i = 0, a = 0, x, y;
+    uint16_t n = RD16(object_list_b_len), i = 0, a = 0, x, y;
 
     n = (uint16_t)((n >> 1) | (n & 0x8000));
     cyc(54);
-    wr16(W(dp_02), n);
+    WR16(dp_02, n);
     cyc(40);
-    wr16(W(dp_08), 0x0001);
+    WR16(dp_08, 0x0001);
     cyc(2);
     do {
         cyc(54);
-        WR16(group_trigger_pos, cyc_then(24, rd16(W(selection_out) + i)));
+        WR16(group_trigger_pos, cyc_then(24, RD16X(selection_out, i)));
         cyc(32);
-        WR16(group_trigger_code, cyc_then(24, rd16(W(selection_out_b) + i)));
+        WR16(group_trigger_code, cyc_then(24, RD16X(selection_out_b, i)));
         cyc(32);
-        WR16(wram_1F4C, cyc_then(24, rd16(W(selection_derived) + i)));
+        WR16(wram_1F4C, cyc_then(24, RD16X(selection_derived, i)));
         cyc(32);
-        x = rd16(W(wram_7EFFA6) + i);
+        x = RD16X(wram_7EFFA6, i);
         cyc(60);
-        a = ObjectPlaceFromTable((uint8_t)rd16(W(dp_08)), (uint8_t)x, &x, &y);
+        a = ObjectPlaceFromTable((uint8_t)RD16(dp_08), (uint8_t)x, &x, &y);
         i = (uint16_t)(i + 2);
         cyc(80);
-        wr16(W(dp_08), cyc_then(14, (uint16_t)(rd16(W(dp_08)) + 1)));
+        WR16(dp_08, cyc_then(14, (uint16_t)(RD16(dp_08) + 1)));
         cyc(16);
-        n = (uint16_t)(rd16(W(dp_02)) - 1);
+        n = (uint16_t)(RD16(dp_02) - 1);
         cyc(14);
-        wr16(W(dp_02), n);
+        WR16(dp_02, n);
     } while (n);
     cyc(160);
     return a;
@@ -1376,14 +1376,14 @@ uint16_t ObjectRebucket(uint16_t obj)
     uint16_t key = ScaleObjectXZ(obj, &p);
 
     cyc(120);
-    if (key == rd16(W(obj_bucket_long) + obj)) {
+    if (key == RD16X(obj_bucket_long, obj)) {
         cyc(94);
         return key;
     }
     cyc(108);
     ObjectBucketRemove(obj);
     cyc(68);
-    wr16(W(obj_bucket_long) + obj, key);
+    WR16X(obj_bucket_long, obj, key);
     cyc(62);
     ObjectBucketInsert(obj);
     cyc(216);
@@ -1751,7 +1751,7 @@ static void groups_chain(uint16_t *y, uint32_t c)
         c = 82;
         if (!(rd8((WA(group_trigger_code))) == 0x23 && (rd8(cyc_then(62, (WA(obj_24)) + *y)) & 0x10))) {
             if (!(rd8(cyc_then(68, W(obj_36_long) + *y)) & 0x80))
-                { cyc(62); wr8(W(obj_36_long) + *y, 0x03); }
+                { cyc(62); WR8X(obj_36_long, *y, 0x03); }
             else
                 cyc(22);                /* BMI */
         } else
@@ -1783,15 +1783,15 @@ static uint16_t groups_list(uint16_t *y)
         cyc(80);
         wr16((WA(group_trigger_pos)), (uint16_t)(pos + 4));
         cyc(70);
-        head = rd16(W(object_buckets) + (head & 0x07FE));
+        head = RD16X(object_buckets, (head & 0x07FE));
         if (!head)
             continue;
         *y = head;
         cyc(46);
-        keep = rd16(W(dp_3e));
+        keep = RD16(dp_3e);
         groups_chain(y, 46);
         cyc(46);
-        wr16(W(dp_3e), keep);
+        WR16(dp_3e, keep);
         cyc(2);
     }
 }
@@ -1850,7 +1850,7 @@ void ObjectGroupsActivateClear08(Carried *cr)
     if (cr->y)
         groups_chain(&cr->y, 82);
     cyc(46);
-    wr16(W(dp_3e), cr->x);
+    WR16(dp_3e, cr->x);
     cyc(24);                            /* JMP */
     cr->x = groups_list(&cr->y);
     cr->a = 0;
@@ -1892,7 +1892,7 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
     v = (uint16_t)((v >> 1) | (v & 0x8000));
     v = (uint16_t)((v >> 1) | (v & 0x8000));
     cyc(136);
-    wr16(W(area_row), v);
+    WR16(area_row, v);
     cyc(30);
     v = rd16(b | (uint16_t)(rec + 1)) & 0x00FF;
     cyc(48);
@@ -1900,30 +1900,30 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
     cyc(30);
     v = rd16(b | (uint16_t)(rec + 2)) & 0x00FF;
     cyc(92);
-    wr16(W(area_col0), (uint16_t)(-v << 1));
+    WR16(area_col0, (uint16_t)(-v << 1));
     cyc(30);
     v = rd16(b | (uint16_t)(rec + 0)) & 0x00FF;
     cyc(48);
     WR16(group_trigger_pos, v);
     do {
         cyc(16);
-        v = rd16(W(area_col0));
+        v = RD16(area_col0);
         cyc(16);
-        wr16(W(dp_02), v);
+        WR16(dp_02, v);
         cyc(24);
         v = RD16(group_trigger_pos);
         cyc(16);
-        wr16(W(dp_04), v);
+        WR16(dp_04, v);
         c = 16;                         /* in: LDA; round again: the branch back and LDA (38) */
         do {
             cyc(c);
             c = 38;
-            v = rd16(W(dp_02));
+            v = RD16(dp_02);
             cyc(38);
             w = RD16(area_window_x);
             if (!((uint16_t)(v + w) & 0xFFC0)) {
                 cyc(56);
-                v = rd16(W(area_row));
+                v = RD16(area_row);
                 cyc(38);
                 w = RD16(area_window_y);
                 if (!((uint16_t)(v + w) & 0xF800)) {
@@ -1935,10 +1935,10 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
                         cyc(24);
                         v = RD16(bucket_origin);
                         cyc(30);
-                        w = rd16(W(dp_02));
+                        w = RD16(dp_02);
                         v = (uint16_t)(v + w);
                         cyc(30);
-                        w = rd16(W(area_row));
+                        w = RD16(area_row);
                         v = (uint16_t)(v + w);
                         cyc(30);
                         WR16I(group_trigger_list, 2 + x, v);
@@ -1949,21 +1949,21 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
             }
             y = (uint16_t)(y + 1);
             cyc(76);
-            v = rd16(W(dp_02));
+            v = RD16(dp_02);
             cyc(14);
-            wr16(W(dp_02), (uint16_t)(v + 1));
+            WR16(dp_02, (uint16_t)(v + 1));
             cyc(16);
-            v = rd16(W(dp_02));
+            v = RD16(dp_02);
             cyc(14);
-            wr16(W(dp_02), (uint16_t)(v + 1));
+            WR16(dp_02, (uint16_t)(v + 1));
             cyc(16);
-            n = rd16(W(dp_04));
+            n = RD16(dp_04);
             n = (uint16_t)(n - 1);
             cyc(14);
-            wr16(W(dp_04), n);
+            WR16(dp_04, n);
         } while (n);
         cyc(32);
-        v = rd16(W(area_row));
+        v = RD16(area_row);
         e.a = (uint16_t)(v - 0x0040);
         p = (uint8_t)(p & ~(P_C | P_V));
         if (v >= 0x0040)
@@ -1971,7 +1971,7 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
         if ((v ^ 0x0040) & (v ^ e.a) & 0x8000)
             p |= P_V;
         cyc(54);
-        wr16(W(area_row), e.a);
+        WR16(area_row, e.a);
         cyc(24);
         n = RD16(area_rows_left);
         n = (uint16_t)(n - 1);
@@ -2043,7 +2043,7 @@ static void triggers_window(uint16_t src)
     cyc(132);
     for (i = 0; i < 6; i += 2) {
         cyc(24);
-        v = rd16(W(wram_bank_7e) + src + i);
+        v = RD16X(wram_bank_7e, src + i);
         cyc(24);
         wr16(0x7E0000 | W(bucket_origin) + i, v);
     }
@@ -2055,7 +2055,7 @@ static uint16_t view_area(uint16_t *x)
     cyc(24);
     *x = (uint16_t)((((RD16(view_pos_y_hi) & 0x00FF) >> 3) + 1) & 0xFE);
     cyc(148);
-    return rd16(W(wram_7EC61D) + *x);
+    return RD16X(wram_7EC61D, *x);
 }
 
 /* The record of BucketTriggersFixedArea: by $0D62 and bit 7 of $1AEC. */
@@ -2271,14 +2271,14 @@ int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y)
     int got;
 
     cyc(16);
-    wr16(W(dp_3e), x);                          /* STX $3E, then LDA */
+    WR16(dp_3e, x);                          /* STX $3E, then LDA */
     cyc(24);
     n = RD8(object_count);
     *a = (uint16_t)((*a & 0xFF00) | n);
     ax = *a;
     got = ((uint8_t)(n - 0x2E) & 0x80) && (cyc(94), ObjectAlloc(&ax, &rx, &ry));
     cyc(78);
-    (void)rd16(W(dp_3e));                       /* LDX $3E on both paths */
+    (void)RD16(dp_3e);                       /* LDX $3E on both paths */
     if (got) {
         cyc(84);
         *y = rx;
@@ -2840,7 +2840,7 @@ void ObjectSpawnFromScript(Carried *cr)
     o = cr->x;
     rm = rom_word_at(b + 0x8000 + y);
     cyc(90);
-    wr8(OBJ_FIELD(o, OBJ_OFF(obj_15)), cyc_then(32, rd8(W(spawn_mirror))));
+    wr8(OBJ_FIELD(o, OBJ_OFF(obj_15)), cyc_then(32, RD8(spawn_mirror)));
     cyc(52);
     wr16(OBJ_FIELD(o, OBJ_OFF(obj_04)), cyc_then(32 + rm, rd16(b | (uint16_t)(0x8007 + y))));
     cyc(30);
@@ -2883,7 +2883,7 @@ void ObjectSpawnFromScript(Carried *cr)
     cyc(46 + rm);
     wr16(OBJ_FIELD(o, OBJ_OFF(obj_57)), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, OBJ_OFF(obj_57))))));
     cyc(32);
-    w = (uint16_t)(rd16(W(spawn_mirror)) & 0x00FF);
+    w = (uint16_t)(RD16(spawn_mirror) & 0x00FF);
     if (w != 0x0000 && (cyc(40), w != 0x0080)) {
         cyc(72);
         t = rd16(OBJ_FIELD(o, OBJ_OFF(obj_53)));
@@ -5526,7 +5526,7 @@ void ObjectListRemove(Carried *cr)
     cr->x = slot;
     set_p(cr, nz16(cr->p, cr->x));
     cyc(68);
-    wr16(W(object_list) + cr->x, cr->a);
+    WR16X(object_list, cr->x, cr->a);
     cyc(32);
     r_lda16(cr, W(object_list_len));
     if (!cr->a) {
@@ -5537,12 +5537,12 @@ void ObjectListRemove(Carried *cr)
     r_tax16(cr);
     r_lda16_imm(cr, 0x0000);
     cyc(24);
-    wr16(W(wram_7EFFBB) + cr->x, 0x0000);
+    WR16X(wram_7EFFBB, cr->x, 0x0000);
     cr->x = (uint16_t)(cr->x - 2);
     set_p(cr, nz16(cr->p, cr->x));
     r_txa16(cr);
     cyc(44);
-    wr16(W(object_list_len), cr->a);
+    WR16(object_list_len, cr->a);
 done:
     cyc(138);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -5577,9 +5577,9 @@ void ObjectListClear(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_lda16_imm(cr, 0x0000);
     cyc(40);
-    wr16(W(object_list_len), 0x0000);
+    WR16(object_list_len, 0x0000);
     cyc(32);
-    wr16(W(object_list), 0x0000);
+    WR16(object_list, 0x0000);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(66);                            /* SEP, RTL */
 }

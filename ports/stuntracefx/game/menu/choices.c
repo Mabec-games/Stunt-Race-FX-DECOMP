@@ -40,20 +40,20 @@ static uint16_t step_p1(uint8_t bank, uint32_t table, uint16_t instead, uint16_t
 
     SoundPort0QueuePush(0x45);
     cyc(54);
-    c = rd16(W(selection));
+    c = RD16(selection);
     cyc(174);
     c = rd16(table + (uint16_t)(c << 1));
-    wr16(W(selection), c);
+    WR16(selection, c);
     cyc(32);
     s = rd16(SAVE_PROGRESS) & 0x00FF;
-    if (!s || (!(s & 0x0004) && rd16(cyc_then(136, W(wram_18C3))) != 0x0003)) {
+    if (!s || (!(s & 0x0004) && rd16(cyc_then(136, WA(wram_18C3))) != 0x0003)) {
         cyc(s ? 72 : 102);              /* CMP #3, BEQ not taken; or the CMP #0 branch taken */
-        c = rd16(W(selection));
+        c = RD16(selection);
         if (c == 0x0003)
-            { cyc(96); wr16(W(selection), instead); } else { cyc(46); }
+            { cyc(96); WR16(selection, instead); } else { cyc(46); }
     } else { cyc(46); }
     cyc(32);
-    c = rd16(W(selection));
+    c = RD16(selection);
     return show_choice(bank, c, x, y, p);
 }
 
@@ -124,7 +124,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     wr16((WA(menu_joy1_pressed)), cyc_then(24, 0x0000));
     cyc(32);
-    i = (uint16_t)(rd16(W(word_list_a_size)) - 2);
+    i = (uint16_t)(RD16(word_list_a_size) - 2);
     if (i & 0x8000) {
         *p = nz16(*p, i);
         return i;
@@ -132,7 +132,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     do {
         *x = i;
         cyc(90);
-        v = rd16(W(word_list_a) + i);
+        v = RD16X(word_list_a, i);
         wr16((WA(wram_118F)), cyc_then(24, v));
         v |= rd16(cyc_then(24, (WA(menu_joy1_pressed))));
         wr16((WA(menu_joy1_pressed)), cyc_then(24, v));
@@ -141,7 +141,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         i = (uint16_t)(i - 2);
     } while (cyc_loop(42, !(i & 0x8000)));
     cyc(136);
-    wr16(W(word_list_a_size), 0x0000);
+    WR16(word_list_a_size, 0x0000);
     *p = nz16(*p, 0);
     cyc(42);
     return 0;
@@ -177,19 +177,19 @@ static uint16_t step_p2(uint8_t bank, uint32_t table, uint16_t instead, uint16_t
 
     SoundPort0QueuePush(0x45);
     cyc(54);
-    c = rd16(W(selection_prev));
+    c = RD16(selection_prev);
     cyc(174);
     c = rd16(table + (uint16_t)(c << 1));
-    wr16(W(selection_prev), c);
+    WR16(selection_prev, c);
     cyc(32);
     if (!(rd16(SAVE_PROGRESS) & 0x0004)) {
         cyc(72);
-        c = rd16(W(selection_prev));
+        c = RD16(selection_prev);
         if (c == 0x0003)
-            { cyc(96); wr16(W(selection_prev), instead); } else { cyc(46); }
+            { cyc(96); WR16(selection_prev, instead); } else { cyc(46); }
     }
     cyc(32);
-    c = rd16(W(selection_prev));
+    c = RD16(selection_prev);
     cyc(76);
     MenuChoiceRepeat(x, p);
     cyc(78);                            /* RTS, PLA */
@@ -255,7 +255,7 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     wr16((WA(menu_joy2_pressed)), cyc_then(24, 0x0000));
     cyc(32);
-    i = (uint16_t)(rd16(W(word_list_b_size)) - 2);
+    i = (uint16_t)(RD16(word_list_b_size) - 2);
     if (i & 0x8000) {
         *p = nz16(*p, i);
         return i;
@@ -263,7 +263,7 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     do {
         *x = i;
         cyc(90);
-        v = rd16(W(word_list_b) + i);
+        v = RD16X(word_list_b, i);
         wr16((WA(wram_118F)), cyc_then(24, v));
         v |= rd16(cyc_then(24, (WA(menu_joy2_pressed))));
         wr16((WA(menu_joy2_pressed)), cyc_then(24, v));
@@ -271,7 +271,7 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         i = (uint16_t)(i - 2);
     } while (cyc_loop(42, !(i & 0x8000)));
     cyc(136);
-    wr16(W(word_list_b_size), 0x0000);
+    WR16(word_list_b_size, 0x0000);
     *p = nz16(*p, 0);
     cyc(42);
     return 0;
@@ -388,24 +388,24 @@ uint16_t MenuChoicesFromSave(uint16_t menu, uint16_t *x)
         cyc(136);
         v = choice_from_save(0x70FC0C, 0, x);
         cyc(132);
-        wr16(W(selection), v);
+        WR16(selection, v);
         cyc(92);
         return v;
     case 1:
         cyc(176);
         v = choice_from_save(0x70FC0C, 4, x);
         cyc(188);
-        wr16(W(selection), v);
+        WR16(selection, v);
         cyc(92);
         return v;
     case 2:
         cyc(216);
         v = choice_from_save(0x70FC0E, 0, x);
         cyc(132);
-        wr16(W(selection), v);
+        WR16(selection, v);
         v = choice_from_save(0x70FC0E, 4, x);
         cyc(188);
-        wr16(W(selection_prev), v);
+        WR16(selection_prev, v);
         cyc(70);
         return v;
     }
@@ -413,12 +413,12 @@ uint16_t MenuChoicesFromSave(uint16_t menu, uint16_t *x)
     if (!(rd16(SAVE_PROGRESS) & 0x00FF)) {
         v = 0x0001;
         cyc(126);
-        wr16(W(selection), v);
+        WR16(selection, v);
         return v;
     } else { cyc(64); }
     v = choice_from_save(0x70FC0D, 0, x);
     cyc(132);
-    wr16(W(selection), v);
+    WR16(selection, v);
     return v;
 }
 
@@ -462,7 +462,7 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
 
     MenuActorFind(bank, 0x000D, x, y, p);
     cyc(32);
-    row = rd16(W(wram_18EB));
+    row = RD16(wram_18EB);
     if (row == 0)
         { cyc(16); start_anim(*x, 0x0064, p); }
     else if (row == 1)
@@ -470,7 +470,7 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
     else if (row == 2)
         { cyc(108); start_anim(*x, 0x006E, p); tail = 32; /* no BRA after the last arm */ }
     cyc(tail);
-    row = rd16(W(wram_18EB));
+    row = RD16(wram_18EB);
     a = (uint16_t)(row << 5);
     {
         unsigned s = (unsigned)a + 0x34;
@@ -530,9 +530,9 @@ uint16_t MenuSettingsShow(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     SelectionTables18CBLong(bank);
     MenuChoiceAnimations(bank, x, y, p);
     cyc(32);
-    i = (uint16_t)(rd16(W(wram_18EB)) << 1);
+    i = (uint16_t)(RD16(wram_18EB) << 1);
     cyc(60);
-    v = rd16(W(selection_1) + i);
+    v = RD16X(selection_1, i);
     wr16((WA(scratch_11df)), cyc_then(24, v));
     wr16((WA(scratch_11e3)), rd16(cyc_then(72, 0x0BC15E + i)));
     a = rd16(cyc_then(24, (WA(scratch_11df))));
@@ -602,20 +602,20 @@ uint16_t MenuSettingsInput(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     if (rd16(cyc_then(158, (WA(menu_joy1_pressed)))) & 0x0200) {
         cyc(72);
-        v = rd16(W(wram_18EB));
+        v = RD16(wram_18EB);
         if (v) {
             cyc(62);
-            wr16(W(wram_18EB), (uint16_t)(v - 1));
+            WR16(wram_18EB, (uint16_t)(v - 1));
             sound0(bank, 0x46, p);
             MenuSettingsRowMarker(bank, x, y, p);
         } else { lead = 46; }           /* BEQ taken, LDA */
     } else { cyc(4); }
     if (rd16(cyc_then(lead, (WA(menu_joy1_pressed)))) & 0x0100) {
         cyc(72);
-        v = rd16(W(wram_18EB));
+        v = RD16(wram_18EB);
         if (v != 0x0002) {
             cyc(86);
-            wr16(W(wram_18EB), (uint16_t)(v + 1));
+            WR16(wram_18EB, (uint16_t)(v + 1));
             sound0(bank, 0x46, p);
             MenuSettingsRowMarker(bank, x, y, p);
         } else { cyc(4); }
@@ -624,27 +624,27 @@ uint16_t MenuSettingsInput(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         cyc(40);
         sound0(bank, 0x45, p);
         cyc(54);
-        i = (uint16_t)(rd16(W(wram_18EB)) << 1);
+        i = (uint16_t)(RD16(wram_18EB) << 1);
         *x = i;
         cyc(60);
-        v = (uint16_t)(rd16(W(selection_1) + i) - 1);
+        v = (uint16_t)(RD16X(selection_1, i) - 1);
         if (v == 0xFFFF)
             { cyc(18); v = 0x0002; }
         cyc(92);
-        wr16(W(selection_1) + i, v);
+        WR16X(selection_1, i, v);
     } else { cyc(46); }
     if (rd16(cyc_then(24, (WA(menu_joy1_pressed)))) & 0x0400) {
         cyc(40);
         sound0(bank, 0x45, p);
         cyc(54);
-        i = (uint16_t)(rd16(W(wram_18EB)) << 1);
+        i = (uint16_t)(RD16(wram_18EB) << 1);
         *x = i;
         cyc(60);
-        v = (uint16_t)(rd16(W(selection_1) + i) + 1);
+        v = (uint16_t)(RD16X(selection_1, i) + 1);
         if (v == 0x0003)
             { cyc(18); v = 0x0000; }
         cyc(92);
-        wr16(W(selection_1) + i, v);
+        WR16X(selection_1, i, v);
     } else { cyc(46); }
     *x = rd16(cyc_then(24, (WA(actor_current))));
     MenuSettingsShow(bank, x, y, p);
@@ -680,9 +680,9 @@ static uint16_t settings_leave(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
     uint16_t c;
 
     cyc(56);
-    wr16(W(selection_out), 0x0000);
+    WR16(selection_out, 0x0000);
     cyc(32);
-    c = rd16(W(selection));
+    c = RD16(selection);
     return cyc_then(42, show_choice(bank, c, x, y, p));
 }
 
@@ -708,7 +708,7 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t a, keep;
 
     cyc(56);
-    wr16(W(wram_18FD), 0x0000);
+    WR16(wram_18FD, 0x0000);
     MenuFixedColourUp(bank, *x, p);
     MenuSettingsInput(bank, x, y, p);
     *y = rd16(cyc_then(24, (WA(menu_joy1_pressed))));
@@ -737,7 +737,7 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     set10(bank, 0x000D, 0xFFFF, x, y, p);
     set10(bank, 0x000E, 0xFFFF, x, y, p);
     cyc(56);
-    wr16(W(word_list_a_size), 0x0000);
+    WR16(word_list_a_size, 0x0000);
     cyc(46);
     wr16((uint16_t)(*x + W(actor_handler)), 0xBA4E);
     cyc(22);
@@ -800,9 +800,9 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     set10(bank, 0x0004, 0x0000, x, y, p);
     sound0(bank, 0x46, p);
     cyc(78);
-    wr16(W(wram_190B), 0x0000);
+    WR16(wram_190B, 0x0000);
     cyc(32);
-    wr16(W(wram_190D), 0x0000);
+    WR16(wram_190D, 0x0000);
     set10(bank, 0x0008, 0x0000, x, y, p);
     set10(bank, 0x0009, 0x0000, x, y, p);
     set10(bank, 0x000A, 0xFFFF, x, y, p);
@@ -815,7 +815,7 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
     cyc(46);
     wr16((uint16_t)(*x + W(actor_1e)), 0x0001);
     cyc(56);
-    wr16(W(word_list_a_size), 0x0000);
+    WR16(word_list_a_size, 0x0000);
     return settings_leave(bank, x, y, p);
 }
 
@@ -875,12 +875,12 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     } else { cyc(40); }
     sound0(bank, 0x46, p);
     cyc(54);
-    mode = rd16(W(wram_18C3));
+    mode = RD16(wram_18C3);
     if (mode == 0x0003) {
         cyc(96);
-        wr16(W(selection), 0x0001);
+        WR16(selection, 0x0001);
         cyc(32);
-        wr16(W(selection_prev), 0x0001);
+        WR16(selection_prev, 0x0001);
         cyc(32);
         if (!(rd16(SAVE_PROGRESS) & 0x00FF)) {
             wr16((WA(menu_exit)), cyc_then(88, 0x0001));
@@ -900,11 +900,11 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(70);
     *x = MenuActorSpawn(bank, 0x0270, &a, y, p);
     cyc(32);
-    MenuChoicesFromSave(rd16(W(wram_18C3)), x);
+    MenuChoicesFromSave(RD16(wram_18C3), x);
     cyc(56);
-    wr16(W(selection_out), 0x0000);
+    WR16(selection_out, 0x0000);
     cyc(32);
-    c = rd16(W(selection));
+    c = RD16(selection);
     a = show_choice(bank, c, x, y, p);
     *x = rd16(cyc_then(24, (WA(actor_current))));
     *p = nz16(*p, *x);

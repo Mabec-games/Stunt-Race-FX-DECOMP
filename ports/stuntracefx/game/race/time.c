@@ -42,14 +42,14 @@ static uint16_t adc_bcd16(uint16_t a, uint16_t m, uint8_t *p)
 static uint16_t add_course_value(uint32_t table, uint8_t bra, uint16_t *x, uint8_t *p)
 {
     cyc(24);
-    uint8_t i = CourseIndex12(rd8(W(wram_0D89)), p);
+    uint8_t i = CourseIndex12(RD8(wram_0D89), p);
     uint16_t v;
 
     *x = i;
     cyc(138 + bra);                     /* LDA long, [BRA,] REP, SED, AND #, CLC, ADC */
-    v = adc_bcd16(rd8(table + i), rd16(W(race_time_bcd)), p);
+    v = adc_bcd16(rd8(table + i), RD16(race_time_bcd), p);
     cyc(24);
-    wr16(W(race_time_bcd), v);
+    WR16(race_time_bcd, v);
     cyc(80);
     return v;
 }
@@ -255,7 +255,7 @@ uint16_t RaceClockStep(uint8_t bank, uint16_t acc, uint8_t p0)
 
     cyc(22);                                    /* SEP #$30 */
     cyc(54);
-    v = rd8(W(wram_0E5B));
+    v = RD8(wram_0E5B);
     acc = (uint16_t)((acc & 0xFF00) | v);
     if (!v) {
         cyc(44);

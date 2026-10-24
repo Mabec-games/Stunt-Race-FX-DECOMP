@@ -102,7 +102,7 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     v = RD16I(obj_pos_x, from);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    v = alu_adc16(v, rd16(W(dp_04)), p);
+    v = alu_adc16(v, RD16(dp_04), p);
     cyc(30);
     WR16I(obj_pos_x, to, v);
     cyc(30);
@@ -116,7 +116,7 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     v = RD16I(obj_pos_y, from);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    v = alu_adc16(v, rd16(W(dp_0a)), p);
+    v = alu_adc16(v, RD16(dp_0a), p);
     cyc(30);
     WR16I(obj_pos_y, to, v);
     return v;
@@ -163,7 +163,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     uint8_t v, d, s;
 
     cyc(16);
-    wr8(W(dp_3e), step);
+    WR8(dp_3e, step);
     cyc(30);
     v = RD8I(obj_17, obj);
     *p |= P_C;
@@ -177,7 +177,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     if (d & 0x80)
         { cyc(24); d = (uint8_t)(~d + 1); }
     cyc(38);
-    s = rd8(W(dp_3e));
+    s = RD8(dp_3e);
     if ((uint8_t)(d - s) & 0x80) {
         cyc(40);
         v = RD8(wram_1F2B);
@@ -192,11 +192,11 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
             if ((uint8_t)(v - s) & 0x80) {
                 *p &= (uint8_t)~P_C;
                 cyc(68);
-                v = alu_adc8(v, rd8(W(dp_3e)), p);
+                v = alu_adc8(v, RD8(dp_3e), p);
             } else {
                 *p |= P_C;
                 cyc(62);
-                v = alu_sbc8(v, rd8(W(dp_3e)), p);
+                v = alu_sbc8(v, RD8(dp_3e), p);
                 cyc(6);
             }
         } else {

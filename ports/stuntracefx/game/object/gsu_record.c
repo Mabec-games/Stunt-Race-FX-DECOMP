@@ -158,7 +158,7 @@ uint16_t GsuRecordSetFlags(uint8_t bank, uint16_t obj, uint16_t *a)
 
     if (rec) {
         cyc(92);
-        *a = (uint16_t)(rd16(0x700016 + rec) | rd16(cyc_then(16, W(dp_02))));
+        *a = (uint16_t)(rd16(0x700016 + rec) | rd16(cyc_then(16, WA(dp_02))));
         cyc(32);
         wr16(0x700016 + rec, *a);
     }
@@ -244,11 +244,11 @@ uint16_t GsuRecordPosition(uint8_t bank, uint16_t obj, uint16_t *a)
 
     if (rec) {
         cyc(76);
-        wr16(0x70000C + rec, cyc_then(32, rd16(W(dp_02))));
+        wr16(0x70000C + rec, cyc_then(32, RD16(dp_02)));
         cyc(16);
-        wr16(0x70000E + rec, cyc_then(32, rd16(W(dp_08))));
+        wr16(0x70000E + rec, cyc_then(32, RD16(dp_08)));
         cyc(16);
-        *a = rd16(W(dp_94));
+        *a = RD16(dp_94);
         cyc(32);
         wr16(0x700010 + rec, *a);
     }
@@ -490,25 +490,25 @@ void abi_GsuRecordVelocity(void)
 uint16_t GsuRecordWords88(void)
 {
     cyc(136);
-    uint16_t n = rd16(W(object_list_b_len)), x = 0, v = 0, c;
+    uint16_t n = RD16(object_list_b_len), x = 0, v = 0, c;
 
     cyc(54);
-    wr16(W(dp_02), (uint16_t)((n >> 1) | (n & 0x8000)));
+    WR16(dp_02, (uint16_t)((n >> 1) | (n & 0x8000)));
     cyc(2);
     do {
         cyc(54);
-        uint16_t obj = rd16(W(object_list_b) + x);
+        uint16_t obj = RD16X(object_list_b, x);
 
         cyc(76);
-        v = rd16(cyc_then(46, 0x700088 + rd16(W(obj_22_long) + obj)));
+        v = rd16(cyc_then(46, 0x700088 + RD16X(obj_22_long, obj)));
         cyc(68);
-        wr16(W(wram_7EFFA6) + x, v);
+        WR16X(wram_7EFFA6, x, v);
         x = (uint16_t)(x + 2);
         cyc(44);
-        c = rd16(W(dp_02));
+        c = RD16(dp_02);
         c = (uint16_t)(c - 1);
         cyc(14);
-        wr16(W(dp_02), c);
+        WR16(dp_02, c);
     } while (c);
     cyc(160);
     return v;
@@ -1350,9 +1350,9 @@ uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t 
     cyc(32);
     WR8I(obj_15, obj, cyc_then(30, rd8(0x700025 + rec)));
     cyc(76);
-    WR8(wram_1F5A, cyc_then(54, (uint8_t)-rd8(W(wram_1A75))));
+    WR8(wram_1F5A, cyc_then(54, (uint8_t)-RD8(wram_1A75)));
     cyc(22);
-    WR8(wram_1F2B, cyc_then(24, rd8(W(wram_1A77))));
+    WR8(wram_1F2B, cyc_then(24, RD8(wram_1A77)));
     cyc(66);
     sum = (uint8_t)(RD8I(obj_16, obj) + rd8(cyc_then(38, WA(wram_1F2B))));
     a = (uint8_t)((sum >> 1) | (sum & 0x80));
@@ -1392,7 +1392,7 @@ uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t 
         return (uint16_t)(w & 0xFF00);
     }
     cyc(92);
-    WR8(wram_1F5A, cyc_then(54, (uint8_t)-rd8(W(wram_1AB0))));
+    WR8(wram_1F5A, cyc_then(54, (uint8_t)-RD8(wram_1AB0)));
     cyc(14);
     ObjectTableC056(bank, obj, p);
     cyc(24);

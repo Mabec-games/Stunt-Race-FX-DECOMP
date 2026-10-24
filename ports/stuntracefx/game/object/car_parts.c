@@ -576,7 +576,7 @@ static void return_frame(Carried *cr)
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
             r_lda16(cr, cyc_then(74, F(f[i], cr->x)));
             cyc(16);
-            wr16(W(dp_3e), cr->a);
+            WR16(dp_3e, cr->a);
             cyc((t[i] & 0xFFFF) < 0x100 ? 16 : 24);   /* LDA direct page or absolute */
             r_lda16(cr, t[i]);
             r_approach(cr, ApproachQuarterMin4);
@@ -586,7 +586,7 @@ static void return_frame(Carried *cr)
         cyc(22);
         for (i = 0; i < 3; i++) {
             cyc(14);
-            wr8(W(dp_3e), cyc_then(16, ld8(cr, F(W(obj_14) + i, cr->x))));
+            WR8(dp_3e, cyc_then(16, ld8(cr, F(W(obj_14) + i, cr->x))));
             ld8(cr, cyc_then(14, F(W(obj_14) + i, cr->y)));
             (cyc(62), r_approach_byte(cr, ApproachQuarterMin4Byte));
             wr8(F(W(obj_14) + i, cr->x), cyc_then(30, (uint8_t)cr->a));

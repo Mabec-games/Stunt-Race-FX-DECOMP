@@ -170,9 +170,9 @@ void RaceFrameStep(Carried *cr)
     cr->x = 0x1A64;
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(200);
-    w = rd16(W(dp_37) + 0x1A64);
+    w = RD16X(dp_37, 0x1A64);
     cyc(60);
-    wr16(W(dp_37) + 0x1A64, (uint16_t)(w + 0x0400));
+    WR16X(dp_37, 0x1A64, (uint16_t)(w + 0x0400));
     (cyc(62), CameraFollowStep_cr(cr));
     (cyc(62), ObjectFaceTied_cr(cr));
     cr->db = 0x03;
@@ -253,7 +253,7 @@ void RaceStart(Carried *cr)
     cyc(78);
     wr16(0x70021A, 0x2C00);
     cyc(16);
-    wr16(W(dp_48), 0x2C00);
+    WR16(dp_48, 0x2C00);
     cyc(56);
     wr16(0x7001C4, 0x0002);
     cyc(56);
@@ -275,7 +275,7 @@ void RaceStart(Carried *cr)
     RaceFrameStep(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
     cyc(106);
-    WR16(wram_1A66, cyc_then(54, rd16(W(table_116c))));
+    WR16(wram_1A66, cyc_then(54, RD16(table_116c)));
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(62);
     WR8(wram_0357, 0x01);
@@ -690,7 +690,7 @@ static void pick_sound(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(32);
-    cr->a = rd16(W(wram_18DB));
+    cr->a = RD16(wram_18DB);
     cyc(24);
     WR16(wram_0D8C, cr->a);
     (cyc(46), HandlerSoundIndex_cr(cr));
@@ -1164,7 +1164,7 @@ void RaceLoad(Carried *cr)
     for (w = 0x01FE;; w = (uint16_t)(w - 2)) {
         cyc(126);
         cr->a = rd16(0x1F8200 + w);
-        wr16(W(wram_7EFD65) + w, cr->a);
+        WR16X(wram_7EFD65, w, cr->a);
         if (!w)
             { cyc(106); break; } else { cyc(4); }
     }
@@ -1634,7 +1634,7 @@ void RaceLoop(Carried *cr)
     r_lda16(cr, WA(wram_1184));
     r_and16(cr, 0x001F);
     cyc(38);
-    wr16(W(dp_f1), cr->a);
+    WR16(dp_f1, cr->a);
     cyc(24);
     r_lda16(cr, WA(wram_1185));
     r_asl16(cr);
@@ -1644,10 +1644,10 @@ void RaceLoop(Carried *cr)
     r_asl16(cr);
     r_and16(cr, 0x03E0);
     cyc(108);
-    cr->a |= rd16(W(dp_f1));
+    cr->a |= RD16(dp_f1);
     set_p(cr, nz16(cr->p, cr->a));
     cyc(16);
-    wr16(W(dp_f1), cr->a);
+    WR16(dp_f1, cr->a);
     cyc(24);
     r_lda16(cr, WA(wram_1186));
     r_xba(cr);
@@ -1655,7 +1655,7 @@ void RaceLoop(Carried *cr)
     r_asl16(cr);
     r_and16(cr, 0x7C00);
     cyc(86);
-    cr->a |= rd16(W(dp_f1));
+    cr->a |= RD16(dp_f1);
     set_p(cr, nz16(cr->p, cr->a));
     cyc(24);
     WR16(wram_0F11, cr->a);
@@ -1873,20 +1873,20 @@ void AttractCourseSetup(Carried *cr)
     cyc(24);
     ppu_wr(INIDISP, (uint8_t)cr->a);
     cyc(24);
-    wr8(W(wram_084B), 0x00);
+    WR8(wram_084B, 0x00);
     cyc(24);
-    wr8(W(wram_084C), 0x00);
+    WR8(wram_084C, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x6E);
     set_p(cr, nz8(cr->p, 0x6E));
     cyc(40);
-    wr8(W(scanline_wait), 0x6E);
+    WR8(scanline_wait, 0x6E);
     (cyc(62), WaitScanline_cr(cr));
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x64);
     set_p(cr, nz8(cr->p, 0x64));
     cyc(62);
-    wr8(W(scanline_wait), 0x64);
+    WR8(scanline_wait, 0x64);
     (cyc(62), WaitScanline_cr(cr));
     r_sep(cr, P_M);
     r_rep(cr, P_X);

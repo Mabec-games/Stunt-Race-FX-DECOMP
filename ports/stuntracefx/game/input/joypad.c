@@ -25,26 +25,26 @@ uint16_t JoypadRead(void)
     cyc(98);
     uint16_t now1 = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    uint16_t new1 = (uint16_t)((now1 ^ rd16(W(joy1_held))) & io_rd16(cyc_then(32, JOY1L), input_pad(0)));
+    uint16_t new1 = (uint16_t)((now1 ^ RD16(joy1_held)) & io_rd16(cyc_then(32, JOY1L), input_pad(0)));
     uint16_t now2;
     uint16_t new2;
 
     cyc(24);
-    wr16(W(joy1_pressed), new1);
+    WR16(joy1_pressed, new1);
     cyc(24);
-    wr16(W(joy1_pressed_copy), new1);
+    WR16(joy1_pressed_copy, new1);
     cyc(32);
     now2 = io_rd16(JOY2L, input_pad(1));
     cyc(54);
-    new2 = (uint16_t)((now2 ^ rd16(W(joy2_held))) & io_rd16(cyc_then(32, JOY2L), input_pad(1)));
+    new2 = (uint16_t)((now2 ^ RD16(joy2_held)) & io_rd16(cyc_then(32, JOY2L), input_pad(1)));
     cyc(24);
-    wr16(W(joy2_pressed), new2);
+    WR16(joy2_pressed, new2);
     cyc(24);
-    wr16(W(joy2_pressed_copy), new2);
+    WR16(joy2_pressed_copy, new2);
     cyc(60);
-    wr16(W(joy2_held), now2);
+    WR16(joy2_held, now2);
     cyc(60);
-    wr16(W(joy1_held), now1);
+    WR16(joy1_held, now1);
     return now1;
 }
 
@@ -97,32 +97,32 @@ uint16_t JoypadAccumulate(void)
     cyc(68);
     now = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    wr16(W(joy1_pressed_copy), cyc_then(24, (uint16_t)(((now ^ rd16(W(joy1_last))) & io_rd16(cyc_then(24, JOY1L), input_pad(0))) | rd16(cyc_then(24, W(joy1_pressed_copy))))));
+    WR16(joy1_pressed_copy, cyc_then(24, (uint16_t)(((now ^ RD16(joy1_last)) & io_rd16(cyc_then(24, JOY1L), input_pad(0))) | rd16(cyc_then(24, WA(joy1_pressed_copy))))));
     cyc(60);
-    wr16(W(joy1_last), now);
+    WR16(joy1_last, now);
     cyc(24);
     now = io_rd16(JOY2L, input_pad(1));
     cyc(54);
-    wr16(W(joy2_pressed_copy), cyc_then(24, (uint16_t)(((now ^ rd16(W(joy2_last))) & io_rd16(cyc_then(24, JOY2L), input_pad(1))) | rd16(cyc_then(24, W(joy2_pressed_copy))))));
+    WR16(joy2_pressed_copy, cyc_then(24, (uint16_t)(((now ^ RD16(joy2_last)) & io_rd16(cyc_then(24, JOY2L), input_pad(1))) | rd16(cyc_then(24, WA(joy2_pressed_copy))))));
     cyc(60);
-    wr16(W(joy2_last), now);
+    WR16(joy2_last, now);
 
     cyc(24);
     now = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    wr16(W(joy2_pressed), cyc_then(24, (uint16_t)((now ^ rd16(W(joy2_held))) & io_rd16(cyc_then(24, JOY1L), input_pad(0)))));
+    WR16(joy2_pressed, cyc_then(24, (uint16_t)((now ^ RD16(joy2_held)) & io_rd16(cyc_then(24, JOY1L), input_pad(0)))));
     {
         cyc(24);
         uint16_t now2 = io_rd16(JOY2L, input_pad(1));
         cyc(54);
-        wr16(W(joy2_pressed), cyc_then(24, (uint16_t)((now2 ^ rd16(W(joy2_held))) & io_rd16(cyc_then(24, JOY2L), input_pad(1)))));
+        WR16(joy2_pressed, cyc_then(24, (uint16_t)((now2 ^ RD16(joy2_held)) & io_rd16(cyc_then(24, JOY2L), input_pad(1)))));
         cyc(60);
-        wr16(W(joy2_held), cyc_then(24, (uint16_t)(now2 | rd16(W(joy2_held)))));
+        WR16(joy2_held, cyc_then(24, (uint16_t)(now2 | RD16(joy2_held))));
     }
     cyc(60);
-    held = (uint16_t)(now | rd16(W(joy1_held)));
+    held = (uint16_t)(now | RD16(joy1_held));
     cyc(24);
-    wr16(W(joy1_held), held);
+    WR16(joy1_held, held);
     cyc(70);
     return held;
 }
@@ -209,7 +209,7 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
     }
     if (v != 0xFF) {
         cyc(110);
-        wr16(W(wram_18FB), 0x0001);
+        WR16(wram_18FB, 0x0001);
         found = 1;
     }
 done:

@@ -18,23 +18,23 @@
 uint8_t HalfRateApproach(void)
 {
     cyc(68);
-    uint8_t t = (uint8_t)((rd8(W(wram_11DC)) + 1) & 0x01), v, target;
+    uint8_t t = (uint8_t)((RD8(wram_11DC) + 1) & 0x01), v, target;
 
     cyc(54);
-    wr8(W(wram_11DC), t);
+    WR8(wram_11DC, t);
     if (t)
         { cyc(22); return t; }
     cyc(40);
-    v = rd8(W(wram_11DA));
+    v = RD8(wram_11DA);
     cyc(24);
-    target = rd8(W(wram_11DB));
+    target = RD8(wram_11DB);
     if (v == target)
         { cyc(22); return v; }
     cyc(62);
-    v = rd8(W(wram_11DA));
+    v = RD8(wram_11DA);
     v = (uint8_t)(v < target ? v + 1 : v - 1);
     cyc(38);
-    wr8(W(wram_11DA), v);
+    WR8(wram_11DA, v);
     return v;
 }
 

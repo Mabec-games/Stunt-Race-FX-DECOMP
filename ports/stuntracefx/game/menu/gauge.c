@@ -25,29 +25,29 @@ uint16_t MenuGaugeFromButtonB(void)
     uint16_t g;
 
     cyc(76);
-    if (rd16(W(joy1_held)) & 0x8000) {
+    if (RD16(joy1_held) & 0x8000) {
         cyc(78);
-        g = (uint16_t)(rd16(W(menu_gauge)) + 0x0028);
+        g = (uint16_t)(RD16(menu_gauge) + 0x0028);
         if (g >= 0x00FF)
             { cyc(18); g = 0x00FF; }
         cyc(116);
-        wr16(W(menu_gauge), g);
+        WR16(menu_gauge, g);
     } else {
         cyc(72);
-        g = rd16(W(menu_gauge));
+        g = RD16(menu_gauge);
         if (g != 0) {
             g = (uint16_t)(g - 0x000C);
             if (g & 0x8000)
                 { cyc(18); g = 0; }
             cyc(108);
-            wr16(W(menu_gauge), g);
+            WR16(menu_gauge, g);
         }
         cyc(22);
     }
     cyc(32);
-    g = rd16(W(menu_gauge));
+    g = RD16(menu_gauge);
     cyc(16);
-    wr16(W(dp_02), g);
+    WR16(dp_02, g);
     cyc(22);
     return g;
 }
@@ -85,7 +85,7 @@ void abi_MenuGaugeFromButtonB(void)
 uint16_t MenuGaugeSlideToTarget(void)
 {
     cyc(68);
-    uint16_t g = rd16(W(menu_gauge)), target = rd16(cyc_then(16, W(dp_02)));
+    uint16_t g = RD16(menu_gauge), target = rd16(cyc_then(16, WA(dp_02)));
 
     if (g != target) {
         int down = g >= target;
@@ -95,19 +95,19 @@ uint16_t MenuGaugeSlideToTarget(void)
         else
             { cyc(6); g = (uint16_t)(g + 0x0004); }
         cyc(94);
-        wr16(W(menu_gauge), g);
+        WR16(menu_gauge, g);
         if (!((uint16_t)(g - target) & 0x8000)) {
             cyc(92);
-            g = rd16(W(menu_gauge));
+            g = RD16(menu_gauge);
             cyc(16);
-            wr16(W(dp_02), g);
+            WR16(dp_02, g);
             cyc(70);
             return g;
         }
         cyc(down ? 62 : 40);        /* SEC, SBC, BPL; the down arm's BRA */
     }
     cyc(70);
-    wr16(W(menu_gauge), 0xFF00);
+    WR16(menu_gauge, 0xFF00);
     cyc(92);
     return 0xFF00;
 }
@@ -154,7 +154,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
     unsigned i;
 
     cyc(90);
-    wr16(W(scratch_11df), value);
+    WR16(scratch_11df, value);
     cyc(24);
     obj = RD16(wram_0346);
     cyc(32);
@@ -166,7 +166,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
             break;
         } }
     cyc(i == 4 ? 70 : 92);                  /* the last case has no BRA */
-    return cyc_then(84, (uint16_t)(off + rd16(W(scratch_11df))));
+    return cyc_then(84, (uint16_t)(off + RD16(scratch_11df)));
 }
 
 /* GaugeTableIndex on carried registers. */
@@ -205,7 +205,7 @@ void abi_GaugeTableIndex(void)
 uint16_t GaugeFromSpeed(uint8_t bank, uint16_t *x)
 {
     cyc(60);
-    uint16_t a = rd16(W(dp_02));
+    uint16_t a = RD16(dp_02);
 
     if (a) {
         *x = a;
@@ -222,7 +222,7 @@ uint16_t GaugeFromSpeed(uint8_t bank, uint16_t *x)
         a = rd8(0x0BB158 + *x);
     } else { cyc(84); }                 /* CMP, BNE, BRL */
     cyc(48);
-    wr16(W(dp_02), a);
+    WR16(dp_02, a);
     return a;
 }
 
@@ -265,7 +265,7 @@ uint16_t GaugeFromSpeedZero(uint8_t bank, uint16_t *x)
     *x = GaugeTableIndex(bank, 0x0000);
     cyc(124);
     a = rd8(0x0BB158 + *x);
-    wr16(W(dp_02), a);
+    WR16(dp_02, a);
     return a;
 }
 
@@ -312,11 +312,11 @@ void abi_GaugeFromSpeedZero(void)
 uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
 {
     cyc(60);
-    wr16(W(dp_02), a);
+    WR16(dp_02, a);
     cyc(54);
-    if (rd8(W(wram_0D53))) {
+    if (RD8(wram_0D53)) {
         cyc(48);
-        if (rd8(W(wram_0DD6)) >= 0x06) {
+        if (RD8(wram_0DD6) >= 0x06) {
             cyc(84);
             a = GaugeFromSpeed(bank, x);
         } else {
@@ -328,7 +328,7 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
         cyc(68);
         a = GaugeFromSpeed(bank, x);
         cyc(124);
-        if (rd8(W(wram_0DD6)) < 0x06) {
+        if (RD8(wram_0DD6) < 0x06) {
             cyc(78);
             a = RD16(menu_gauge);
             if (!(a & 0x8000))
@@ -336,9 +336,9 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
         } else { cyc(38); }
     }
     cyc(38);
-    a = (uint16_t)((a & 0xFF00) | rd8(W(dp_02)));
+    a = (uint16_t)((a & 0xFF00) | RD8(dp_02));
     cyc(32);
-    wr8(W(wram_0E49), (uint8_t)a);
+    WR8(wram_0E49, (uint8_t)a);
     return a;
 }
 
@@ -389,7 +389,7 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
     uint16_t x, g, t, v;
 
     cyc(60);
-    wr16(W(dp_02), a);
+    WR16(dp_02, a);
     cyc(46);
     if (RD8(wram_0D53)) {
         cyc(92);
@@ -415,27 +415,27 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
         cyc(24);
         g = RD16(speed_gauge_2_value);
         cyc(54);
-        wr8(W(near_car_pos), (uint8_t)g);
+        WR8(near_car_pos, (uint8_t)g);
         return g;
     }
     cyc(60);
-    a = rd16(W(dp_02));
+    a = RD16(dp_02);
     if (!a) {
         cyc(168);
-        wr16(W(near_car_pos), a);
+        WR16(near_car_pos, a);
         return a;
     }
     x = a;
     cyc(122);
     v = rd16(0x70004A + x);
     cyc(60);
-    wr16(W(dp_02), (v & 0x8000) ? (cyc(2), 0x0000) : (uint16_t)(v >> 2));
+    WR16(dp_02, (v & 0x8000) ? (cyc(2), 0x0000) : (uint16_t)(v >> 2));
     cyc(v & 0x8000 ? 32 : 54);          /* the LSR arm's BRA */
     if ((uint16_t)(rd16(0x700044 + x) - 4) & 0x8000) {
         cyc(78);
         t = (uint16_t)(rd16(0x700050 + x) >> 3);
         cyc(72);
-        t = (uint16_t)(t + rd16(W(dp_02)));
+        t = (uint16_t)(t + RD16(dp_02));
     } else {
         cyc(72);
         v = rd16(0x70004A + x);
@@ -447,41 +447,41 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
     if (t >= 0x00FF)
         { cyc(18); t = 0x00FF; }
     cyc(62);
-    wr16(W(dp_02), t);
+    WR16(dp_02, t);
     cyc(24);
     g = RD16(speed_gauge_2_value);
     if (g & 0x8000) {
         cyc(38);
-        a = rd16(W(dp_02));
+        a = RD16(dp_02);
         cyc(90);
-        wr8(W(near_car_pos), (uint8_t)a);
+        WR8(near_car_pos, (uint8_t)a);
         return a;
     }
     cyc(76);
     g = RD16(speed_gauge_2_value);
     cyc(16);
-    t = rd16(W(dp_02));
+    t = RD16(dp_02);
     if (g != t) {
         int down = g > t;
         g = (uint16_t)(down ? g - 4 : (cyc(6), g + 4));
         cyc(94);
         WR16(speed_gauge_2_value, g);
         cyc(30);
-        v = (uint16_t)(g - rd16(W(dp_02)) + 4);
+        v = (uint16_t)(g - RD16(dp_02) + 4);
         if ((v & 0x8000) || (cyc(40), v >= 0x0008)) {
             cyc(84);
             a = RD16(speed_gauge_2_value);
             cyc(54);
-            wr8(W(near_car_pos), (uint8_t)a);
+            WR8(near_car_pos, (uint8_t)a);
             return a;
         } else { cyc(down ? 54 : 32); }   /* down: BRA to the shared store */
     }
     cyc(70);
     WR16(speed_gauge_2_value, 0xFFFF);
     cyc(16);
-    a = rd16(W(dp_02));
+    a = RD16(dp_02);
     cyc(76);
-    wr8(W(near_car_pos), (uint8_t)a);
+    WR8(near_car_pos, (uint8_t)a);
     return a;
 }
 

@@ -180,7 +180,7 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
     wr8((uint16_t)(r + 0), cyc_then(38, (uint8_t)(rd8((uint16_t)(r + 7)) | 0xE0)));
     if (!rd8(cyc_then(24, (WA(slot1_count))))) {
         cyc(48);
-        a = rd8(W(palette_saved));
+        a = RD8(palette_saved);
         if (a) {
             cyc(38);
             a = rd8((uint16_t)(r + 7));
@@ -193,7 +193,7 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
             return a;
         }
         cyc(68);
-        wr8(W(palette_saved), (uint8_t)(a + 1));
+        WR8(palette_saved, (uint8_t)(a + 1));
         t = 82;
     }
     cyc(t);

@@ -178,9 +178,9 @@ void WindowTable7F(Carried *cr)
     uint8_t a, b2;
 
     r_sep(cr, P_M);
-    a = rd8(W(wram_7F3438));
+    a = RD8(wram_7F3438);
     cyc(46);
-    b2 = rd8(W(wram_7F3434));
+    b2 = RD8(wram_7F3434);
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc8(a, b2, &cr->p);
     cyc(4);
@@ -189,11 +189,11 @@ void WindowTable7F(Carried *cr)
     a = (uint8_t)(a >> 1);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(40);
-    a = alu_adc8(a, rd8(W(wram_7F3434)), &cr->p);
+    a = alu_adc8(a, RD8(wram_7F3434), &cr->p);
     cyc(20);
     put7f(W(window_middle_7f), a);
     cyc(12);
-    a = rd8(W(wram_7F3435));
+    a = RD8(wram_7F3435);
     a = (uint8_t)(a >> 1);
     cyc(34);
     put7f(W(window_table_7f), a);
@@ -201,7 +201,7 @@ void WindowTable7F(Carried *cr)
     cyc(14);
     put7f(W(wram_7F3413), a);
     cyc(12);
-    a = rd8(W(wram_7F3433));
+    a = RD8(wram_7F3433);
     cyc(20);
     put7f(W(wram_7F3420), a);
     put7f(W(wram_7F3423), a);
@@ -218,7 +218,7 @@ void WindowTable7F(Carried *cr)
     put7f(W(wram_7F3417), a);
     put7f(W(wram_7F342C), a);
     cyc(12);
-    a = rd8(W(wram_7F3437));
+    a = RD8(wram_7F3437);
     cyc(20);
     put7f(W(wram_7F3421), a);
     put7f(W(wram_7F3424), a);
@@ -235,10 +235,10 @@ void WindowTable7F(Carried *cr)
     put7f(W(wram_7F3418), a);
     put7f(W(wram_7F342D), a);
     cyc(12);
-    a = rd8(W(wram_7F3439));
+    a = RD8(wram_7F3439);
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     cyc(46);
-    a = alu_sbc8(a, rd8(W(wram_7F3435)), &cr->p);
+    a = alu_sbc8(a, RD8(wram_7F3435), &cr->p);
     a = alu_sbc8(a, 0x06, &cr->p);
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (a & 1)));
     a = (uint8_t)(a >> 1);
@@ -497,7 +497,7 @@ void RasterStage(Carried *cr)
         copy8(cr, BG2VOFS, WA(wram_0E33));
         copy8(cr, BG2VOFS, WA(wram_0E34));
         cyc(32);
-        c = (uint8_t)(rd8(W(fixed_colour)) | 0x80);
+        c = (uint8_t)(RD8(fixed_colour) | 0x80);
         put8(cr, COLDATA, c);
         c = (uint8_t)((c & 0x7F) | 0x40);
         cyc(16);
@@ -545,7 +545,7 @@ void RasterStage(Carried *cr)
             r_rep(cr, P_M);
             r_lda16_imm(cr, 0xFFFF);
             cyc(18);
-            wr16(W(wram_0D81), 0xFFFF);
+            WR16(wram_0D81, 0xFFFF);
         } else { cyc(22); }
         cyc(46);
         WindowTable7F(cr);
@@ -862,10 +862,10 @@ static uint16_t time_stamp(Carried *cr)
 
     set_p(cr, (uint8_t)(cr->p | (P_I)));
     cyc(68);
-    f = rd16(W(frames_since_tick));
+    f = RD16(frames_since_tick);
     f = (uint16_t)(((f >> 8) | (f << 8)) & 0xFF00);
     cyc(76);
-    wr16(W(time_now), f);
+    WR16(time_now, f);
     cyc(54);
     hw_rd(0x002137);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_I)));
@@ -879,7 +879,7 @@ static uint16_t time_stamp(Carried *cr)
     if ((uint16_t)(v - 0x0011) & 0x8000)
         v = (uint16_t)(v + 0x0100);
     cyc(236);
-    m = rd16(W(time_now));
+    m = RD16(time_now);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     return alu_adc16(v, m, &cr->p);
 }
@@ -900,7 +900,7 @@ void TimeMarkStart(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     t = time_stamp(cr);
     cyc(32);
-    wr16(W(time_marks) + cr->x, t);
+    WR16X(time_marks, cr->x, t);
     cyc(44);
     cr->a = t;
 }
@@ -938,19 +938,19 @@ void TimeMarkEnd(Carried *cr)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     t = time_stamp(cr);
     cyc(32);
-    wr16(W(time_now), t);
+    WR16(time_now, t);
     cyc(32);
-    a = rd16(W(time_marks) + cr->x);
+    a = RD16X(time_marks, cr->x);
     a = (uint16_t)(a & 0x00FF);
     set_p(cr, nz16(cr->p, a));
     if ((uint16_t)(a - 0x00D1) & 0x8000) {
         cyc(96);
-        a = rd16(W(time_marks) + cr->x);
+        a = RD16X(time_marks, cr->x);
         a = (uint16_t)(a & 0xFF00);
         cyc(56);
-        wr16(W(time_marks), a);
+        WR16(time_marks, a);
         cyc(32);
-        a = rd16(W(time_now));
+        a = RD16(time_now);
         a = (uint16_t)(a & 0xFF00);
         cyc(62);
         m = RD16(time_marks);
@@ -960,24 +960,24 @@ void TimeMarkEnd(Carried *cr)
         a = (uint16_t)(a << 6);
         a = (uint16_t)(~a + 1);
         cyc(182);
-        m = rd16(W(time_now));
+        m = RD16(time_now);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         a = alu_adc16(a, m, &cr->p);
         cyc(32);
-        wr16(W(time_now), a);
+        WR16(time_now, a);
     } else { cyc(70); }
     cyc(32);
-    a = rd16(W(time_now));
+    a = RD16(time_now);
     cyc(46);
-    m = rd16(W(time_marks) + cr->x);
+    m = RD16X(time_marks, cr->x);
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc16(a, m, &cr->p);
     cyc(40);
-    m = rd16(W(time_now) + cr->x);
+    m = RD16X(time_now, cr->x);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     a = alu_adc16(a, m, &cr->p);
     cyc(32);
-    wr16(W(time_now) + cr->x, a);
+    WR16X(time_now, cr->x, a);
     cyc(44);
     cr->a = a;
 }

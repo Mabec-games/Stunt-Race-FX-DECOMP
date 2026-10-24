@@ -335,7 +335,7 @@ uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
     uint16_t m, s;
 
     cyc(16);
-    m = rd16(W(dp_04));
+    m = RD16(dp_04);
     cyc(44);
     s = RD16I(obj_pos_x, obj);
     wr16(GSU_IN_68, cyc_then(32, sub16(m, s, p)));
@@ -386,11 +386,11 @@ uint16_t Gsu82CE(void)
     unsigned i;
 
     cyc(104);
-    wr16(GSU_IN_68, cyc_then(32, rd16(W(dp_02))));
+    wr16(GSU_IN_68, cyc_then(32, RD16(dp_02)));
     cyc(16);
-    wr16(0x70002C, cyc_then(32, rd16(W(dp_08))));
+    wr16(0x70002C, cyc_then(32, RD16(dp_08)));
     cyc(16);
-    wr16(0x70002E, cyc_then(32, rd16(W(dp_94))));
+    wr16(0x70002E, cyc_then(32, RD16(dp_94)));
     cyc(124);
     GsuRun(0x01, 0x82CE);
     cyc(94);
@@ -398,7 +398,7 @@ uint16_t Gsu82CE(void)
         cyc(32);
         r = rd16(0x700026 + 2 * i);
         cyc(16);
-        wr16(W(dp_b7) + 2 * i, r);
+        WR16X(dp_b7, 2 * i, r);
     }
     cyc(128);
     return r;
@@ -733,13 +733,13 @@ static uint16_t view_setup_tail(uint8_t bank)
     unsigned i;
 
     cyc(46);
-    wr8(W(random_e6), cyc_then(16, RD8(wram_1A6C)));
+    WR8(random_e6, cyc_then(16, RD8(wram_1A6C)));
     cyc(32);
-    wr8(W(random_e7), 0xA7);
+    WR8(random_e7, 0xA7);
     cyc(32);
-    wr8(W(random_e8), 0x55);
+    WR8(random_e8, 0x55);
     cyc(32);
-    wr8(W(random_e9), 0x7F);
+    WR8(random_e9, 0x7F);
     for (i = 0; i < 8; i++)
         { cyc(16); wr8(dp[i], 0x00); }
     for (i = 0; i < 5; i++)
@@ -825,11 +825,11 @@ uint16_t ViewDefaults(uint8_t bank)
     cyc(56);
     wr16(0x70108C, 0x0000);
     cyc(54);
-    wr8(W(dp_a0), 0x80);
+    WR8(dp_a0, 0x80);
     cyc(40);
     WR8(wram_05EF, 0xFF);
     cyc(16);
-    wr8(W(dp_00), 0x00);
+    WR8(dp_00, 0x00);
     cyc(22);
     for (i = 0; i < 16; i++)
         { cyc(32); wr8(dp[i][0], dp[i][1]); }
@@ -1184,9 +1184,9 @@ void abi_GsuFA1BFromTables(void)
 uint16_t Gsu81E3(void)
 {
     cyc(90);
-    wr16(GSU_IN_68, cyc_then(32, rd16(W(dp_02))));
+    wr16(GSU_IN_68, cyc_then(32, RD16(dp_02)));
     cyc(16);
-    wr16(GSU_DEST, cyc_then(32, rd16(W(dp_08))));
+    wr16(GSU_DEST, cyc_then(32, RD16(dp_08)));
     cyc(146);
     GsuRun(0x01, 0x81E3);
     cyc(126);
@@ -1699,12 +1699,12 @@ uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
     wr16(0x700214, 0x0100);
     cyc(24);
     x = add16(rd16(cyc_then(86, 0x070000 | (uint16_t)(0x9806 + RD16(wram_0D6B)))), RD16(wram_0D6D), p);
-    wr16(W(recip_divisor), x);
+    WR16(recip_divisor, x);
     for (i = 0; i < 6; i++) {
         if (i == 4) {
-            x = add16(rd16(W(recip_divisor)), 0x0008, p);
+            x = add16(RD16(recip_divisor), 0x0008, p);
             cyc(38);
-            wr16(W(recip_divisor), x);
+            WR16(recip_divisor, x);
         } else { cyc(16); }
         cyc(16);
         y = RD16(wram_0D6F);
@@ -2180,18 +2180,18 @@ uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
     uint16_t a, n, d;
 
     cyc(40);
-    wr16(W(recip_dividend), 0xFFFF);
+    WR16(recip_dividend, 0xFFFF);
     cyc(40);
-    if (0x00FF < rd16(W(recip_divisor))) {
+    if (0x00FF < RD16(recip_divisor)) {
         cyc(32);
-        wr16(W(recip_divisor), cyc_then(14, (uint16_t)(rd16(W(recip_divisor)) >> 1)));
+        WR16(recip_divisor, cyc_then(14, (uint16_t)(RD16(recip_divisor) >> 1)));
         cyc(16);
-        wr16(W(recip_dividend), cyc_then(14, (uint16_t)(rd16(W(recip_dividend)) >> 1)));
+        WR16(recip_dividend, cyc_then(14, (uint16_t)(RD16(recip_dividend) >> 1)));
     } else { cyc(22); }
     cyc(16);
-    io_wr16(b | 0x4204, n = cyc_then(24, rd16(W(recip_dividend))));
+    io_wr16(b | 0x4204, n = cyc_then(24, RD16(recip_dividend)));
     cyc(16);
-    d = cyc_then(24, rd16(W(recip_divisor)));
+    d = cyc_then(24, RD16(recip_divisor));
     io_wr8(b | 0x4206, (uint8_t)d);
     hw_wr(b | 0x4207, (uint8_t)(d >> 8));      /* the high byte to HTIMEL */
     cyc(80);
@@ -2274,13 +2274,13 @@ uint16_t GsuPieceScaleFromView(uint8_t bank)
     cyc(32);
     wr16(0x700210, q2);
     cyc(16);
-    wr16(W(recip_divisor), q2);
+    WR16(recip_divisor, q2);
     cyc(16);
-    wr16(W(recip_divisor), q2);
+    WR16(recip_divisor, q2);
     cyc(46);
     wr16(0x700214, cyc_then(74, GsuReciprocal(bank, &p)));
     cyc(52);
-    wr16(W(recip_divisor), q1);
+    WR16(recip_divisor, q1);
     cyc(46);
     r = GsuReciprocal(bank, &p);
     cyc(74);
@@ -2461,12 +2461,12 @@ uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
     cyc(144);
     v = ObjectGsu80BC(bank, x, &p);
     cyc(16);
-    wr16(W(dp_08), v);
+    WR16(dp_08, v);
     cyc(24);
     object_cv = 0;
     v = sub16(RD16(dp_0a), rd16(cyc_then(44, WAI(obj_pos_y, x))), &object_cv);
     cyc(16);
-    wr16(W(dp_02), v);
+    WR16(dp_02, v);
     v = (cyc(62), Gsu81E3Long());
     cyc(62);
     cyc(98);
@@ -2506,17 +2506,17 @@ uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
 
     object_cv = 0;
     cyc(98);
-    m = rd16(W(dp_04));
+    m = RD16(dp_04);
     cyc(44);
     s = RD16I(obj_pos_x, x);
-    wr16(W(dp_02), cyc_then(16, sub16(m, s, &object_cv)));
+    WR16(dp_02, cyc_then(16, sub16(m, s, &object_cv)));
     cyc(24);
     m = RD16(wram_05F2);
     cyc(44);
     s = RD16I(obj_pos_z, x);
     v = sub16(m, s, &object_cv);
     cyc(16);
-    wr16(W(dp_08), v);
+    WR16(dp_08, v);
     v = (cyc(62), Gsu81E3Long());
     cyc(138);                           /* REP, PLY, PLX, RTL */
     return v;
@@ -2571,7 +2571,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     fa5a_unit_scale();
     cyc(24);
     x = add16(rd16(cyc_then(86, 0x079806 + RD16(wram_0D6B))), RD16(wram_0D6D), p);
-    wr16(W(recip_divisor), x);
+    WR16(recip_divisor, x);
     cyc(32);
     wr16(0x70020A, x);
     cyc(24);
@@ -2581,7 +2581,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     cyc(146);
     GsuRun(0x07, 0xFA5A);
     cyc(132);
-    wr16(0x70020A, cyc_then(32, rd16(W(recip_divisor))));
+    wr16(0x70020A, cyc_then(32, RD16(recip_divisor)));
     cyc(24);
     wr16(0x70020C, cyc_then(54, add16(RD16(wram_0D6F), 0x0018, p)));
     cyc(56);
@@ -2593,7 +2593,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
     cyc(56);
     wr16(0x700214, 0x0080);
     cyc(16);
-    wr16(0x70020A, cyc_then(32, rd16(W(recip_divisor))));
+    wr16(0x70020A, cyc_then(32, RD16(recip_divisor)));
     cyc(24);
     wr16(0x70020C, cyc_then(54, add16(RD16(wram_0D6F), 0x0008, p)));
     cyc(56);
@@ -3449,11 +3449,11 @@ uint16_t GlyphListDraw(uint8_t bank)
     cyc(48);
     v = (uint16_t)(RD16(glyph_list_first) << 1);
     cyc(30);
-    wr16(W(recip_divisor), v);
+    WR16(recip_divisor, v);
     cyc(24);
     v = (uint16_t)(RD16(glyph_list_count) << 1);
     cyc(30);
-    wr16(W(recip_dividend), v);
+    WR16(recip_dividend, v);
     do {
         cyc(22);                        /* REP #$20 */
         cyc(30);
@@ -3474,7 +3474,7 @@ uint16_t GlyphListDraw(uint8_t bank)
             cyc(54);
             wr16(0x70020C, v);
             cyc(16);
-            lim = rd16(W(recip_divisor));
+            lim = RD16(recip_divisor);
             if (x >= lim)
                 { cyc(84); GsuBytes200_BFB3BE(); }
             else
@@ -3486,7 +3486,7 @@ uint16_t GlyphListDraw(uint8_t bank)
             cyc(88);
         } else { cyc(66); }
         x = (uint16_t)(x + 2);
-        lim = rd16(W(recip_dividend));
+        lim = RD16(recip_dividend);
         if (x >= lim)
             cyc(58);
     } while (cyc_loop(22, x < lim));
@@ -3693,14 +3693,14 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
     cyc(30);                            /* TAX */
     v = (uint16_t)(rd16(b | x) & 0x00FF);
     cyc(2);
-    wr16(W(recip_divisor), v);
+    WR16(recip_divisor, v);
     v = (uint16_t)(v << 2);
     cyc(6);                             /* the SBC */
     v = (uint16_t)(0x0068 - v);         /* SBC #$68, negated */
     cyc(114);
-    wr16(W(recip_dividend), v);
+    WR16(recip_dividend, v);
     cyc(16);
-    v = (uint16_t)(rd16(W(recip_divisor)) - 1);
+    v = (uint16_t)(RD16(recip_divisor) - 1);
     cyc(38);
     WR16(glyph_list_first, v);
     cyc(62);
@@ -3714,7 +3714,7 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
             cyc(52);
             WR16I(glyph_list_glyph, y, v);
             cyc(38);
-            v = rd8(W(recip_dividend));
+            v = RD8(recip_dividend);
             cyc(30);
             WR8I(glyph_list_x, y, (uint8_t)v);
             cyc(46);
@@ -3725,14 +3725,14 @@ uint16_t GlyphListMessageAndTime(uint8_t bank, uint16_t message)
         }
         cyc(22);
         cyc(44);
-        v = (uint16_t)(rd16(W(recip_dividend)) + 8);
+        v = (uint16_t)(RD16(recip_dividend) + 8);
         cyc(54);
-        wr16(W(recip_dividend), v);
+        WR16(recip_dividend, v);
         x = (uint16_t)(x + 2);
         cyc(44);
-        v = (uint16_t)(rd16(W(recip_divisor)) - 1);
+        v = (uint16_t)(RD16(recip_divisor) - 1);
         cyc(14);
-        wr16(W(recip_divisor), v);
+        WR16(recip_divisor, v);
     } while (v);
     message_end = x;
     cyc(22);

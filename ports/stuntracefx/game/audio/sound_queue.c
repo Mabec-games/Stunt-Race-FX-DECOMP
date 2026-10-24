@@ -24,7 +24,7 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
     uint8_t n;
 
     cyc(46);
-    if (rd8(W(sound_muted)) != 0)
+    if (RD8(sound_muted) != 0)
         return;
     cyc(40);
     n = rd8(count);
@@ -162,7 +162,7 @@ void abi_SoundPort0QueuePushRawWide(void)
 void SoundPort0QueuePushW(uint8_t command, unsigned wide)
 {
     cyc(222 + wide);
-    if (rd8(W(current_player)) != 0)
+    if (RD8(current_player) != 0)
         { cyc(10); command |= 0x80; }
     queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
     cyc(wide);
@@ -280,23 +280,23 @@ void abi_SoundPort1QueuePushX8(void)
 void SoundReset(void)
 {
     cyc(92);
-    wr8(W(sound_muted), 0);
+    WR8(sound_muted, 0);
     cyc(32);
-    wr8(W(wram_0DD0), 0);
+    WR8(wram_0DD0, 0);
     cyc(32);
-    wr8(W(sound_port1_last), 0);
+    WR8(sound_port1_last, 0);
     cyc(32);
-    wr8(W(sound_port0_head), 0);
+    WR8(sound_port0_head, 0);
     cyc(32);
-    wr8(W(sound_port1_head), 0);
+    WR8(sound_port1_head, 0);
     cyc(32);
-    wr8(W(sound_port1_count), 0);
+    WR8(sound_port1_count, 0);
     cyc(32);
-    wr8(W(sound_port0_count), 0);
+    WR8(sound_port0_count, 0);
     cyc(32);
-    wr8(W(wram_0E1B), 0);
+    WR8(wram_0E1B, 0);
     cyc(32);
-    wr8(W(wram_0E1C), 0);
+    WR8(wram_0E1C, 0);
     cyc(32);
     hw_wr(APUIO3, 0);
     cyc(32);

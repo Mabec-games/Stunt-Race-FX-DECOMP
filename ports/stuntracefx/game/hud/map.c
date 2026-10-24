@@ -42,35 +42,35 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
 
     for (i = 0;; i = (uint16_t)(i + 2)) {
         cyc(70);
-        obj = rd16(W(object_list) + i);
+        obj = RD16X(object_list, i);
         if (!obj)
             { cyc(118); return i; }
         cyc(98);
-        v = asr3(rd16(W(obj_pos_x_long) + obj));
+        v = asr3(RD16X(obj_pos_x_long, obj));
         cyc(164);
-        sx = (uint16_t)((uint16_t)((v >> 8 | v << 8) + rd16(W(dp_f1))) & 0x00FF);
+        sx = (uint16_t)((uint16_t)((v >> 8 | v << 8) + RD16(dp_f1)) & 0x00FF);
         cyc(40);
-        wr16(W(dp_02), sx);
+        WR16(dp_02, sx);
         cyc(32);
-        v = asr3((uint16_t)(-rd16(W(obj_pos_z_long) + obj)));
+        v = asr3((uint16_t)(-RD16X(obj_pos_z_long, obj)));
         cyc(182);
-        v = (uint16_t)(((uint16_t)(v + rd16(W(dp_f3))) & 0xFF00) | sx);
+        v = (uint16_t)(((uint16_t)(v + RD16(dp_f3)) & 0xFF00) | sx);
         cyc(72);
-        wr16(W(dp_08), v);
+        WR16(dp_08, v);
         cyc(30);
         WR16I(oam_buffer, *y, v);
         cyc(54);
         v = rd16(0x7E0000 | W(obj_26) + obj);
         cyc(16);
-        wr16(W(dp_08), v);
+        WR16(dp_08, v);
         cyc(84);
-        v = rd16(W(map_marker_tiles) + 2 * (v & 0x0007));
+        v = RD16X(map_marker_tiles, 2 * (v & 0x0007));
         cyc(16);
-        wr16(W(dp_02), v);
+        WR16(dp_02, v);
         cyc(62);
         WR16I(oam_buffer, 2 + *y, v);
         cyc(108);
-        *y = (uint16_t)(*y + rd16(W(dp_f5)));
+        *y = (uint16_t)(*y + RD16(dp_f5));
     }
 }
 
@@ -106,13 +106,13 @@ static void map_origin(uint32_t x_at, uint16_t step)
 
     v = (uint16_t)(rd16(x_at) & 0x00FF);
     cyc(40);                                    /* AND #, STA */
-    wr16(W(dp_f1), v);
+    WR16(dp_f1, v);
     cyc(24);
     v = (uint16_t)(rd16(x_at + 2) & 0xFF00);
     cyc(40);
-    wr16(W(dp_f3), v);
+    WR16(dp_f3, v);
     cyc(40);
-    wr16(W(dp_f5), step);
+    WR16(dp_f5, step);
 }
 
 /*
@@ -185,9 +185,9 @@ int MapMarkersPanelB(uint8_t bank, uint16_t *x, uint16_t *y)
     uint8_t v;
 
     cyc(54);
-    v = rd8(W(panel_b_shown));
+    v = RD8(panel_b_shown);
     if (!v)
-        { cyc(48); v = rd8(W(wram_0D62)); }
+        { cyc(48); v = RD8(wram_0D62); }
     cyc(58);
     if (!v)
         return 0;

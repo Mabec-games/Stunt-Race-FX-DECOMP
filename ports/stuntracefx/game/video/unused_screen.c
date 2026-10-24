@@ -167,7 +167,7 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
     for (y = 0; y != 0x20; y = (uint16_t)(y + 2)) {
         cyc(180);
         w = rd16(PALETTES + o);
-        wr16(W(palette_buffer_e997) + y, w);
+        WR16X(palette_buffer_e997, y, w);
         cyc(30);
         wr16(0x7E0000 | W(palette_buffer_0802) + y, w);
         o = (uint16_t)(o + 2);
@@ -219,11 +219,11 @@ void ColoursRedDouble(void)
     cyc(162);
     for (y = 0; y != 0x100; y = (uint16_t)(y + 2)) {
         cyc(160);
-        w = rd16(W(colour_list) + y);
+        w = RD16X(colour_list, y);
         cyc(40);
-        wr16(W(dp_3e), (uint16_t)(w & 0x7FE0));
+        WR16(dp_3e, (uint16_t)(w & 0x7FE0));
         cyc(30);
-        w = rd16(W(colour_list) + y);
+        w = RD16X(colour_list, y);
         r = (uint16_t)(w & 0x001F);
         if (r <= 3) {
             cyc(r == 3 ? 8 : 18); /* BEQ taken, ORA; or BCS not taken, ORA */
@@ -234,12 +234,12 @@ void ColoursRedDouble(void)
             { cyc(18); r = 0x001F; }
         r &= 0x001F;
         cyc(186);
-        r |= rd16(W(dp_3e));
+        r |= RD16(dp_3e);
         cyc(30);
-        wr16(W(colour_list) + y, r);
+        WR16X(colour_list, y, r);
     }
     cyc(142);
-    wr16(W(colour_list_end), 0x0000);
+    WR16(colour_list_end, 0x0000);
     cyc(172); /* PLB, PLX, PLY, PLP, RTL */
 }
 
@@ -311,11 +311,11 @@ void abi_ColoursClear(void)
 void Set7EBC2AValues(void)
 {
     cyc(92);
-    wr8(W(wram_7EBC2A), 0x5F);
+    WR8(wram_7EBC2A, 0x5F);
     cyc(48);
-    wr8(W(wram_7EBC2C), 0x2D);
+    WR8(wram_7EBC2C, 0x2D);
     cyc(48);
-    wr8(W(wram_7EBC2E), 0x32);
+    WR8(wram_7EBC2E, 0x32);
     cyc(72); /* PLP, RTL */
 }
 
@@ -879,7 +879,7 @@ void UnusedScreenSetup(Carried *cr)
     cyc(38);
     hw_wr(b | 0x4200, 0x00);
     cyc(16);
-    wr8(W(dp_00), 0x00);
+    WR8(dp_00, 0x00);
     cyc(24);
     WR8(wram_084C, 0x00);
     cyc(24);
@@ -918,19 +918,19 @@ void UnusedScreenSetup(Carried *cr)
     r_sep(cr, P_M);
     UnusedScreenTiles_cr(cr);
     cyc(62);
-    wr16(W(dp_4e), 0x0000);
+    WR16(dp_4e, 0x0000);
     cyc(40);
-    wr16(W(fxpart_50), 0x3000);
+    WR16(fxpart_50, 0x3000);
     cyc(40);
-    wr16(W(dp_48), 0x2C00);
+    WR16(dp_48, 0x2C00);
     cyc(40);
-    wr16(W(fxrec_speed), 0x2C00);
+    WR16(fxrec_speed, 0x2C00);
     cyc(16);
-    v = rd8(W(dp_49));
+    v = RD8(dp_49);
     cyc(52);
     hw_wr(b | 0x3038, (uint8_t)(v >> 2));
     cyc(16);
-    v = rd8(W(dp_4f));
+    v = RD8(dp_4f);
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (v & 0x08 ? P_C : 0)));
     cyc(96);
     ppu_wr(b | 0x210B, (uint8_t)(v >> 4 | 0x50));
@@ -1102,10 +1102,10 @@ void UnusedScreenStart(Carried *cr)
 
     r_sep(cr, P_M);
     r_rep(cr, P_X);
-    while (rd8(cyc_then(60, W(dp_00))))
+    while (rd8(cyc_then(60, WA(dp_00))))
         ;
     cyc(48);
-    wr8(W(dp_00), 0x02);
+    WR8(dp_00, 0x02);
     cyc(24);
     WR8(frames_since_tick, 0x00);
     while (!rd8(cyc_then(24, WA(wram_0854))))

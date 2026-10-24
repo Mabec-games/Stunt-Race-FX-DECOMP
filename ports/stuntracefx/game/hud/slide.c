@@ -21,7 +21,7 @@
 static uint8_t hud_slide_in(uint8_t *p)
 {
     cyc(70);
-    uint8_t v = rd8(W(hud_slide));
+    uint8_t v = RD8(hud_slide);
     unsigned sum = v + 4;
     uint8_t r = (uint8_t)sum;
 
@@ -37,7 +37,7 @@ static uint8_t hud_slide_in(uint8_t *p)
         }
     }
     cyc(76);
-    wr8(W(hud_slide), r);
+    WR8(hud_slide, r);
     cyc(42);
     return r;
 }

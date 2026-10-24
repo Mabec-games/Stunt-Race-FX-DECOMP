@@ -143,9 +143,9 @@ int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
     Gauge g;
 
     cyc(76);
-    v = rd8(W(panel_b_shown));
+    v = RD8(panel_b_shown);
     if (!v)
-        { cyc(48); v = rd8(W(wram_0D62)); }
+        { cyc(48); v = RD8(wram_0D62); }
     cyc(46);
     if (!v) {
         cyc(12);

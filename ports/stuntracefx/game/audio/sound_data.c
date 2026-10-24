@@ -115,9 +115,9 @@ void abi_SoundDataLoad(void)
 static uint16_t music_index(uint16_t n)
 {
     cyc(40);
-    wr16(W(music_index), n);
+    WR16(music_index, n);
     cyc(44);
-    return (uint16_t)((uint16_t)(n << 1) + rd16(W(music_index)));
+    return (uint16_t)((uint16_t)(n << 1) + RD16(music_index));
 }
 
 /* What MusicLoadForCourse and CourseSoundLoad leave, for their adapters:

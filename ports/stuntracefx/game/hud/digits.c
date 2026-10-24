@@ -47,38 +47,38 @@ static TimeEnd hud_draw_time(void)
     uint8_t v;
 
     cyc(136);
-    if (rd8(W(hud_mode)) != 0x01) {
+    if (RD8(hud_mode) != 0x01) {
         cyc(56);
-        uint16_t hold = rd16(W(hud_hold));
+        uint16_t hold = RD16(hud_hold);
         if (hold == 0)
             goto draw;
         hold--;
         cyc(54);
-        wr16(W(hud_hold), hold);
+        WR16(hud_hold, hold);
         end.x = hold;
         end.x_set = 1;
     } else { cyc(38); }
     cyc(24);
-    end.a = rd8(W(hud_blank));
+    end.a = RD8(hud_blank);
     if (end.a == 0)
         { cyc(16); return end; }
 draw:
     cyc(46);
-    base = rd16(W(hud_time_sprite));
+    base = RD16(hud_time_sprite);
     cyc(24);
-    v = rd8(W(race_time_seconds));
+    v = RD8(race_time_seconds);
     cyc(16);
     digit(W(oam_buffer) + 0x1A + base, v & 0x0F, 44);
     cyc(88);
     digit(W(oam_buffer) + 0x12 + base, v >> 4, 44);
     cyc(24);
-    v = rd8(W(race_time_fraction));
+    v = RD8(race_time_fraction);
     cyc(16);
     digit(W(oam_buffer) + 0x0A + base, v & 0x0F, 44);
     cyc(88);
     digit(W(oam_buffer) + 0x02 + base, v >> 4, 44);
     cyc(24);
-    v = rd8(W(race_time_minutes));
+    v = RD8(race_time_minutes);
     cyc(16);
     digit(W(oam_buffer) + 0x22 + base, v & 0x0F, 44);
     end.drew = 1;
@@ -146,17 +146,17 @@ void abi_HudDrawTime(void)
 static uint8_t hud_draw_digits_19ec(int *drew)
 {
     cyc(46);
-    uint8_t v, blank = rd8(W(hud_blank));
+    uint8_t v, blank = RD8(hud_blank);
 
     *drew = 0;
     if (blank)
         return blank;
     cyc(48);
-    v = rd8(W(hud_digits_19ec));
+    v = RD8(hud_digits_19ec);
     cyc(10);
     digit(W(oam_buffer) + 0x16A, v & 0x0F, 38);
     cyc(32);
-    v = rd8(W(hud_digits_19ec));
+    v = RD8(hud_digits_19ec);
     cyc(50);
     digit(W(oam_buffer) + 0x162, v >> 4, 38);
     *drew = 1;
@@ -211,33 +211,33 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     uint8_t count;
     uint32_t c;
 
-    wr8(W(digit_count), 0x00);
+    WR8(digit_count, 0x00);
     while (n >= 100) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 100) & (n ^ (uint8_t)(n - 100)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 100);
         cyc(64);
-        count = rd8(W(digit_count));
+        count = RD8(digit_count);
         cyc(6);
-        wr8(W(digit_count), (uint8_t)(count + 1));
+        WR8(digit_count, (uint8_t)(count + 1));
         cyc(22);
     }
     cyc(76);
-    count = rd8(W(digit_count));
+    count = RD8(digit_count);
     digit(W(oam_buffer) + 2 + offset, count, 44);
     cyc(44);
-    wr8(W(digit_count), 0x00);
+    WR8(digit_count, 0x00);
     c = 64;                             /* the first ten; 86 for each after */
     while (n >= 10) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 10) & (n ^ (uint8_t)(n - 10)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 10);
         cyc(c);
         c = 86;
-        count = rd8(W(digit_count));
+        count = RD8(digit_count);
         cyc(6);
-        wr8(W(digit_count), (uint8_t)(count + 1));
+        WR8(digit_count, (uint8_t)(count + 1));
     }
     cyc(c == 86 ? 98 : 76);             /* out after a ten, or with none */
-    count = rd8(W(digit_count));
+    count = RD8(digit_count);
     digit(W(oam_buffer) + 0x0A + offset, count, 44);
     cyc(28);
     digit(W(oam_buffer) + 0x12 + offset, n, 44);

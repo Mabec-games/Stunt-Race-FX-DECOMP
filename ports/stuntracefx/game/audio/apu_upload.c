@@ -12,6 +12,7 @@
 #include "cpu_ops.h"
 #include "hw.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 #include "audio_calls.h"
 #include "carried.h"
 
@@ -53,15 +54,15 @@ static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
         cyc(8);
     *offset += 1;
     cyc(110);
-    *low = rd16(W(apu_stream_ptr));
+    *low = RD16(apu_stream_ptr);
     if ((uint32_t)*low + *offset > 0xFFFF) {
         cyc(56);
-        wr16(W(apu_stream_ptr), 0);
+        WR16(apu_stream_ptr, 0);
         *offset = 0x8000;
         cyc(40);
-        bank = rd16(W(apu_stream_bank));
+        bank = RD16(apu_stream_bank);
         cyc(14);
-        wr16(W(apu_stream_bank), (uint16_t)(bank + 1));
+        WR16(apu_stream_bank, (uint16_t)(bank + 1));
     } else { cyc(22); }
     cyc(100);
     return value;
@@ -135,9 +136,9 @@ ApuUploadEnd ApuUpload(uint8_t bank, uint16_t addr)
     uint8_t kick = 0xCC;
 
     cyc(38);
-    wr16(W(apu_stream_ptr), addr);
+    WR16(apu_stream_ptr, addr);
     cyc(16);
-    wr8(W(apu_stream_bank), bank);
+    WR8(apu_stream_bank, bank);
     cyc(26);
     while (hw_rd16(cyc_then(46, APUIO0)) != 0xBBAA) {
     }

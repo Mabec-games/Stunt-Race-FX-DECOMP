@@ -519,7 +519,7 @@ void CourseZoomInStep(Carried *cr)
     r_lda8(cr, W(fixed_colour_step));
     a8 = (uint8_t)cr->a;
     cyc(32);
-    m8 = rd8(W(scale_divisor));
+    m8 = RD8(scale_divisor);
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : (cyc(64), 0))));
     if (a8 != m8)
         return;
@@ -614,21 +614,21 @@ void CourseWindowZoomSetup(Carried *cr)
     for (i = 0; i < 4; i++) {
         cyc(78);
         cr->a = rd16(b + 0xFB8E + cr->y + 2 * i);
-        wr16(W(scaled_words_target) + 2 * i, cr->a);
+        WR16X(scaled_words_target, 2 * i, cr->a);
     }
     for (i = 0; i < 4; i++) {
         cyc(78);
         cr->a = rd16(b + 0xFC11 + cr->x + 2 * i);
-        wr16(W(scaled_words) + 2 * i, cr->a);
+        WR16X(scaled_words, 2 * i, cr->a);
         cyc(32);
-        wr16(W(scaled_words_base) + 2 * i, cr->a);
+        WR16X(scaled_words_base, 2 * i, cr->a);
     }
     cyc(56);
-    wr16(W(scale_divisor), 0x000F);
+    WR16(scale_divisor, 0x000F);
     cr->a = 0x0000;
     set_p(cr, nz16(cr->p, 0x0000));
     cyc(56);
-    wr16(W(fixed_colour_step), 0x0000);
+    WR16(fixed_colour_step, 0x0000);
     (cyc(62), WindowTable7FLong(cr));
     cyc(150);   /* WindowTable7FLong states its RTL */
 }
@@ -1978,7 +1978,7 @@ static void records_pulse(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     set_p(cr, nz8(cr->p, v));
     cyc(86);
-    wr8(W(level_columns) + (uint32_t)x, v);
+    WR8X(level_columns, (uint32_t)x, v);
     cyc(42);
 }
 
@@ -2419,7 +2419,7 @@ void CoursePreviewReset(Carried *cr)
     r_rep(cr, P_M | P_X);
     cyc(104);
     for (i = 0; i < 0x0800; i++)
-        { cyc(36); wr8(W(tilemap_7f9bd7) + i, rd8(W(wram_7FC3D7) + i)); }
+        { cyc(36); WR8X(tilemap_7f9bd7, i, RD8X(wram_7FC3D7, i)); }
     cyc(68);
     cr->a = 0xFFFF;
     cr->x = 0xCBD7;
@@ -2621,17 +2621,17 @@ static void zoom_out_body(Carried *cr)
     r_rep(cr, P_M | P_X);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(32);
-    v = alu_adc16(rd16(W(wram_7F3434)), 0x0300, &p);
+    v = alu_adc16(RD16(wram_7F3434), 0x0300, &p);
     cyc(70);
-    wr16(W(wram_7F3434), v);
+    WR16(wram_7F3434, v);
     p = (uint8_t)(p | P_C);
     cyc(32);
-    w = alu_sbc16(rd16(W(wram_7F3438)), 0x0300, &p);
+    w = alu_sbc16(RD16(wram_7F3438), 0x0300, &p);
     cyc(64);
-    wr16(W(wram_7F3438), w);
+    WR16(wram_7F3438, w);
     p = (uint8_t)(p | P_C);
     cyc(46);
-    w = alu_sbc16(w, rd16(W(wram_7F3434)), &p);
+    w = alu_sbc16(w, RD16(wram_7F3434), &p);
     set_p(cr, (uint8_t)((nz16(p, (uint16_t)(w - 0x0700)) & ~P_C) | (w >= 0x0700 ? (cyc(34), P_C) : 0)));
     cr->a = w;
     if (w >= 0x0700)
@@ -2685,16 +2685,16 @@ static void zoom_in_body(Carried *cr)
     r_rep(cr, P_M | P_X);
     p = (uint8_t)(cr->p & ~P_C);
     cyc(32);
-    v = alu_adc16(rd16(W(wram_7F3438)), 0x0300, &p);
+    v = alu_adc16(RD16(wram_7F3438), 0x0300, &p);
     cyc(70);
-    wr16(W(wram_7F3438), v);
+    WR16(wram_7F3438, v);
     p = (uint8_t)(p | P_C);
     cyc(32);
-    v = alu_sbc16(rd16(W(wram_7F3434)), 0x0300, &p);
+    v = alu_sbc16(RD16(wram_7F3434), 0x0300, &p);
     cyc(64);
-    wr16(W(wram_7F3434), v);
+    WR16(wram_7F3434, v);
     cyc(32);
-    t = rd16(W(wram_7F343C));
+    t = RD16(wram_7F343C);
     set_p(cr, (uint8_t)((nz16(p, (uint16_t)(v - t)) & ~P_C) | (v >= t ? (cyc(22), P_C) : 0)));
     cr->a = v;
     if (v >= t)
@@ -2702,11 +2702,11 @@ static void zoom_in_body(Carried *cr)
     cyc(48);
     r_lda16(cr, W(wram_7F343C));
     cyc(32);
-    wr16(W(wram_7F3434), cr->a);
+    WR16(wram_7F3434, cr->a);
     cyc(32);
     r_lda16(cr, W(wram_7F3440));
     cyc(32);
-    wr16(W(wram_7F3438), cr->a);
+    WR16(wram_7F3438, cr->a);
     r_sep(cr, P_M);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x06);
     set_p(cr, nz8(cr->p, 0x06));
@@ -2890,7 +2890,7 @@ void CourseScreenStep(Carried *cr)
                         cr->a = (uint16_t)(cr->a & 0xFF00);
                         cyc(18);
                         for (i = 0x0B; i >= 0; i--)
-                            { cyc(68); wr8(W(level_columns) + (uint32_t)i, 0x00); }
+                            { cyc(68); WR8X(level_columns, (uint32_t)i, 0x00); }
                         cyc(108);
                         cr->x = 0xFF;
                         cr->a = (uint16_t)((cr->a & 0xFF00) | 0x36);

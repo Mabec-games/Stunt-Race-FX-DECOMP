@@ -9,6 +9,7 @@
 #include "video_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 
@@ -22,7 +23,7 @@ static uint8_t clamp_flags(uint8_t p, uint16_t sum)
 
 static uint16_t fade_in(uint16_t step, uint16_t pre, uint8_t *p)
 {
-    uint16_t level = rd16(W(fade_level));
+    uint16_t level = RD16(fade_level);
     uint16_t sum = (uint16_t)(level + step);
 
     /* V comes from the add; CMP leaves it alone. */
@@ -34,7 +35,7 @@ static uint16_t fade_in(uint16_t step, uint16_t pre, uint8_t *p)
     } else {
         cyc(pre + 70);     /* CMP, BCC taken, STA */
     }
-    wr16(W(fade_level), sum);
+    WR16(fade_level, sum);
     return sum;
 }
 
@@ -43,7 +44,7 @@ static uint16_t fade_in(uint16_t step, uint16_t pre, uint8_t *p)
 static uint16_t fade_out(uint8_t *p)
 {
     cyc(62);
-    uint16_t level = rd16(W(fade_level));
+    uint16_t level = RD16(fade_level);
 
     if (level & 0x8000) {
         *p = nz16(*p, level);
@@ -58,7 +59,7 @@ static uint16_t fade_out(uint8_t *p)
         level = 0x8000;
     }
     cyc(46);
-    wr16(W(fade_level), level);
+    WR16(fade_level, level);
     return level;
 }
 
@@ -80,7 +81,7 @@ uint16_t FadeStepFixed(void)
     uint16_t level;
 
     cyc(94);
-    level = rd8(W(fade_out)) == 0 ? (cyc(62), fade_in(0x0098, 38, &fade_p)) : (cyc(6), fade_out(&fade_p));
+    level = RD8(fade_out) == 0 ? (cyc(62), fade_in(0x0098, 38, &fade_p)) : (cyc(6), fade_out(&fade_p));
     fade_p |= P_M;
     cyc(64);
     return level;
@@ -124,13 +125,13 @@ uint16_t FadeStep(void)
     uint16_t level;
 
     cyc(24);
-    if (rd8(W(fade_out)) != 0) {
+    if (RD8(fade_out) != 0) {
         level = fade_out(&fade_p);
     } else {
         cyc(46);
-        fade_x = (uint8_t)(rd8(W(fade_level) + 1) << 1);
+        fade_x = (uint8_t)(RD8X(fade_level, 1) << 1);
         cyc(136);
-        level = fade_in(rd16(W(wram_7EAC9D) + fade_x), 0, &fade_p);
+        level = fade_in(RD16X(wram_7EAC9D, fade_x), 0, &fade_p);
     }
     cyc(64);
     fade_p |= P_M;

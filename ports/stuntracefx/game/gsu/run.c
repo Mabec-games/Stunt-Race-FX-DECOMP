@@ -31,14 +31,14 @@ static void gsu_wait(uint32_t first)
 
     cyc(first);
     do {
-        n = (uint8_t)(rd8(W(gsu_wait_count)) + 1);
+        n = (uint8_t)(RD8(gsu_wait_count) + 1);
         cyc(6);
-        wr8(W(gsu_wait_count), n);
+        WR8(gsu_wait_count, n);
         if (!n) {
             cyc(32);
-            n = (uint8_t)(rd8(W(gsu_wait_count) + 1) + 1);
+            n = (uint8_t)(RD8X(gsu_wait_count, 1) + 1);
             cyc(6);
-            wr8(W(gsu_wait_count) + 1, n);
+            WR8X(gsu_wait_count, 1, n);
         } else { cyc(22); }
     } while (cyc_loop(54, hw_rd(cyc_then(24, GSU_SFR)) & 0x20));
 }
@@ -49,7 +49,7 @@ static uint8_t gsu_scmr_back(void)
     uint8_t mode;
 
     cyc(56);
-    mode = rd8(W(gsu_scmr_shadow));
+    mode = RD8(gsu_scmr_shadow);
     cyc(24);
     hw_wr(GSU_SCMR, mode);
     return mode;
@@ -139,7 +139,7 @@ uint8_t GsuRun(uint8_t bank, uint16_t start)
     cyc(32);
     hw_wr(GSU_PBR, bank);
     cyc(112);
-    hw_wr(GSU_SCMR, cyc_then(40, rd8(W(gsu_scmr_shadow)) | 0x18));
+    hw_wr(GSU_SCMR, cyc_then(40, RD8(gsu_scmr_shadow) | 0x18));
     cyc(24);
     hw_wr(GSU_SFR, 0x00);
     cyc(24);
@@ -301,25 +301,25 @@ void FrameRunGsu8FCA(Carried *cr)
 
     set_p(cr, (uint8_t)((cr->p | P_M) & ~P_X));
     cyc(60);
-    wr8(W(gsu_wait_count), 0x00);
+    WR8(gsu_wait_count, 0x00);
     cyc(16);
-    wr8(W(gsu_wait_count_hi), 0x00);
+    WR8(gsu_wait_count_hi, 0x00);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x04);
     cr->x = 0x8FCA;
     cyc(72);
     hw_wr(GSU_PBR, 0x04);
     cr->db = 0x00;
     cyc(112);
-    hw_wr(GSU_SCMR, cyc_then(40, (uint8_t)(rd8(W(gsu_scmr_shadow)) | 0x18)));
+    hw_wr(GSU_SCMR, cyc_then(40, (uint8_t)(RD8(gsu_scmr_shadow) | 0x18)));
     cyc(24);
     hw_wr(GSU_SFR, 0x00);
     cyc(24);
     hw_wr16(GSU_R15, 0x8FCA);
     (cyc(46), FrameObjectsWhileGsuRuns(cr));
     cyc(80);
-    n = rd16(W(gsu_wait_count));
+    n = RD16(gsu_wait_count);
     cyc(24);
-    wr16(W(gsu_wait_polls), n);
+    WR16(gsu_wait_polls, n);
     cr->a = n;
     cr->db = db;
     set_p(cr, (uint8_t)(nz8(cr->p | P_M, db) & ~P_X));
@@ -474,9 +474,9 @@ void FrameRunGsuAB13B(Carried *cr)
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     cyc(38);
-    wr8(W(gsu_wait_count), 0x00);
+    WR8(gsu_wait_count, 0x00);
     cyc(16);
-    wr8(W(gsu_wait_count_hi), 0x00);
+    WR8(gsu_wait_count_hi, 0x00);
     GsuParamsUpdate_cr(cr);
     b = (uint32_t)cr->db << 16;
     start_ab13(cr, b);

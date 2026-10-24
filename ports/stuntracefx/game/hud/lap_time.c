@@ -136,7 +136,7 @@ uint16_t BinaryToBcd(uint16_t v, uint8_t *p)
     unsigned i;
 
     cyc(16);
-    wr16(W(bcd_digits), 0x0000);
+    WR16(bcd_digits, 0x0000);
     for (i = 0; i < 3; i++) {
         for (;;) {
             cmp16(v, unit[i], p);
@@ -147,17 +147,17 @@ uint16_t BinaryToBcd(uint16_t v, uint8_t *p)
             v = alu_sbc16(v, unit[i], p);
             saved = v;                  /* PHA, the count, PLA */
             cyc(104);
-            v = rd16(W(bcd_digits));
+            v = RD16(bcd_digits);
             *p = nz16(*p, v);
             v = add16(v, digit[i], p);
             cyc(54);
-            wr16(W(bcd_digits), v);
+            WR16(bcd_digits, v);
             v = lda16_imm(saved, p);
             cyc(20);                    /* BRA */
         }
     }
     cyc(30);
-    v = add16(v, rd16(W(bcd_digits)), p);
+    v = add16(v, RD16(bcd_digits), p);
     cyc(44);
     return v;
 }
@@ -480,11 +480,11 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
     cyc(36);
     for (g = 0; g < 3; g++) {
         cyc(16);
-        wr8(W(bcd_digits), 0);
+        WR8(bcd_digits, 0);
         cyc(16);
-        wr8(W(dp_f2), 0);
+        WR8(dp_f2, 0);
         cyc(16);
-        wr8(W(dp_f3), 0);
+        WR8(dp_f3, 0);
         for (i = 0; i < 4; i++) {
             cyc(62);
             TimeAddToTotal(bank, (uint16_t)(g * 12 + i * 3), &p);
@@ -494,15 +494,15 @@ uint8_t TimeTotalsSum(uint8_t bank, uint8_t p0)
         p = (uint8_t)((nz8(p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
         if (v == 0xFF) {
             cyc(48);
-            wr8(W(bcd_digits), v);
+            WR8(bcd_digits, v);
             cyc(16);
-            wr8(W(dp_f2), v);
+            WR8(dp_f2, v);
             cyc(16);
-            wr8(W(dp_f3), v);
+            WR8(dp_f3, v);
         }
         for (i = 0; i < 3; i++) {
             cyc(16);
-            v = rd8(W(bcd_digits) + i);
+            v = RD8X(bcd_digits, i);
             cyc(24);
             WR8I(record_totals, g * 3 + i, v);
         }
@@ -848,7 +848,7 @@ static uint8_t record_name_store(uint8_t slot, uint8_t *p)
 
     *p = nz8(*p, slot);
     cyc(32);
-    wr8(W(dp_f5), slot);
+    WR8(dp_f5, slot);
     cyc(24);
     a = RD8(wram_0D4A);
     for (i = 0; i < 3; i++)
@@ -857,7 +857,7 @@ static uint8_t record_name_store(uint8_t slot, uint8_t *p)
     cyc(80);
     a = alu_adc8(a, RD8(wram_0D4A), p);
     cyc(16);
-    a = alu_adc8(a, rd8(W(dp_f5)), p);
+    a = alu_adc8(a, RD8(dp_f5), p);
     x = a;
     *p = nz8(*p, a);
     cyc(38);
@@ -1074,23 +1074,23 @@ uint16_t BcdToBinary(uint16_t v, uint8_t *p)
     int i;
 
     cyc(16);
-    wr16(W(bcd_digits), 0x0000);
+    WR16(bcd_digits, 0x0000);
     for (i = 0; i < 3; i++) {
         if (v < thr[i])
             { pre += 46; continue; }   /* CMP, BCC taken */
         n = (uint16_t)(v >> sh[i]);
         cyc(pre + 100 + 14 * sh[i]);
-        t = rd16(W(bcd_digits));
+        t = RD16(bcd_digits);
         do
             t = (uint16_t)(t + mul[i]);
         while (cyc_loop(74, --n));
         cyc(84);
-        wr16(W(bcd_digits), t);
+        WR16(bcd_digits, t);
         v &= (uint16_t)(thr[i] - 1);
         pre = 60;                       /* PLA, AND */
     }
     cyc(pre + 30);
-    v = add16(v, rd16(W(bcd_digits)), p);
+    v = add16(v, RD16(bcd_digits), p);
     cyc(80);
     return v;
 }
@@ -1138,7 +1138,7 @@ uint16_t TimePackBcd(uint16_t hund, uint16_t sec, uint16_t min, uint8_t *p)
     a = BcdToBinary(a, p);
     a = and16(a, 0x007F, p);
     cyc(38);
-    wr16(W(dp_f3), a);
+    WR16(dp_f3, a);
     a = transfer(sec, p);
     a = and16(a, 0x00FF, p);
     cyc(98);
@@ -1147,10 +1147,10 @@ uint16_t TimePackBcd(uint16_t hund, uint16_t sec, uint16_t min, uint8_t *p)
     a = lsr16(a, p);
     a = and16(a, 0x1F80, p);
     cyc(72);
-    a |= rd16(W(dp_f3));
+    a |= RD16(dp_f3);
     *p = nz16(*p, a);
     cyc(16);
-    wr16(W(dp_f3), a);
+    WR16(dp_f3, a);
     a = transfer(min, p);
     a = and16(a, 0x00FF, p);
     cyc(98);
@@ -1159,7 +1159,7 @@ uint16_t TimePackBcd(uint16_t hund, uint16_t sec, uint16_t min, uint8_t *p)
         a = ror16(a, p);
     a = and16(a, 0xE000, p);
     cyc(94);
-    a |= rd16(W(dp_f3));
+    a |= RD16(dp_f3);
     *p = nz16(*p, a);
     cyc(42);
     return a;
@@ -1200,9 +1200,9 @@ static uint8_t sum_into_f1(uint32_t addr, uint8_t x, unsigned n, uint8_t *p)
         first = 0;
         a = rd8(addr + x);
         cyc(16);
-        a = alu_adc8(a, rd8(W(bcd_digits)), p);
+        a = alu_adc8(a, RD8(bcd_digits), p);
         cyc(16);
-        wr8(W(bcd_digits), a);
+        WR8(bcd_digits, a);
         x++;
     }
     return a;
@@ -1290,7 +1290,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     p &= (uint8_t)~(P_M | P_X);         /* REP #$30 */
     cyc(22);
     cyc(place == 0x03 ? 56 : 78);       /* the third place has no BRA */
-    wr16(W(dp_f7), page);
+    WR16(dp_f7, page);
     cyc(24);
     w = asl16(RD16(wram_0D4A), &p);
     p &= (uint8_t)~P_C;
@@ -1299,9 +1299,9 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     for (i = 0; i < 3; i++)
         w = asl16(w, &p);
     cyc(82);
-    w = alu_adc16(w, rd16(W(dp_f7)), &p);
+    w = alu_adc16(w, RD16(dp_f7), &p);
     cyc(16);
-    wr16(W(dp_f7), w);
+    WR16(dp_f7, w);
     aa = a;
     for (i = 0; i < 4; i++) {
         cyc(24);
@@ -1313,14 +1313,14 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
         cyc(46);
         aa = TimePackBcd(aa, xx, yy, &p);
         cyc(16);
-        xx = rd16(W(dp_f7));
+        xx = RD16(dp_f7);
         cyc(32);
         wr16(0x70FC88 + xx + 2 * i, aa);
     }
     p |= P_M | P_X;                     /* SEP #$30 */
     cyc(22);
     cyc(16);
-    wr8(W(bcd_digits), 0x00);
+    WR8(bcd_digits, 0x00);
     v = course_times_24(&p);
     cyc(4);
     sum_into_f1(0x70FC88, v, 24, &p);
@@ -1330,7 +1330,7 @@ uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, ui
     cyc(68);
     xx = RD8(wram_0D4A);
     cyc(16);
-    v = rd8(W(bcd_digits));
+    v = RD8(bcd_digits);
     cyc(32);
     wr8(0x70FC2D + xx, v);
     cyc(42);                            /* PLP */

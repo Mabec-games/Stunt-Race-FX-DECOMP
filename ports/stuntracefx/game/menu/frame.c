@@ -286,13 +286,13 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
     uint16_t i;
 
     cyc(86);
-    wr8(W(scratch_11e1), kind);
+    WR8(scratch_11e1, kind);
     cyc(24);
-    for (i = (uint16_t)(rd16(W(actor_list_len)) - 2); !(i & 0x8000); i = (uint16_t)(i - 2)) {
+    for (i = (uint16_t)(RD16(actor_list_len) - 2); !(i & 0x8000); i = (uint16_t)(i - 2)) {
         cyc(74);
-        x = rd16(W(actor_list) + i);
+        x = RD16X(actor_list, i);
         cyc(22);
-        if (rd8((uint16_t)(x + W(actor_kind))) == rd8(cyc_then(24, W(scratch_11e1))))
+        if (rd8((uint16_t)(x + W(actor_kind))) == rd8(cyc_then(24, WA(scratch_11e1))))
             break; else { cyc(28); }
     }
     return x;
@@ -356,7 +356,7 @@ void MenuRegionPal(Carried *cr, uint16_t a, uint16_t x)
     cr->x = x;
     cr->y = y;
     cyc(46);
-    wr8(W(frame_update_flags), cyc_then(40, (uint8_t)(rd8(W(frame_update_flags)) | 0x0F)));
+    WR8(frame_update_flags, cyc_then(40, (uint8_t)(RD8(frame_update_flags) | 0x0F)));
     carried_loop_forever(cr, 0x0BAE8A);
 }
 
@@ -429,7 +429,7 @@ void abi_MenuRegionCheck(void)
 static int held_or_18fb(void)
 {
     cyc(46);
-    return (RD16(joy1_held) & 0x000F) || (rd16(cyc_then(64, WA(joy2_held))) & 0x000F) || rd16(cyc_then(72, W(wram_18FB)));
+    return (RD16(joy1_held) & 0x000F) || (rd16(cyc_then(64, WA(joy2_held))) & 0x000F) || rd16(cyc_then(72, WA(wram_18FB)));
 }
 
 /*

@@ -89,23 +89,23 @@ void ObjectListTableFirst(Carried *cr)
                 cyc(100);
                 at = RD16I(obj_04, x);
                 cyc(96);
-                wr16(W(object_table), x);
+                WR16(object_table, x);
                 cyc(30);
                 v = RD16I(dp_08, at);
                 cyc(32);
-                wr16(W(wram_7E96AF), v);
+                WR16(wram_7E96AF, v);
                 cyc(30);
                 v = rd16(0x7E0000 | (uint16_t)(W(actor_0a) + at));
                 cyc(32);
-                wr16(W(wram_7E96B1), v);
+                WR16(wram_7E96B1, v);
                 cyc(30);
                 v = rd16(0x7E0000 | (uint16_t)(W(actor_0c) + at));
                 cyc(32);
-                wr16(W(wram_7E96B3), v);
+                WR16(wram_7E96B3, v);
                 cyc(30);
                 v = rd16(0x7E0000 | (uint16_t)(W(actor_0e) + at));
                 cyc(32);
-                wr16(W(wram_7E96B5), v);
+                WR16(wram_7E96B5, v);
                 cyc(24);
                 v = RD16(object_table_count);
                 cyc(14);
@@ -228,7 +228,7 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     cyc(126);
     WR16I(obj_27, child, 0x0000);
     cyc(60);
-    wr16(W(debug_digit), child);
+    WR16(debug_digit, child);
     for (;;) {
         cyc(58);
         next = RD16I(obj_27, at);
@@ -237,11 +237,11 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
         at = next;
     }
     cyc(32);
-    child = rd16(W(debug_digit));
+    child = RD16(debug_digit);
     cyc(30);
     WR16I(obj_27, at, child);
     cyc(16);
-    (void)rd16(W(debug_digit));
+    (void)RD16(debug_digit);
     cyc(66);                            /* SEP, RTL */
 }
 
@@ -387,10 +387,10 @@ int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
     *y = *x;
     ObjectInit(*y);
     cyc(48);
-    wr8(W(obj_36_long) + *x, 0x03);
+    WR8X(obj_36_long, *x, 0x03);
     *a = 0xA040;
     cyc(78);
-    wr16(W(obj_04_long) + *x, *a);
+    WR16X(obj_04_long, *x, *a);
     return 1;
 }
 

@@ -10,6 +10,7 @@
 #include "cpu_ops.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 void abi_Bg2ScrollFromTable(void);
@@ -35,7 +36,7 @@ static void upload(Carried *cr, uint16_t gradient_src, uint16_t src, int bra)
     cyc(68);
     v = rd16(b | gradient_src);
     cyc(32);
-    wr16(W(gradient_ptr_a), v);
+    WR16(gradient_ptr_a, v);
     cyc(48);
     dma_wr16(b | 0x4302, src);
     cyc(62);

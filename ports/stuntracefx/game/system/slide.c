@@ -25,34 +25,34 @@ uint16_t SlideStep(uint16_t a)
     uint16_t v;
 
     cyc(148);
-    if (!(rd8(W(slide_flags)) & 0x80))
+    if (!(RD8(slide_flags) & 0x80))
         { cyc(38); return (uint16_t)(a & 0xFF00); }
     cyc(78);
-    if (!(rd16(W(slide_direction)) & 0x8000))
-        { cyc(40); v = (uint16_t)(rd16(W(slide_value)) + rd16(cyc_then(38, W(slide_step)))); }
+    if (!(RD16(slide_direction) & 0x8000))
+        { cyc(40); v = (uint16_t)(RD16(slide_value) + rd16(cyc_then(38, WA(slide_step)))); }
     else
-        { cyc(68); v = (uint16_t)(rd16(W(slide_value)) - rd16(cyc_then(38, W(slide_step)))); }
+        { cyc(68); v = (uint16_t)(RD16(slide_value) - rd16(cyc_then(38, WA(slide_step)))); }
     cyc(24);
-    if (v == rd16(W(slide_target))) {
+    if (v == RD16(slide_target)) {
         cyc(46);
-        uint16_t dir = rd16(W(slide_direction));
+        uint16_t dir = RD16(slide_direction);
         if (!(dir & 0x8000))
             { cyc(22); return dir; }
         cyc(70);
-        wr8(W(slide_flags), cyc_then(48, rd8(W(slide_flags)) & 0x7F));
+        WR8(slide_flags, cyc_then(48, RD8(slide_flags) & 0x7F));
         cyc(78);
-        wr16(W(slide_done), 0xFFFF);
+        WR16(slide_done, 0xFFFF);
         a = 0xFFFF;
     } else {
         cyc(40);
-        wr16(W(slide_value), v);
+        WR16(slide_value, v);
         a = v;
         cyc(24);                        /* JMP */
     }
     {
-        uint8_t hi = (cyc(46), rd8(W(wram_19F7)));      /* SEP, LDA */
+        uint8_t hi = (cyc(46), RD8(wram_19F7));      /* SEP, LDA */
         cyc(32);
-        wr8(W(slide_out), hi);
+        WR8(slide_out, hi);
         return (uint16_t)((a & 0xFF00) | hi);
     }
 }
@@ -131,11 +131,11 @@ uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
             cyc(56);
             WR8(slide_wobble_count, 0x00);
             cyc(32);
-            a = rd8(W(slide_out));
+            a = RD8(slide_out);
             cyc(38);
             a = wobble_add(a, RD8(wram_1A04));
             cyc(32);
-            wr8(W(slide_out), a);
+            WR8(slide_out, a);
             m = a == 0x0F ? 0x0F : (cyc(32), 0x0B);
             wobble_c = a >= m;
             if (wobble_c)

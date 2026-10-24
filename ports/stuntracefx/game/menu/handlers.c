@@ -173,7 +173,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         cyc(78);
         wr16((uint16_t)(*x + W(actor_0a)), 0x0000);
         cyc(56);
-        wr16(W(wram_1913), 0x0000);
+        WR16(wram_1913, 0x0000);
     } else { cyc(62); }
     rd16(cyc_then(24, (WA(menu_joy1_pressed))));
     cyc(22);
@@ -640,7 +640,7 @@ void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p
     off = rd16(0x0BDFCB + (uint32_t)(n << 1));
     WR16(scratch_11df, off);
     cyc(32);
-    sel = (uint16_t)(rd16(W(selection)) << 1);
+    sel = (uint16_t)(RD16(selection) << 1);
     cyc(114);
     v = rd16(0x0BDFD3 + (uint32_t)sel);
     v = adc16(v, RD16(scratch_11df), 0, p);

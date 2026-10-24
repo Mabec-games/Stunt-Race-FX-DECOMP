@@ -36,7 +36,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(76);
         a = rd16(OBJ(o, OBJ_OFF(obj_pos_y)));
         cyc(30);
-        a = (uint16_t)(a - rd16(W(dp_c7)));
+        a = (uint16_t)(a - RD16(dp_c7));
         cyc(30);
         wr16(REC(r, W(draw_y)), a);
         if (a & 0x8000)
@@ -50,11 +50,11 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(30);
         a = rd16(OBJ(o, OBJ_OFF(obj_pos_x)));
         cyc(30);
-        wr16(REC(r, W(draw_x)), cyc_then(30, (uint16_t)(a - rd16(W(dp_c5)))));
+        wr16(REC(r, W(draw_x)), cyc_then(30, (uint16_t)(a - RD16(dp_c5))));
         cyc(30);
         a = rd16(OBJ(o, OBJ_OFF(obj_pos_z)));
         cyc(30);
-        wr16(REC(r, W(draw_z)), cyc_then(30, (uint16_t)(a - rd16(W(dp_c9)))));
+        wr16(REC(r, W(draw_z)), cyc_then(30, (uint16_t)(a - RD16(dp_c9))));
     }
     cyc(30);
     wr16(REC(r, W(draw_model)), cyc_then(30, rd16(OBJ(o, OBJ_OFF(obj_04)))));
@@ -212,7 +212,7 @@ static void draw_triggers(unsigned end, ObjectDrawListEnd *e)
         cyc(80);
         wr16((WA(trigger_pos)), pos);
         cyc(70);
-        a = rd16(W(object_buckets) + (a & 0x07FE));
+        a = RD16X(object_buckets, (a & 0x07FE));
         if (!a)
             { cyc(22); continue; }
         cyc(46);

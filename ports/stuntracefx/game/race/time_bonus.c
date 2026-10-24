@@ -490,24 +490,24 @@ static void sound_push_decimal(uint8_t command)
     int c;
 
     cyc(394);
-    if (rd8(W(sound_muted)) != 0)
+    if (RD8(sound_muted) != 0)
         return;
     cyc(40);
-    n = rd8(W(sound_port0_count));
+    n = RD8(sound_port0_count);
     if (n == 0) {
         cyc(46);
-        wr8(W(sound_port0_count), cyc_then(6, (uint8_t)(rd8(W(sound_port0_count)) + 1)));
+        WR8(sound_port0_count, cyc_then(6, (uint8_t)(RD8(sound_port0_count) + 1)));
         cyc(24);
-        wr8(W(sound_port0_queue) + rd8(W(sound_port0_head)), cyc_then(30, command));
+        WR8X(sound_port0_queue, rd8(W(sound_port0_head)), cyc_then(30, command));
     } else if (n < 0x10) {
         c = 0;
-        slot = adc_decimal8(n, rd8(W(sound_port0_head)), &c);
+        slot = adc_decimal8(n, RD8(sound_port0_head), &c);
         if (slot >= 0x10) {
             c = 1;
             slot = sbc_decimal8(slot, 0x10, &c);
         }
-        wr8(W(sound_port0_queue) + slot, command);
-        wr8(W(sound_port0_count), (uint8_t)(rd8(W(sound_port0_count)) + 1));
+        WR8X(sound_port0_queue, slot, command);
+        WR8(sound_port0_count, (uint8_t)(RD8(sound_port0_count) + 1));
     }
     cyc(162);
 }

@@ -381,7 +381,7 @@ static void boot_run(Carried *cr, int from)
     boot_ldx(cr, 0x000F);
     do {
         r_lda16(cr, 0x038D16 + cr->x);
-        wr16(W(wram_0101) + cr->x, cr->a);
+        WR16X(wram_0101, cr->x, cr->a);
         cr->x--;
         set_p(cr, nz16(cr->p, cr->x));
     } while (!(cr->x & 0x8000));
@@ -405,10 +405,10 @@ start:
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x0003);
     cyc(18);
-    wr16(W(wram_1915), 0x0003);
+    WR16(wram_1915, 0x0003);
     r_lda16_imm(cr, 0x0000);
     cyc(18);
-    wr16(W(wram_1917), 0x0000);
+    WR16(wram_1917, 0x0000);
 warm:
     boot_bank03(cr);
     boot_stack(cr);
@@ -462,7 +462,7 @@ attract:
     hw_wr(b | 0x3039, 0x01);
     boot_lda8(cr, 0x01);
     cyc(8);
-    wr8(W(palette_saved), 0x01);
+    WR8(palette_saved, 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_I)));
     r_sep(cr, P_M);
     r_rep(cr, P_X);

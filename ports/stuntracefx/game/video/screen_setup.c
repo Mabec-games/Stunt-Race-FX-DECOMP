@@ -66,7 +66,7 @@ void VideoRegsReset(uint8_t bank, uint16_t x)
     cyc(78);
     wr16(0x70021A, 0x2C00);
     cyc(16);
-    wr16(W(dp_48), 0x2C00);
+    WR16(dp_48, 0x2C00);
     cyc(72);
 }
 
@@ -269,7 +269,7 @@ void VideoStartUploads(uint8_t bank)
     cyc(82);
     io8(bank, NMITIMEN, 0x00);
     cyc(16);
-    wr8(W(dp_00), 0x00);
+    WR8(dp_00, 0x00);
     cyc(24);
     RD8(wram_1073);
     cyc(54);
@@ -445,14 +445,14 @@ static uint16_t rv_tilemap_rows(uint16_t y0, uint32_t lead, uint16_t *x, uint16_
 
     *y = y0;
     cyc(lead);
-    wr16(W(tilemap_row_offset), 0x0000);
+    WR16(tilemap_row_offset, 0x0000);
     do {
         for (i = 0; i < 5; i++)
             (cyc(70), TilemapRowFromGsuRam(0x7F, src[i], x, y, &p));
         cyc(16);
-        a = (uint16_t)(rd16(W(tilemap_row_offset)) + 0x0040);
+        a = (uint16_t)(RD16(tilemap_row_offset) + 0x0040);
         cyc(54);
-        wr16(W(tilemap_row_offset), a);
+        WR16(tilemap_row_offset, a);
     } while (cyc_loop(46, a < 0x0800));
     cyc(112);
     return a;
@@ -531,7 +531,7 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
         cyc(138);
         MenuCourseGraphics(0x03);
         cyc(112 + 122);
-        wr16(W(tilemap_7f9bd7), 0x0000);
+        WR16(tilemap_7f9bd7, 0x0000);
         rv_mvn(W(tilemap_7f9bd7), W(wram_7F9BD8), 0x2000);
         cyc(42);                                    /* PLP */
         rv_gsu_vram(0xF84C, 0xF7E3);
@@ -770,7 +770,7 @@ static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_
 {
     cr->a = from;
     cyc(34);
-    wr16(W(tilemap_row_offset), from);
+    WR16(tilemap_row_offset, from);
     cyc(24);
     r_lda16(cr, b | w);
     cr->x = vram;

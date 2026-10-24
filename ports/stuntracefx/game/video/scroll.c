@@ -7,6 +7,7 @@
 #include "video_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 /* BG2 scroll pairs in work RAM, indexed by the screen band: horizontal at
@@ -32,13 +33,13 @@ static uint8_t bg2_scroll(uint16_t band, int wide)
     uint8_t v;
 
     cyc(abs_x(W(bg2_scroll_x), band, wide));
-    ppu_wr(BG2HOFS, cyc_then(24, rd8(W(bg2_scroll_x) + band)));
+    ppu_wr(BG2HOFS, cyc_then(24, RD8X(bg2_scroll_x, band)));
     cyc(abs_x(W(bg2_scroll_x) + 1, band, wide));
-    ppu_wr(BG2HOFS, cyc_then(24, rd8(W(bg2_scroll_x) + 1 + band)));
+    ppu_wr(BG2HOFS, cyc_then(24, RD8X(bg2_scroll_x, 1 + band)));
     cyc(abs_x(W(bg2_scroll_y), band, wide));
-    ppu_wr(BG2VOFS, cyc_then(24, rd8(W(bg2_scroll_y) + band)));
+    ppu_wr(BG2VOFS, cyc_then(24, RD8X(bg2_scroll_y, band)));
     cyc(abs_x(W(bg2_scroll_y) + 1, band, wide));
-    v = rd8(W(bg2_scroll_y) + 1 + band);
+    v = RD8X(bg2_scroll_y, 1 + band);
     cyc(24);
     ppu_wr(BG2VOFS, v);
     return v;
@@ -93,16 +94,16 @@ void abi_Bg2ScrollFromTable(void)
 void ScrollHdmaSet(void)
 {
     cyc(76);
-    uint16_t v = rd16(W(scroll_value));
+    uint16_t v = RD16(scroll_value);
 
     cyc(32);
-    wr16(W(wram_10AE), v);
+    WR16(wram_10AE, v);
     cyc(32);
-    wr16(W(wram_10B7), v);
+    WR16(wram_10B7, v);
     cyc(56);
-    wr16(W(wram_10B1), 0x0130);
+    WR16(wram_10B1, 0x0130);
     cyc(32);
-    wr16(W(wram_10B4), 0x0130);
+    WR16(wram_10B4, 0x0130);
 }
 
 void ScrollHdmaSet_cr(Carried *cr)

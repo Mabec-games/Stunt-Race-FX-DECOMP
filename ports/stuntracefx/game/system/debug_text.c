@@ -40,16 +40,16 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     unsigned i;
 
     cyc(90);
-    dest = rd16(W(text_pos));
+    dest = RD16(text_pos);
     cyc(30);
-    dest = (uint16_t)(dest + rd16(W(text_base)));
+    dest = (uint16_t)(dest + RD16(text_base));
     *x = dest;
     cyc(104);
-    wr16(W(dp_40), (uint16_t)(ch << 1));
+    WR16(dp_40, (uint16_t)(ch << 1));
     cyc(44);
-    *y = (uint16_t)((ch << 2) + rd16(W(dp_40)));
+    *y = (uint16_t)((ch << 2) + RD16(dp_40));
     cyc(54);
-    wr16(W(dp_40), 0x0006);
+    WR16(dp_40, 0x0006);
     rows = 6;
     do {
         cyc(rows == 6 ? 76 : 92); /* PHX first, BRL after */
@@ -88,12 +88,12 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 1);
         cyc(80);
-        rows = (uint16_t)(rd16(W(dp_40)) - 1);
+        rows = (uint16_t)(RD16(dp_40) - 1);
         cyc(14);
-        wr16(W(dp_40), rows);
+        WR16(dp_40, rows);
     } while (rows);
     cyc(88);
-    pos = (uint16_t)(dest - rd16(W(text_base)));
+    pos = (uint16_t)(dest - RD16(text_base));
     cyc(54);
     half = (uint16_t)(RD16(text_half) ^ 0x0004);
     cyc(48);
@@ -106,7 +106,7 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
             { cyc(54); pos = (uint16_t)(pos - 0x67C0); }
     }
     cyc(74);
-    wr16(W(text_pos), pos);
+    WR16(text_pos, pos);
     *a = pos;
     cyc(70); /* PLP, RTS */
 }
@@ -216,13 +216,13 @@ uint16_t DebugShowErrors(uint8_t bank)
         if (!a)
             continue;
         cyc(56);
-        wr16(W(text_pos), errors[i].pos);
+        WR16(text_pos, errors[i].pos);
         cyc(48);
         WR16(text_half, 0x0000);
         cyc(54);
-        wr8(W(dp_56), 0x08);
+        WR8(dp_56, 0x08);
         cyc(62);
-        wr16(W(dp_54), errors[i].text);
+        WR16(dp_54, errors[i].text);
         DebugPrint(bank);
         a = errors[i].text;
     }

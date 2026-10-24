@@ -356,9 +356,9 @@ uint8_t WindowEdgesStep(uint8_t db0, uint8_t *p, uint8_t *x)
     *p = (uint8_t)((*p & ~P_C) | (*x >= 0x02 ? P_C : (cyc(38), 0)));
     if (*x >= 0x02) {
         cyc(80);
-        wr8(W(fade_level_hi), 0x80);
+        WR8(fade_level_hi, 0x80);
         cyc(48);
-        wr8(W(fade_out), 0x01);
+        WR8(fade_out, 0x01);
         a = 0x01;
     }
     cyc(72);

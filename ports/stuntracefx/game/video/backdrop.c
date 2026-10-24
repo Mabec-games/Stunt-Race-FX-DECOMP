@@ -33,9 +33,9 @@ uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
     uint16_t obj = rd16(cyc_then(152, dbw(bank, player ? (cyc(6), 0x034A) : 0x0346)));
 
     cyc(player ? 32 : 54);              /* player 1's load has a BRA after it */
-    obj = rd16(W(obj_link) + obj);
+    obj = RD16X(obj_link, obj);
     cyc(46);
-    obj = rd16(W(obj_link) + obj);
+    obj = RD16X(obj_link, obj);
     cyc(46);
     return (rd16(0x000000 + obj) & 0x4000) ? (cyc(172), 0x0008) : (cyc(178), 0x0000);
 }
@@ -82,14 +82,14 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
     unsigned s;
 
     cyc(54);
-    *x = (uint8_t)(rd8(W(gsu_buffer_select)) << 1);
+    *x = (uint8_t)(RD8(gsu_buffer_select) << 1);
     cyc(m16 ? 90 : 82);                 /* a 16-bit LDA reads a second byte */
-    a = (uint16_t)(rd16(W(view_06cf)) >> 2);
+    a = (uint16_t)(RD16(view_06cf) >> 2);
     wr16((WAI(bg2_scroll_x, *x)), cyc_then(58, a));
     cyc(62);
     a = PlayerVehicleRaised(bank, (uint8_t)*x);
     cyc(46);
-    a = (uint16_t)(a + rd16(W(wram_06CD)));
+    a = (uint16_t)(a + RD16(wram_06CD));
     a = (uint16_t)(a + 0x0018);
     s = (unsigned)(uint16_t)(a << 1) + 0xEF99 + (a >> 15);
     t = (uint16_t)s;
@@ -97,7 +97,7 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
         { cyc(18); t = 0xF257; }
     wr16((WAI(gradient_src_a, *x)), cyc_then(182, t));
     cyc(82);
-    a = (uint16_t)(a + rd16(W(backdrop_y_base) + *x));
+    a = (uint16_t)(a + RD16X(backdrop_y_base, *x));
     wr16((WAI(bg2_scroll_y, *x)), cyc_then(30, a));
     cyc(70);
     return a;

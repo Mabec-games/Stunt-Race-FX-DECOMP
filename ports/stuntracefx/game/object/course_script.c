@@ -159,19 +159,19 @@ void CourseScriptRun(Carried *cr)
         case 0x80BA:                                   /* $06 */
             cyc(52);
             for (i = 0; i < 0x0800; i = (uint16_t)(i + 2))
-                { cyc(96); wr16(W(object_buckets) + i, 0x0000); }
+                { cyc(96); WR16X(object_buckets, i, 0x0000); }
             cyc(128);
-            wr8(W(spawn_mirror), 0x00);
+            WR8(spawn_mirror, 0x00);
             cyc(46);
             WR16(spawn_counter, 0x0000);
             cyc(56);
-            wr16(W(object_list_b_len), 0x0000);
+            WR16(object_list_b_len, 0x0000);
             cyc(32);
-            wr16(W(object_list_len), 0x0000);
+            WR16(object_list_len, 0x0000);
             cyc(32);
             wr16(0x7026F2, 0x0000);
             cyc(32);
-            wr16(W(wram_1AEC), 0x0000);
+            WR16(wram_1AEC, 0x0000);
             cyc(24);
             a = (uint16_t)(RD16(course) & 0x00FF);
             cyc(56);
@@ -192,7 +192,7 @@ void CourseScriptRun(Carried *cr)
             break;
         case 0x8112:                                   /* $08 */
             cyc(68);
-            wr8(W(spawn_mirror), rd8(b | (uint16_t)(0x8001 + y)));
+            WR8(spawn_mirror, rd8(b | (uint16_t)(0x8001 + y)));
             cyc(22);
             x = (uint16_t)(y + 2);
             break;
@@ -216,14 +216,14 @@ void CourseScriptRun(Carried *cr)
             cyc(100);
             wr16(OBJ_FIELD(o, OBJ_OFF(obj_27)), rd16(b | (uint16_t)(0x8016 + y)));
             cyc(106);
-            a = rd16(W(object_list_b_len));
+            a = RD16(object_list_b_len);
             if (a != 0x0008) {
                 cyc(114);
-                wr16(W(object_list_b_len), (uint16_t)(a + 2));
+                WR16(object_list_b_len, (uint16_t)(a + 2));
                 cyc(46);
-                wr16(W(object_list_b) + a, o);
+                WR16X(object_list_b, a, o);
                 cyc(84);
-                wr16(W(object_list_b) + (uint16_t)(a + 2), 0x0000);
+                WR16X(object_list_b, (uint16_t)(a + 2), 0x0000);
             }
             cyc(94);
             x = (uint16_t)(y + 0x1A);
@@ -231,29 +231,29 @@ void CourseScriptRun(Carried *cr)
         case 0x8196:                                   /* $12 */
             cyc(216);
             n = (uint16_t)((uint16_t)((rd16(b | (uint16_t)(0x8001 + y)) & 0x00FF) - 1) << 3);
-            wr16(W(script_records) + n, rd16(b | (uint16_t)(0x8002 + y)));
+            WR16X(script_records, n, rd16(b | (uint16_t)(0x8002 + y)));
             cyc(78);
-            wr16(W(wram_7EFF68) + n, rd16(b | (uint16_t)(0x8004 + y)));
+            WR16X(wram_7EFF68, n, rd16(b | (uint16_t)(0x8004 + y)));
             cyc(78);
-            wr16(W(wram_7EFF6A) + n, rd16(b | (uint16_t)(0x8006 + y)));
+            WR16X(wram_7EFF6A, n, rd16(b | (uint16_t)(0x8006 + y)));
             cyc(92);
-            wr8(W(wram_7EFF6C) + n, rd8(b | (uint16_t)(0x8008 + y)));
+            WR8X(wram_7EFF6C, n, rd8(b | (uint16_t)(0x8008 + y)));
             cyc(22);                                   /* REP */
             x = (uint16_t)(y + 9);
             break;
         case 0x81CC:                                   /* $14 */
             cyc(30);
-            a = rd16(W(wram_1AEC));
+            a = RD16(wram_1AEC);
             cyc(78);
             a |= rd16(b | (uint16_t)(0x8001 + y));
             wr16(0x7026F2, a);
             cyc(32);
-            wr16(W(wram_1AEC), a);
+            WR16(wram_1AEC, a);
             x = (uint16_t)(y + 3);
             break;
         case 0x81E6:                                   /* $1A */
             cyc(76);
-            wr16(W(wram_1AEE), rd16(b | (uint16_t)(0x8001 + y)));
+            WR16(wram_1AEE, rd16(b | (uint16_t)(0x8001 + y)));
             x = (uint16_t)(y + 3);
             break;
         case 0x81F8:                                   /* $16 */

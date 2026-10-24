@@ -28,24 +28,24 @@ uint8_t RandomStep(void)
 {
     int c = 0;
     cyc(60);
-    uint8_t a = rd8(W(random_e6));
+    uint8_t a = RD8(random_e6);
 
     cyc(30);
-    a = sbc8(a, rd8(W(random_e7)), &c);
+    a = sbc8(a, RD8(random_e7), &c);
     cyc(16);
-    wr8(W(random_e7), a);
+    WR8(random_e7, a);
     cyc(16);
-    a = sbc8(a, rd8(W(random_e8)), &c);
+    a = sbc8(a, RD8(random_e8), &c);
     cyc(16);
-    wr8(W(random_e8), a);
+    WR8(random_e8, a);
     cyc(16);
-    a = sbc8(a, rd8(W(random_e9)), &c);
+    a = sbc8(a, RD8(random_e9), &c);
     cyc(16);
-    wr8(W(random_e9), a);
+    WR8(random_e9, a);
     cyc(16);
-    a = sbc8(a, rd8(W(random_e6)), &c);
+    a = sbc8(a, RD8(random_e6), &c);
     cyc(16);
-    wr8(W(random_e6), a);
+    WR8(random_e6, a);
     cyc(70);
     return a;
 }

@@ -577,11 +577,11 @@ void abi_ResultsUnpackNext(void)
 void KeepTimeDigits(Carried *cr)
 {
     cyc(62);
-    wr16(W(dp_f1), cr->y);
+    WR16(dp_f1, cr->y);
     cyc(16);
-    wr16(W(dp_f3), cr->x);
+    WR16(dp_f3, cr->x);
     cyc(16);
-    wr16(W(dp_f5), cr->a);
+    WR16(dp_f5, cr->a);
 }
 
 void abi_KeepTimeDigits(void)
@@ -614,21 +614,21 @@ void ScoreTiles(Carried *cr)
     unsigned i;
 
     cyc(102);
-    wr16(W(dp_f1), cr->a);
+    WR16(dp_f1, cr->a);
     r_sep(cr, P_M);
     lo = (uint8_t)cr->a;
     wr8((uint32_t)(W(tilemap_7f93d7) + 16 + x), cyc_then(98, low_digit_tile(cr, lo)));
     cyc(16);
-    lo = rd8(W(dp_f1));
+    lo = RD8(dp_f1);
     wr8((uint32_t)(W(tilemap_7f93d7) + 14 + x), cyc_then(64, high_digit_tile(cr, lo)));
     cyc(16);
-    hi = rd8(W(dp_f2));
+    hi = RD8(dp_f2);
     cr->a = (uint16_t)((cr->a & 0xFF00) | hi);
     cmp8_imm(cr, 0x40);
     if (hi < 0x40) {
         wr8((uint32_t)(W(tilemap_7f93d7) + 2 + x), cyc_then(124, low_digit_tile(cr, hi)));
         cyc(16);
-        hi = rd8(W(dp_f2));
+        hi = RD8(dp_f2);
         wr8((uint32_t)(W(tilemap_7f93d7) + x), cyc_then(64, high_digit_tile(cr, hi)));
         lda8_imm(cr, 0xC4);
         cyc(48);
@@ -677,19 +677,19 @@ void TimeTiles(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(150);
-    v = rd8(W(dp_f5));
+    v = RD8(dp_f5);
     set_p(cr, nz8(cr->p, v));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(78);
     wr8((uint32_t)(W(tilemap_7f93d7) + x), alu_adc8(v, 0xC0, &cr->p));
     cyc(16);
-    wr8((uint32_t)(W(tilemap_7f93d7) + 4 + x), cyc_then(64, high_digit_tile(cr, rd8(W(dp_f3)))));
+    wr8((uint32_t)(W(tilemap_7f93d7) + 4 + x), cyc_then(64, high_digit_tile(cr, RD8(dp_f3))));
     cyc(16);
-    wr8((uint32_t)(W(tilemap_7f93d7) + 6 + x), cyc_then(76, low_digit_tile(cr, rd8(W(dp_f3)))));
+    wr8((uint32_t)(W(tilemap_7f93d7) + 6 + x), cyc_then(76, low_digit_tile(cr, RD8(dp_f3))));
     cyc(16);
-    wr8((uint32_t)(W(tilemap_7f93d7) + 10 + x), cyc_then(64, high_digit_tile(cr, rd8(W(dp_f1)))));
+    wr8((uint32_t)(W(tilemap_7f93d7) + 10 + x), cyc_then(64, high_digit_tile(cr, RD8(dp_f1))));
     cyc(16);
-    v = low_digit_tile(cr, rd8(W(dp_f1)));
+    v = low_digit_tile(cr, RD8(dp_f1));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(76);
     wr8((uint32_t)(W(tilemap_7f93d7) + 12 + x), v);
@@ -1337,7 +1337,7 @@ static void car_change(Carried *cr, uint32_t b, int right)
     set_p(cr, nz8(cr->p, (uint8_t)cr->x));
     cyc(86);
     r_lda8(cr, 0x07CE93 + cr->x);
-    wr8(W(selection), (uint8_t)cr->a);
+    WR8(selection, (uint8_t)cr->a);
     (cyc(62), SelectionSave_cr(cr));
     r_sep(cr, P_M);
     lda8_imm(cr, 0x12);
@@ -1641,19 +1641,19 @@ static void total_line(Carried *cr)
     WR8(wram_0D45, (uint8_t)cr->a);
     lda8_imm(cr, 0x60);
     cyc(32);
-    wr8(W(dp_f2), 0x60);
+    WR8(dp_f2, 0x60);
     lda8_imm(cr, 0x67);
     cyc(32);
-    wr8(W(dp_f3), 0x67);
+    WR8(dp_f3, 0x67);
     lda8_imm(cr, 0x2F);
     cyc(32);
-    wr8(W(dp_f4), 0x2F);
+    WR8(dp_f4, 0x2F);
     lda8_imm(cr, 0xC0);
     cyc(32);
-    wr8(W(dp_f1), 0xC0);
+    WR8(dp_f1, 0xC0);
     lda8_imm(cr, 0x38);
     cyc(32);
-    wr8(W(dp_f5), 0x38);
+    WR8(dp_f5, 0x38);
     (cyc(46), w_OamTextLine(cr));
 }
 
@@ -2100,18 +2100,18 @@ void RaceTimeTiles(Carried *cr)
 
     r_sep(cr, P_M);
     cyc(46);
-    wr8(W(wram_7F9765), cyc_then(76, low_digit_tile(cr, RD8(wram_0EE9))));
+    WR8(wram_7F9765, cyc_then(76, low_digit_tile(cr, RD8(wram_0EE9))));
     cyc(24);
-    wr8(W(wram_7F9769), cyc_then(64, high_digit_tile(cr, RD8(wram_0EE8))));
+    WR8(wram_7F9769, cyc_then(64, high_digit_tile(cr, RD8(wram_0EE8))));
     cyc(24);
-    wr8(W(wram_7F976B), cyc_then(76, low_digit_tile(cr, RD8(wram_0EE8))));
+    WR8(wram_7F976B, cyc_then(76, low_digit_tile(cr, RD8(wram_0EE8))));
     cyc(24);
-    wr8(W(wram_7F976F), cyc_then(64, high_digit_tile(cr, RD8(wram_0EE7))));
+    WR8(wram_7F976F, cyc_then(64, high_digit_tile(cr, RD8(wram_0EE7))));
     cyc(24);
     d = low_digit_tile(cr, RD8(wram_0EE7));
     cr->a = (uint16_t)((cr->a & 0xFF00) | d);
     cyc(76);
-    wr8(W(wram_7F9771), d);
+    WR8(wram_7F9771, d);
     r_sep(cr, P_M | P_X);
     cyc(24);
     r_lda8(cr, WA(wram_0D48));
@@ -2163,7 +2163,7 @@ static void palette_fill(Carried *cr, uint16_t x, uint16_t y, uint8_t f, unsigne
     set_p(cr, nz16(cr->p, y));
     lda8_imm(cr, f);
     cyc(t);
-    wr8(W(dp_f1), f);
+    WR8(dp_f1, f);
     TilemapPaletteFill_cr(cr);
 }
 
@@ -2267,21 +2267,21 @@ void ResultsTotalTiles(Carried *cr)
     cyc(24);
     minutes_tile(cr, RD8(wram_0EEF), W(wram_7F95F7));
     cyc(24);
-    wr8(W(wram_7F95F9), cyc_then(76, low_digit_tile(cr, RD8(wram_0EEF))));
+    WR8(wram_7F95F9, cyc_then(76, low_digit_tile(cr, RD8(wram_0EEF))));
     lda8_imm(cr, 0xE6);
     cyc(48);
-    wr8(W(wram_7F95FB), 0xE6);
+    WR8(wram_7F95FB, 0xE6);
     bcd_tiles(cr, WA(wram_0EEE), W(wram_7F95FD), W(wram_7F95FF));
     lda8_imm(cr, 0xE7);
     cyc(48);
-    wr8(W(wram_7F9601), 0xE7);
+    WR8(wram_7F9601, 0xE7);
     cyc(24);
-    wr8(W(wram_7F9603), cyc_then(64, high_digit_tile(cr, RD8(wram_0EED))));
+    WR8(wram_7F9603, cyc_then(64, high_digit_tile(cr, RD8(wram_0EED))));
     cyc(24);
     v = low_digit_tile(cr, RD8(wram_0EED));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(76);
-    wr8(W(wram_7F9605), v);
+    WR8(wram_7F9605, v);
     cyc(42);
 }
 
@@ -2502,7 +2502,7 @@ void ResultsBonusCount(Carried *cr)
 tiles:
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_D)));
     cyc(38);
-    wr8(W(wram_7F9765), cyc_then(76, low_digit_tile(cr, RD8(wram_0EEC))));
+    WR8(wram_7F9765, cyc_then(76, low_digit_tile(cr, RD8(wram_0EEC))));
     bcd_tiles(cr, WA(wram_0EEB), W(wram_7F9769), W(wram_7F976B));
     bcd_tiles(cr, WA(wram_0EEA), W(wram_7F976F), W(wram_7F9771));
     ResultsTotalTiles(cr);
@@ -2650,32 +2650,32 @@ void RecordTimeTiles(Carried *cr)
     if (t == 0xC0) {
         lda8_imm(cr, 0x0F);
         cyc(112);
-        wr8(W(wram_7F9737), 0x0F);
+        WR8(wram_7F9737, 0x0F);
         cyc(32);
-        v = (uint8_t)(rd8(W(wram_7F9738)) | 0x01);
+        v = (uint8_t)(RD8(wram_7F9738) | 0x01);
         lda8_imm(cr, v);
         cyc(48);
-        wr8(W(wram_7F9738), v);
+        WR8(wram_7F9738, v);
     } else {
         cyc(102);
-        wr8(W(wram_7F9737), t);
+        WR8(wram_7F9737, t);
     }
     cyc(t == 0xC0 ? 46 : 24);           /* BRA, or not; LDA abs,X */
-    wr8(W(wram_7F9739), cyc_then(76, low_digit_tile(cr, RD8I(record_times, 2 + x))));
+    WR8(wram_7F9739, cyc_then(76, low_digit_tile(cr, RD8I(record_times, 2 + x))));
     lda8_imm(cr, 0xE6);
     cyc(48);
-    wr8(W(wram_7F973B), 0xE6);
+    WR8(wram_7F973B, 0xE6);
     bcd_tiles(cr, WAI(record_times, 1 + x), W(wram_7F973D), W(wram_7F973F));
     lda8_imm(cr, 0xE7);
     cyc(48);
-    wr8(W(wram_7F9741), 0xE7);
+    WR8(wram_7F9741, 0xE7);
     cyc(24);
-    wr8(W(wram_7F9743), cyc_then(64, high_digit_tile(cr, RD8I(record_times, x))));
+    WR8(wram_7F9743, cyc_then(64, high_digit_tile(cr, RD8I(record_times, x))));
     cyc(24);
     v = low_digit_tile(cr, RD8I(record_times, x));
     cr->a = (uint16_t)((cr->a & 0xFF00) | v);
     cyc(76);
-    wr8(W(wram_7F9745), v);
+    WR8(wram_7F9745, v);
     cyc(42);
 }
 

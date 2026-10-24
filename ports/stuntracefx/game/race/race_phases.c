@@ -1408,7 +1408,7 @@ static void lap_override(Carried *cr, uint32_t b)
     cyc(24);
     r_lda8(cr, WA(race_time_minutes));
     cyc(16);
-    wr8(W(dp_f1), (uint8_t)cr->a);
+    WR8(dp_f1, (uint8_t)cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_D)));
     cyc(38);
     r_lda8(cr, WA(race_time_fraction));
@@ -3070,7 +3070,7 @@ void TimeUpBattle(Carried *cr)
     }
     a = (uint8_t)cr->a;                         /* PHA */
     cyc(86);
-    wr8(W(save_bad_flag), 0x11);
+    WR8(save_bad_flag, 0x11);
     lda8_imm(cr, a);                                /* PLA */
     time_up_end(cr, 0x3C);
 }

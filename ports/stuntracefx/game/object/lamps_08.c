@@ -822,7 +822,7 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
 
     lr_lda8(r, cyc_then(30, F(W(obj_14), r->x)));
     cyc(16);
-    wr8(W(dp_3e), (uint8_t)r->a);
+    WR8(dp_3e, (uint8_t)r->a);
     cyc(58);
     lda8(r, 0x00);
     lr_approach_byte(r, ApproachSixteenthMin16Byte);
@@ -839,7 +839,7 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
     r->p &= (uint8_t)~P_M;
     lr_lda(r, cyc_then(52, F(W(obj_vel_y), r->x)));
     cyc(16);
-    wr16(W(dp_3e), r->a);
+    WR16(dp_3e, r->a);
     lr_lda(r, cyc_then(30, F(W(obj_29), r->x)));
     (cyc(14), lr_approach(r, ApproachEighthMin8));
     wr16(F(W(obj_vel_y), r->x), cyc_then(30, r->a));
@@ -847,7 +847,7 @@ static void spray_piece_step(uint8_t bank, LRegs *r)
     r->p &= (uint8_t)~P_M;
     lr_lda(r, cyc_then(74, F(W(obj_vel_z), r->x)));
     cyc(16);
-    wr16(W(dp_3e), r->a);
+    WR16(dp_3e, r->a);
     lr_lda_imm(r, 0x05DC);
     lr_approach(r, ApproachEighthMin8);
     wr16(F(W(obj_vel_z), r->x), cyc_then(30, r->a));

@@ -986,7 +986,7 @@ void abi_GsuTableEntryNext(void)
 uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(164);
-    uint16_t n = rd16(W(wram_0CEE)), s, d;
+    uint16_t n = RD16(wram_0CEE), s, d;
     unsigned i;
 
     cyc(32);
@@ -996,10 +996,10 @@ uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
     s = 0xF77F;
     d = 0x0AAA;
     cyc(102);
-    wr16(W(wram_1F2B), n);
+    WR16(wram_1F2B, n);
     do {
         for (i = 0; i < 30; i += 2)
-            { cyc(32); wr16(0x700000 | (uint16_t)(d + i), cyc_then(30, rd16(W(wram_bank_7e) + s + i))); }
+            { cyc(32); wr16(0x700000 | (uint16_t)(d + i), cyc_then(30, RD16X(wram_bank_7e, s + i))); }
         d = (uint16_t)(d + 0x1E);
         *p = (uint8_t)(*p & ~(P_C | P_V));
         if ((unsigned)s + 0x1E > 0xFFFF)
@@ -1008,9 +1008,9 @@ uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
             *p |= P_V;
         s = (uint16_t)(s + 0x1E);
         cyc(164);
-        n = (uint16_t)(rd16(W(wram_1F2B)) - 1);
+        n = (uint16_t)(RD16(wram_1F2B) - 1);
         cyc(46);
-        wr16(W(wram_1F2B), n);
+        WR16(wram_1F2B, n);
     } while (cyc_loop(22, n));
     cyc(88);
     *x = s;

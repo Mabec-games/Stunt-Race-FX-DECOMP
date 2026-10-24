@@ -26,21 +26,21 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
 
         if (!n)
             { cyc(32); return x; }
-        wr16(W(gradient_run_left), n);
+        WR16(gradient_run_left, n);
         cyc(92);
         colour = rd16(((uint32_t)bank << 16) + 0x0020 + *y);
-        out = rd16(W(gradient_out));
+        out = RD16(gradient_out);
         do {
             cyc(32);
             wr16((W(gradient_colours) + out) & 0xFFFFFF, colour);
             out = (uint16_t)(out + 2);
             cyc(44);
-            n = (uint16_t)(rd16(W(gradient_run_left)) - 1);
+            n = (uint16_t)(RD16(gradient_run_left) - 1);
             cyc(14);
-            wr16(W(gradient_run_left), n);
+            WR16(gradient_run_left, n);
         } while (cyc_loop(22, n));
         cyc(32);
-        wr16(W(gradient_out), out);
+        WR16(gradient_out, out);
         x = (uint16_t)(x + 1);
         *y = (uint16_t)(*y + 2);
         cyc(6);
@@ -160,18 +160,18 @@ uint16_t GradientBuildColours(uint16_t x, int *carry)
     uint16_t y = rd16(0x03F6F1 + x), second;
     int i;
 
-    wr16(W(gradient_out), 0x0000);
+    WR16(gradient_out, 0x0000);
     GradientExpandFirst(bank, &y, carry);
     cyc(176);
     second = rd16(0x03F745 + x);
     if (second) {
         y = second;
-        wr16(W(gradient_out), 0x0400);
+        WR16(gradient_out, 0x0400);
         GradientExpandSecond(bank, &y, carry);
     }
     cyc(52);
     for (i = 0xFE; i >= 0; i -= 2)
-        { cyc(50); wr16(W(gradient_colours_clear) + (uint32_t)i, 0x0000); cyc(32); }
+        { cyc(50); WR16X(gradient_colours_clear, (uint32_t)i, 0x0000); cyc(32); }
     return y;
 }
 
@@ -206,7 +206,7 @@ static uint16_t fill_cgadd(uint16_t value, uint16_t x, uint16_t count)
     cyc(0);
     do {
         cyc(32);
-        wr16(W(gradient_cgadd) + x, value);
+        WR16X(gradient_cgadd, x, value);
         x = (uint16_t)(x + 2);
     } while (cyc_loop(64, --count));
     cyc(100);
@@ -289,14 +289,14 @@ void abi_GradientFillCgaddB(void)
 uint16_t GradientPointersToBank7F(void)
 {
     cyc(46);
-    uint16_t v = rd16(W(gradient_src_a));
+    uint16_t v = RD16(gradient_src_a);
 
     cyc(32);
-    wr16(W(gradient_ptr_a), v);
+    WR16(gradient_ptr_a, v);
     cyc(24);
-    v = rd16(W(gradient_src_b));
+    v = RD16(gradient_src_b);
     cyc(32);
-    wr16(W(gradient_ptr_b), v);
+    WR16(gradient_ptr_b, v);
     cyc(42);
     return v;
 }
@@ -366,19 +366,19 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(70);
     dma_wr16(b | 0x4332, 0x3489);
     cyc(102);
-    wr16(W(gradient_cgadd), 0x0117);
+    WR16(gradient_cgadd, 0x0117);
     x = 2;
     cyc(94);
     (cyc(0), GradientFillCgaddB(0x0181, x, 0x0050));
     x = (uint16_t)(x + 0xA0);
     cyc(56);
-    wr16(W(gradient_cgadd) + x, 0x0118);
+    WR16X(gradient_cgadd, x, 0x0118);
     x = (uint16_t)(x + 2);
     cyc(122);
     (cyc(0), GradientFillCgaddB(0x0181, x, 0x0050));
     x = (uint16_t)(x + 0xA0);
     cyc(56);
-    wr16(W(gradient_cgadd) + x, 0x0000);
+    WR16X(gradient_cgadd, x, 0x0000);
     for (k = 0; k < 6; k++)
         { cyc(56); wr16(ptr[k].a, ptr[k].v); }
     cyc(22);

@@ -118,9 +118,9 @@ static uint8_t flat(uint8_t i)
     uint8_t v;
 
     cyc(150 + crossed(SIN_TABLE, i));
-    wr8(W(heading_sin_a), rd8(SIN_TABLE + i));
+    WR8(heading_sin_a, rd8(SIN_TABLE + i));
     cyc(48 + crossed(COS_TABLE, i));
-    wr8(W(heading_cos_a), rd8(COS_TABLE + i));
+    WR8(heading_cos_a, rd8(COS_TABLE + i));
     v = smul_at(W(heading_speed), W(heading_sin_a));
     store_extended(W(dp_02), v);
     v = smul_at(W(heading_speed), W(heading_cos_a));
@@ -137,17 +137,17 @@ static uint8_t pitched(uint8_t ia, uint8_t ib)
     uint8_t v;
 
     cyc(84 + crossed(SIN_TABLE, ia));
-    wr8(W(heading_sin_a), rd8(SIN_TABLE + ia));
+    WR8(heading_sin_a, rd8(SIN_TABLE + ia));
     cyc(48 + crossed(COS_TABLE, ia));
-    wr8(W(heading_cos_a), rd8(COS_TABLE + ia));
+    WR8(heading_cos_a, rd8(COS_TABLE + ia));
     cyc(48 + crossed(SIN_TABLE, ib));
-    wr8(W(heading_sin_b), rd8(SIN_TABLE + ib));
+    WR8(heading_sin_b, rd8(SIN_TABLE + ib));
     cyc(48 + crossed(COS_TABLE, ib));
-    wr8(W(heading_cos_b), rd8(COS_TABLE + ib));
-    wr8(W(dp_02), cyc_then(14, smul_at(W(heading_speed), W(heading_sin_a))));
+    WR8(heading_cos_b, rd8(COS_TABLE + ib));
+    WR8(dp_02, cyc_then(14, smul_at(W(heading_speed), W(heading_sin_a))));
     v = smul_at(W(dp_02), W(heading_cos_b));
     store_dec(W(dp_02), v);
-    wr8(W(dp_94), cyc_then(14, smul_at(W(heading_speed), W(heading_cos_a))));
+    WR8(dp_94, cyc_then(14, smul_at(W(heading_speed), W(heading_cos_a))));
     v = smul_at(W(dp_94), W(heading_cos_b));
     store_dec(W(dp_94), v);
     v = smul_at(W(heading_speed), W(heading_sin_b));
@@ -162,17 +162,17 @@ static uint8_t pitched(uint8_t ia, uint8_t ib)
 static void save_xy(uint16_t x, uint16_t y)
 {
     cyc(16);
-    wr16(W(heading_save_x), x);
+    WR16(heading_save_x, x);
     cyc(16);
-    wr16(W(heading_save_y), y);
+    WR16(heading_save_y, y);
 }
 
 static void finish(void)
 {
     cyc(38);
-    (void)rd16(W(heading_save_x));
+    (void)RD16(heading_save_x);
     cyc(16);
-    (void)rd16(W(heading_save_y));
+    (void)RD16(heading_save_y);
     cyc(72);
 }
 
@@ -229,12 +229,12 @@ uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, RD8I(obj_17, x)));
+    WR8(heading_speed, cyc_then(16, RD8I(obj_17, x)));
     (cyc(22), save_xy(x, y));
     cyc(16);
-    wr8(W(dp_08), 0x00);
+    WR8(dp_08, 0x00);
     cyc(16);
-    wr8(W(dp_08) + 1, 0x00);
+    WR8X(dp_08, 1, 0x00);
     cyc(30);
     i = RD8I(obj_15, x);
     v = flat(i);
@@ -275,14 +275,14 @@ uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, RD8I(obj_17, x)));
+    WR8(heading_speed, cyc_then(16, RD8I(obj_17, x)));
     cyc(30);
     i = RD8I(obj_15, x);
     save_xy(x, y);
     cyc(16);
-    wr8(W(dp_08), 0x00);
+    WR8(dp_08, 0x00);
     cyc(16);
-    wr8(W(dp_08) + 1, 0x00);
+    WR8X(dp_08, 1, 0x00);
     cyc(80);
     v = flat((uint8_t)(~i + 2));
     finish();
@@ -324,13 +324,13 @@ uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, RD8I(obj_17, x)));
+    WR8(heading_speed, cyc_then(16, RD8I(obj_17, x)));
     cyc(16);
-    wr8(W(dp_02) + 1, 0x00);
+    WR8X(dp_02, 1, 0x00);
     cyc(16);
-    wr8(W(dp_08) + 1, 0x00);
+    WR8X(dp_08, 1, 0x00);
     cyc(16);
-    wr8(W(dp_94) + 1, 0x00);
+    WR8X(dp_94, 1, 0x00);
     save_xy(x, y);
     cyc(30);
     h = RD8I(obj_15, x);
@@ -367,16 +367,16 @@ static uint8_t pitched_1f7c(uint16_t x, uint16_t y)
     uint8_t h, pitch, v;
 
     cyc(16);
-    wr8(W(dp_02) + 1, 0x00);
+    WR8X(dp_02, 1, 0x00);
     cyc(16);
-    wr8(W(dp_08) + 1, 0x00);
+    WR8X(dp_08, 1, 0x00);
     cyc(16);
-    wr8(W(dp_94) + 1, 0x00);
+    WR8X(dp_94, 1, 0x00);
     save_xy(x, y);
     cyc(112);
-    h = rd8(W(heading_turn));
+    h = RD8(heading_turn);
     cyc(68);
-    pitch = rd8(W(heading_pitch));
+    pitch = RD8(heading_pitch);
     v = pitched((uint8_t)(~h + 1), pitch);
     finish();
     return v;
@@ -397,7 +397,7 @@ uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(30);
-    wr8(W(heading_speed), cyc_then(16, RD8I(obj_17, x)));
+    WR8(heading_speed, cyc_then(16, RD8I(obj_17, x)));
     cyc(30);
     WR8(heading_turn, cyc_then(24, RD8I(obj_15, x)));
     cyc(30);
@@ -470,12 +470,12 @@ uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t
 
     head_v = -1;
     cyc(16);
-    wr8(W(heading_speed), speed);
+    WR8(heading_speed, speed);
     save_xy(x, y);
     cyc(16);
-    wr8(W(dp_08), 0x00);
+    WR8(dp_08, 0x00);
     cyc(16);
-    wr8(W(dp_08) + 1, 0x00);
+    WR8X(dp_08, 1, 0x00);
     cyc(60);
     i = sbc8(0x40, RD8I(obj_15, x));
     cyc(20);
@@ -516,12 +516,12 @@ uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 
     head_v = -1;
     cyc(16);
-    wr8(W(heading_speed), speed);
+    WR8(heading_speed, speed);
     save_xy(x, y);
     cyc(16);
-    wr8(W(dp_08), 0x00);
+    WR8(dp_08, 0x00);
     cyc(16);
-    wr8(W(dp_08) + 1, 0x00);
+    WR8X(dp_08, 1, 0x00);
     cyc(30);
     i = RD8I(obj_15, x);
     cyc(36);
@@ -569,19 +569,19 @@ static uint16_t move_by(uint16_t x)
     cyc(52);
     v = RD16I(obj_pos_x, x);
     cyc(30);
-    v = add16(v, rd16(W(dp_02)));
+    v = add16(v, RD16(dp_02));
     cyc(30);
     WR16I(obj_pos_x, x, v);
     cyc(30);
     v = RD16I(obj_pos_y, x);
     cyc(30);
-    v = add16(v, rd16(W(dp_08)));
+    v = add16(v, RD16(dp_08));
     cyc(30);
     WR16I(obj_pos_y, x, v);
     cyc(30);
     v = RD16I(obj_pos_z, x);
     cyc(30);
-    v = add16(v, rd16(W(dp_94)));
+    v = add16(v, RD16(dp_94));
     cyc(30);
     WR16I(obj_pos_z, x, v);
     return v;
@@ -908,19 +908,19 @@ uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
     uint16_t v;
 
     cyc(16);
-    WR8(heading_pitch, cyc_then(24, rd8(W(dp_02))));
+    WR8(heading_pitch, cyc_then(24, RD8(dp_02)));
     cyc(16);
-    wr8(W(heading_speed), cyc_then(16, rd8(W(dp_94))));
+    WR8(heading_speed, cyc_then(16, RD8(dp_94)));
     cyc(40);
     WR8(heading_turn, 0x40);
     cyc(62);
     HeadingPitchedFrom1F7C(x, y);
     cyc(38);
-    v = rd16(W(dp_02));
+    v = RD16(dp_02);
     cyc(30);
     WR16I(obj_vel_x, x, v);
     cyc(16);
-    v = rd16(W(dp_08));
+    v = RD16(dp_08);
     cyc(30);
     WR16I(obj_vel_y, x, v);
     cyc(30);

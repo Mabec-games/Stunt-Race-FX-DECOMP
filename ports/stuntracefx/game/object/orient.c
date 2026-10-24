@@ -76,33 +76,33 @@ uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
         face_y_set = 1;
         cyc(104);
         x = rd16((uint16_t)(rec + W(tie_object)));
-        wr16(W(dp_04), cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
-        wr16(W(tie_y), cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
-        wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
+        WR16(dp_04, cyc_then(16, rd16(cyc_then(44, absidx(bank, W(tie_x), rec)))));
+        WR16(dp_0a, cyc_then(16, rd16(cyc_then(30, absidx(bank, W(tie_y), rec)))));
+        wr16(absidx(bank, W(wram_05F2), 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, W(tie_z), rec)))));
         a = (cyc(62), ObjectGsu81E3(bank, x));
-        wr16(absidx(bank, 0x0010, rec), cyc_then(68, (uint16_t)(a + 0x8000)));
-        if (!(rd16(cyc_then(30, absidx(bank, 0x0000, rec))) & 0x0040)) {
+        wr16(absidx(bank, W(tie_angle_10), rec), cyc_then(68, (uint16_t)(a + 0x8000)));
+        if (!(rd16(cyc_then(30, absidx(bank, W(tie_flags), rec))) & 0x0040)) {
             cyc(102);
             a = ObjectGsu80BCThen81E3(bank, x);
         } else {
             cyc(108);
             a = ObjectGsu80BCThen81E3(bank, x);
-            old = rd16(cyc_then(22, absidx(bank, 0x000E, rec)));
+            old = rd16(cyc_then(22, absidx(bank, W(tie_angle_0e), rec)));
             a = asr16(asr16((uint16_t)(a - old)));
-            a = (uint16_t)(a + rd16(cyc_then(44, absidx(bank, 0x000E, rec))));
+            a = (uint16_t)(a + rd16(cyc_then(44, absidx(bank, W(tie_angle_0e), rec))));
         }
-        wr16(absidx(bank, 0x000E, rec), cyc_then(30, a));
-        a = asr16(asr16(neg_angle(absidx(bank, 0x2016, x))));
-        ease_half(bank, rec, 0x0012, a);
+        wr16(absidx(bank, W(tie_angle_0e), rec), cyc_then(30, a));
+        a = asr16(asr16(neg_angle(absidx(bank, W(obj_16), x))));
+        ease_half(bank, rec, W(tie_angle_12), a);
         cyc(22);                                       /* BRA */
     } else { cyc(114); if (rd16(rec) & 0x4000) {
         face_y_set = 1;
         cyc(76);
         x = rd16((uint16_t)(rec + W(tie_object)));
         cyc(14);
-        ease_half(bank, rec, 0x000E, neg_angle(absidx(bank, 0x2014, x)));
-        ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, x)));
-        ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, x)));
+        ease_half(bank, rec, W(tie_angle_0e), neg_angle(absidx(bank, W(obj_14), x)));
+        ease_half(bank, rec, W(tie_angle_10), neg_angle(absidx(bank, W(obj_15), x)));
+        ease_half(bank, rec, W(tie_angle_12), neg_angle(absidx(bank, W(obj_16), x)));
     } else { cyc(32); } }
     cyc(36);
     a = rd16(rec) & 0x8000;
@@ -152,10 +152,10 @@ static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
 
     wr16(dbw(bank, out), cyc_then(112, v));
     cyc(16);
-    v = rd16(W(tie_object));
+    v = RD16(dp_02);
     wr16(dbw(bank, (uint16_t)(out + 2)), cyc_then(24, v));
     cyc(16);
-    v = rd16(W(dp_94));
+    v = RD16(dp_94);
     wr16(dbw(bank, (uint16_t)(out + 4)), cyc_then(24, v));
     return v;
 }
@@ -180,22 +180,22 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
 
     *p &= (uint8_t)~(P_M | P_X);
     cyc(44);
-    wr16(W(dp_c5), cyc_then(16, rd16((uint16_t)(rec + W(tie_x)))));
+    WR16(dp_c5, cyc_then(16, rd16((uint16_t)(rec + W(tie_x)))));
     cyc(22);
-    wr16(W(dp_c7), cyc_then(16, rd16((uint16_t)(rec + W(tie_y)))));
+    WR16(dp_c7, cyc_then(16, rd16((uint16_t)(rec + W(tie_y)))));
     cyc(22);
-    wr16(W(dp_c9), cyc_then(16, rd16((uint16_t)(rec + W(tie_z)))));
+    WR16(dp_c9, cyc_then(16, rd16((uint16_t)(rec + W(tie_z)))));
     wr16((WA(wram_0664)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_0e))))));
     wr16((WA(wram_0666)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_10))))));
     wr16((WA(wram_0668)), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_12))))));
     cyc(52);
     obj = rd16((uint16_t)(rec + W(tie_object)));
     cyc(46);
-    wr16(0x70247A, cyc_then(32, rd16(W(obj_22_long) + obj)));
+    wr16(0x70247A, cyc_then(32, RD16X(obj_22_long, obj)));
     cyc(82);
-    wr16(W(tie_object), cyc_then(16, rd16(W(dp_c5))));
+    WR16(dp_02, cyc_then(16, RD16(dp_c5)));
     cyc(16);
-    wr16(W(dp_94), cyc_then(16, rd16(W(dp_c9))));
+    WR16(dp_94, cyc_then(16, RD16(dp_c9)));
     area_origin(bank, W(view_area_origin), p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
@@ -212,9 +212,9 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     cyc(98);
     obj = rd16((uint16_t)(rec + W(tie_object)));
     cyc(46);
-    wr16(W(tie_object), cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
+    WR16(dp_02, cyc_then(16, RD16X(obj_pos_x_long, obj)));
     cyc(32);
-    wr16(W(dp_94), cyc_then(16, rd16(W(obj_pos_z_long) + obj)));
+    WR16(dp_94, cyc_then(16, RD16X(obj_pos_z_long, obj)));
     v = area_origin(bank, W(fixed_area_origin), p);
     *p = nz16(*p, rec);
     cyc(80);

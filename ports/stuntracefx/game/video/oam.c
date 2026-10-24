@@ -26,7 +26,7 @@ void OamHideRange(uint16_t offset, uint16_t count)
     cyc(0);
     do {
         cyc(48);
-        wr8(W(oam_buffer) + 1 + offset, 0xF0);
+        WR8X(oam_buffer, 1 + offset, 0xF0);
         offset += 4;
     } while (cyc_loop(76, --count));
     cyc(112);
@@ -165,7 +165,7 @@ uint8_t OamWriteSprites36To46(void)
     ppu_wr(OAMADDH, 0x00);
     for (i = 0; i < 0x2C; i++) {
         cyc(i ? 80 : 54);               /* INX, DEY, BNE taken; the first: LDY */
-        v = rd8(W(oam_buffer) + 0x90 + i);
+        v = RD8X(oam_buffer, 0x90 + i);
         cyc(24);
         ppu_wr(OAMDATA, v);
     }
@@ -240,32 +240,32 @@ void abi_SpriteYOnScreen(void)
 static uint16_t sprite_strip(uint16_t index, uint16_t offset, uint32_t table, uint16_t step, uint16_t n)
 {
     cyc(112);
-    uint16_t pos0 = rd16(W(dp_02)), pos, v;
+    uint16_t pos0 = RD16(dp_02), pos, v;
 
     cyc(70);
-    wr16(W(dp_08), n);
+    WR16(dp_08, n);
     do {
         cyc(16);
-        pos = rd16(W(dp_02));
+        pos = RD16(dp_02);
         cyc(30);
-        wr16(W(oam_buffer) + offset, pos);
+        WR16X(oam_buffer, offset, pos);
         pos = (uint16_t)(pos + step);
         cyc(54);
-        wr16(W(dp_02), pos);
+        WR16(dp_02, pos);
         cyc(32);
         v = rd16(table + index);
         cyc(30);
-        wr16(W(oam_buffer) + 2 + offset, v);
+        WR16X(oam_buffer, 2 + offset, v);
         index = (uint16_t)(index + 2);
         offset = (uint16_t)(offset + 4);
         cyc(100);
-        n = rd16(W(dp_08));
+        n = RD16(dp_08);
         n = (uint16_t)(n - 1);
         cyc(14);
-        wr16(W(dp_08), n);
+        WR16(dp_08, n);
     } while (cyc_loop(22, !(n & 0x8000)));
     cyc(68);
-    wr16(W(dp_02), pos0);
+    WR16(dp_02, pos0);
     return pos0;
 }
 
@@ -364,10 +364,10 @@ void OamBufferClear(void)
 
     cyc(14);
     for (x = 0x01FC; x >= 0; x -= 4)
-        { cyc(110); wr16(W(oam_buffer) + (unsigned)x, 0xF0F0); }
+        { cyc(110); WR16X(oam_buffer, (unsigned)x, 0xF0F0); }
     cyc(70);
     for (x = 0x1E; x >= 0; x -= 2)
-        { cyc(82); wr16(W(oam_buffer_high) + (unsigned)x, 0x0000); }
+        { cyc(82); WR16X(oam_buffer_high, (unsigned)x, 0x0000); }
     cyc(116);
 }
 
@@ -406,10 +406,10 @@ void OamBufferHideLarge(void)
 
     cyc(4);
     for (x = 0; x < 0x200; x += 4)
-        { cyc(132); wr8(W(wram_0376) + x, 0xF0); }
+        { cyc(132); WR8X(wram_0376, x, 0xF0); }
     cyc(76);
     for (x = 0; x < 0x20; x++)
-        { cyc(90); wr8(W(oam_buffer_high) + x, 0xAA); }
+        { cyc(90); WR8X(oam_buffer_high, x, 0xAA); }
     cyc(124);
 }
 
@@ -752,12 +752,12 @@ uint8_t OamSetPalette(uint8_t bank, uint8_t bits, uint16_t count, uint16_t *y)
     uint8_t v = 0;
 
     cyc(38);
-    wr8(W(sprite_piece_count), bits);
+    WR8(sprite_piece_count, bits);
     do {
         cyc(30);
         v = (uint8_t)(RD8I(oam_buffer, 3 + *y) & 0xF1);
         cyc(32);
-        v = (uint8_t)(v | rd8(W(sprite_piece_count)));
+        v = (uint8_t)(v | RD8(sprite_piece_count));
         cyc(30);
         WR8I(oam_buffer, 3 + *y, v);
         *y = (uint16_t)(*y + 4);
@@ -1051,19 +1051,19 @@ uint16_t OamColumn8(uint8_t bank, uint16_t *x, uint8_t *p)
     cyc(2);
     for (i = 0; i < 8; i++) {
         cyc(108);
-        v = rd16(W(sprite_piece_count));
+        v = RD16(sprite_piece_count);
         cyc(30);
         WR16I(oam_buffer, *x, v);
         cyc(54);
-        wr16(W(sprite_piece_count), (uint16_t)(v + 0x10));
+        WR16(sprite_piece_count, (uint16_t)(v + 0x10));
         cyc(16);
-        v = rd16(W(dp_f3));
+        v = RD16(dp_f3);
         cyc(30);
         WR16I(oam_buffer, 2 + *x, v);
         s = (uint16_t)(v + 2);
         *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)v + 2 > 0xFFFF ? P_C : 0) | ((~v & s & 0x8000) ? P_V : 0));
         cyc(54);
-        wr16(W(dp_f3), s);
+        WR16(dp_f3, s);
         v = s;
         *x = (uint16_t)(*x + 4);
     }
@@ -1541,9 +1541,9 @@ void OamLargeColumns(uint8_t bank)
         uint16_t x = first[i];
 
         cyc(40);
-        wr16(W(sprite_piece_count), pos[i]);
+        WR16(sprite_piece_count, pos[i]);
         cyc(40);
-        wr16(W(dp_f3), tile[i]);
+        WR16(dp_f3, tile[i]);
         OamColumn8(bank, &x, &p);
     }
     cyc(22);
@@ -1642,7 +1642,7 @@ void abi_OamPlaceRows75And112(void)
 static uint16_t bar_marker(uint16_t v, uint16_t y, uint16_t span, uint16_t tile_far, uint16_t tile_near, uint32_t in)
 {
     cyc(in);                            /* from the strip's last store: each bar's own */
-    uint16_t tile, pos = rd16(W(dp_02));
+    uint16_t tile, pos = RD16(dp_02);
 
     if (v >= span) {
         cyc(68);
@@ -1678,11 +1678,11 @@ uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     /* PHP, SEP, REP (66), CMP # (16), BCC taken (22) or not and LDA #$3F
        (32), STA (16) */
     cyc(value < 0x3F ? 120 : 130);
-    wr8(W(dp_04), (uint8_t)v);
+    WR8(dp_04, (uint8_t)v);
     cyc(38);
-    wr16(W(dp_02), pos);
+    WR16(dp_02, pos);
     cyc(134);
-    v = rd8(W(dp_04));
+    v = RD8(dp_04);
     cyc(122);
     SpriteStrip4(v, (uint16_t)(y + 4));
     return bar_marker(v, y, 0x0010, 0x3C20, 0x3622, v >= 0x0010 ? 212 : 240);   /* BCC taken: 28 more */
@@ -1729,11 +1729,11 @@ uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     uint16_t v;
 
     cyc(82);                            /* PHP, SEP, REP, STA */
-    wr8(W(dp_04), value);
+    WR8(dp_04, value);
     cyc(38);
-    wr16(W(dp_02), pos);
+    WR16(dp_02, pos);
     cyc(134);
-    v = rd8(W(dp_04));
+    v = RD8(dp_04);
     cyc(122);
     SpriteStrip6(v, (uint16_t)(y + 4));
     return bar_marker(v, y, 0x0008, 0x3C1F, 0x3C1E, v >= 0x0008 ? 212 : 240);   /* BCC taken: 28 more */
@@ -1777,7 +1777,7 @@ uint16_t MetaspriteDraw(uint8_t bank, uint16_t group, uint16_t slot, uint8_t *pp
 
     cyc(176);
     n16 = rd16(0x04EDCD + x);
-    wr16(W(sprite_piece_count), n16);
+    WR16(sprite_piece_count, n16);
     cyc(62);
     x = rd16(0x04EDCB + x);
     hi = (uint16_t)(x & 0xFF00);
@@ -1811,24 +1811,24 @@ uint16_t MetaspriteDraw(uint8_t bank, uint16_t group, uint16_t slot, uint8_t *pp
             mask = rd16(b | (uint16_t)(0xFA8D + ((y >> 2) & 0x0003)));
             /* the mask's two bytes are stated when they are ROM; RAM is placed */
             cyc(bank == 0x7E || bank == 0x7F || bank == 0x70 || bank == 0x71 ? 16 : 32);
-            wr16(W(dp_f3), mask);
+            WR16(dp_f3, mask);
             hi = (uint16_t)(mask & 0xFF00);
             cyc(54);
-            v = rd8(W(oam_buffer_high) + (y >> 4));
+            v = RD8X(oam_buffer_high, (y >> 4));
             cyc(16);
-            o = rd8(W(dp_f3));
+            o = RD8(dp_f3);
             lo = (uint8_t)(v & o);
             cyc(32);
-            wr8(W(oam_buffer_high) + (y >> 4), lo);
+            WR8X(oam_buffer_high, (y >> 4), lo);
             p = (uint8_t)((p & ~P_C) | ((y >> 3) & 1 ? P_C : 0));
         }
         x = (uint16_t)(x + 5);
         y = (uint16_t)(y + 4);
         cyc(214);
-        n = rd8(W(sprite_piece_count));
+        n = RD8(sprite_piece_count);
         n = (uint8_t)(n - 1);
         cyc(6);
-        wr8(W(sprite_piece_count), n);
+        WR8(sprite_piece_count, n);
     } while (n);
     cyc(80);
     md_x = x;
@@ -1916,7 +1916,7 @@ static uint16_t flashing_metasprite_draw(uint16_t set, uint16_t *x, uint16_t *y,
     cyc(48);
     i = (uint16_t)(RD16(metasprite_set_sel) << 2);
     cyc(106);
-    wr16(W(sprite_piece_count), rd16(0x1CE5AE + i));
+    WR16(sprite_piece_count, rd16(0x1CE5AE + i));
     *x = rd16(0x1CE5AC + i);
     *y = 0;
     i = (uint16_t)(*x & 0xFF00);
@@ -1953,9 +1953,9 @@ static uint16_t flashing_metasprite_draw(uint16_t set, uint16_t *x, uint16_t *y,
         *x = (uint16_t)(*x + 5);
         *y = (uint16_t)(*y + 4);
         cyc(198);                               /* LDA long, BIT #, INX x5, INY x4, DEC's fetch */
-        n = (uint8_t)(rd8(W(sprite_piece_count)) - 1);
+        n = (uint8_t)(RD8(sprite_piece_count) - 1);
         cyc(6);
-        wr8(W(sprite_piece_count), n);
+        WR8(sprite_piece_count, n);
         if (n)
             cyc(122); else { cyc(86); }                           /* BNE, SEP, LDA long, CLC, ADC abs */
     } while (n);
@@ -2238,7 +2238,7 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
     i = (uint16_t)(i + RD16(sprite_piece_frame));
     cyc(182);
     *x = *set = rd16(0x1CF09E + ((uint16_t)(i << 2) & 0x00FF));
-    wr8(W(sprite_piece_count), 0x03);
+    WR8(sprite_piece_count, 0x03);
     do {
         cyc(24);
         WR8I(oam_buffer, *y, (uint8_t)(RD8(sprite_piece_x) + rd8(cyc_then(84, 0x1CF11E + *x))));
@@ -2263,9 +2263,9 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
         *x = (uint16_t)(*x + 5);
         *y = (uint16_t)(*y + 4);
         cyc(142);
-        n = (uint8_t)(rd8(W(sprite_piece_count)) - 1);
+        n = (uint8_t)(RD8(sprite_piece_count) - 1);
         cyc(6);
-        wr8(W(sprite_piece_count), n);
+        WR8(sprite_piece_count, n);
     } while (cyc_loop(22, n));
     cyc(60);
     *p = (uint8_t)(nz8(*p, 0) | P_M);
@@ -3151,18 +3151,18 @@ void OamWordRow5(uint8_t bank)
     uint8_t v;
 
     cyc(22 + 54);
-    wr8(W(dp_f3), 0xA5);
+    WR8(dp_f3, 0xA5);
     cyc(32);
-    wr8(W(dp_f4), 0x4E);
+    WR8(dp_f4, 0x4E);
     do {
         cyc(48);
-        v = rd8(W(dp_f3));
+        v = RD8(dp_f3);
         cyc(30);
         WR8I(oam_buffer, 364 + x, v);
         cyc(46);
-        wr8(W(dp_f3), (uint8_t)(v + 8));
+        WR8(dp_f3, (uint8_t)(v + 8));
         cyc(16);
-        WR8I(oam_buffer, 365 + x, cyc_then(30, rd8(W(dp_f4))));
+        WR8I(oam_buffer, 365 + x, cyc_then(30, RD8(dp_f4)));
         cyc(92);
         v = rd8(b | (uint16_t)(0xD5AD + y));
         WR8I(oam_buffer, 366 + x, (uint8_t)(v + 0xC0));
@@ -3662,9 +3662,9 @@ static uint16_t overlay_draw(unsigned lead)
         step = 0x08;
     }
     cyc(64);
-    wr8(W(dp_f5), bob);
+    WR8(dp_f5, bob);
     cyc(bob ? 32 : 38);                 /* to STA $F1: LDA #8, or the BRA */
-    wr8(W(sprite_piece_count), step);
+    WR8(sprite_piece_count, step);
     cyc(22 + 24);
     pic = RD16(wram_10A0);
     cyc(140);
@@ -3672,7 +3672,7 @@ static uint16_t overlay_draw(unsigned lead)
         : pic == rd16(cyc_then(58, 0x04E06A)) ? (cyc(6), 0x0004) : 0x0008;
     v = RD8(wram_10A8);
     cyc(16);
-    wr8(W(dp_f3), (uint8_t)(a | v));
+    WR8(dp_f3, (uint8_t)(a | v));
     cyc(24);
     x = RD8(wram_10A8) ? (cyc(16), 0x0024) : 0x0000;
     y = 0x0090;
@@ -3693,16 +3693,16 @@ static uint16_t overlay_draw(unsigned lead)
             v = rd8(0x04E1B7 + (uint32_t)x);
             v = (uint8_t)(v + RD8(wram_10A6));
             cyc(30);
-            v = (uint8_t)(v - rd8(W(dp_f5)));
+            v = (uint8_t)(v - RD8(dp_f5));
             cyc(30);
             WR8I(oam_buffer, 1 + y, v);
             cyc(70);
             v = rd8(0x04E1B8 + (uint32_t)x);
-            v = (uint8_t)(v + rd8(W(sprite_piece_count)));
+            v = (uint8_t)(v + RD8(sprite_piece_count));
             cyc(30);
             WR8I(oam_buffer, 2 + y, v);
             cyc(32);
-            WR8I(oam_buffer, 3 + y, cyc_then(30, (uint8_t)(0x10 | rd8(W(dp_f3)))));
+            WR8I(oam_buffer, 3 + y, cyc_then(30, (uint8_t)(0x10 | RD8(dp_f3))));
         }
         x = (uint16_t)(x + 3);
         y = (uint16_t)(y + 4);

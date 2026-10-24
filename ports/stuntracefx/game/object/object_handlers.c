@@ -1657,7 +1657,7 @@ void ObjectChildReturn(Carried *cr)
     cyc(46);
     r_add16(cr, rd16(0x70004A + cr->x));
     cyc(16);
-    wr16(W(dp_04), cr->a);
+    WR16(dp_04, cr->a);
     cyc(30);
     w = RD16I(obj_5f, cr->y);
     cyc(146);
@@ -1665,7 +1665,7 @@ void ObjectChildReturn(Carried *cr)
     cyc(46);
     r_add16(cr, rd16(0x70004C + cr->x));
     cyc(16);
-    wr16(W(dp_0a), cr->a);
+    WR16(dp_0a, cr->a);
     cyc(32);
     r_lda16(cr, 0x700022 + cr->x);
     cyc(46);
@@ -1680,21 +1680,21 @@ void ObjectChildReturn(Carried *cr)
     set_p(cr, nz16(cr->p, cr->y));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(52);
-    wr16(W(dp_3e), cyc_then(16, RD16I(obj_pos_x, cr->x)));
+    WR16(dp_3e, cyc_then(16, RD16I(obj_pos_x, cr->x)));
     cyc(16);
     r_lda16(cr, W(dp_04));
     r_approach(cr, ApproachQuarterMin4);
     cyc(30);
     WR16I(obj_pos_x, cr->x, cr->a);
     cyc(74);
-    wr16(W(dp_3e), cyc_then(16, RD16I(obj_pos_y, cr->x)));
+    WR16(dp_3e, cyc_then(16, RD16I(obj_pos_y, cr->x)));
     cyc(16);
     r_lda16(cr, W(dp_0a));
     r_approach(cr, ApproachQuarterMin4);
     cyc(30);
     WR16I(obj_pos_y, cr->x, cr->a);
     cyc(74);
-    wr16(W(dp_3e), cyc_then(16, RD16I(obj_pos_z, cr->x)));
+    WR16(dp_3e, cyc_then(16, RD16I(obj_pos_z, cr->x)));
     cyc(24);
     r_lda16(cr, WA(wram_05F2));
     r_approach(cr, ApproachQuarterMin4);
@@ -2486,11 +2486,11 @@ void ObjectPieceSpray(Carried *cr)
     set_p(cr, nz16(cr->p, cr->y));
     lda8(cr, 0x00);
     cyc(2);
-    wr8(W(dp_02), 0x00);
+    WR8(dp_02, 0x00);
     cyc(16);
-    wr8(W(dp_04), 0x00);
+    WR8(dp_04, 0x00);
     cyc(54);
-    wr8(W(dp_05), 0x00);
+    WR8(dp_05, 0x00);
     spray_from_y(cr);
 }
 
@@ -2513,11 +2513,11 @@ static void spray_from_y(Carried *cr)
 {
     lda8(cr, 0x00);
     cyc(2);
-    wr8(W(dp_08), 0x00);
+    WR8(dp_08, 0x00);
     cyc(16);
-    wr8(W(dp_0a), 0x00);
+    WR8(dp_0a, 0x00);
     cyc(54);
-    wr8(W(dp_0b), 0x00);
+    WR8(dp_0b, 0x00);
     spray_from_z(cr);
 }
 
@@ -2531,7 +2531,7 @@ static void spray_from_z(Carried *cr)
     r_lda8(cr, WA(wram_1F4C));
     v = (uint8_t)cr->a;
     cyc(16);
-    wr8(W(dp_94), v);
+    WR8(dp_94, v);
     cyc(24);
     WR8(wram_05F2, v);
     if (v & 0x80) {
@@ -2558,15 +2558,15 @@ static void spray_turn(Carried *cr)
     cyc(16);
     r_lda8(cr, W(dp_04));
     cyc(16);
-    wr8(W(dp_02), (uint8_t)cr->a);
+    WR8(dp_02, (uint8_t)cr->a);
     cyc(16);
     r_lda8(cr, W(dp_0a));
     cyc(16);
-    wr8(W(dp_08), (uint8_t)cr->a);
+    WR8(dp_08, (uint8_t)cr->a);
     cyc(24);
     r_lda8(cr, WA(wram_05F2));
     cyc(16);
-    wr8(W(dp_94), (uint8_t)cr->a);
+    WR8(dp_94, (uint8_t)cr->a);
     cyc(30);
     r_lda8(cr, WAI(obj_15, cr->y));
     (cyc(62), RotateXZ_cr(cr));
@@ -2575,12 +2575,12 @@ static void spray_turn(Carried *cr)
     r_lda16(cr, W(dp_04));
     r_asl16(cr);
     cyc(30);
-    wr16(W(dp_04), cr->a);
+    WR16(dp_04, cr->a);
     cyc(16);
     r_lda16(cr, W(dp_0a));
     r_asl16(cr);
     cyc(30);
-    wr16(W(dp_0a), cr->a);
+    WR16(dp_0a, cr->a);
     cyc(24);
     r_lda16(cr, WA(wram_05F2));
     r_asl16(cr);
@@ -2589,7 +2589,7 @@ static void spray_turn(Carried *cr)
     cyc(30);
     r_lda16(cr, WAI(obj_pos_x, cr->x));
     cyc(30);
-    r_add16(cr, rd16(W(dp_04)));
+    r_add16(cr, RD16(dp_04));
     cyc(30);
     WR16I(obj_pos_x, cr->x, cr->a);
     cyc(30);
@@ -2601,7 +2601,7 @@ static void spray_turn(Carried *cr)
     cyc(30);
     r_lda16(cr, WAI(obj_pos_y, cr->x));
     cyc(30);
-    r_add16(cr, rd16(W(dp_0a)));
+    r_add16(cr, RD16(dp_0a));
     cyc(30);
     WR16I(obj_pos_y, cr->x, cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -2632,7 +2632,7 @@ void ObjectPieceSprayXSign(Carried *cr)
 {
     lda8(cr, 0xFF);
     cyc(2);
-    wr8(W(dp_05), 0xFF);
+    WR8(dp_05, 0xFF);
     (cyc(22), spray_from_y(cr));
 }
 
@@ -2663,7 +2663,7 @@ void ObjectPieceSprayYSign(Carried *cr)
 {
     lda8(cr, 0xFF);
     cyc(2);
-    wr8(W(dp_0b), 0xFF);
+    WR8(dp_0b, 0xFF);
     (cyc(22), spray_from_z(cr));
 }
 
@@ -2826,37 +2826,37 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     r_lda8(cr, WA(wram_1F58));
     v = (uint8_t)cr->a;
     cyc(16);
-    wr8(W(dp_02), v);
+    WR8(dp_02, v);
     cyc(16);
-    wr8(W(dp_04), v);
+    WR8(dp_04, v);
     if (v & 0x80) {
         lda8(cr, 0xFF);
         cyc(34);
-        wr8(W(dp_05), 0xFF);
+        WR8(dp_05, 0xFF);
     } else {
         cyc(54);
-        wr8(W(dp_05), 0x00);
+        WR8(dp_05, 0x00);
     }
     cyc((v & 0x80) ? 46 : 24);          /* BRA (negative), LDA abs */
     r_lda8(cr, WA(wram_1F59));
     v = (uint8_t)cr->a;
     cyc(16);
-    wr8(W(dp_08), v);
+    WR8(dp_08, v);
     cyc(16);
-    wr8(W(dp_0a), v);
+    WR8(dp_0a, v);
     if (v & 0x80) {
         lda8(cr, 0xFF);
         cyc(34);
-        wr8(W(dp_0b), 0xFF);
+        WR8(dp_0b, 0xFF);
     } else {
         cyc(54);
-        wr8(W(dp_0b), 0x00);
+        WR8(dp_0b, 0x00);
     }
     cyc((v & 0x80) ? 46 : 24);          /* BRA (negative), LDA abs */
     r_lda8(cr, WA(wram_1F5A));
     v = (uint8_t)cr->a;
     cyc(16);
-    wr8(W(dp_94), v);
+    WR8(dp_94, v);
     cyc(24);
     WR8(wram_05F2, v);
     if (v & 0x80) {
@@ -2873,15 +2873,15 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(16);
     r_lda8(cr, W(dp_04));
     cyc(16);
-    wr8(W(dp_02), (uint8_t)cr->a);
+    WR8(dp_02, (uint8_t)cr->a);
     cyc(16);
     r_lda8(cr, W(dp_0a));
     cyc(16);
-    wr8(W(dp_08), (uint8_t)cr->a);
+    WR8(dp_08, (uint8_t)cr->a);
     cyc(24);
     r_lda8(cr, WA(wram_05F2));
     cyc(16);
-    wr8(W(dp_94), (uint8_t)cr->a);
+    WR8(dp_94, (uint8_t)cr->a);
     if (with14) {
         cyc(30);
         r_lda8(cr, WAI(obj_14, cr->y));
@@ -2889,15 +2889,15 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
         cyc(16);
         r_lda8(cr, W(dp_04));
         cyc(16);
-        wr8(W(dp_02), (uint8_t)cr->a);
+        WR8(dp_02, (uint8_t)cr->a);
         cyc(16);
         r_lda8(cr, W(dp_0a));
         cyc(16);
-        wr8(W(dp_08), (uint8_t)cr->a);
+        WR8(dp_08, (uint8_t)cr->a);
         cyc(24);
         r_lda8(cr, WA(wram_05F2));
         cyc(16);
-        wr8(W(dp_94), (uint8_t)cr->a);
+        WR8(dp_94, (uint8_t)cr->a);
     }
     cyc(30);
     r_lda8(cr, WAI(obj_15, cr->y));
@@ -2908,13 +2908,13 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     for (i = 0; i < sh; i++)
         { cyc(14); r_asl16(cr); }
     cyc(16);
-    wr16(W(dp_04), cr->a);
+    WR16(dp_04, cr->a);
     cyc(16);
     r_lda16(cr, W(dp_0a));
     for (i = 0; i < sh; i++)
         { cyc(14); r_asl16(cr); }
     cyc(16);
-    wr16(W(dp_0a), cr->a);
+    WR16(dp_0a, cr->a);
     cyc(24);
     r_lda16(cr, WA(wram_05F2));
     for (i = 0; i < sh; i++)
@@ -2924,7 +2924,7 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(30);
     r_lda16(cr, WAI(obj_pos_x, cr->y));
     cyc(30);
-    r_add16(cr, rd16(W(dp_04)));
+    r_add16(cr, RD16(dp_04));
     cyc(30);
     WR16I(obj_pos_x, cr->x, cr->a);
     cyc(30);
@@ -2936,7 +2936,7 @@ static void offset_on_parent_ex(Carried *cr, int sh, int with14)
     cyc(30);
     r_lda16(cr, WAI(obj_pos_y, cr->y));
     cyc(30);
-    r_add16(cr, rd16(W(dp_0a)));
+    r_add16(cr, RD16(dp_0a));
     cyc(30);
     WR16I(obj_pos_y, cr->x, cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -4284,7 +4284,7 @@ void PlayerCarEvents(Carried *cr)
         if (!(v & 0x20)) {
             lda8(cr, 0x11);
             cyc(at == 0x1A60 ? 116 : 94);  /* player 2's: BRA; BIT, BNE, PHA, PHA, LDA #, STA long */
-            wr8(W(save_bad_flag), 0x11);
+            WR8(save_bad_flag, 0x11);
             cyc(76);
             lda8(cr, 0x3D);
             SoundPort0QueuePush_cr(cr);
@@ -4976,12 +4976,12 @@ store:
     r_lda16(cr, 0x098090 + x);
     wr16(b | cr->y, cr->a);
     cyc(64);
-    wr16(W(dp_02), rd16(0x098092 + x));
+    WR16(dp_02, rd16(0x098092 + x));
     cyc(64);
-    wr16(W(dp_08), rd16(0x098094 + x));
+    WR16(dp_08, rd16(0x098094 + x));
     cyc(64);
     r_lda16(cr, 0x098096 + x);
-    wr16(W(dp_94), cr->a);
+    WR16(dp_94, cr->a);
     /* PHX, TYX, PLY: X = the point, Y = the object. */
     cr->x = pt;
     cr->y = obj;
@@ -4997,12 +4997,12 @@ store:
             cr->a |= 0x8201;
             wr16(dpx(cr, 0x00, cr->x), cyc_then(46, cr->a));
             cyc(16);
-            wr16(W(dp_02), 0x0000);
+            WR16(dp_02, 0x0000);
             cyc(16);
-            wr16(W(dp_08), 0x0000);
+            WR16(dp_08, 0x0000);
             r_lda16_imm(cr, 0xFFCE);
             cyc(2);
-            wr16(W(dp_94), 0xFFCE);
+            WR16(dp_94, 0xFFCE);
             cyc(22);                    /* BRA */
         } else {
             r_lda16(cr, cyc_then(44, dpx(cr, 0x00, cr->x)));
@@ -5025,7 +5025,7 @@ store:
         wr16(off[i], cr->a);
     }
     for (i = 0; i < 3; i++) {
-        wr16(W(dp_3e), cyc_then(16, rd16(cyc_then(66, dpx(cr, pos[i], cr->x)))));
+        WR16(dp_3e, cyc_then(16, rd16(cyc_then(66, dpx(cr, pos[i], cr->x)))));
         cyc(16);
         r_lda16(cr, off[i]);
         r_approach(cr, ApproachQuarterMin4);
@@ -5331,7 +5331,7 @@ void ObjectRingSpin(Carried *cr)
     ObjectApplyVelocity_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(52);
-    wr16(W(dp_3e), cyc_then(16, RD16I(obj_pos_y, cr->x)));
+    WR16(dp_3e, cyc_then(16, RD16I(obj_pos_y, cr->x)));
     cyc(30);
     r_lda16(cr, WAI(obj_27, cr->x));
     r_approach(cr, ApproachQuarterMin4);
@@ -5733,7 +5733,7 @@ void ObjectDemoCarStart(Carried *cr)
     n = (uint16_t)(((uint8_t)cr->a << 1) & 0x00FF);
     x = cr->x;
     cyc(172);
-    wr16(W(table_116c) + n, x);
+    WR16X(table_116c, n, x);
     cr->x = x;
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(60);
@@ -5902,7 +5902,7 @@ void CameraApproachTarget(Carried *cr)
     for (i = 0; i < 3; i++) {
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(52);
-        wr16(W(dp_3e), cyc_then(16, rd16(b | (uint16_t)(pos[i] + cr->y))));
+        WR16(dp_3e, cyc_then(16, rd16(b | (uint16_t)(pos[i] + cr->y))));
         cyc(30);
         r_lda16(cr, b | (uint16_t)(tgt[i] + cr->y));
         (cyc(14), r_approach(cr, ApproachEighthMin8));

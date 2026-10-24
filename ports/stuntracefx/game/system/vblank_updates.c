@@ -141,21 +141,21 @@ void abi_GsuPictureUploadStep(void)
    shorter. */
 static void window_table(void)
 {
-    uint16_t s = rd16(W(menu_1907));
+    uint16_t s = RD16(menu_1907);
     uint8_t c = (uint8_t)(0x2C - s), d;
 
-    wr8(W(window_table_7f_134a), c);
-    wr8(W(window_table_7f_134e), c);
-    s = rd16(W(menu_1907));
+    WR8(window_table_7f_134a, c);
+    WR8(window_table_7f_134e, c);
+    s = RD16(menu_1907);
     d = (uint8_t)(s << 1);
     if (d) {
-        wr8(W(window_table_7f_134c), d);
-        wr8(W(window_table_7f_134d), 0x00);
+        WR8(window_table_7f_134c, d);
+        WR8(window_table_7f_134d, 0x00);
         return;
     }
-    wr8(W(window_table_7f_134c), 0x02);
-    wr8(W(window_table_7f_134d), 0x03);
-    wr8(W(window_table_7f_134e), (uint8_t)(rd8(W(window_table_7f_134e)) - 2));
+    WR8(window_table_7f_134c, 0x02);
+    WR8(window_table_7f_134d, 0x03);
+    WR8(window_table_7f_134e, (uint8_t)(RD8(window_table_7f_134e) - 2));
 }
 
 /*
@@ -179,7 +179,7 @@ static void window_table(void)
 uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
 {
     cyc(54);
-    uint16_t mode = rd16(W(menu_1905)), s, t;
+    uint16_t mode = RD16(menu_1905), s, t;
     unsigned r;
 
     *p &= (uint8_t)~(P_M | P_X);
@@ -190,59 +190,59 @@ uint16_t WindowOpenCloseStep(uint8_t bank, uint8_t *p)
     }
     if (mode == 0x0003) {
         cyc(146);
-        uint8_t n = (uint8_t)(rd8(W(wram_1921)) + 1);
+        uint8_t n = (uint8_t)(RD8(wram_1921) + 1);
 
         cyc(46);
-        wr8(W(window_lines_12db), n);
+        WR8(window_lines_12db, n);
         cyc(32);
-        wr8(W(window_lines_12e8), n);
+        WR8(window_lines_12e8, n);
         cyc(32);
-        wr8(W(window_lines_12f6), n);
+        WR8(window_lines_12f6, n);
         cyc(32);
-        wr8(W(window_lines_1301), n);
+        WR8(window_lines_1301, n);
         cyc(92);
-        t = (uint16_t)(0x0016 - rd16(W(wram_1921)));
+        t = (uint16_t)(0x0016 - RD16(wram_1921));
         cyc(46);
-        t = (uint16_t)(t + rd16(W(wram_1925)));
+        t = (uint16_t)(t + RD16(wram_1925));
         cyc(32);
-        wr16(W(wram_191B), t);
+        WR16(wram_191B, t);
         cyc(70);
-        s = (uint16_t)(0x0045 - rd16(W(wram_1921)));
+        s = (uint16_t)(0x0045 - RD16(wram_1921));
         cyc(46);
-        t = rd16(W(wram_1927));
+        t = RD16(wram_1927);
         r = (unsigned)s + t;
         *p = (uint8_t)((nz16(*p, (uint16_t)r) & ~(P_C | P_V)) | (r > 0xFFFF ? P_C : 0)
                        | ((~(s ^ t) & (s ^ (uint16_t)r) & 0x8000) ? P_V : 0));
         cyc(32);
-        wr16(W(wram_191D), (uint16_t)r);
+        WR16(wram_191D, (uint16_t)r);
         *p |= P_M;
         return (uint16_t)r;
     }
     if (mode != 0x0002) {
         window_table();
-        s = rd16(W(menu_1907));
+        s = RD16(menu_1907);
         t = (uint16_t)(s - 4);
         *p = (uint8_t)((nz16(*p, t) & ~(P_C | P_V)) | (s >= 4 ? P_C : 0)
                        | (((s ^ 4) & (s ^ t) & 0x8000) ? P_V : 0));
-        wr16(W(menu_1907), t);
+        WR16(menu_1907, t);
         if (!(t & 0x8000))
             return t;
         t = 0x0000;
         *p = nz16(*p, t);
-        wr16(W(menu_1905), t);
+        WR16(menu_1905, t);
         return t;
     }
     window_table();
-    s = rd16(W(menu_1907));
+    s = RD16(menu_1907);
     t = (uint16_t)(s + 4);
     *p = (uint8_t)((*p & ~P_V) | ((~(s ^ 4) & (s ^ t) & 0x8000) ? P_V : 0));
-    wr16(W(menu_1907), t);
+    WR16(menu_1907, t);
     *p = (uint8_t)((nz16(*p, (uint16_t)(t - 0x2C)) & ~P_C) | (t >= 0x2C ? P_C : 0));
     if (t != 0x002C)
         return t;
     t = 0x0000;
-    wr16(W(menu_1905), t);
-    wr16(W(wram_7EFD65), t);
+    WR16(menu_1905, t);
+    WR16(wram_7EFD65, t);
     ppu_wr(dbw(bank, CGADD), 0x00);
     ppu_wr(dbw(bank, CGDATA), 0x00);
     ppu_wr(dbw(bank, CGDATA), 0x00);
@@ -281,22 +281,22 @@ void abi_WindowOpenCloseStep(void);
 static uint16_t blink_colour(uint8_t bank, uint8_t *last)
 {
     cyc(48);
-    uint16_t c = (uint16_t)(rd16(W(wram_1901)) + 1), x;
+    uint16_t c = (uint16_t)(RD16(wram_1901) + 1), x;
 
     cyc(46);
-    wr16(W(wram_1901), c);
+    WR16(wram_1901, c);
     if (c == 0x0005) {
         cyc(96);
-        wr16(W(wram_1901), 0x0000);
+        WR16(wram_1901, 0x0000);
         cyc(32);
-        wr16(W(wram_18FF), cyc_then(70, (uint16_t)((rd16(W(wram_18FF)) + 1) & 0x0001)));
+        WR16(wram_18FF, cyc_then(70, (uint16_t)((RD16(wram_18FF) + 1) & 0x0001)));
     } else { cyc(46); }
     cyc(32);
-    x = (uint16_t)(rd16(W(wram_18FF)) << 1);
+    x = (uint16_t)(RD16(wram_18FF) << 1);
     ppu_wr(dbw(bank, CGADD), cyc_then(90, 0xD9));
     ppu_wr(dbw(bank, CGDATA), cyc_then(24, rd8(cyc_then(32, W(blink_colours) + x))));
     cyc(32);
-    *last = rd8(W(blink_colours) + 1 + x);
+    *last = RD8X(blink_colours, 1 + x);
     ppu_wr(dbw(bank, CGDATA), cyc_then(24, *last));
     return x;
 }
@@ -346,7 +346,7 @@ void VblankUpdates(uint8_t bank)
         OamDmaIfPending();
     }
     ByteWritesIfPending(bank);
-    if (rd16(W(menu_18b9))) {
+    if (RD16(menu_18b9)) {
         uint8_t last;
 
         blink_colour(bank, &last);
@@ -378,7 +378,7 @@ void VblankUpdates_cr(Carried *cr)
     ByteWritesIfPending_cr(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(54);
-    v = rd16(W(menu_18b9));
+    v = RD16(menu_18b9);
     cr->a = v;
     set_p(cr, nz16(cr->p, v));
     if (v) {

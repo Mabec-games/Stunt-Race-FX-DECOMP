@@ -344,7 +344,7 @@ static void slide_word(Carried *cr, uint16_t v)
 {
     r_rep(cr, P_M);
     r_lda16_imm(cr, v);
-    wr16(W(slide_done), v);
+    WR16(slide_done, v);
 }
 
 /* HUD mode 3 (all courses): with $10CD set as mode 0. Otherwise the HUD's
@@ -368,7 +368,7 @@ static int mode_all(Carried *cr)
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x7FFF);
     cyc(18);
-    wr16(W(slide_done), 0x7FFF);
+    WR16(slide_done, 0x7FFF);
     cyc(24);
     r_lda16(cr, WA(digit62_override));
     r_and16(cr, 0x00FF);
@@ -703,7 +703,7 @@ static void race_hud_setup(Carried *cr)
     for (i = 0; i < 9; i++) {
         lda8(cr, (uint8_t)hdma_bytes[i]);
         cyc(48);
-        wr8(W(wram_7F3480) + i, (uint8_t)hdma_bytes[i]);
+        WR8X(wram_7F3480, i, (uint8_t)hdma_bytes[i]);
     }
     lda8(cr, 0x00);
     cyc(40);
@@ -733,27 +733,27 @@ static void race_hud_setup(Carried *cr)
     r_rep(cr, P_M | P_X);
     r_lda16_imm(cr, 0x0120);
     cyc(18);
-    wr16(W(gradient_cgadd), 0x0120);
+    WR16(gradient_cgadd, 0x0120);
     cr->y = 0x0080;
     cr->x = 0x0002;
     r_lda16_imm(cr, 0x0181);
     (cyc(80), w_GradientFillCgadd(cr));
     r_lda16_imm(cr, 0x0000);
     cyc(18);
-    wr16(W(gradient_cgadd) + cr->x, 0x0000);
+    WR16X(gradient_cgadd, cr->x, 0x0000);
     r_lda16_imm(cr, 0xEC57);
     cyc(18);
-    wr16(W(wram_7F348A), 0xEC57);
+    WR16(wram_7F348A, 0xEC57);
     r_sep(cr, P_M);
     lda8(cr, 0x20);
     cyc(70);
-    wr8(W(gradient_cgdata), 0x20);
+    WR8(gradient_cgdata, 0x20);
     lda8(cr, 0xFF);
     cyc(48);
-    wr8(W(wram_7F348C), 0xFF);
+    WR8(wram_7F348C, 0xFF);
     lda8(cr, 0x00);
     cyc(48);
-    wr8(W(wram_7F348F), 0x00);
+    WR8(wram_7F348F, 0x00);
     lda8(cr, 0x7F);
     cyc(40);
     dma_wr(b | DASB3, 0x7F);
@@ -801,15 +801,15 @@ static void race_hud_setup_two(Carried *cr)
     for (cr->y = 0x0000; cr->y < 0x0020; ) {
         cyc(164);
         v = (uint16_t)(rd16(b | (uint16_t)(0xE7EA + cr->y)) - 0x0800);
-        wr16(W(oam_buffer) + cr->x, v);
+        WR16X(oam_buffer, cr->x, v);
         v = (uint16_t)(v + 0x6850);
         cyc(70);
-        wr16(W(wram_0475) + cr->x, v);
+        WR16X(wram_0475, cr->x, v);
         cyc(78);
         v = rd16(b | (uint16_t)(0xE7EC + cr->y));
-        wr16(W(wram_0377) + cr->x, v);
+        WR16X(wram_0377, cr->x, v);
         cyc(32);
-        wr16(W(wram_0477) + cr->x, v);
+        WR16X(wram_0477, cr->x, v);
         cr->x = (uint16_t)(cr->x + 4);
         cr->y = (uint16_t)(cr->y + 4);
         cyc(110);

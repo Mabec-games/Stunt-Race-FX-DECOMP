@@ -49,9 +49,9 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     cyc(24);
     ppu_wr(CGADD, 0x00);
     cyc(24);
-    ppu_wr(CGDATA, cyc_then(24, rd8(W(crash_colour))));
+    ppu_wr(CGDATA, cyc_then(24, RD8(crash_colour)));
     cyc(24);
-    ppu_wr(CGDATA, cyc_then(24, rd8(W(crash_colour) + 1)));
+    ppu_wr(CGDATA, cyc_then(24, RD8X(crash_colour, 1)));
     cyc(40);
     ppu_wr(BG1SC, 0x40);
     cyc(40);
@@ -109,9 +109,9 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     for (;;) {
         cyc(92);
         delay_turns(20000);
-        a = rd16(W(crash_code));
+        a = RD16(crash_code);
         cyc(24);
-        if (a == rd16(W(crash_scroll))) {
+        if (a == RD16(crash_scroll)) {
             /* As the loop leaves them: 16-bit, IRQs masked, Z and C from
                the compare, X the HDMA table, Y the delay's end. */
             cr->a = a;
@@ -121,15 +121,15 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
             carried_loop_forever(cr, 0x00812C);
         }
         cyc(54);
-        step = (uint16_t)((uint16_t)(a - rd16(W(crash_scroll))) >> 3);
+        step = (uint16_t)((uint16_t)(a - RD16(crash_scroll)) >> 3);
         if (!step)
             step = 0x0001;
         cyc(102);
-        wr16(W(crash_scroll), cyc_then(24, (uint16_t)(step + rd16(W(crash_scroll)))));
+        WR16(crash_scroll, cyc_then(24, (uint16_t)(step + RD16(crash_scroll))));
         cyc(46);
-        ppu_wr(BG1VOFS, cyc_then(24, rd8(W(crash_scroll))));
+        ppu_wr(BG1VOFS, cyc_then(24, RD8(crash_scroll)));
         cyc(24);
-        ppu_wr(BG1VOFS, cyc_then(24, rd8(W(crash_scroll) + 1)));
+        ppu_wr(BG1VOFS, cyc_then(24, RD8X(crash_scroll, 1)));
         cyc(40);
         hw_wr(APUIO0, 0x03);
     }

@@ -94,19 +94,19 @@ uint8_t CourseIndex12(uint8_t a, uint8_t *p)
     unsigned s;
 
     cyc(62);
-    wr8(W(dp_f1), a);
+    WR8(dp_f1, a);
     cyc(44);
-    f = rd8(W(dp_f1));
+    f = RD8(dp_f1);
     a3 = (uint8_t)((uint8_t)(a << 1) + f);
     cyc(16);
-    wr8(W(dp_f1), a3);
+    WR8(dp_f1, a3);
     cyc(24);
-    c = rd8(W(course));
+    c = RD8(course);
     cyc(52);
-    c2 = rd8(W(course));
+    c2 = RD8(course);
     c12 = (uint8_t)((uint8_t)((uint8_t)(c << 1) + c2) << 2);
     cyc(58);
-    a3 = rd8(W(dp_f1));
+    a3 = RD8(dp_f1);
     s = (unsigned)c12 + a3;
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(c12 ^ a3) & (c12 ^ (uint8_t)s) & 0x80) ? P_V : 0));
@@ -148,7 +148,7 @@ void abi_CourseIndex12(void)
 uint16_t CourseDataPointer(uint8_t *bank, uint8_t *p)
 {
     cyc(46);
-    uint16_t c = rd16(W(course)), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
+    uint16_t c = RD16(course), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
     cyc(326);
     uint16_t addr = rd16(0x03F4A5 + i), r = (uint16_t)(addr - 0x8000);
 
@@ -202,28 +202,28 @@ uint16_t SelectionTables18CB(uint8_t bank)
     uint16_t base, s1, i3, x, v = 0, w, u;
 
     cyc(76);
-    base = rd16(cyc_then(100, 0x0BB00C + (uint16_t)(rd16(W(selection)) << 1)));
+    base = rd16(cyc_then(100, 0x0BB00C + (uint16_t)(RD16(selection) << 1)));
     WR16(scratch_11df, base);
     cyc(32);
-    v = rd16(W(selection_1));
+    v = RD16(selection_1);
     cyc(60);
-    w = rd16(W(selection_1));
+    w = RD16(selection_1);
     s1 = (uint16_t)((uint16_t)(v << 1) + w);
     cyc(24);
     WR16(scratch_11e1, s1);
     cyc(32);
-    v = rd16(W(selection_2));
+    v = RD16(selection_2);
     cyc(88);
-    w = rd16(W(selection_2));
+    w = RD16(selection_2);
     cyc(38);
     u = RD16(scratch_11e1);
     s1 = (uint16_t)((uint16_t)(v << 3) + w + u);
     cyc(24);
     WR16(scratch_11e1, s1);
     cyc(32);
-    v = rd16(W(selection_3));
+    v = RD16(selection_3);
     cyc(60);
-    w = rd16(W(selection_3));
+    w = RD16(selection_3);
     i3 = (uint16_t)((uint16_t)(v << 1) + w);
     cyc(24);
     WR16(scratch_11e3, i3);
@@ -237,23 +237,23 @@ uint16_t SelectionTables18CB(uint8_t bank)
     u = RD16(scratch_11df);
     x = (uint16_t)(x + u);
     cyc(118);
-    wr16(W(wram_18E5), rd16(0x0BB014 + x) & 3);
+    WR16(wram_18E5, rd16(0x0BB014 + x) & 3);
     cyc(104);
-    wr16(W(wram_18E7), rd16(0x0BB015 + x) & 3);
+    WR16(wram_18E7, rd16(0x0BB015 + x) & 3);
     cyc(104);
-    wr16(W(wram_18E9), rd16(0x0BB016 + x) & 3);
+    WR16(wram_18E9, rd16(0x0BB016 + x) & 3);
     cyc(32);
-    wr16(W(selection_derived), rd16(cyc_then(118, 0x03B7B1 + rd16(W(selection)))) & 3);
+    WR16(selection_derived, rd16(cyc_then(118, 0x03B7B1 + RD16(selection))) & 3);
     for (x = 0; x < 8; x += 2) {
         cyc(86);
-        uint16_t idx = (uint16_t)(rd16(W(selection) + x) << 2);
+        uint16_t idx = (uint16_t)(RD16X(selection, x) << 2);
 
         cyc(74);
-        u = rd16(W(selection_derived) + x);
+        u = RD16X(selection_derived, x);
         idx = (uint16_t)(idx + u);
         cyc(154);
         v = rd16(0x03B7B5 + idx) & 3;
-        wr16(W(selection_out) + x, v);
+        WR16X(selection_out, x, v);
         cyc(50);
     }
     cyc(88);
