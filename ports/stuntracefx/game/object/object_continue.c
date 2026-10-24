@@ -135,9 +135,24 @@ void ObjectStubReturn(void)
 {
 }
 
+/* ObjectStubReturn on carried registers: no register work. */
+void ObjectStubReturn_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(44);
+}
+
 void abi_ObjectStubReturn(void)
 {
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectStubReturn_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The +$39 setters: the byte written (8-bit), then ObjectContinue1A. */

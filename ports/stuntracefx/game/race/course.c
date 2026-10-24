@@ -2588,9 +2588,24 @@ void abi_CourseScreenStartStunt(void)
  * HOW: RTS.
  * Entry: any. Exit: all unchanged.
  */
+/* CourseScreenNothing on carried registers: no register work. */
+void CourseScreenNothing_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_CourseScreenNothing(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    CourseScreenNothing_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 

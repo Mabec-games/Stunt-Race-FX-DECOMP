@@ -337,9 +337,24 @@ void DebugPanelNone(void)
     cyc(44);
 }
 
+/* DebugPanelNone on carried registers: no register work. */
+void DebugPanelNone_cr(Carried *cr)
+{
+    (void)cr;
+    DebugPanelNone();
+}
+
 void abi_DebugPanelNone(void)
 {
-    DebugPanelNone();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DebugPanelNone_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* Fields +$88, +$7A, +$86 and +$84 of the car record at x, printed in

@@ -1,15 +1,19 @@
 /*
  * carried_ends.c: where code on carried registers (game/include/carried.h)
  * hands on to the machine: a call or jump through a computed address, a
- * jump with bytes pushed, the branch to itself and the restart. A target
- * with a carried form runs on the carried copy; anything else the machine
- * runs (dispatch.c) takes its registers from the register file, so the
- * copy goes there first and comes back after.
+ * jump with bytes pushed, the branch to itself and the restart. A call or
+ * jump runs the routine's carried form on the carried copy (every S-CPU
+ * routine has one; an address with none is fatal, as an address where no
+ * routine starts is in dispatch.c). What the machine runs itself (a
+ * routine reached with bytes pushed, the interrupts meanwhile, a restart's
+ * entry) takes its registers from the register file, so the copy goes
+ * there first.
  */
 #include <stdint.h>
 
 #include "machine.h"
 #include "carried.h"
+#include "snes.h"
 
 static void regs_load(const Carried *cr)
 {
@@ -19,6 +23,13 @@ static void regs_load(const Carried *cr)
     cpu.d = cr->d;
     cpu.p = cr->p;
     cpu.db = cr->db;
+}
+
+/* A computed address with no carried form. */
+static void no_carried(const char *how, uint32_t addr)
+{
+    snes_fatal("carried code %s $%02X:%04X, where no routine has a carried form",
+               how, (unsigned)(addr >> 16 & 0xFF), (unsigned)(addr & 0xFFFF));
 }
 
 static void regs_take(Carried *cr)
@@ -36,13 +47,10 @@ void carried_call(Carried *cr, uint32_t addr, int long_call)
 {
     CarriedFn f = carried_at(addr);
 
-    if (f) {
-        f(cr);
-        return;
-    }
-    regs_load(cr);
-    call_routine(addr, long_call);
-    regs_take(cr);
+    (void)long_call;
+    if (!f)
+        no_carried("calls", addr);
+    f(cr);
 }
 
 /* JMP (abs,X) and the like: the routine at addr, whose return is the
@@ -51,13 +59,9 @@ void carried_jump(Carried *cr, uint32_t addr)
 {
     CarriedFn f = carried_at(addr);
 
-    if (f) {
-        f(cr);
-        return;
-    }
-    regs_load(cr);
-    jump_routine(addr);
-    regs_take(cr);
+    if (!f)
+        no_carried("jumps to", addr);
+    f(cr);
 }
 
 /* A jump with bytes pushed for the routine it reaches. */

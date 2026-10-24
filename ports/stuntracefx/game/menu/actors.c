@@ -487,9 +487,24 @@ void MenuActorIdleC47B(void)
     cyc(42);
 }
 
+/* MenuActorIdleC47B on carried registers: no register work. */
+void MenuActorIdleC47B_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_MenuActorIdleC47B(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorIdleC47B_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -502,9 +517,24 @@ void MenuActorIdleCE89(void)
 {
 }
 
+/* MenuActorIdleCE89 on carried registers: no register work. */
+void MenuActorIdleCE89_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_MenuActorIdleCE89(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorIdleCE89_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

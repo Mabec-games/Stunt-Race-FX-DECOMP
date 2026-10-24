@@ -566,9 +566,24 @@ void abi_ObjectBurstPieceStart(void)
  * HOW: RTL. Not reached in the traces so far.
  * Entry: any. Exit: every register unchanged.
  */
+/* ObjectHandlerEmptyA on carried registers: no register work. */
+void ObjectHandlerEmptyA_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(44);
+}
+
 void abi_ObjectHandlerEmptyA(void)
 {
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectHandlerEmptyA_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -577,9 +592,24 @@ void abi_ObjectHandlerEmptyA(void)
  * HOW: RTL. Not reached in the traces so far.
  * Entry: any. Exit: every register unchanged.
  */
+/* ObjectHandlerEmptyB on carried registers: no register work. */
+void ObjectHandlerEmptyB_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(44);
+}
+
 void abi_ObjectHandlerEmptyB(void)
 {
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectHandlerEmptyB_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* The blinker's record: +$42 = $1000 (shown), synced, +$36 = 3. */
@@ -5483,9 +5513,24 @@ void abi_ObjectRingPartStart(void)
  * HOW: RTL. Not reached in the traces so far.
  * Entry: any. Exit: every register unchanged.
  */
+/* ObjectHandlerEmptyC on carried registers: no register work. */
+void ObjectHandlerEmptyC_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(44);
+}
+
 void abi_ObjectHandlerEmptyC(void)
 {
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ObjectHandlerEmptyC_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -5861,9 +5906,24 @@ void abi_DataBank7E(void)
  * HOW: RTL.
  * Entry: any. Exit: every register unchanged.
  */
+/* DataBank7EEnd on carried registers: no register work. */
+void DataBank7EEnd_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(44);                            /* RTL */
+}
+
 void abi_DataBank7EEnd(void)
 {
-    cyc(44);                            /* RTL */
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    DataBank7EEnd_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 void abi_ObjectPathCommand(void);

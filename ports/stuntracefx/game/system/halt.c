@@ -57,9 +57,24 @@ void SystemHalt(void)
     halt();
 }
 
+/* SystemHalt on carried registers: no register work. */
+void SystemHalt_cr(Carried *cr)
+{
+    (void)cr;
+    SystemHalt();
+}
+
 void abi_SystemHalt(void)
 {
-    SystemHalt();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SystemHalt_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -74,9 +89,24 @@ void SystemHaltSpawn(void)
     halt();
 }
 
+/* SystemHaltSpawn on carried registers: no register work. */
+void SystemHaltSpawn_cr(Carried *cr)
+{
+    (void)cr;
+    SystemHaltSpawn();
+}
+
 void abi_SystemHaltSpawn(void)
 {
-    SystemHaltSpawn();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SystemHaltSpawn_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*

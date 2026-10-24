@@ -1148,9 +1148,24 @@ void PlayerColoursFlashRts(void)
     cyc(42);
 }
 
+/* PlayerColoursFlashRts on carried registers: no register work. */
+void PlayerColoursFlashRts_cr(Carried *cr)
+{
+    (void)cr;
+    PlayerColoursFlashRts();
+}
+
 void abi_PlayerColoursFlashRts(void)
 {
-    PlayerColoursFlashRts();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PlayerColoursFlashRts_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* What StatusColourPick's exit leaves in C, for the adapter only: whether

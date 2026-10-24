@@ -295,7 +295,21 @@ void SelectionTables18CBLong(uint8_t bank)
     cyc(44);
 }
 
+/* SelectionTables18CBLong on carried registers: SelectionTables18CB's. */
+void SelectionTables18CBLong_cr(Carried *cr)
+{
+    SelectionTables18CB_cr(cr);
+}
+
 void abi_SelectionTables18CBLong(void)
 {
-    abi_SelectionTables18CB();
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    SelectionTables18CBLong_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }

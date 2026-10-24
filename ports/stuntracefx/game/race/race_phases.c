@@ -264,9 +264,24 @@ void abi_PlayerTwoFrameWork(void)
  * HOW: RTS.
  * Entry: any widths. Exit: every register unchanged.
  */
+/* PhaseNothing on carried registers: no register work. */
+void PhaseNothing_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_PhaseNothing(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PhaseNothing_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 07:E299: both phases 2, $0D5A cleared; then with M 16-bit $0D67, $0D69,
@@ -1219,9 +1234,24 @@ static void lap_banner(Carried *cr, void (*draw)(Carried *))
  * HOW: RTS. Not reached in the traces so far.
  * Entry: any widths. Exit: every register unchanged.
  */
+/* LapBannerNone on carried registers: no register work. */
+void LapBannerNone_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_LapBannerNone(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    LapBannerNone_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3075,9 +3105,24 @@ void abi_TimeUpBattle(void)
  * HOW: RTS (TimeUpBattle's last).
  * Entry: any widths. Exit: every register unchanged.
  */
+/* PhaseNothingECF3 on carried registers: no register work. */
+void PhaseNothingECF3_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_PhaseNothingECF3(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    PhaseNothingECF3_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* 07:ED10 / 07:ED80: $0E5A = t, $0E59 one less, sound $51, then after(). */
@@ -3330,9 +3375,24 @@ void abi_RaceStartStepsHold(void)
  * HOW: RTS.
  * Entry: any. Exit: everything unchanged.
  */
+/* RaceStartTimerStepsRts on carried registers: no register work. */
+void RaceStartTimerStepsRts_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_RaceStartTimerStepsRts(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceStartTimerStepsRts_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3342,9 +3402,24 @@ void abi_RaceStartTimerStepsRts(void)
  * HOW: RTS.
  * Entry: any. Exit: everything unchanged.
  */
+/* ResultsPanelStepsRts on carried registers: no register work. */
+void ResultsPanelStepsRts_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_ResultsPanelStepsRts(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ResultsPanelStepsRts_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3354,9 +3429,24 @@ void abi_ResultsPanelStepsRts(void)
  * HOW: RTS.
  * Entry: any. Exit: everything unchanged.
  */
+/* RaceEndWaitRow6BRts on carried registers: no register work. */
+void RaceEndWaitRow6BRts_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_RaceEndWaitRow6BRts(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceEndWaitRow6BRts_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3366,9 +3456,24 @@ void abi_RaceEndWaitRow6BRts(void)
  * HOW: RTS.
  * Entry: any. Exit: everything unchanged.
  */
+/* RaceEndWaitBigSpritesRts on carried registers: no register work. */
+void RaceEndWaitBigSpritesRts_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_RaceEndWaitBigSpritesRts(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceEndWaitBigSpritesRts_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -3378,9 +3483,24 @@ void abi_RaceEndWaitBigSpritesRts(void)
  * HOW: RTS.
  * Entry: any. Exit: everything unchanged.
  */
+/* RaceEndWindowStepsRts on carried registers: no register work. */
+void RaceEndWindowStepsRts_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_RaceEndWindowStepsRts(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    RaceEndWindowStepsRts_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LapSplit as its adapter leaves the registers. */

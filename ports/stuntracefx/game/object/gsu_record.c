@@ -3071,9 +3071,24 @@ void abi_GsuRecordListFlag80(void)
  * HOW: RTL.
  * Entry: any. Exit: nothing changed.
  */
+/* ReturnLongC096 on carried registers: no register work. */
+void ReturnLongC096_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(44);
+}
+
 void abi_ReturnLongC096(void)
 {
-    cyc(44);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    ReturnLongC096_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /* LDA addr, ORA #$20, STA addr (8-bit). */

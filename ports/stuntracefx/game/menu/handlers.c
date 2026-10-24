@@ -559,9 +559,24 @@ void abi_MenuBg1RiseAway(void)
  * HOW: RTS.
  * Entry: any. Exit: every register and flag unchanged.
  */
+/* MenuActorNoStep on carried registers: no register work. */
+void MenuActorNoStep_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_MenuActorNoStep(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorNoStep_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 /*
@@ -570,9 +585,24 @@ void abi_MenuActorNoStep(void)
  * HOW: RTS.
  * Entry: any. Exit: every register and flag unchanged.
  */
+/* MenuActorNoStepE0DF on carried registers: no register work. */
+void MenuActorNoStepE0DF_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_MenuActorNoStepE0DF(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorNoStepE0DF_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
 
 uint16_t VramDmaQueueAddTimed(uint16_t a);
@@ -1020,7 +1050,22 @@ void abi_MenuEraseDone(void)
  * HOW: RTS.
  * Entry: any. Exit: unchanged.
  */
+/* MenuActorNoStepD8A8 on carried registers: no register work. */
+void MenuActorNoStepD8A8_cr(Carried *cr)
+{
+    (void)cr;
+    cyc(42);
+}
+
 void abi_MenuActorNoStepD8A8(void)
 {
-    cyc(42);
+    Carried r = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
+
+    MenuActorNoStepD8A8_cr(&r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.d = r.d;
+    cpu.p = r.p;
+    cpu.db = r.db;
 }
