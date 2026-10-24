@@ -45,7 +45,7 @@ static int in_rom(uint32_t at)
 static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
 {
     cyc(16);
-    uint32_t base = rd24(W(apu_stream_ptr));
+    uint32_t base = rd24(WA(apu_stream_ptr));
     uint32_t at = (base + *offset) & 0xFFFFFF;
     uint8_t value = rd8(at);
     uint16_t bank;

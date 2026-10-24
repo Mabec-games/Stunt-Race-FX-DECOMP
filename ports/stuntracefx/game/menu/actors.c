@@ -3216,7 +3216,7 @@ uint16_t MenuActorNew(uint8_t bank, uint16_t *a)
     if (rec == 0xFFFF)
         { cyc(140); return rec; } else { cyc(46); }
     for (i = 0; i < 0x58; i = (uint16_t)(i + 2))
-        wr16(dbw(bank, (uint16_t)(rec + i)), rd16(cyc_then(78, 0x0BEA0F + i)));
+        wr16((0x7E0000 | (uint16_t)(rec + i)), rd16(cyc_then(78, 0x0BEA0F + i)));
     cyc(70);
     *a = rd16(0x0BEA0F + 0x56);
     return rec;
@@ -3274,7 +3274,7 @@ uint16_t MenuActorSpawn(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y, u
         if (f & 0x8000)
             break;
         *y = (uint16_t)(f + rd16(cyc_then(8, (WA(menu_spawn_record)))));
-        wr16(dbw(bank, *y), rd16(cyc_then(92, 0x0BE549 + x)));
+        wr16((0x7E0000 | *y), rd16(cyc_then(92, 0x0BE549 + x)));
         n = (uint16_t)(x + 4);
         *p = (uint8_t)((*p & ~(P_C | P_V)) | (n < x ? P_C : (cyc(74), 0)) | ((~(x ^ 4) & (x ^ n) & 0x8000) ? P_V : 0));
     }
@@ -3580,10 +3580,10 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             *y = (uint16_t)(*y + 4);
             cyc(80);
             WR16(oam_low_count, *y);
-            ror_mem(W(oam_x_high), &c);
-            ror_mem(W(scratch_11e1), &c);
-            ror_mem(W(oam_size), &c);
-            ror_mem(W(scratch_11e1), &c);
+            ror_mem(WA(oam_x_high), &c);
+            ror_mem(WA(scratch_11e1), &c);
+            ror_mem(WA(oam_size), &c);
+            ror_mem(WA(scratch_11e1), &c);
             oam_high_step();
             cyc(2);
             continue;
@@ -3639,11 +3639,11 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             c = w & 1;
             cyc(14);
             WR16(oam_x_high, (uint16_t)(w >> 1));
-            ror_mem(W(scratch_11e1), &c);
+            ror_mem(WA(scratch_11e1), &c);
             cyc(32);
             c = RD16X(wram_7F135C, *x) & 1;
             cyc(14);
-            ror_mem(W(scratch_11e1), &c);
+            ror_mem(WA(scratch_11e1), &c);
             cyc(24);
             w = (uint16_t)(RD16(scratch_11df) - 1);
             cyc(14);

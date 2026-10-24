@@ -12,6 +12,7 @@
 #include "object_calls.h"
 #include "carried.h"
 #include "wram_names.h"
+#include "wram_struct.h"
 
 
 uint8_t GsuRecordNew422(uint8_t bank, uint16_t obj);
@@ -101,8 +102,8 @@ static void frame_from(uint16_t x, uint16_t f)
     cyc(6);
     v = ld8(F(f, x));
     cyc(24);
-    wr8(DB_ADDR(W(wram_1F58)), v);
-    v = ld8(DB_ADDR(W(wram_1F58)));
+    wr8(WA(wram_1F58), v);
+    v = ld8(WA(wram_1F58));
     v |= 0x80;
     lda8();
     cyc(16);
@@ -247,23 +248,23 @@ static void frame_cycle(uint8_t b, uint16_t x, uint8_t d)
     cyc(6);
     v = ld8(F(W(obj_48), x));
     cyc(24);
-    wr8(DB_ADDR(W(wram_1F58)), v);
+    wr8(WA(wram_1F58), v);
     cyc(6);
     v = ld8(F(W(obj_5a), x));
     v = adc8(v, d, 0);
     if (!(v & 0x80)) {
         cyc(84);
-        m = rd8(DB_ADDR(W(wram_1F58)));
+        m = rd8(WA(wram_1F58));
         v = adc8(v, m, 0);
     } else { cyc(52); }
     v &= 0x7F;
     lda8();
     cyc(10);
-    m = rd8(DB_ADDR(W(wram_1F58)));
+    m = rd8(WA(wram_1F58));
     cmp8(v, m);
     if (v >= m) {
         cyc(36);
-        m = rd8(DB_ADDR(W(wram_1F58)));
+        m = rd8(WA(wram_1F58));
         v = sbc8(v, m);
     } else { cyc(22); }
     v |= 0x80;
@@ -564,8 +565,8 @@ void ObjectFrameCycleBackSetup(uint8_t b, uint16_t x)
     v = (uint8_t)(ld8(F(W(obj_48), x)) - 1);
     lda8();
     cyc(8);
-    wr8(DB_ADDR(W(wram_1F58)), v);
-    v = (uint8_t)(ld8(DB_ADDR(W(wram_1F58))) | 0x80);
+    wr8(WA(wram_1F58), v);
+    v = (uint8_t)(ld8(WA(wram_1F58)) | 0x80);
     lda8();
     cyc(16);
     wr8(F(W(obj_5a), x), v);
@@ -689,11 +690,11 @@ void ObjectFrameSwingStep(uint8_t b, uint16_t x)
     cyc(6);
     v = ld8(F(W(obj_48), x));
     cyc(24);
-    wr8(DB_ADDR(W(wram_1F58)), v);
+    wr8(WA(wram_1F58), v);
     v--;
     lda8();
     cyc(8);
-    wr8(DB_ADDR(W(wram_1F59)), v);
+    wr8(WA(wram_1F59), v);
     step8(F(W(obj_4b), x), 1);
     cyc(6);
     v = ld8(F(W(obj_4b), x));
@@ -725,7 +726,7 @@ void ObjectFrameSwingStep(uint8_t b, uint16_t x)
         v = (uint8_t)(ld8(F(W(obj_5a), x)) & 0x7F);
         lda8();
         cyc(10);
-        m = rd8(DB_ADDR(W(wram_1F59)));
+        m = rd8(WA(wram_1F59));
         cmp8(v, m);
         if (v != m) {
             step8(F(W(obj_vel_y), x), 1);

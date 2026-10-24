@@ -929,11 +929,11 @@ static void gate_record(Carried *cr)
     (cyc(62), GsuRecordNew42D_cr(cr));
     GsuRecordFlag10_cr(cr);
     cyc(8);
-    st16i(cr, W(dp_02), 0x0F00);
+    st16i(cr, WA(dp_02), 0x0F00);
     cyc(30);
-    st16i(cr, W(dp_08), 0x0F00);
+    st16i(cr, WA(dp_08), 0x0F00);
     cyc(30);
-    st16i(cr, W(dp_94), 0x0F00);
+    st16i(cr, WA(dp_94), 0x0F00);
     (cyc(84), GsuRecordPosition_cr(cr));
     gate_frame(cr);
 }
@@ -1350,11 +1350,11 @@ void abi_GsuRecordSet2AHigh(void);
 static void record_at(Carried *cr, uint16_t x, uint16_t y, uint16_t z)
 {
     cyc(8);
-    st16i(cr, W(dp_02), x);
+    st16i(cr, WA(dp_02), x);
     cyc(30);
-    st16i(cr, W(dp_08), y);
+    st16i(cr, WA(dp_08), y);
     cyc(30);
-    st16i(cr, W(dp_94), z);
+    st16i(cr, WA(dp_94), z);
     (cyc(84), GsuRecordPosition_cr(cr));
 }
 
@@ -4378,7 +4378,7 @@ static void flash_frame(Carried *cr, uint16_t flash, uint16_t step, uint16_t end
         or8(cr, F_c(0x2025, cr->x), 0x01);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(30);
-        st16w(cr, W(wram_19C5), flash);
+        st16w(cr, WA(wram_19C5), flash);
         if (rep2)
             cyc(22);                            /* the bright gate's second REP */
         fade_set(cr, step, end);
@@ -4575,7 +4575,7 @@ static void car_flag_frame(Carried *cr, int on, uint8_t snd)
     or8(cr, F_c(0x2025, cr->x), 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(46);
-    if (!ld8(cr, W(wram_7F3460)))
+    if (!ld8(cr, WA(wram_7F3460)))
         { cyc(16); car_bits16(cr, 0x0002, on ? (cyc(12), GsuRecordFlags8ASet) : GsuRecordFlags8AClear); } else { cyc(44); }
     if (!on)
         { cyc(22); set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M))); }
@@ -4767,7 +4767,7 @@ static void slide1_frame(Carried *cr)
     or8(cr, F_c(0x2025, cr->x), 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
-    or8l(cr, W(slide_flags), 0xA0, 16);
+    or8l(cr, WA(slide_flags), 0xA0, 16);
     car_bits16(cr, 0x0002, GsuRecordFlags8AClear);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     fade_set(cr, 0x0020, 0x2000);
@@ -4879,7 +4879,7 @@ void GateFlashOnClock(Carried *cr)
     lda8(cr, (uint8_t)((v >> 4) & 0x01));
     if ((uint8_t)cr->a)
         { cyc(46); return; }
-    or8l(cr, W(slide_flags), 0x10, 0);
+    or8l(cr, WA(slide_flags), 0x10, 0);
     sound0(cr, 0x36);
     cyc(42);
 }
@@ -4908,7 +4908,7 @@ void GateFadeUp(Carried *cr)
 {
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(70);
-    or8l(cr, W(slide_flags), 0x20, 0);
+    or8l(cr, WA(slide_flags), 0x20, 0);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(22);
     fade_set(cr, 0x0080, 0x2000);
@@ -5064,7 +5064,7 @@ static void sweep0_frame(Carried *cr)
         { cyc(88); return; } else { cyc(18); }
     or8(cr, F_c(0x2025, cr->x), 0x01);
     cyc(2);
-    or8l(cr, W(slide_flags), 0x10, 0);
+    or8l(cr, WA(slide_flags), 0x10, 0);
     sound0(cr, 0x36);
     (cyc(62), ObjectRelease_cr(cr));
     cyc(44);
@@ -5181,7 +5181,7 @@ static void slide_chime_frame(Carried *cr)
         or8(cr, F_c(0x2025, cr->x), 0x01);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         cyc(24);
-        or8l(cr, W(slide_flags), 0xA0, 0);
+        or8l(cr, WA(slide_flags), 0xA0, 0);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
         cyc(22);
         slide_set(cr, 0x0080, 0xFF80, 0x8000);
@@ -5300,7 +5300,7 @@ static void fade_frame(Carried *cr, uint8_t lap, uint16_t step, uint16_t end)
     or8(cr, F_c(0x2025, cr->x), 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
-    or8l(cr, W(slide_flags), 0x20, 0);
+    or8l(cr, WA(slide_flags), 0x20, 0);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(22);
     fade_set(cr, step, end);
@@ -5483,7 +5483,7 @@ static void slide_zone_frame(Carried *cr)
     if (hit(cr)) {
         cyc(42);
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
-        st16w(cr, W(slide_done), 0x7FFF);
+        st16w(cr, WA(slide_done), 0x7FFF);
         slide_set(cr, 0x0100, 0x1000, 0x0000);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
         or8(cr, (cyc(16), 0x7E0000) | W(slide_flags), 0x80);
@@ -10283,7 +10283,7 @@ static void breakable_gate2_frame(Carried *cr)
         lda8(cr, (uint8_t)((v >> 4) & 0x01));
         if ((uint8_t)cr->a)
             { cyc(48); return; }
-        or8l(cr, W(slide_flags), 0x10, 0);
+        or8l(cr, WA(slide_flags), 0x10, 0);
         sound0(cr, 0x36);
         { cyc(68); return; }
     } else { cyc(40); }
@@ -11507,7 +11507,7 @@ static void lap1_fade_frame(Carried *cr)
     or8(cr, F_c(0x2025, cr->x), 0x01);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     cyc(24);
-    or8l(cr, W(slide_flags), 0x20, 0);
+    or8l(cr, WA(slide_flags), 0x20, 0);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(22);
     fade_set(cr, 0x0080, 0x2000);
@@ -11855,7 +11855,7 @@ static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1,
     if ((uint8_t)cr->a) {
         cyc(42);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
-        st8i(cr, W(wram_7F3460), t3460);
+        st8i(cr, WA(wram_7F3460), t3460);
         andor8(cr, WA(slide_flags), a1, o1);
         cyc(62);
     } else { cyc(80); }
@@ -11866,7 +11866,7 @@ static void window_set_frame(Carried *cr, uint8_t t3460, uint8_t a1, uint8_t o1,
     if (store2) {
         cyc(42);
         set_p(cr, (uint8_t)(cr->p | (P_M)));
-        st8i(cr, W(wram_7F3460), t3460);
+        st8i(cr, WA(wram_7F3460), t3460);
     } else {
         cyc(34);                                /* SEP, no store */
         set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -12499,14 +12499,14 @@ static void slide_gate_frame(Carried *cr)
         if (!(uint8_t)cr->a) {
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
             cyc(66);
-            r_lda16(cr, W(slide_done));
+            r_lda16(cr, WA(slide_done));
             r_cmp16(cr, 0x7FFF);
             if (cr->a == 0x7FFF) {
                 slide_gate_held_m16(cr);
                 return;
             } else { cyc(66); }
             cyc(4);
-            st16w(cr, W(slide_done), 0x0800);
+            st16w(cr, WA(slide_done), 0x0800);
             slide_set(cr, 0x0100, 0x0700, 0x0000);
             set_p(cr, (uint8_t)(cr->p | (P_M)));
             or8(cr, (cyc(16), 0x7E0000) | W(slide_flags), 0x80);
@@ -12528,7 +12528,7 @@ static void slide_gate_frame(Carried *cr)
     }
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(66);
-    r_lda16(cr, W(slide_done));
+    r_lda16(cr, WA(slide_done));
     r_cmp16(cr, 0x7FFF);
     if (cr->a != 0x7FFF)
         { cyc(40); slide_set(cr, 0x0100, 0xFF00, 0x8000); } else { cyc(46); }
@@ -14519,7 +14519,7 @@ static void hit_switch_frame(Carried *cr, uint16_t flag)
         cyc(22);                        /* SEP */
     } else { cyc(66); }
     set_p(cr, (uint8_t)(cr->p | (P_M)));
-    st8i(cr, db(cr) | flag, 0x01);
+    st8i(cr, 0x7E0000 | flag, 0x01);
     cyc(44);
 }
 

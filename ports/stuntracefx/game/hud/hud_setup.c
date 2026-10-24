@@ -118,10 +118,10 @@ static void hud_bytes(Carried *cr, const HudByte *t, unsigned n, int x8);
 static void hud_end(Carried *cr);
 static void lda8(Carried *cr, uint8_t v);
 static int mode_all(Carried *cr);
-static void mode_speed_battle(Carried *cr, uint32_t b, int speed);
+static void mode_speed_battle(Carried *cr, int speed);
 static void mode_stunt(Carried *cr);
 static void no_time(Carried *cr);
-static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at);
+static void player_tiles(Carried *cr, uint16_t from, uint16_t at);
 static void race_hud_setup(Carried *cr);
 static void race_hud_setup_two(Carried *cr);
 static void slide_word(Carried *cr, uint16_t v);
@@ -186,15 +186,15 @@ static void digit_tiles(Carried *cr, uint32_t at, uint8_t d)
 static void time_tiles(Carried *cr, uint8_t min, uint8_t sec, uint8_t hund)
 {
     cyc(min == 0xFF ? 86 : 0);          /* no time ($FFFF) or the unpacked BCD, after TimeUnpackBcdLong's RTL */
-    digit_tiles(cr, W(wram_0467), (uint8_t)(min & 0x0F));
+    digit_tiles(cr, WA(wram_0467), (uint8_t)(min & 0x0F));
     cyc(54);
-    digit_tiles(cr, W(wram_046F), (uint8_t)(sec >> 4));
+    digit_tiles(cr, WA(wram_046F), (uint8_t)(sec >> 4));
     cyc(14);
-    digit_tiles(cr, W(wram_04D7), (uint8_t)(sec & 0x0F));
+    digit_tiles(cr, WA(wram_04D7), (uint8_t)(sec & 0x0F));
     cyc(54);
-    digit_tiles(cr, W(wram_04DF), (uint8_t)(hund >> 4));
+    digit_tiles(cr, WA(wram_04DF), (uint8_t)(hund >> 4));
     cyc(14);
-    digit_tiles(cr, W(wram_04E7), (uint8_t)(hund & 0x0F));
+    digit_tiles(cr, WA(wram_04E7), (uint8_t)(hund & 0x0F));
 }
 
 /*
@@ -405,25 +405,25 @@ static int mode_all(Carried *cr)
         cyc(92);
         r_lda8(cr, WA(wram_0F63));
         m = (uint8_t)cr->a;
-        digit_tiles(cr, W(wram_0467), (uint8_t)(m & 0x0F));
+        digit_tiles(cr, WA(wram_0467), (uint8_t)(m & 0x0F));
         cyc(24);
         r_lda8(cr, WA(wram_0F62));
         s = (uint8_t)cr->a;
         cyc(40);
-        digit_tiles(cr, W(wram_046F), (uint8_t)(s >> 4));
+        digit_tiles(cr, WA(wram_046F), (uint8_t)(s >> 4));
         cyc(24);
         r_lda8(cr, WA(wram_0F62));
         s = (uint8_t)cr->a;
-        digit_tiles(cr, W(wram_04D7), (uint8_t)(s & 0x0F));
+        digit_tiles(cr, WA(wram_04D7), (uint8_t)(s & 0x0F));
         cyc(24);
         r_lda8(cr, WA(wram_0F61));
         h = (uint8_t)cr->a;
         cyc(40);
-        digit_tiles(cr, W(wram_04DF), (uint8_t)(h >> 4));
+        digit_tiles(cr, WA(wram_04DF), (uint8_t)(h >> 4));
         cyc(24);
         r_lda8(cr, WA(wram_0F61));
         h = (uint8_t)cr->a;
-        digit_tiles(cr, W(wram_04E7), (uint8_t)(h & 0x0F));
+        digit_tiles(cr, WA(wram_04E7), (uint8_t)(h & 0x0F));
     }
     HudBestTimeSprites(cr);
     cyc(28);                    /* its SEPs and RTL, then JMP RaceHudFlags */
@@ -499,21 +499,21 @@ static void mode_stunt(Carried *cr)
 
 /* LDA $addr, ASL, STA.W at, INC, STA.W at + 4: a player's number as its
    two tiles. */
-static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at)
+static void player_tiles(Carried *cr, uint16_t from, uint16_t at)
 {
     uint8_t v;
 
-    r_lda8(cr, b | from);
+    r_lda8(cr, 0x7E0000 | from);
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (v >> 7)));
     v = (uint8_t)(v << 1);
     lda8(cr, v);
     cyc(38);
-    wr8(b | at, v);
+    wr8(0x7E0000 | at, v);
     v++;
     lda8(cr, v);
     cyc(38);
-    wr8(b | (uint16_t)(at + 4), v);
+    wr8(0x7E0000 | (uint16_t)(at + 4), v);
 }
 
 /* HUD modes 0 (Speed Trax: first $0E18 = $8C, $0E16 = $EC) and 2 (Battle
@@ -521,7 +521,7 @@ static void player_tiles(Carried *cr, uint32_t b, uint16_t from, uint16_t at)
    hidden, $7F:3470 = $7FFF. Otherwise the players' tiles from $0DF4 and
    $0DF8 with their sprites, and $7F:3470 = $3947 with $0D4C set, else
    $7FFF. */
-static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
+static void mode_speed_battle(Carried *cr, int speed)
 {
     if (speed) {
         lda8(cr, 0x8C);
@@ -544,10 +544,10 @@ static void mode_speed_battle(Carried *cr, uint32_t b, int speed)
         (cyc(50), RaceHudSpritesHide(cr));
     } else {
         cyc(46);
-        player_tiles(cr, b, W(wram_0DF4), W(wram_046F));
+        player_tiles(cr, W(wram_0DF4), W(wram_046F));
         hud_bytes(cr, battle_p1_sprites, 6, 1);
         cyc(6);
-        player_tiles(cr, b, W(wram_0DF8), W(wram_0467));
+        player_tiles(cr, W(wram_0DF8), W(wram_0467));
         hud_bytes(cr, battle_p2_sprites, 6, 1);
         r_sep(cr, P_M);
         cyc(28);
@@ -614,11 +614,11 @@ static void race_hud_setup(Carried *cr)
     switch (h) {
     case 0xE05A:
         if (mode_all(cr))
-            mode_speed_battle(cr, b, 1); else { cyc(30); }
+            mode_speed_battle(cr, 1); else { cyc(30); }
         break;
     case 0xE263: mode_stunt(cr); cyc(8); break;
-    case 0xE4DD: mode_speed_battle(cr, b, 1); break;
-    case 0xE4E7: mode_speed_battle(cr, b, 0); break;
+    case 0xE4DD: mode_speed_battle(cr, 1); break;
+    case 0xE4E7: mode_speed_battle(cr, 0); break;
     default: carried_jump(cr, 0x030000 | h); return;
     }
     /* $03:E5C4: the sprite tables out, scrolls, HUD positions, HDMA. */

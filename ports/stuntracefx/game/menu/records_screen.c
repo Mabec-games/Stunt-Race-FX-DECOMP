@@ -237,15 +237,14 @@ static void md_first(Carried *cr, uint16_t id, uint8_t bra)
    MetaspriteDraw: the next group from the sprite slot past the last. */
 static void md_next(Carried *cr, uint32_t group, uint16_t prev, uint16_t slot, uint16_t id)
 {
-    uint32_t b = db(cr);
 
     cyc(48);
     r_lda16(cr, group);
     if (prev)
-        { cyc(38); r_add16(cr, rd16(b | prev)); }
+        { cyc(38); r_add16(cr, rd16(0x7E0000 | prev)); }
     r_tay16(cr);
     cyc(38);
-    wr16(b | slot, cr->a);
+    wr16(0x7E0000 | slot, cr->a);
     cr->x = id;
     set_p(cr, nz16(cr->p, id));
     (cyc(70), MetaspriteDraw_cr(cr));
@@ -255,7 +254,7 @@ static void md_next(Carried *cr, uint32_t group, uint16_t prev, uint16_t slot, u
    offset. */
 static void slot_to_y(Carried *cr, uint16_t slot, int d)
 {
-    r_lda16(cr, cyc_then(24, db(cr) | slot));
+    r_lda16(cr, cyc_then(24, 0x7E0000 | slot));
     if (d) {
         cyc(14);
         cr->a = (uint16_t)(cr->a + d);

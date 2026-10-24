@@ -119,7 +119,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *p = nz16(*p, *x);
 
     cyc(60);
-    rep = hold_repeats(RD16(joy1_held) & 0x0800, W(wram_190B), p, &a);
+    rep = hold_repeats(RD16(joy1_held) & 0x0800, WA(wram_190B), p, &a);
     if (!rep) {
         a = rd16((WA(wram_118F))) & 0x0800;
         *p = nz16(*p, a);
@@ -142,7 +142,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     }
 
     cyc(78);
-    rep = hold_repeats(RD16(joy1_held) & 0x0400, W(wram_190D), p, &a);
+    rep = hold_repeats(RD16(joy1_held) & 0x0400, WA(wram_190D), p, &a);
     if (!rep) {
         a = rd16((WA(wram_118F))) & 0x0400;
         *p = nz16(*p, a);
@@ -548,14 +548,14 @@ void MenuSettingsFrame(Carried *cr)
         return;
     }
     cyc(90);
-    r_lda16(cr, W(wram_18F9));
+    r_lda16(cr, WA(wram_18F9));
     if (!cr->a) {
         cyc(52);
         cr->a = pad;
         r_and16(cr, 0x9000);
         if (cr->a) {
             cyc(78);
-            r_lda16(cr, W(wram_18C3));
+            r_lda16(cr, WA(wram_18C3));
             r_cmp16(cr, 0x0002);
             if (cr->a == 0x0002) {
                 cyc(46);
@@ -624,7 +624,7 @@ void MenuSettingsFrame(Carried *cr)
     if (!cr->a)
         { cyc(42); return; }
     cyc(38);
-    r_lda16(cr, W(wram_18C3));
+    r_lda16(cr, WA(wram_18C3));
     r_cmp16(cr, 0x0000);
     if (cr->a)
         { cyc(112); return; } else { cyc(46); }

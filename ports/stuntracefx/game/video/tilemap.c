@@ -21,7 +21,7 @@ void abi_RaceRestart(void);
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the last word written; X
  * and Y advanced by $40; $F3 = 0; Z set, N clear; C, V from the first add.
  */
-static uint16_t tilemap_row(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
+static uint16_t tilemap_row(uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(30);
     uint16_t f1 = RD16(dp_f1);
@@ -38,7 +38,7 @@ static uint16_t tilemap_row(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, 
         cyc(32);
         v = (uint16_t)(rd16(0x703000 + *x) | 0x2000);
         cyc(54);
-        wr16((uint32_t)bank << 16 | (uint16_t)(0x93D7 + *y), v);
+        wr16(0x7F0000 | (uint16_t)(0x93D7 + *y), v);
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 2);
         cyc(102);
@@ -51,7 +51,8 @@ static uint16_t tilemap_row(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, 
 
 uint16_t TilemapRowFromGsuRam(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    return tilemap_row(bank, a, x, y, p);
+    (void)bank;
+    return tilemap_row(a, x, y, p);
 }
 
 void BackdropAnglesFromView_cr(Carried *cr);
@@ -928,7 +929,7 @@ void abi_TilemapLevelColumns(void)
  */
 uint16_t TilemapRowToE3D7(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t src, v = 0, n;
 
     cyc(40);
@@ -938,9 +939,9 @@ uint16_t TilemapRowToE3D7(uint8_t bank, uint16_t *x, uint16_t *y)
     cyc(18);
     do {
         cyc(52);
-        v = rd16(b | (uint16_t)(src + *x));
+        v = rd16(0x7F0000 | (uint16_t)(src + *x));
         cyc(30);
-        wr16(b | (uint16_t)(0xE3D7 + *y), v);
+        wr16(0x7F0000 | (uint16_t)(0xE3D7 + *y), v);
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 2);
         cyc(72);
@@ -1294,13 +1295,13 @@ void TilemapRow87Palette5(void)
 {
     uint16_t x, y, a = 0;
 
-    row_mark(0x0087, 0x0009, 0x14, W(wram_7F9464), 0x10, &x, &y, &a);
+    row_mark(0x0087, 0x0009, 0x14, WA(wram_7F9464), 0x10, &x, &y, &a);
 }
 
 void TilemapRow87Palette5_cr(Carried *cr)
 {
     cyc(22);
-    abi_row_mark(cr, 0x0087, 0x0009, 0x14, W(wram_7F9464), 0x10);
+    abi_row_mark(cr, 0x0087, 0x0009, 0x14, WA(wram_7F9464), 0x10);
     cyc(42);
 }
 
@@ -1329,13 +1330,13 @@ void TilemapRow107Palette5(void)
 {
     uint16_t x, y, a = 0;
 
-    row_mark(0x0107, 0x000D, 0x14, W(wram_7F94EA), 0x10, &x, &y, &a);
+    row_mark(0x0107, 0x000D, 0x14, WA(wram_7F94EA), 0x10, &x, &y, &a);
 }
 
 void TilemapRow107Palette5_cr(Carried *cr)
 {
     cyc(22);
-    abi_row_mark(cr, 0x0107, 0x000D, 0x14, W(wram_7F94EA), 0x10);
+    abi_row_mark(cr, 0x0107, 0x000D, 0x14, WA(wram_7F94EA), 0x10);
     cyc(42);
 }
 
@@ -1364,13 +1365,13 @@ void TilemapRow187Palette5(void)
 {
     uint16_t x, y, a = 0;
 
-    row_mark(0x0187, 0x000A, 0x14, W(wram_7F956A), 0x10, &x, &y, &a);
+    row_mark(0x0187, 0x000A, 0x14, WA(wram_7F956A), 0x10, &x, &y, &a);
 }
 
 void TilemapRow187Palette5_cr(Carried *cr)
 {
     cyc(22);
-    abi_row_mark(cr, 0x0187, 0x000A, 0x14, W(wram_7F956A), 0x10);
+    abi_row_mark(cr, 0x0187, 0x000A, 0x14, WA(wram_7F956A), 0x10);
     cyc(42);
 }
 
@@ -1399,12 +1400,12 @@ void TilemapRow187Palette4(void)
 {
     uint16_t x, y, a = 0;
 
-    row_mark(0x0187, 0x0009, 0x10, W(wram_7F9564), 0x00, &x, &y, &a);
+    row_mark(0x0187, 0x0009, 0x10, WA(wram_7F9564), 0x00, &x, &y, &a);
 }
 
 void TilemapRow187Palette4_cr(Carried *cr)
 {
-    abi_row_mark(cr, 0x0187, 0x0009, 0x10, W(wram_7F9564), 0x00);
+    abi_row_mark(cr, 0x0187, 0x0009, 0x10, WA(wram_7F9564), 0x00);
 }
 
 void abi_TilemapRow187Palette4(void)
@@ -1432,12 +1433,12 @@ void TilemapRow207Palette4(void)
 {
     uint16_t x, y, a = 0;
 
-    row_mark(0x0207, 0x000D, 0x10, W(wram_7F95EA), 0x00, &x, &y, &a);
+    row_mark(0x0207, 0x000D, 0x10, WA(wram_7F95EA), 0x00, &x, &y, &a);
 }
 
 void TilemapRow207Palette4_cr(Carried *cr)
 {
-    abi_row_mark(cr, 0x0207, 0x000D, 0x10, W(wram_7F95EA), 0x00);
+    abi_row_mark(cr, 0x0207, 0x000D, 0x10, WA(wram_7F95EA), 0x00);
 }
 
 void abi_TilemapRow207Palette4(void)
@@ -1465,12 +1466,12 @@ void TilemapRow287Palette4(void)
 {
     uint16_t x, y, a = 0;
 
-    row_mark(0x0287, 0x000A, 0x10, W(wram_7F966A), 0x00, &x, &y, &a);
+    row_mark(0x0287, 0x000A, 0x10, WA(wram_7F966A), 0x00, &x, &y, &a);
 }
 
 void TilemapRow287Palette4_cr(Carried *cr)
 {
-    abi_row_mark(cr, 0x0287, 0x000A, 0x10, W(wram_7F966A), 0x00);
+    abi_row_mark(cr, 0x0287, 0x000A, 0x10, WA(wram_7F966A), 0x00);
 }
 
 void abi_TilemapRow287Palette4(void)

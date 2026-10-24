@@ -855,7 +855,6 @@ static void panel_line(Carried *cr, uint16_t at)
  */
 void ResultsPanelSteps(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     static const uint16_t marks_split[6] = {0x0427, 0x0527, 0x042B, 0x052B, 0x042F, 0x052F};
     static const uint16_t marks[3] = {0x0407, 0x040B, 0x040F};
     unsigned i;
@@ -900,13 +899,13 @@ void ResultsPanelSteps(Carried *cr)
             cyc(8);
             lda8_imm(cr, 0xA2);
             for (i = 0; i < 6; i++)
-                { cyc(24); wr8(b | marks_split[i], 0xA2); }
+                { cyc(24); wr8(0x7E0000 | marks_split[i], 0xA2); }
         cyc(22);
             } else {
             cyc(14);
             lda8_imm(cr, 0xA2);
             for (i = 0; i < 3; i++)
-                { cyc(24); wr8(b | marks[i], 0xA2); }
+                { cyc(24); wr8(0x7E0000 | marks[i], 0xA2); }
         }
         panel_next_delay(cr, 0x32);
         cyc(54);
@@ -1424,12 +1423,12 @@ static void lap_override(Carried *cr, uint32_t b)
     if (!(cr->p & P_C)) {
         cyc(22);
         cr->a = (uint16_t)((cr->a & 0xFF00) | alu_adc8((uint8_t)cr->a, 0x60, &cr->p));
-        dec8_mem(cr, W(dp_f1));
+        dec8_mem(cr, WA(dp_f1));
     } else { cyc(6); }
     cyc(24);
     WR8(wram_0EDF, (uint8_t)cr->a);
     cyc(16);
-    r_lda8(cr, W(dp_f1));
+    r_lda8(cr, WA(dp_f1));
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     cyc(38);
     m = RD8(wram_0EDD);
@@ -1879,7 +1878,7 @@ progress:
         r_sep(cr, P_M | P_X);
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)cr->y) & ~P_C) | P_C));     /* CPY #0 */
         cyc(126);
-        cr->x = rd8(b | ((uint8_t)cr->y ? 0x0E42 : (cyc(6), 0x0E41)));
+        cr->x = rd8(0x7E0000 | ((uint8_t)cr->y ? 0x0E42 : (cyc(6), 0x0E41)));
         set_p(cr, nz8(cr->p, (uint8_t)cr->x));
         switch (cr->x) {
         case 0x00:
@@ -2144,7 +2143,7 @@ static void race_end_wait(Carried *cr, void (*draw)(Carried *))
 {
 
     cyc(32);
-    r_lda8(cr, W(slide_out));
+    r_lda8(cr, WA(slide_out));
     cmp8_imm(cr, 0x1F);
     if ((uint8_t)cr->a < 0x1F) {
         cyc(52);

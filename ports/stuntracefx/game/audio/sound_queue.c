@@ -63,7 +63,7 @@ static unsigned push_wide(uint8_t p)
 void SoundPort0QueuePushRaw(uint8_t command)
 {
     cyc(252);
-    queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
+    queue_push(WA(sound_port0_queue), WA(sound_port0_head), WA(sound_port0_count), command);
 }
 
 void SoundPort0QueuePush_cr(Carried *cr);
@@ -126,7 +126,7 @@ void abi_SoundPort0QueuePushRawX8(void)
 void SoundPort0QueuePushRawWide(uint8_t command, unsigned wide)
 {
     cyc(198 + wide);
-    queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
+    queue_push(WA(sound_port0_queue), WA(sound_port0_head), WA(sound_port0_count), command);
     cyc(wide);
 }
 
@@ -164,7 +164,7 @@ void SoundPort0QueuePushW(uint8_t command, unsigned wide)
     cyc(222 + wide);
     if (RD8(current_player) != 0)
         { cyc(10); command |= 0x80; }
-    queue_push(W(sound_port0_queue), W(sound_port0_head), W(sound_port0_count), command);
+    queue_push(WA(sound_port0_queue), WA(sound_port0_head), WA(sound_port0_count), command);
     cyc(wide);
 }
 
@@ -221,7 +221,7 @@ void abi_SoundPort0QueuePushX8(void)
 void SoundPort1QueuePushW(uint8_t command, unsigned wide)
 {
     cyc(176 + wide);
-    queue_push(W(sound_port1_queue), W(sound_port1_head), W(sound_port1_count), command);
+    queue_push(WA(sound_port1_queue), WA(sound_port1_head), WA(sound_port1_count), command);
     cyc(wide);
 }
 
@@ -342,24 +342,24 @@ static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, u
         v = 0x00;
     } else {
         cyc(40);
-        n = rd8(b | count);
+        n = rd8(0x7E0000 | count);
         *a = n;
         if (!n)
             { cyc(22); return 0; }
         cyc(40);
-        *x = rd8(b | head);
+        *x = rd8(0x7E0000 | head);
         cyc(24);
-        v = rd8(b | (uint16_t)(ring + *x));
+        v = rd8(0x7E0000 | (uint16_t)(ring + *x));
         cyc(24);
-        n = (uint8_t)(rd8(b | count) - 1);
+        n = (uint8_t)(rd8(0x7E0000 | count) - 1);
         cyc(6);
-        wr8(b | count, n);
+        wr8(0x7E0000 | count, n);
         if (n) {
             *x = (uint8_t)(*x + 1);
             if (*x >= 0x10)
                 *x = 0x00;
             cyc(92);
-            wr8(b | head, *x);
+            wr8(0x7E0000 | head, *x);
         } else { cyc(22); }
     }
     *a = v;
@@ -417,7 +417,7 @@ SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x)
 
         for (i = 0; i < 2; i++) {
             cyc(40);
-            a = v = rd8(b | hold[i]);
+            a = v = rd8(0x7E0000 | hold[i]);
             if (v) {
                 cyc(50);
                 goto done;

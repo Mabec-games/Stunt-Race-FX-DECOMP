@@ -32,7 +32,7 @@ static void crash_body(Carried *cr, uint8_t bank, uint16_t code)
     uint16_t a, step;
 
     cyc(70);
-    wr16((uint32_t)bank << 16 | (uint16_t)W(crash_code), code);
+    wr16(0x7E0000 | (uint16_t)W(crash_code), code);
     /* Through the caller's data bank: from bank $7E or $7F these four land
        in work RAM, and interrupts and HDMA stay on. */
     cyc(46);
@@ -180,7 +180,7 @@ void abi_CrashWhite(void)
 void CrashGreen(Carried *cr, uint8_t bank)
 {
     cyc(70);
-    wr16((uint32_t)bank << 16 | W(crash_colour), 0x03E0);
+    wr16(0x7E0000 | W(crash_colour), 0x03E0);
     crash_body(cr, bank, 0x00E2);
 }
 

@@ -75,10 +75,10 @@ void RecordNextContact_cr(Carried *cr);
 static void abi_record_new(Carried *cr, uint16_t program, uint16_t word0a, uint16_t join);
 static void ctl_bit(Carried *cr, uint16_t m);
 static void ctl_flags_or(Carried *cr, uint32_t b, uint8_t m);
-static int ctl_held(Carried *cr, uint32_t b, uint16_t at, uint16_t m);
+static int ctl_held(Carried *cr, uint16_t at, uint16_t m);
 static void ctl_linked_flags(Carried *cr, uint32_t b, uint8_t m1, uint8_t m2);
 static void ctl_player(Carried *cr, uint16_t held, uint16_t prev, uint8_t player, uint16_t car);
-static void ctl_player_store(Carried *cr, uint32_t b, uint16_t v);
+static void ctl_player_store(Carried *cr, uint16_t v);
 static uint16_t ctl_player_word(Carried *cr);
 static void ctl_rec_or(Carried *cr, uint32_t w, uint16_t m);
 static void exit_record(Carried *cr, uint16_t rec, uint16_t a);
@@ -671,10 +671,10 @@ void abi_ObjectVelocityFromRecordOf(void)
  */
 uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj)
 {
+    (void)bank;
     static const struct { uint16_t from, to; } copy[7] = {
         {0x2053, 0x0C}, {0x2055, 0x0E}, {0x2057, 0x10}, {0x2020, 0x14},
         {0x200C, 0x1E}, {0x200E, 0x20}, {0x2010, 0x22}};
-    uint32_t b = (uint32_t)bank << 16;
     cyc(104);
     uint16_t rec = record_of(obj), v;
     unsigned i;
@@ -682,7 +682,7 @@ uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj)
     if (!rec)
         return 0; else { cyc(30); }
     for (i = 0; i < 7; i++)
-        { cyc(30); wr16(0x700000 + copy[i].to + rec, cyc_then(32, rd16(b | (uint16_t)(copy[i].from + obj)))); }
+        { cyc(30); wr16(0x700000 + copy[i].to + rec, cyc_then(32, rd16(0x7E0000 | (uint16_t)(copy[i].from + obj)))); }
     cyc(30);
     wr16(0x700024 + rec, cyc_then(76, (uint16_t)((RD16I(obj_15, obj) & 0x00FF) << 8)));
     cyc(30);
@@ -725,7 +725,6 @@ void abi_GsuRecordFromObject(void)
 void GsuRecordPositionFromObject(Carried *cr)
 {
     static const uint16_t from[3] = {0x200C, 0x200E, 0x2010};
-    uint32_t b = (uint32_t)cr->db << 16;
     cyc(20);
     uint16_t rec = record_of(cr->x), v = 0;
     unsigned i;
@@ -733,7 +732,7 @@ void GsuRecordPositionFromObject(Carried *cr)
     cyc(30);
     for (i = 0; rec && (cyc(8), i < 3); i++) {
         cyc(22);
-        v = rd16(b | (uint16_t)(from[i] + cr->x));
+        v = rd16(0x7E0000 | (uint16_t)(from[i] + cr->x));
         cyc(32);
         wr16(0x70001E + 2 * i + rec, v);
     }
@@ -1981,10 +1980,10 @@ static void ctl_bit(Carried *cr, uint16_t m)
 }
 
 /* LDA abs; BIT #m: is button m held (in $1AF0, or $1AF2 last frame)? */
-static int ctl_held(Carried *cr, uint32_t b, uint16_t at, uint16_t m)
+static int ctl_held(Carried *cr, uint16_t at, uint16_t m)
 {
     cyc(24);
-    r_lda16(cr, b | at);
+    r_lda16(cr, 0x7E0000 | at);
     cyc(8);
     ctl_bit(cr, m);
     return (cr->a & m) != 0;
@@ -2041,7 +2040,7 @@ static uint16_t ctl_player_word(Carried *cr)
 }
 
 /* PHA ... PLA around the player test, then the word stored back. */
-static void ctl_player_store(Carried *cr, uint32_t b, uint16_t v)
+static void ctl_player_store(Carried *cr, uint16_t v)
 {
     cyc(76);
     uint16_t at = ctl_player_word(cr);
@@ -2049,7 +2048,7 @@ static void ctl_player_store(Carried *cr, uint32_t b, uint16_t v)
     cr->a = v;
     set_p(cr, nz16(cr->p, v));
     cyc(98);
-    wr16(b | at, v);
+    wr16(0x7E0000 | at, v);
 }
 
 /*
@@ -2121,10 +2120,10 @@ void CarControlsToRecord(Carried *cr)
     r_and16(cr, 0x0010);
     if (cr->a)
         { cyc(68); goto out; } else { cyc(44); }
-    if (ctl_held(cr, b, W(seq_input), 0x2000)) {
+    if (ctl_held(cr, W(seq_input), 0x2000)) {
         cyc(46);
         RecordButtonSequence_cr(cr);
-        if (!ctl_held(cr, b, W(wram_1AF2), 0x2000)) {
+        if (!ctl_held(cr, W(wram_1AF2), 0x2000)) {
             uint16_t y = cr->y;
 
             r_lda16(cr, cyc_then(60, ctl_field(b, cr->y, 0x204F)));
@@ -2171,7 +2170,7 @@ void CarControlsToRecord(Carried *cr)
                 if (!(cr->p & P_N)) {
                     cyc(40);
                     for (i = 0; i < 4; i++)
-                        if (ctl_held(cr, b, W(seq_input), clear_timer[i]))
+                        if (ctl_held(cr, W(seq_input), clear_timer[i]))
                             break;
                     if (i < 4) {
                         r_lda16_imm(cr, 0xFFFF);
@@ -2213,15 +2212,15 @@ void CarControlsToRecord(Carried *cr)
     r_and16(cr, 0xD800);
     cyc(54);
     wr16(r + 0x42, cr->a);
-    if (ctl_held(cr, b, W(seq_input), 0x0200))
+    if (ctl_held(cr, W(seq_input), 0x0200))
         { ctl_rec_or(cr, r + 0x42, 0x0001); cyc(22); /* BRA */ }
-    else { cyc(26); if (ctl_held(cr, b, W(seq_input), 0x0100))
+    else { cyc(26); if (ctl_held(cr, W(seq_input), 0x0100))
         ctl_rec_or(cr, r + 0x42, 0x0002); else { cyc(26); } }
-    if (ctl_held(cr, b, W(seq_input), 0x0020))
+    if (ctl_held(cr, W(seq_input), 0x0020))
         { ctl_rec_or(cr, r + 0x42, 0x0004); cyc(22); /* BRA */ }
-    else { cyc(26); if (ctl_held(cr, b, W(seq_input), 0x0010))
+    else { cyc(26); if (ctl_held(cr, W(seq_input), 0x0010))
         ctl_rec_or(cr, r + 0x42, 0x0008); else { cyc(26); } }
-    if (ctl_held(cr, b, W(seq_input), 0x0080)) {
+    if (ctl_held(cr, W(seq_input), 0x0080)) {
         ctl_rec_or(cr, r + 0x42, 0x2040);
         cyc(32);
         r_lda16(cr, r + 0x4A);
@@ -2229,13 +2228,13 @@ void CarControlsToRecord(Carried *cr)
         if (cr->p & P_N)
             { cyc(48); ctl_rec_or(cr, r + 0x42, 0x0020); } else { cyc(54); }
     } else { cyc(26); }
-    if (ctl_held(cr, b, W(seq_input), 0x4000)) {
+    if (ctl_held(cr, W(seq_input), 0x4000)) {
         cyc(32);
         r_lda16(cr, r + 0x6A);
         if (cr->a)
             { cyc(16); ctl_rec_or(cr, r + 0x42, 0x0400); goto player_clear; }
         else {
-            r_lda16(cr, cyc_then(62, b | ctl_player_word(cr)));
+            r_lda16(cr, cyc_then(62, 0x7E0000 | ctl_player_word(cr)));
             ctl_bit(cr, 0x0010);
             if (!(cr->a & 0x0010)) {
                 cyc(88);
@@ -2243,7 +2242,7 @@ void CarControlsToRecord(Carried *cr)
                 r_lda16_imm(cr, 0x005E);
                 SoundPort0QueuePush_cr(cr);
                 v |= 0x0010;
-                ctl_player_store(cr, b, v);
+                ctl_player_store(cr, v);
             } else { cyc(30); }
         }
     cyc(22);
@@ -2252,13 +2251,13 @@ void CarControlsToRecord(Carried *cr)
     player_clear:
         pw = ctl_player_word(cr);
         cyc(62);
-        r_lda16(cr, b | pw);
+        r_lda16(cr, 0x7E0000 | pw);
         ctl_bit(cr, 0x0010);
         if (cr->a & 0x0010)
-            { cyc(24); ctl_player_store(cr, b, (uint16_t)(cr->a & 0xFFEF)); }
+            { cyc(24); ctl_player_store(cr, (uint16_t)(cr->a & 0xFFEF)); }
         else cyc(pw == 0x1A60 ? 30 : 8);
     }
-    if (ctl_held(cr, b, W(seq_input), 0x0040) && !ctl_held(cr, b, W(wram_1AF2), 0x0040)) {
+    if (ctl_held(cr, W(seq_input), 0x0040) && !ctl_held(cr, W(wram_1AF2), 0x0040)) {
         cyc(32);
         r_lda16(cr, r + 0x5E);
         if (!cr->a) {
@@ -2269,21 +2268,21 @@ void CarControlsToRecord(Carried *cr)
                 { cyc(38); ctl_rec_or(cr, r + 0x42, 0x0080); } else { cyc(44); }
         } else { cyc(22); }
     } else { cyc(26); }
-    if (ctl_held(cr, b, W(seq_input), 0x8000))
+    if (ctl_held(cr, W(seq_input), 0x8000))
         ctl_rec_or(cr, r + 0x42, 0x0010); else { cyc(26); }
     cyc(32);
     r_lda16(cr, r + 0x40);
     r_and16(cr, 0x0100);
     if (cr->a) {
         cyc(38);
-        if (ctl_held(cr, b, W(seq_input), 0x0400)) {
+        if (ctl_held(cr, W(seq_input), 0x0400)) {
             cyc(32);
             r_lda16(cr, r + 0x26);
             r_sub16(cr, 0x0600);
             cyc(64);
             wr16(r + 0x26, cr->a);
         } else { cyc(26); }
-        if (ctl_held(cr, b, W(seq_input), 0x0800)) {
+        if (ctl_held(cr, W(seq_input), 0x0800)) {
             cyc(32);
             r_lda16(cr, r + 0x26);
             r_add16(cr, 0x0600);

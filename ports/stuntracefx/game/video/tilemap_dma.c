@@ -34,7 +34,7 @@ static void upload(Carried *cr, uint16_t gradient_src, uint16_t src, int bra)
     uint16_t v;
 
     cyc(68);
-    v = rd16(b | gradient_src);
+    v = rd16(0x7E0000 | gradient_src);
     cyc(32);
     WR16(gradient_ptr_a, v);
     cyc(48);

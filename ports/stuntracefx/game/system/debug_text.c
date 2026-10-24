@@ -154,7 +154,7 @@ void DebugPrint(uint8_t bank)
     WR16(text_half, 0x0000);
     for (top = 150;; top = 90) { /* later rounds follow a draw: its tail is stated */
         cyc(top);
-        s = rd24(W(dp_54));
+        s = rd24(WA(dp_54));
         cyc(168);
         c = rd8((s + y) & 0xFFFFFF);
         if (!c)

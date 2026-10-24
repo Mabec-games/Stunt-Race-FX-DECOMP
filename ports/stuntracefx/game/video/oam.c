@@ -281,7 +281,7 @@ static uint16_t sprite_strip(uint16_t index, uint16_t offset, uint32_t table, ui
  */
 uint16_t SpriteStrip4(uint16_t selector, uint16_t offset)
 {
-    return sprite_strip((uint16_t)((selector >> 1) & 0x00F8), offset, W(wram_7F09CD), 0x0010, 3);
+    return sprite_strip((uint16_t)((selector >> 1) & 0x00F8), offset, WA(wram_7F09CD), 0x0010, 3);
 }
 
 void SpriteStrip4_cr(Carried *cr)
@@ -320,7 +320,7 @@ void abi_SpriteStrip4(void)
  */
 uint16_t SpriteStrip6(uint16_t selector, uint16_t offset)
 {
-    return sprite_strip((uint16_t)((selector & 0x0038) << 1), offset, W(wram_7F0A66), 0x0008, 5);
+    return sprite_strip((uint16_t)((selector & 0x0038) << 1), offset, WA(wram_7F0A66), 0x0008, 5);
 }
 
 void SpriteStrip6_cr(Carried *cr)
@@ -1533,7 +1533,6 @@ void OamLargeColumns(uint8_t bank)
     static const uint16_t tile[3] = {0x0660, 0x0680, 0x06A0};
     static const uint16_t first[3] = {0x00A0, 0x0180, 0x01A0};
     static const uint16_t high[6] = {0x057F, 0x0580, 0x058D, 0x058E, 0x058F, 0x0590};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t p = 0;
     unsigned i;
 
@@ -1548,7 +1547,7 @@ void OamLargeColumns(uint8_t bank)
     }
     cyc(22);
     for (i = 0; i < 6; i++)
-        { cyc(40); wr8(b | high[i], 0xAA); }
+        { cyc(40); wr8(0x7E0000 | high[i], 0xAA); }
     cyc(70);
 }
 
@@ -1584,10 +1583,10 @@ void abi_OamLargeColumns(void)
  */
 void OamPlaceRows75And112(uint8_t bank)
 {
+    (void)bank;
     static const uint8_t at8c[7] = {116, 117, 118, 120, 122, 124, 126};
     static const uint8_t at94[5] = {119, 121, 123, 125, 127};
     static const uint16_t high[6] = {0x057F, 0x0580, 0x058D, 0x058E, 0x058F, 0x0590};
-    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
 
     cyc(108);
@@ -1611,7 +1610,7 @@ void OamPlaceRows75And112(uint8_t bank)
     cyc(24);
     WR8I(oam_buffer, 1 + 4 * 115, 0x80);
     for (i = 0; i < 6; i++)
-        { cyc(i & 1 ? 24 : 40); wr8(b | high[i], 0x00); }   /* LDA # before each pair */
+        { cyc(i & 1 ? 24 : 40); wr8(0x7E0000 | high[i], 0x00); }   /* LDA # before each pair */
     cyc(70);
 }
 
@@ -2880,10 +2879,10 @@ static uint8_t oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int 
 }
 
 /* Step $0D54 on by 2 (two INCs) when the byte at `at` equals v. */
-static void stage_next_if(uint32_t b, uint16_t at, uint8_t v)
+static void stage_next_if(uint16_t at, uint8_t v)
 {
     cyc(70);
-    if (rd8(b | at) != v)
+    if (rd8(0x7E0000 | at) != v)
         { cyc(38); return; }            /* CMP, BNE taken */
     cyc(56);                            /* CMP, BNE not taken, INC's fetch */
     WR8(wram_0D54, cyc_then(6, (uint8_t)(RD8(wram_0D54) + 1)));
@@ -2892,10 +2891,10 @@ static void stage_next_if(uint32_t b, uint16_t at, uint8_t v)
 }
 
 /* Restart $0D54 when the byte at `at` equals v. */
-static void stage_reset_if(uint32_t b, uint16_t at, uint8_t v)
+static void stage_reset_if(uint16_t at, uint8_t v)
 {
     cyc(70);
-    if (rd8(b | at) == v)
+    if (rd8(0x7E0000 | at) == v)
         WR8(wram_0D54, 0x00);
 }
 
@@ -2910,14 +2909,14 @@ static uint8_t direct_stage(uint32_t b)
     cyc(22 + 46);                       /* SEP #$10, LDX */
     switch (RD8(wram_0D54)) {
     case 0x02:
-        stage_next_if(b, W(wram_0E16), 0xAC);
+        stage_next_if(W(wram_0E16), 0xAC);
         cyc(6);                         /* on into the stage 0 code, no JMP */
         return oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
     case 0x00:
         cyc(52);
         return oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
     case 0x04:
-        stage_next_if(b, W(gauge_b6_x), 0x1F);
+        stage_next_if(W(gauge_b6_x), 0x1F);
         cyc(6);
         return oam_direct(b, 0x96, 0x012C, 0x0030, 0);
     case 0x06:
@@ -2931,11 +2930,11 @@ static uint8_t direct_stage(uint32_t b)
         cyc(6);
         return oam_direct(b, 0xE0, 0x01C0, 0x0010, 0);
     case 0x08:
-        stage_reset_if(b, W(hud_slide), 0x10);
+        stage_reset_if(W(hud_slide), 0x10);
         ods_x = 0x00BC;
         return OamWriteSprites36To46();
     default:                                        /* 0x0A */
-        stage_reset_if(b, W(hud_slide), 0xD0);
+        stage_reset_if(W(hud_slide), 0xD0);
         OamWriteSprites36To46();
         return oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
     }

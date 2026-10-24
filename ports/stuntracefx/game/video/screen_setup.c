@@ -76,7 +76,7 @@ void RaceVideoInit_cr(Carried *cr);
 void RaceVideoSetup_cr(Carried *cr);
 void VideoRegsReset_cr(Carried *cr);
 void VideoStartUploads_cr(Carried *cr);
-static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_t vram);
+static void hud_tile(Carried *cr, uint16_t from, uint16_t w, uint16_t vram);
 static void pull_p(Carried *cr, uint8_t p);
 static void race_video_exit(Carried *cr, int swapped, uint8_t p0, uint8_t db0, uint16_t a, uint16_t x, uint16_t y);
 static void video_gsu_3000(Carried *cr, uint16_t a, uint16_t x, int x_first);
@@ -532,11 +532,11 @@ int RaceVideoSetup(uint16_t x_in, uint16_t *a, uint16_t *x, uint16_t *y)
         MenuCourseGraphics(0x03);
         cyc(112 + 122);
         WR16(tilemap_7f9bd7, 0x0000);
-        rv_mvn(W(tilemap_7f9bd7), W(wram_7F9BD8), 0x2000);
+        rv_mvn(WA(tilemap_7f9bd7), WA(wram_7F9BD8), 0x2000);
         cyc(42);                                    /* PLP */
         rv_gsu_vram(0xF84C, 0xF7E3);
         cyc(88);
-        rv_mvn(0x703000, W(tilemap_7f93d7), 0x0800);
+        rv_mvn(0x703000, WA(tilemap_7f93d7), 0x0800);
         cyc(44);
         rv_gsu_3000(0xC770, 0x0018, 0);
         cyc(158 - 98);
@@ -766,13 +766,13 @@ void abi_RaceTimeInit(void);
 
 /* LDA #from, STA $F1, LDA (a word of work RAM at w), LDX #vram, JSR
    VramDmaTileFromGsuRam: one tile of the Super FX picture to VRAM. */
-static void hud_tile(Carried *cr, uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
+static void hud_tile(Carried *cr, uint16_t from, uint16_t w, uint16_t vram)
 {
     cr->a = from;
     cyc(34);
     WR16(tilemap_row_offset, from);
     cyc(24);
-    r_lda16(cr, b | w);
+    r_lda16(cr, 0x7E0000 | w);
     cr->x = vram;
     set_p(cr, nz16(cr->p, vram));
     (cyc(70), VramDmaTileFromGsuRam_cr(cr));
@@ -841,11 +841,11 @@ void RaceHudLoad(Carried *cr)
     w = rd16(b | (uint16_t)(0xDD56 + x));
     if (w == 0xDDA4) {
         cyc(34);
-        hud_tile(cr, b, 0x30A0, W(wram_18E5), 0x62F0);
+        hud_tile(cr, 0x30A0, W(wram_18E5), 0x62F0);
         cyc(0);
-        hud_tile(cr, b, 0x30A0, W(wram_18E7), 0x63E0);
+        hud_tile(cr, 0x30A0, W(wram_18E7), 0x63E0);
         cyc(0);
-        hud_tile(cr, b, 0x30A0, W(wram_18E9), 0x63F0);
+        hud_tile(cr, 0x30A0, W(wram_18E9), 0x63F0);
         w = 0xDDCE;
     } else { cyc(34); }
     cyc(0);
@@ -857,19 +857,19 @@ void RaceHudLoad(Carried *cr)
             w = 0xDD5E;
     }
     if (w == 0xDD94)
-        hud_tile(cr, b, 0x3000, W(wram_18E5), 0x62F0);
+        hud_tile(cr, 0x3000, W(wram_18E5), 0x62F0);
     cyc(0);
     if (w == 0xDD5E)
         { cyc(14); video_gsu_ram_dma(cr, 0x3080, 0x63F0, 0x0020); } else { cyc(36); }
     cyc(8);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~(P_M | P_X))));
-    hud_tile(cr, b, 0x3000, W(selection_derived), 0x62E0);
+    hud_tile(cr, 0x3000, W(selection_derived), 0x62E0);
     cyc(10);
     video_gsu_vram(cr, 0xF845, 0xF804);
     cyc(18);
     video_gsu_3000(cr, 0xD920, 0x0018, 0);
     cyc(182);
-    video_mvn(cr, 0x703000, W(wram_7F63D7), 0x3000);
+    video_mvn(cr, 0x703000, WA(wram_7F63D7), 0x3000);
     r_sep(cr, P_M);
     (cyc(110), SoundReset_cr(cr));
     r_sep(cr, P_M);

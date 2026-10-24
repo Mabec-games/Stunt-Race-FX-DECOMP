@@ -158,7 +158,7 @@ static uint32_t db(Carried *cr)
 /* Camera field `o` of the camera in Y, through the data bank. */
 static uint32_t cam(Carried *cr, uint16_t o)
 {
-    return db(cr) | (uint16_t)(cr->y + o);
+    return 0x7E0000 | (uint16_t)(cr->y + o);
 }
 
 /* LDA #v with M 8-bit. */
@@ -1511,7 +1511,7 @@ static void follower_frame(Carried *cr)
     car_y(cr, 0);
     WR8(wram_1F41, cyc_then(24, 0x00));
     for (i = 0; i < 3; i++)
-        copy16x(cr, db(cr) | keep[i], dpa(cr, dpo[i]), i ? 60 : 38, 24);
+        copy16x(cr, 0x7E0000 | keep[i], dpa(cr, dpo[i]), i ? 60 : 38, 24);
     cyc(22);
     follow_step(cr);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
@@ -1525,7 +1525,7 @@ static void follower_frame(Carried *cr)
     for (i = 0; i < 3; i++) {
         cyc(32);
         r_lda16(cr, (0x70001E + 2 * i + r) & 0xFFFFFF);
-        wr16(db(cr) | to[i], cyc_then(24, cr->a));
+        wr16(0x7E0000 | to[i], cyc_then(24, cr->a));
     }
     r_lda16(cr, cyc_then(2, dpw(cr, 0xB7)));
     asr_n(cr, 2);
@@ -1571,7 +1571,7 @@ static void follower_frame(Carried *cr)
         } else { cyc(16); } /* AND, BEQ taken */
         } else {
         for (i = 0; i < 3; i++)
-            { cyc(8); copy16x(cr, dpa(cr, dpo[i]), db(cr) | keep[i], 60, 16); }
+            { cyc(8); copy16x(cr, dpa(cr, dpo[i]), 0x7E0000 | keep[i], 60, 16); }
     }
     cyc(84);
     ObjectFaceTied_cr(cr);

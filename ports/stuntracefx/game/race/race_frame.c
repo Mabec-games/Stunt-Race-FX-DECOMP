@@ -729,7 +729,6 @@ static void delay_4000(Carried *cr)
  */
 void RaceModeSetup(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t p0 = cr->p, mode, v;
     static const uint16_t clear[] = {0x0D4C, 0x0D4E, 0x10CD, 0x0D48, 0x0E3E, 0x0D63, 0x0D4C,
                                      0x0D44, 0x0EED, 0x0EEE, 0x0EEF, 0x0D24, 0x0D25};
@@ -769,7 +768,7 @@ void RaceModeSetup(Carried *cr)
     WR16(scroll_value, 0x0000);
     pick_sound(cr);
     for (i = 0; i < sizeof clear / sizeof clear[0]; i++)
-        { cyc(24); wr8(b | clear[i], 0x00); }
+        { cyc(24); wr8(0x7E0000 | clear[i], 0x00); }
     cyc(40);
     v = RD8(hud_mode) ? (cyc(16), 0x00) : 0x04;
     cyc(2);
@@ -1298,7 +1297,7 @@ static void frame_view_from(Carried *cr, uint16_t slot)
 {
     r_rep(cr, P_M | P_X);
     cyc(24);
-    cr->x = rd16((uint32_t)cr->db << 16 | slot);
+    cr->x = rd16(0x7E0000 | slot);
     set_p(cr, nz16(cr->p, cr->x));
     cyc(32);
     r_lda16(cr, W(obj_link) + cr->x);

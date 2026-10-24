@@ -308,7 +308,6 @@ void abi_WindowsSetupSelect(void)
  */
 void BobStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, c;
 
     r_sep(cr, P_M | P_X);
@@ -336,9 +335,9 @@ void BobStep(Carried *cr)
         WR8X(wram_1A22, cr->x, 0x00);
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(cr->x - 0x01)) & ~P_C) | (cr->x >= 0x01 ? P_C : 0)));
         cyc(62);
-        v = (uint8_t)(rd8(b | at) & 0x7F);
+        v = (uint8_t)(rd8(0x7E0000 | at) & 0x7F);
         cyc(40);
-        wr8(b | at, v);
+        wr8(0x7E0000 | at, v);
         cr->a = (uint16_t)((cr->a & 0xFF00) | v);
         set_p(cr, nz8(cr->p, v));
         cyc(cr->x == 0x01 ? 42 : 64);   /* RTS, after BRA for bob 0 */
@@ -492,7 +491,6 @@ void abi_BobWindow1(void)
  */
 void WindowSweepStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v, c;
     unsigned i;
 
@@ -525,7 +523,7 @@ void WindowSweepStep(Carried *cr)
         WR8(slide_flags, v);
         cyc(16);
         for (i = 0; i < 3; i++)
-            { cyc(24); wr8(b | z[i], 0x00); }
+            { cyc(24); wr8(0x7E0000 | z[i], 0x00); }
         cyc(40);
         WR8(wram_1A19, 0xFE);
         cyc(24);
@@ -981,7 +979,7 @@ void WindowSlideOrOscillate(Carried *cr)
     r_lda8(cr, (WA(window_hdma_off)));
     if (!(uint8_t)cr->a) {
         cyc(48);
-        r_lda8(cr, W(window_hdma_19bc));
+        r_lda8(cr, WA(window_hdma_19bc));
         v = (uint8_t)cr->a;
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(38), P_C) : 0)));
         if (v != 0xFF) {

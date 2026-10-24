@@ -484,8 +484,8 @@ void MenuScreenOpenPreview(Carried *cr)
     (cyc(62), w_MenuActorsRun(cr));
     (cyc(62), MenuOamBuild_cr(cr));
     cyc(0);
-    wr_m(cr, W(menu_slide_pos), 0x0000);
-    wr_m(cr, W(menu_scroll_y), 0x0000);
+    wr_m(cr, WA(menu_slide_pos), 0x0000);
+    wr_m(cr, WA(menu_scroll_y), 0x0000);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
         { cyc(ppu[i].cost); reg_wr(ppu[i].reg, ppu[i].v); }
@@ -1034,7 +1034,7 @@ void CourseMenuRun(Carried *cr)
     cyc(24);
     WR16(frame_step, 0x0000);
     cyc(32);
-    r_lda16(cr, W(wram_1917));
+    r_lda16(cr, WA(wram_1917));
     if (!cr->a) {
         TitleScreenRun(cr);
         r_rep(cr, P_M);
@@ -1053,14 +1053,14 @@ void CourseMenuRun(Carried *cr)
     b = (uint32_t)cr->db << 16;
     cyc(32);
 chosen:
-    r_lda16(cr, W(wram_18C3));
+    r_lda16(cr, WA(wram_18C3));
     cyc(24);
     WR16(hud_mode, cr->a);
     r_lda16_imm(cr, 0x0001);
     cyc(18);
     WR16(wram_1917, 0x0001);
     cyc(32);
-    r_lda16(cr, W(wram_18C3));
+    r_lda16(cr, WA(wram_18C3));
     r_cmp16(cr, 0x0002);
     if (cr->p & P_Z)
         { cyc(108); SelectionCommit_cr(cr); }

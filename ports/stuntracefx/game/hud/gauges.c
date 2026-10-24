@@ -19,16 +19,16 @@ typedef struct {
     uint8_t y, x, value;
 } Gauge;
 
-static Gauge gauge_of(uint32_t b, uint16_t lo_at, uint16_t hi_at, uint16_t value_at)
+static Gauge gauge_of(uint16_t lo_at, uint16_t hi_at, uint16_t value_at)
 {
     Gauge g;
 
     cyc(40);
-    g.y = rd8(b | hi_at);
+    g.y = rd8(0x7E0000 | hi_at);
     cyc(44);
-    g.x = rd8(b | lo_at);
+    g.x = rd8(0x7E0000 | lo_at);
     cyc(82);
-    g.value = rd8(b | value_at);
+    g.value = rd8(0x7E0000 | value_at);
     return g;
 }
 
@@ -72,13 +72,12 @@ static uint16_t bar6(uint8_t bank, Gauge g, uint16_t slot, uint32_t call, uint16
  */
 void HudGaugesPanelA(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     Gauge g;
 
     cyc(28);
-    g = gauge_of(b, W(gauge_a4_x), W(gauge_a4_y), W(gauge_a4_value));
+    g = gauge_of(W(gauge_a4_x), W(gauge_a4_y), W(gauge_a4_value));
     bar4(bank, g, 0x0140, 86);                  /* LDY #, JSL */
-    g = gauge_of(b, W(gauge_a6_x), W(wram_0E15), W(gauge_a6_value));
+    g = gauge_of(W(gauge_a6_x), W(wram_0E15), W(gauge_a6_value));
     *a = bar6(bank, g, 0x016C, 86, x);
     *y = 0x016C;
     cyc(14);
@@ -137,7 +136,6 @@ void abi_HudGaugesPanelA(void)
  */
 int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
     int split;
     Gauge g;
@@ -154,13 +152,13 @@ int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
     split = RD8(wram_0D62) != 0;
     if (split)
         cyc(50);                        /* LDY # and the BRA's other arm */
-    g = gauge_of(b, W(gauge_b4_x), W(gauge_b4_y), W(gauge_b4_value));
+    g = gauge_of(W(gauge_b4_x), W(gauge_b4_y), W(gauge_b4_value));
     bar4(bank, g, split ? 0x0040 : 0x0100, split ? 86 : 108);
     cyc(40);
     split = RD8(wram_0D62) != 0;
     if (split)
         cyc(50);
-    g = gauge_of(b, W(gauge_b6_x), W(wram_0E14), W(wram_0E05));
+    g = gauge_of(W(gauge_b6_x), W(wram_0E14), W(wram_0E05));
     *y = split ? 0x006C : 0x012C;
     *a = bar6(bank, g, *y, split ? 86 : 108, x);
     cyc(14);
@@ -201,16 +199,15 @@ void abi_HudGaugesPanelB(void)
 /* Gauge y at `at` = y, then the X-position high bits of the twelve sprites
    from 27 + x * 4 cleared in the high table ($057B + x on). Returns the
    last byte stored (A's low byte on exit). */
-static uint8_t gauge6_place(uint8_t bank, uint16_t at, uint8_t y, uint8_t x)
+static uint8_t gauge6_place(uint16_t at, uint8_t y, uint8_t x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     static const uint8_t keep[4] = {0xBF, 0xAA, 0xAA, 0xEA};
     uint8_t v = 0;
     unsigned i;
 
     cyc(22);                            /* SEP #$30 */
     cyc(62);
-    wr8(b | at, y);
+    wr8(0x7E0000 | at, y);
     cyc(x ? 16 : 38);                   /* LDX #imm; panel B's also BRAs to the shared tail */
     for (i = 0; i < 4; i++) {
         cyc(24);
@@ -233,7 +230,8 @@ static uint8_t gauge6_place(uint8_t bank, uint16_t at, uint8_t y, uint8_t x)
  */
 uint8_t Gauge6BPlace(uint8_t bank)
 {
-    return gauge6_place(bank, W(wram_0E14), 0x5A, 0x00);
+    (void)bank;
+    return gauge6_place(W(wram_0E14), 0x5A, 0x00);
 }
 
 void Gauge6BPlace_cr(Carried *cr)
@@ -267,7 +265,8 @@ void abi_Gauge6BPlace(void)
  */
 uint8_t Gauge6APlace(uint8_t bank)
 {
-    return gauge6_place(bank, W(wram_0E15), 0xC2, 0x10);
+    (void)bank;
+    return gauge6_place(W(wram_0E15), 0xC2, 0x10);
 }
 
 void Gauge6APlace_cr(Carried *cr)

@@ -269,19 +269,19 @@ void abi_HudDrawNumber3(void)
 
 /* Draw the byte at `value` (data bank) with HudDrawNumber3 at `offset`;
    the routines below then switch to 8-bit index registers. */
-static uint8_t draw_value(uint8_t bank, uint16_t value, uint16_t offset, uint8_t *p)
+static uint8_t draw_value(uint16_t value, uint16_t offset, uint8_t *p)
 {
     uint8_t v;
 
     cyc(46);
-    v = rd8((uint32_t)bank << 16 | value);
+    v = rd8(0x7E0000 | value);
     cyc(offset == 0x0128 ? 108 : 130);  /* REP, LDX, (A and B: BRA to the tail), JSR */
     return cyc_then(64, HudDrawNumber3(v, offset, p));
 }
 
 static void abi_draw_value(Carried *cr, uint16_t value, uint16_t offset)
 {
-    uint8_t p = cr->p, a = draw_value(cr->db, value, offset, &p);
+    uint8_t p = cr->p, a = draw_value(value, offset, &p);
 
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     cr->x = offset & 0x00FF;
@@ -299,7 +299,8 @@ static void abi_draw_value(Carried *cr, uint16_t value, uint16_t offset)
  */
 uint8_t HudDrawValueA(uint8_t bank, uint8_t *p)
 {
-    return draw_value(bank, W(wram_0DDA), 0x0114, p);
+    (void)bank;
+    return draw_value(W(wram_0DDA), 0x0114, p);
 }
 
 void HudDrawValueA_cr(Carried *cr)
@@ -329,7 +330,8 @@ void abi_HudDrawValueA(void)
  */
 uint8_t HudDrawValueB(uint8_t bank, uint8_t *p)
 {
-    return draw_value(bank, W(wram_0DDA), 0x0028, p);
+    (void)bank;
+    return draw_value(W(wram_0DDA), 0x0028, p);
 }
 
 void HudDrawValueB_cr(Carried *cr)
@@ -359,7 +361,8 @@ void abi_HudDrawValueB(void)
  */
 uint8_t HudDrawValueC(uint8_t bank, uint8_t *p)
 {
-    return draw_value(bank, W(wram_0DDB), 0x0128, p);
+    (void)bank;
+    return draw_value(W(wram_0DDB), 0x0128, p);
 }
 
 void HudDrawValueC_cr(Carried *cr)

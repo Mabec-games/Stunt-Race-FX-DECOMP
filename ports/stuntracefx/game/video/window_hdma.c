@@ -474,7 +474,7 @@ void abi_WindowHdmaFromList(void)
  */
 uint16_t WindowHdmaPreset(uint8_t bank, uint8_t index, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint8_t n;
 
     cyc(70);
@@ -491,7 +491,7 @@ uint16_t WindowHdmaPreset(uint8_t bank, uint8_t index, uint16_t *x, uint16_t *y)
     cyc(44);
     do {
         cyc(68);
-        WR8X(window_hdma, *x, cyc_then(32, rd8(b | *y)));
+        WR8X(window_hdma, *x, cyc_then(32, rd8(0x7E0000 | *y)));
         (*y)++;
         (*x)++;
         cyc(60);
@@ -1204,11 +1204,11 @@ void WindowsInit(Carried *cr)
     uint8_t v, ep = 0;
 
     cyc(70);
-    copy_rom09(0xF999, W(window_band_first), 4);
-    copy_rom09(0xF99D, W(window_bands), 4);
-    copy_rom09(0xF9A1, W(wram_7FFFD5), 4);
-    copy_rom09(0xF9A5, W(wram_7FFFD9), 4);
-    copy_rom09(0xF9A9, W(wram_7FFFDD), 4);
+    copy_rom09(0xF999, WA(window_band_first), 4);
+    copy_rom09(0xF99D, WA(window_bands), 4);
+    copy_rom09(0xF9A1, WA(wram_7FFFD5), 4);
+    copy_rom09(0xF9A5, WA(wram_7FFFD9), 4);
+    copy_rom09(0xF9A9, WA(wram_7FFFDD), 4);
     cyc(92);
     v = RD8(wram_0D62);
     if (v)
@@ -1216,7 +1216,7 @@ void WindowsInit(Carried *cr)
     else
         { cyc(62); records_7f(cr, 0); }
     cyc(42);
-    copy_rom09(0xF163, W(window_hdma), 16);
+    copy_rom09(0xF163, WA(window_hdma), 16);
     cyc(92);
     WR16(window_hdma_select, 0x0000);
     do {
@@ -1367,7 +1367,7 @@ void WindowsInit(Carried *cr)
                                         0x19EE, 0x19EF, 0x19F0, 0x19F1, 0x1A06, 0x1A29};
 
         for (i = 0; i < sizeof zero / sizeof zero[0]; i++)
-            { cyc(24); wr8(b | zero[i], 0x00); }
+            { cyc(24); wr8(0x7E0000 | zero[i], 0x00); }
     }
     cyc(84);
     dma_wr(b | DMAP4, 0x44);
@@ -1951,7 +1951,7 @@ WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p)
     index8(&r);
     cyc(70);
     r.x = RD8(wram_19D1);
-    r.a = band_step(r.a, W(wram_19CB), WA(wram_19C7), W(wram_7ED5AA) + r.x, p);
+    r.a = band_step(r.a, WA(wram_19CB), WA(wram_19C7), W(wram_7ED5AA) + r.x, p);
     return r;
 }
 
@@ -2041,7 +2041,7 @@ WindowRegs ColdataLowBandStep(uint8_t bank, uint16_t dp, uint8_t *p)
     }
     cyc(tail);
     r.a = (uint16_t)((r.a & 0xFF00) | v);
-    r.a = band_step(r.a, W(wram_19CF), WA(wram_19CD), W(wram_7ED56E) + r.x, p);
+    r.a = band_step(r.a, WA(wram_19CF), WA(wram_19CD), W(wram_7ED56E) + r.x, p);
     return r;
 }
 

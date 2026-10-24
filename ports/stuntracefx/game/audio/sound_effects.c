@@ -37,13 +37,13 @@ static uint8_t player_hold_sound(uint8_t p1, uint8_t p2)
     if (RD8(current_player) == 0) {
         cyc(64);
         if (RD8(player1_held_sound) != p1)
-            held_sound_set(W(player1_held_sound), 0x09, p1); else { cyc(16); }
+            held_sound_set(WA(player1_held_sound), 0x09, p1); else { cyc(16); }
         cyc(72);
         return p1;
     }
     cyc(70);
     if (RD8(player2_held_sound) != p2)
-        held_sound_set(W(player2_held_sound), 0x14, p2); else { cyc(16); }
+        held_sound_set(WA(player2_held_sound), 0x14, p2); else { cyc(16); }
     cyc(72);
     return p2;
 }
@@ -814,7 +814,6 @@ static uint8_t es_x;
    only, the byte that failed the test, unless es_full). */
 static uint16_t engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint16_t pressed, uint16_t held)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v, x, a;
     uint16_t w;
 
@@ -824,15 +823,15 @@ static uint16_t engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint
     v = RD8(wram_0E4B);
     if (!v) {
         cyc(40);
-        v = rd8(b | phase);
+        v = rd8(0x7E0000 | phase);
         if (v == 0x06) {
             cyc(78);
-            w = rd16(b | pressed);
+            w = rd16(0x7E0000 | pressed);
             cyc(46);
             if (SoundIfFlag40(bank, w, player, &x))
                 { es_x = x; es_xset = 1; }
             cyc(38 + 46);
-            w = rd16(b | held);
+            w = rd16(0x7E0000 | held);
             cyc(46);                    /* JSR */
             if (!SoundHoldByFlags(bank, w, player, &a))
                 cyc(38);

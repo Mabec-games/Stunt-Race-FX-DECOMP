@@ -77,7 +77,7 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     wr8((WA(wram_0D3F)), cyc_then(62, 0x08));
     wr8((WA(gsu_buffer_offset)), cyc_then(40, 0x0C));
     for (i = 0; i < sizeof course_params / sizeof course_params[0]; i++)
-        wr8(dbw(bank, course_params[i].addr), cyc_then(40, course_params[i].v));
+        wr8((0x7E0000 | course_params[i].addr), cyc_then(40, course_params[i].v));
     uint16_t a = GradientSetup(bank);
 
     cyc(94);

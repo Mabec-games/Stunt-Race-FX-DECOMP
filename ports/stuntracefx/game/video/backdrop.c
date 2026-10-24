@@ -11,9 +11,9 @@
 #include "wram_names.h"
 #include "wram_struct.h"
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
+static uint32_t dbw(uint16_t a)
 {
-    return (uint32_t)bank << 16 | a;
+    return 0x7E0000 | a;
 }
 
 /*
@@ -30,7 +30,8 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
  */
 uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
 {
-    uint16_t obj = rd16(cyc_then(152, dbw(bank, player ? (cyc(6), 0x034A) : 0x0346)));
+    (void)bank;
+    uint16_t obj = rd16(cyc_then(152, dbw(player ? (cyc(6), 0x034A) : 0x0346)));
 
     cyc(player ? 32 : 54);              /* player 1's load has a BRA after it */
     obj = RD16X(obj_link, obj);

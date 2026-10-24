@@ -1418,12 +1418,12 @@ void abi_NmiFrameUploadRace(void)
  */
 uint16_t VramRowsCopyUnused(uint8_t bank, uint16_t *x, uint16_t n)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t a;
 
     for (;;) {
         cyc(30);
-        a = rd16(b | *x);
+        a = rd16(0x7E0000 | *x);
         cyc(32);
         ppu_wr16(0x002118, a);
         *x = (uint16_t)(*x + 2);

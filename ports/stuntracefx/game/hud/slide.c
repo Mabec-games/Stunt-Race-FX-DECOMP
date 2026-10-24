@@ -123,7 +123,7 @@ static void cmp8(uint8_t v, uint8_t m)
    the panel's offset) at $0405-$042D, each through SpriteYOnScreen.
    Several adds take the carry the clamp's compare left. Returns the last
    Y (A's low byte). */
-static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
+static uint8_t hud_sprites_y(uint16_t d, uint16_t x)
 {
     static const uint16_t row[4][2] = {{0x0411, 0x0421}, {0x0415, 0x0425}, {0x0419, 0x0429}, {0x041D, 0x042D}};
     static const struct { uint8_t add; int clc; uint16_t at; } tail[3] = {{0x0A, 0, 0x0405}, {0x18, 0, 0x0409}, {0x26, 1, 0x040D}};
@@ -144,9 +144,9 @@ static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
         y = SpriteYOnScreen(v);
         c = v >= 0xB0;
         cyc(198);
-        wr8(b | (uint16_t)(row[i][0] + x), y);
+        wr8(0x7E0000 | (uint16_t)(row[i][0] + x), y);
         cyc(30);
-        wr8(b | (uint16_t)(row[i][1] + x), y);
+        wr8(0x7E0000 | (uint16_t)(row[i][1] + x), y);
     }
     for (i = 0; i < 3; i++) {
         uint8_t r;
@@ -157,7 +157,7 @@ static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
         y = SpriteYOnScreen(r);
         c = r >= 0xB0;
         cyc(212);
-        wr8(b | (uint16_t)(tail[i].at + x), y);
+        wr8(0x7E0000 | (uint16_t)(tail[i].at + x), y);
     }
     return y;
 }
@@ -183,7 +183,7 @@ static uint8_t hud_panel_b_y(void)
 
 /* The map marker's Y ($0E16) and the column of Ys below it, $FF once a
    step carries. */
-static uint8_t hud_marker_y(uint32_t b)
+static uint8_t hud_marker_y(void)
 {
     static const struct { uint8_t add; uint16_t at[2]; int n; } step[6] = {
         {0x08, {0x0545, 0}, 1}, {0x06, {0x055D, 0x0561}, 2}, {0x08, {0x0565, 0x0569}, 2},
@@ -202,14 +202,14 @@ static uint8_t hud_marker_y(uint32_t b)
         if (c)
             { cyc(10); v = 0xFF; }
         for (j = 0; j < step[i].n; j++)
-            { cyc(24); wr8(b | step[i].at[j], v); }
+            { cyc(24); wr8(0x7E0000 | step[i].at[j], v); }
     }
     return v;
 }
 
 /* Gauge B's X ($0E12) and the row of Xs after it: the first five skipped
    while negative, the rest carrying on (no CLC). */
-static uint8_t hud_gauge_b_x(uint32_t b)
+static uint8_t hud_gauge_b_x(void)
 {
     static const struct { uint8_t add; int sub, clc, skip; uint16_t at[2]; int n; } step[11] = {
         {0x00, 0, 0, 1, {0x04A1, 0}, 1}, {0x08, 1, 0, 1, {0x04BD, 0}, 1},
@@ -236,7 +236,7 @@ static uint8_t hud_gauge_b_x(uint32_t b)
         if (step[i].skip && (cyc(16), (v & 0x80)))
             { cyc(6); continue; }
         for (j = 0; j < step[i].n; j++)
-            { cyc(24); wr8(b | step[i].at[j], v); }
+            { cyc(24); wr8(0x7E0000 | step[i].at[j], v); }
     }
     return v;
 }
@@ -299,7 +299,6 @@ void abi_HudSlideOut(void)
    Returns A's low byte as it ends. */
 static uint8_t hud_panel_slide(uint8_t bank, uint16_t d, uint8_t f9, uint16_t x, int panel_a)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v, p = 0;
 
     cyc(106);
@@ -321,7 +320,7 @@ static uint8_t hud_panel_slide(uint8_t bank, uint16_t d, uint8_t f9, uint16_t x,
             HudSlideOut(bank);
         }
     }
-    v = hud_sprites_y(b, d, x);
+    v = hud_sprites_y(d, x);
     cyc(28);
     cyc(42);                            /* PLP */
     return v;
@@ -416,7 +415,6 @@ static uint8_t step_a, step_x;
 
 void HudPanelsStep(uint8_t bank, uint16_t d)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t v, p = 0;
 
     cyc(22);                            /* SEP #$30 */
@@ -434,7 +432,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
             v = 0xAC;
         cyc(38);
         WR8(wram_0E16, v);
-        step_a = hud_marker_y(b);
+        step_a = hud_marker_y();
         break;
     case 0x04:
         cyc(22);
@@ -448,7 +446,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
                 v = 0x1F;
         }
         WR8(gauge_b6_x, v);
-        step_a = hud_gauge_b_x(b);
+        step_a = hud_gauge_b_x();
         break;
     case 0x06:
         cyc(22);
@@ -477,7 +475,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
         step_x = 0x00;
         cyc(62);
         wr16((uint16_t)(d + W(hud_panel_y)), 0x0000);
-        step_a = hud_sprites_y(b, d, 0x0000);
+        step_a = hud_sprites_y(d, 0x0000);
         break;
     default:
         step_a_set = 0;

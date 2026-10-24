@@ -48,8 +48,8 @@ uint8_t RasterColours(void)
 {
     cyc(46);
     if (RD8(palette_animate) == 0)
-        { cyc(22); return cgram_put(0x00, W(palette_buffer), 2); } else { cyc(16); }
-    return cgram_put(0xE1, W(palette_kept), 6);
+        { cyc(22); return cgram_put(0x00, WA(palette_buffer), 2); } else { cyc(16); }
+    return cgram_put(0xE1, WA(palette_kept), 6);
 }
 
 void ColourBlend_cr(Carried *cr);
@@ -116,11 +116,11 @@ uint8_t RasterPaletteUpload(int *animating)
     *animating = 0;
     cyc(46);
     if (RD8(palette_animate) == 0)
-        { cyc(22); return cgram_put(0x00, W(palette_buffer), 2); } else { cyc(156); }
+        { cyc(22); return cgram_put(0x00, WA(palette_buffer), 2); } else { cyc(156); }
     CgramDma(0xFD65, 0x00, 0x0060);
     cyc(88);
     if (RD8(palette_animate) == 0)
-        return cgram_put(0x00, W(palette_buffer), 2); else { cyc(156); }
+        return cgram_put(0x00, WA(palette_buffer), 2); else { cyc(156); }
     *animating = 1;
     CgramDma(0xFEC5, 0xB0, 0x0020);
     return (cyc(42), RasterColours());
@@ -167,7 +167,7 @@ void abi_RasterPaletteUpload(void)
 uint8_t RasterColoursCycling(uint16_t x)
 {
     cyc(22);
-    cgram_put(0xE1, W(palette_kept), 6);
+    cgram_put(0xE1, WA(palette_kept), 6);
     if (!(RD8(frame_count) & 0x01))
         { cyc(32); return cyc_then(18, cgram_put(0x10, (0x7E0000 | W(cycle_colour_a) + x) & 0xFFFFFF, 4)); } else { cyc(38); }
     return cyc_then(18, cgram_put(0x12, (0x7E0000 | W(cycle_colour_c) + x) & 0xFFFFFF, 4));
@@ -278,10 +278,10 @@ uint16_t PaletteCycle(uint16_t *x)
     cyc(188);
     if (!(RD8(frame_count) & 0x01)) {
         cyc(54);
-        cycle_step(W(wram_7EFD5B), W(wram_7EB71B), (WA(cycle_colour_a)), x);
-        return cycle_step(W(wram_7EFD5D), W(wram_7EB6FB), (WA(cycle_colour_b)), x);
+        cycle_step(WA(wram_7EFD5B), WA(wram_7EB71B), (WA(cycle_colour_a)), x);
+        return cycle_step(WA(wram_7EFD5D), WA(wram_7EB6FB), (WA(cycle_colour_b)), x);
     } else { cyc(60); }
-    return cycle_step(W(wram_7EFD5F), W(wram_7EB70B), (WA(cycle_colour_c)), x);
+    return cycle_step(WA(wram_7EFD5F), WA(wram_7EB70B), (WA(cycle_colour_c)), x);
 }
 
 void PaletteCycle_cr(Carried *cr)
@@ -707,12 +707,12 @@ uint16_t ColourBlend(uint8_t bank)
     uint16_t r, g, bl, m, s, t, f, a;
     uint8_t cv = 0;
 
-    blend_split(WA(colour_from_r), W(dp_f1));
-    blend_split(WA(colour_from_g), W(dp_f1));
-    blend_split(WA(colour_from_b), W(dp_f1));
-    blend_split(WA(colour_to_r), W(dp_f3));
-    blend_split(WA(colour_to_g), W(dp_f3));
-    blend_split(WA(colour_to_b), W(dp_f3));
+    blend_split(WA(colour_from_r), WA(dp_f1));
+    blend_split(WA(colour_from_g), WA(dp_f1));
+    blend_split(WA(colour_from_b), WA(dp_f1));
+    blend_split(WA(colour_to_r), WA(dp_f3));
+    blend_split(WA(colour_to_g), WA(dp_f3));
+    blend_split(WA(colour_to_b), WA(dp_f3));
     cyc(24);
     t = RD16(colour_to_r);
     cyc(38);
@@ -1061,7 +1061,7 @@ static int flash_v;
  */
 uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *xo)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint8_t k, n, c, v = level;
     uint16_t src, x, a;
 
@@ -1098,11 +1098,11 @@ uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *x
     cyc(116);
     x = RD16I(player_pal_offset, (uint16_t)(y << 1));
     cyc(38);
-    WR16X(player_palettes, x, cyc_then(32, rd16(b | src)));
+    WR16X(player_palettes, x, cyc_then(32, rd16(0x7E0000 | src)));
     cyc(24);
-    wr16((WA(wram_01CA)) + x, cyc_then(32, rd16(b | (uint16_t)(src + 2))));
+    wr16((WA(wram_01CA)) + x, cyc_then(32, rd16(0x7E0000 | (uint16_t)(src + 2))));
     cyc(24);
-    a = rd16(b | (uint16_t)(src + 4));
+    a = rd16(0x7E0000 | (uint16_t)(src + 4));
     cyc(32);
     wr16((WA(wram_01CC)) + x, a);
     cyc(42);
@@ -2545,11 +2545,11 @@ uint8_t PaletteCycleFourth(uint8_t bank, uint16_t y, uint16_t *xo, uint8_t *db, 
     cyc(32);
     v = RD8X(cycle_colours_d, x);
     cyc(30);
-    wr8(b | (uint16_t)(0xFD8B + y), v);
+    wr8(0x7E0000 | (uint16_t)(0xFD8B + y), v);
     cyc(32);
     v = RD8X(wram_7EB6EC, x);
     cyc(30);
-    wr8(b | (uint16_t)(0xFD8C + y), v);
+    wr8(0x7E0000 | (uint16_t)(0xFD8C + y), v);
     x = (uint16_t)(x + 2);
     *wrapped = x >= 0x0010;
     if (*wrapped) {

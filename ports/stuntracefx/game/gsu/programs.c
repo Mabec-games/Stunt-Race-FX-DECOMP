@@ -433,13 +433,13 @@ void abi_Gsu82CE(void)
  */
 uint16_t Gsu8325(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t v = 0;
     unsigned i;
 
     cyc(22);
     for (i = 0; i < 3; i++)
-        { cyc(24); wr16(0x700020 + 2 * i, cyc_then(32, rd16(b | (0x065E + 2 * i)))); }
+        { cyc(24); wr16(0x700020 + 2 * i, cyc_then(32, rd16(0x7E0000 | (0x065E + 2 * i)))); }
     cyc(146);
     GsuRun(0x01, 0x8325);
     cyc(94);
@@ -447,7 +447,7 @@ uint16_t Gsu8325(uint8_t bank)
         cyc(32);
         v = rd16(0x7000E4 + 2 * i);
         cyc(24);
-        wr16(b | (0x0608 + 2 * i), v);
+        wr16(0x7E0000 | (0x0608 + 2 * i), v);
     }
     cyc(66);
     return v;
@@ -671,27 +671,26 @@ void abi_GsuF441Player2(void)
 uint16_t ViewReset(uint8_t bank)
 {
     static const uint16_t high[9] = {0x063B, 0x063D, 0x063F, 0x0641, 0x0643, 0x0645, 0x0647, 0x0649, 0x064B};
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v = 0;
     unsigned i;
 
     cyc(106);
     for (i = 0; i < 3; i++)
-        { cyc(24); wr16(b | (0x0664 + 2 * i), 0x0000); }
+        { cyc(24); wr16(0x7E0000 | (0x0664 + 2 * i), 0x0000); }
     for (i = 0; i < 3; i++)
-        { cyc(24); wr16(b | (0x065E + 2 * i), cyc_then(24, rd16(b | (0x0664 + 2 * i)))); }
+        { cyc(24); wr16(0x7E0000 | (0x065E + 2 * i), cyc_then(24, rd16(0x7E0000 | (0x0664 + 2 * i)))); }
     cyc(84);
     Gsu8325(bank);
     cyc(22);
     for (i = 0; i < 9; i++) {
         cyc(24);
-        v = rd16(b | (0x0608 + 2 * i));
+        v = rd16(0x7E0000 | (0x0608 + 2 * i));
         cyc(24);
-        wr16(b | (0x064C + 2 * i), v);
+        wr16(0x7E0000 | (0x064C + 2 * i), v);
     }
     cyc(38);
     for (i = 0; i < 9; i++)
-        { cyc(24); wr8(b | high[i], (i % 4) == 0 ? 0x7F : 0x00); }
+        { cyc(24); wr8(0x7E0000 | high[i], (i % 4) == 0 ? 0x7F : 0x00); }
     for (i = 0; i < 9; i++)
         { cyc(24); WR8I(view_matrix, 2 * i, 0x00); }
     cyc(72);
@@ -729,7 +728,6 @@ static uint16_t view_setup_tail(uint8_t bank)
 {
     static const uint8_t dp[8] = {0x9C, 0xBD, 0x99, 0x9F, 0xA0, 0xA1, 0x9D, 0xD3};
     static const uint16_t clear[5] = {0x0665, 0x0667, 0x0669, 0x035D, 0x035E};
-    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
 
     cyc(46);
@@ -743,7 +741,7 @@ static uint16_t view_setup_tail(uint8_t bank)
     for (i = 0; i < 8; i++)
         { cyc(16); wr8(dp[i], 0x00); }
     for (i = 0; i < 5; i++)
-        { cyc(24); wr8(b | clear[i], 0x00); }
+        { cyc(24); wr8(0x7E0000 | clear[i], 0x00); }
     cyc(40);
     WR8(wram_05FA, 0x00);
     ViewReset(bank);
@@ -1222,21 +1220,20 @@ void abi_Gsu81E3(void)
  */
 uint16_t ViewMatrixUpdateAndSave(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t v = 0;
     unsigned i;
 
     cyc(22);
     for (i = 0; i < 3; i++)
-        { cyc(24); wr16(b | (0x065E + 2 * i), cyc_then(24, rd16(b | (0x0664 + 2 * i)))); }
+        { cyc(24); wr16(0x7E0000 | (0x065E + 2 * i), cyc_then(24, rd16(0x7E0000 | (0x0664 + 2 * i)))); }
     cyc(84);
     Gsu8325(bank);
     cyc(22);
     for (i = 0; i < 9; i++) {
         cyc(24);
-        v = rd16(b | (0x0608 + 2 * i));
+        v = rd16(0x7E0000 | (0x0608 + 2 * i));
         cyc(24);
-        wr16(b | (0x064C + 2 * i), v);
+        wr16(0x7E0000 | (0x064C + 2 * i), v);
     }
     cyc(66);
     return v;
@@ -1357,11 +1354,10 @@ void abi_ViewUpdateAndGsuAEF8(void)
  */
 static uint8_t gsu_f329_sequence(uint8_t bank, uint16_t y, uint16_t *last)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t e;
 
     cyc(30);
-    e = rd16(b | y);
+    e = rd16(0x7E0000 | y);
     cyc(46);
     GsuF329Entry(bank, e);
     cyc(128);
@@ -1369,11 +1365,11 @@ static uint8_t gsu_f329_sequence(uint8_t bank, uint16_t y, uint16_t *last)
     cyc(146);
     GsuRun(0x07, 0xF329);
     cyc(146);
-    e = rd16(b | (uint16_t)(y + 1));
+    e = rd16(0x7E0000 | (uint16_t)(y + 1));
     cyc(46);
     GsuF329Entry(bank, e);
     cyc(102);
-    e = rd16(b | (uint16_t)(y + 2));
+    e = rd16(0x7E0000 | (uint16_t)(y + 2));
     cyc(46);
     GsuF329Entry(bank, e);
     cyc(128);
@@ -1381,11 +1377,11 @@ static uint8_t gsu_f329_sequence(uint8_t bank, uint16_t y, uint16_t *last)
     cyc(146);
     GsuRun(0x07, 0xF329);
     cyc(146);
-    e = rd16(b | (uint16_t)(y + 3));
+    e = rd16(0x7E0000 | (uint16_t)(y + 3));
     cyc(46);
     GsuF329Entry(bank, e);
     cyc(102);
-    e = rd16(b | (uint16_t)(y + 4));
+    e = rd16(0x7E0000 | (uint16_t)(y + 4));
     *last = e;
     cyc(46);
     return GsuF329Entry(bank, e);
@@ -4056,7 +4052,7 @@ static void glyph_load_time(uint32_t b, uint16_t from, uint16_t extra)
 
     for (i = 0; i < 3; i++) {
         cyc(22);
-        v = rd8(b | (uint16_t)(from + i));
+        v = rd8(0x7E0000 | (uint16_t)(from + i));
         cyc(16);
         wr8((uint32_t)(0xF5 + i), (uint8_t)v);
         cyc(2);
@@ -4978,7 +4974,7 @@ static void packed_time_draw(uint32_t b, uint16_t at)
     uint16_t v;
 
     cyc(24);
-    v = rd16(b | at);
+    v = rd16(0x7E0000 | at);
     cyc(46);                            /* JSR */
     packed_unpack(b, v);
     cyc(22);
@@ -5173,7 +5169,7 @@ static uint8_t lap_digit(uint32_t b, uint16_t at)
     uint16_t v;
 
     cyc(24);
-    v = (uint16_t)(rd16(b | at) & 0x00FF);
+    v = (uint16_t)(rd16(0x7E0000 | at) & 0x00FF);
     cyc(2);
     cyc(68);                            /* AND, JSR */
     lap_hi = (uint8_t)(GsuParam216A((uint8_t)(b >> 16), (uint16_t)(v << 1)) >> 8);

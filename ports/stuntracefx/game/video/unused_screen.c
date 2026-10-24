@@ -645,7 +645,7 @@ void TileRowUpload(uint8_t bank)
 {
     ppu_wr(dbw(bank, 0x2115), cyc_then(40, 0x80));
     dma_wr(dbw(bank, 0x4301), cyc_then(40, 0x18));
-    dma_wr16(dbw(bank, 0x4302), cyc_then(48, W(tile_row)));
+    dma_wr16(dbw(bank, 0x4302), cyc_then(48, WA(tile_row)));
     dma_wr(dbw(bank, 0x4304), cyc_then(24, 0x00));
     ppu_wr16(dbw(bank, 0x2116), cyc_then(48, 0x2FA0));
     dma_wr16(dbw(bank, 0x4305), cyc_then(48, 0x0040));

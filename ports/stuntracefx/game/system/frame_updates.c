@@ -362,7 +362,7 @@ static uint16_t word_list_append(uint32_t size_addr, uint32_t list, uint16_t val
  */
 uint16_t WordListAAppend(uint16_t value)
 {
-    return word_list_append(W(word_list_a_size), W(word_list_a), value);
+    return word_list_append(WA(word_list_a_size), WA(word_list_a), value);
 }
 
 void WordListAAppend_cr(Carried *cr)
@@ -393,7 +393,7 @@ void abi_WordListAAppend(void)
  */
 uint16_t WordListBAppend(uint16_t value)
 {
-    return word_list_append(W(word_list_b_size), W(word_list_b), value);
+    return word_list_append(WA(word_list_b_size), WA(word_list_b), value);
 }
 
 void WordListBAppend_cr(Carried *cr)
@@ -578,11 +578,11 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     WR16(menu_pos_18bd, w);
     cyc(24);
     w = RD16(joy1_pressed);
-    word_list_append(W(word_list_a_size), W(word_list_a), w);
+    word_list_append(WA(word_list_a_size), WA(word_list_a), w);
     cyc(94);
     w = RD16(joy2_pressed);
     *hi = (uint16_t)(w & 0xFF00);
-    *x = word_list_append(W(word_list_b_size), W(word_list_b), w);
+    *x = word_list_append(WA(word_list_b_size), WA(word_list_b), w);
     cyc(116);
     WR8(frame_count, cyc_then(6, (uint8_t)(RD8(frame_count) + 1)));
     cyc(24);

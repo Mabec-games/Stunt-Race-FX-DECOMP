@@ -52,7 +52,7 @@ static void bare_object(Carried *cr, uint32_t b, uint16_t y, uint16_t slot, uint
     cr->y = y;
     o = cr->x;
     cyc(60);
-    wr16(b | slot, o);
+    wr16(0x7E0000 | slot, o);
     cyc(48);
     wr8(OBJ_FIELD(o, OBJ_OFF(obj_36)), 0x03);
     cyc(78);
@@ -133,7 +133,7 @@ void CourseScriptRun(Carried *cr)
         case 0x806F:                                   /* $10, not reached */
             o = spawn(cr, y);
             cyc(52);
-            wr16(OBJ_FIELD(o, OBJ_OFF(obj_27)), cyc_then(32, rd16(b | (uint16_t)(0x8016 + y))));
+            wr16(OBJ_FIELD(o, OBJ_OFF(obj_27)), cyc_then(32, rd16(0x7E0000 | (uint16_t)(0x8016 + y))));
             cyc(24);
             a = (uint16_t)(RD16(spawn_counter) + 1);
             cyc(38);

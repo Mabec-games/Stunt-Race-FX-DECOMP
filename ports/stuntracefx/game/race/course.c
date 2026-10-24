@@ -516,7 +516,7 @@ void CourseZoomInStep(Carried *cr)
     (cyc(62), BlendStepUp_cr(cr));
     (cyc(62), FixedColourFromStep_cr(cr));
     cyc(32);
-    r_lda8(cr, W(fixed_colour_step));
+    r_lda8(cr, WA(fixed_colour_step));
     a8 = (uint8_t)cr->a;
     cyc(32);
     m8 = RD8(scale_divisor);
@@ -2700,11 +2700,11 @@ static void zoom_in_body(Carried *cr)
     if (v >= t)
         return;
     cyc(48);
-    r_lda16(cr, W(wram_7F343C));
+    r_lda16(cr, WA(wram_7F343C));
     cyc(32);
     WR16(wram_7F3434, cr->a);
     cyc(32);
-    r_lda16(cr, W(wram_7F3440));
+    r_lda16(cr, WA(wram_7F3440));
     cyc(32);
     WR16(wram_7F3438, cr->a);
     r_sep(cr, P_M);
@@ -2980,7 +2980,7 @@ static int fade_step(Carried *cr)
     (cyc(62), BlendStepDown_cr(cr));
     r_rep(cr, P_M);
     cyc(32);
-    r_lda16(cr, W(fixed_colour_step));
+    r_lda16(cr, WA(fixed_colour_step));
     return cr->a == 0;
 }
 

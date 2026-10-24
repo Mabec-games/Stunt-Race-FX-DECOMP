@@ -1001,7 +1001,7 @@ static void player_record(Carried *cr, uint16_t n, uint32_t match, int read64)
 static void player_attach(Carried *cr, uint16_t h, uint16_t bare)
 {
     handler(cr, cr->x, h);
-    cr->y = rd16(cyc_then(24, db(cr) | bare));
+    cr->y = rd16(cyc_then(24, 0x7E0000 | bare));
     set_p(cr, nz16(cr->p, cr->y));
     (cyc(62), ObjectAttachLinked_cr(cr));
     ld8(cr, cyc_then(14, F(W(obj_49), cr->x)));

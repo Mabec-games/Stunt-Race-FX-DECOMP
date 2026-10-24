@@ -19,14 +19,13 @@
    there is entered (or the command returns) with: the address less one. */
 static uint32_t continue_at(uint8_t db, uint16_t obj, uint16_t addr_at, uint16_t bank_at, uint16_t *a)
 {
-    uint32_t b = (uint32_t)db << 16;
     uint8_t bank;
     uint16_t addr;
 
     cyc(30);
-    bank = rd8(b | (uint16_t)(bank_at + obj));
+    bank = rd8(0x7E0000 | (uint16_t)(bank_at + obj));
     cyc(bank ? 96 : 90);                /* PHA, REP, BNE, LDA abs,X */
-    addr = rd16(b | (uint16_t)(addr_at + obj));
+    addr = rd16(0x7E0000 | (uint16_t)(addr_at + obj));
     if (!bank && (cyc(addr ? 16 : 22), !addr)) {   /* BEQ not taken / taken */
         cyc(94);                        /* SEP, PLA, RTL */
         *a = 0x0000;

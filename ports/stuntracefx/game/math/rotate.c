@@ -75,12 +75,12 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
 
     cyc(16);
     t = rd8(xa);
-    r = smul(t, W(rot_cos));
+    r = smul(t, WA(rot_cos));
     cyc(30);                                    /* TAX, STX */
     wr8(out, r);
     cyc(16);
     t = rd8(va);
-    r = smul(t, W(rot_sin));
+    r = smul(t, WA(rot_sin));
     cyc(58);                                    /* TAX, TXA, CLC, ADC */
     t = rd8(out);
     r = (uint8_t)(r + t);
@@ -96,12 +96,12 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
         cyc(16);                                /* LDA */
     }
     t = rd8(xa);
-    r = smul(t, W(rot_sin));
+    r = smul(t, WA(rot_sin));
     cyc(74 + w2);                               /* TAX, TXA, EOR, INC, STA */
     wr8(out2, (uint8_t)-r);
     cyc(16);
     t = rd8(va);
-    r = smul(t, W(rot_cos));
+    r = smul(t, WA(rot_cos));
     cyc(58 + w2);                               /* TAX, TXA, CLC, ADC */
     t = rd8(out2);
     r = (uint8_t)(r + t);

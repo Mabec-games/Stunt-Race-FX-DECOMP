@@ -50,7 +50,7 @@ static void ldx8(Carried *cr, uint8_t v);
 static void put8(Carried *cr, uint32_t addr, uint8_t v);
 static void split_bg2(Carried *cr, uint8_t v, uint8_t ylo, uint8_t yhi_pos, uint8_t yneg, uint8_t xlo);
 static uint16_t time_stamp(Carried *cr);
-static void window_colours(Carried *cr, uint32_t b, uint16_t first);
+static void window_colours(Carried *cr, uint16_t first);
 static void w_GradientPointersToBank7F(Carried *cr);
 static void w_HudDrawTime(Carried *cr);
 void AnimTilesQueueNext_cr(Carried *cr);
@@ -184,56 +184,56 @@ void WindowTable7F(Carried *cr)
     set_p(cr, (uint8_t)(cr->p | (P_C)));
     a = alu_sbc8(a, b2, &cr->p);
     cyc(4);
-    put7f(W(window_width_7f), a);
+    put7f(WA(window_width_7f), a);
     set_p(cr, (uint8_t)((cr->p & ~P_C) | (a & 1)));
     a = (uint8_t)(a >> 1);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cyc(40);
     a = alu_adc8(a, RD8(wram_7F3434), &cr->p);
     cyc(20);
-    put7f(W(window_middle_7f), a);
+    put7f(WA(window_middle_7f), a);
     cyc(12);
     a = RD8(wram_7F3435);
     a = (uint8_t)(a >> 1);
     cyc(34);
-    put7f(W(window_table_7f), a);
+    put7f(WA(window_table_7f), a);
     a++;
     cyc(14);
-    put7f(W(wram_7F3413), a);
+    put7f(WA(wram_7F3413), a);
     cyc(12);
     a = RD8(wram_7F3433);
     cyc(20);
-    put7f(W(wram_7F3420), a);
-    put7f(W(wram_7F3423), a);
+    put7f(WA(wram_7F3420), a);
+    put7f(WA(wram_7F3423), a);
     a++;
     cyc(14);
-    put7f(W(wram_7F341D), a);
-    put7f(W(wram_7F3426), a);
+    put7f(WA(wram_7F341D), a);
+    put7f(WA(wram_7F3426), a);
     a++;
     cyc(14);
-    put7f(W(wram_7F341A), a);
-    put7f(W(wram_7F3429), a);
+    put7f(WA(wram_7F341A), a);
+    put7f(WA(wram_7F3429), a);
     a++;
     cyc(14);
-    put7f(W(wram_7F3417), a);
-    put7f(W(wram_7F342C), a);
+    put7f(WA(wram_7F3417), a);
+    put7f(WA(wram_7F342C), a);
     cyc(12);
     a = RD8(wram_7F3437);
     cyc(20);
-    put7f(W(wram_7F3421), a);
-    put7f(W(wram_7F3424), a);
+    put7f(WA(wram_7F3421), a);
+    put7f(WA(wram_7F3424), a);
     a--;
     cyc(14);
-    put7f(W(wram_7F341E), a);
-    put7f(W(wram_7F3427), a);
+    put7f(WA(wram_7F341E), a);
+    put7f(WA(wram_7F3427), a);
     a--;
     cyc(14);
-    put7f(W(wram_7F341B), a);
-    put7f(W(wram_7F342A), a);
+    put7f(WA(wram_7F341B), a);
+    put7f(WA(wram_7F342A), a);
     a--;
     cyc(14);
-    put7f(W(wram_7F3418), a);
-    put7f(W(wram_7F342D), a);
+    put7f(WA(wram_7F3418), a);
+    put7f(WA(wram_7F342D), a);
     cyc(12);
     a = RD8(wram_7F3439);
     set_p(cr, (uint8_t)(cr->p | (P_C)));
@@ -244,8 +244,8 @@ void WindowTable7F(Carried *cr)
     a = (uint8_t)(a >> 1);
     set_p(cr, nz8(cr->p, a));
     cyc(18);
-    put7f(W(wram_7F341F), a);
-    put7f(W(wram_7F3422), a);
+    put7f(WA(wram_7F341F), a);
+    put7f(WA(wram_7F3422), a);
     cr->a = (uint16_t)((cr->a & 0xFF00) | a);
     cyc(22);
 }
@@ -411,11 +411,11 @@ static void split_bg2(Carried *cr, uint8_t v, uint8_t ylo, uint8_t yhi_pos, uint
 }
 
 /* The window colours $19AC-$19AE (or $19AF-$19B1) to COLDATA. */
-static void window_colours(Carried *cr, uint32_t b, uint16_t first)
+static void window_colours(Carried *cr, uint16_t first)
 {
-    copy8(cr, COLDATA, b | first);
-    copy8(cr, COLDATA, b | (uint16_t)(first + 1));
-    copy8(cr, COLDATA, b | (uint16_t)(first + 2));
+    copy8(cr, COLDATA, 0x7E0000 | first);
+    copy8(cr, COLDATA, 0x7E0000 | (uint16_t)(first + 1));
+    copy8(cr, COLDATA, 0x7E0000 | (uint16_t)(first + 2));
 }
 
 /*
@@ -436,7 +436,6 @@ static void window_colours(Carried *cr, uint32_t b, uint16_t first)
  */
 void RasterStage(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     r_sep(cr, P_M | P_X);
@@ -601,7 +600,6 @@ void RasterStage(Carried *cr)
         (cyc(46), OamDirectStage_cr(cr));
         (cyc(46), RasterColoursUnless0D22_cr(cr));
         r_sep(cr, P_M);
-        b = (uint32_t)cr->db << 16;
         cyc(22);
         put8(cr, HTIMEL, 0xE0);
         put8(cr, VTIMEL, 0x10);
@@ -609,7 +607,7 @@ void RasterStage(Carried *cr)
         put8(cr, TM, 0x13);
         copy8(cr, HDMAEN, WA(wram_0D45));
         put8(cr, WA(wram_0D3F), 0x04);
-        window_colours(cr, b, W(window_setup_bytes));
+        window_colours(cr, W(window_setup_bytes));
         (cyc(62), WindowsSetupSelect_cr(cr));
         break;
     case 0xA5B6:
@@ -654,7 +652,7 @@ void RasterStage(Carried *cr)
         put8(cr, VTIMEL, 0x77);
         irq_ack(cr);
         put8(cr, WA(wram_0D3F), 0x0C);
-        window_colours(cr, b, W(wram_19AF));
+        window_colours(cr, W(wram_19AF));
         cyc(24);
         r_lda8(cr, WA(wram_0D5D));
         v = (uint8_t)cr->a;
@@ -709,7 +707,6 @@ void RasterStage(Carried *cr)
         (cyc(62), BobWindowsRun(cr));
         (cyc(62), WindowBandsAnimate_cr(cr));
         r_sep(cr, P_M | P_X);
-        b = (uint32_t)cr->db << 16;
         cyc(24);
         r_lda8(cr, WA(wram_0D5C));
         v = (uint8_t)cr->a;
@@ -731,7 +728,7 @@ void RasterStage(Carried *cr)
         put8(cr, BGMODE, 0x01);
         put8(cr, TM, 0x03);
         put8(cr, HDMAEN, 0x1C);
-        window_colours(cr, b, W(window_setup_bytes));
+        window_colours(cr, W(window_setup_bytes));
         (cyc(62), WindowsSetupSelect_cr(cr));
         put8(cr, VTIMEL, 0x0F);
         irq_ack(cr);

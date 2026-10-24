@@ -607,13 +607,13 @@ static int pad_bit(uint32_t b, uint16_t bit)
 }
 
 /* A byte of work RAM moved by d (INC or DEC), then sound $45 on port 0. */
-static void step_with_sound(uint32_t b, uint16_t at, int d)
+static void step_with_sound(uint16_t at, int d)
 {
     cyc(86);
-    uint8_t v = (uint8_t)(rd8(b | at) + d);
+    uint8_t v = (uint8_t)(rd8(0x7E0000 | at) + d);
 
     cyc(6);
-    wr8(b | at, v);
+    wr8(0x7E0000 | at, v);
     cyc(78);
     SoundPort0QueuePushW(0x45, 0);
     cyc(16);
@@ -673,29 +673,29 @@ uint8_t MenuCursorFourWay(uint8_t bank)
         case 0:
             cyc(58);
             if (pad_bit(b, 0x0100))
-                step_with_sound(b, W(wram_0D48), +1); else { cyc(10); }
+                step_with_sound(W(wram_0D48), +1); else { cyc(10); }
             cyc(22);
             break;
         case 2:
             cyc(58);
             if (pad_bit(b, 0x0200))
-                step_with_sound(b, W(wram_0D48), -1);
+                step_with_sound(W(wram_0D48), -1);
             else if (pad_bit(b, 0x0100))
-                step_with_sound(b, W(digit62_override), -1); else { cyc(10); }
+                step_with_sound(W(digit62_override), -1); else { cyc(10); }
             cyc(22);
             break;
         case 4:
             cyc(58);
             if (pad_bit(b, 0x0100))
-                step_with_sound(b, W(wram_0D48), +1);
+                step_with_sound(W(wram_0D48), +1);
             else if (pad_bit(b, 0x0200))
-                step_with_sound(b, W(digit62_override), -1); else { cyc(10); }
+                step_with_sound(W(digit62_override), -1); else { cyc(10); }
             cyc(22);
             break;
         default:
             cyc(58);
             if (pad_bit(b, 0x0200))
-                step_with_sound(b, W(wram_0D48), -1); else { cyc(32); }
+                step_with_sound(W(wram_0D48), -1); else { cyc(32); }
             break;
         }
     }
@@ -765,7 +765,7 @@ static int fourth_car(void)
    in turn, 3 after 2 (Right) or before 0 (Left) only with the fourth car;
    Right from 3 wraps to 0, Left from 0 without it to 2. wide: the sound
    push's clocks for 16-bit index registers (Left keeps the caller's). */
-static void car_step(uint32_t b, uint16_t at, int right, int p2, unsigned wide)
+static void car_step(uint16_t at, int right, int p2, unsigned wide)
 {
     uint8_t v;
     int four = 0;
@@ -773,7 +773,7 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2, unsigned wide)
     cyc(right ? 118 + 22 : 140);        /* ..., SEP */
     SoundPort0QueuePushW(0x45, right ? 0 : wide);
     cyc(24);
-    v = rd8(b | at);
+    v = rd8(0x7E0000 | at);
     if (right) {
         cyc(46);
         v = (uint8_t)(v + 1);
@@ -793,7 +793,7 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2, unsigned wide)
         }
     }
     cyc(60);
-    wr8(b | at, v);
+    wr8(0x7E0000 | at, v);
     if (right || (four == 1 && !p2))
         cyc(22);                        /* BRA to the second player's check, or the end */
 }
@@ -819,7 +819,6 @@ static uint8_t cs_last;                 /* the last byte loaded: player 1's choi
  */
 uint16_t CarSelectTwoPlayers(uint8_t bank, int x16, uint16_t *x)
 {
-    uint32_t b = (uint32_t)bank << 16;
     static const uint16_t pad[2] = {0x0D1A, 0x0D1C}, car[2] = {0x0D89, 0x0D8A};
     uint16_t a;
     int i;
@@ -827,14 +826,14 @@ uint16_t CarSelectTwoPlayers(uint8_t bank, int x16, uint16_t *x)
     cs_c = -1;
     for (i = 0; i < 2; i++) {
         cyc(22 + 24);
-        if (rd16(b | pad[i]) & 0x0100) {
-            car_step(b, car[i], 1, i, 0);
+        if (rd16(0x7E0000 | pad[i]) & 0x0100) {
+            car_step(car[i], 1, i, 0);
             x16 = 0;
             continue;
         }
         cyc(22 + 70);
-        if (rd16(b | pad[i]) & 0x0200)
-            car_step(b, car[i], 0, i, x16 ? 16 : 0);
+        if (rd16(0x7E0000 | pad[i]) & 0x0200)
+            car_step(car[i], 0, i, x16 ? 16 : 0);
         else
             cyc(46);
     }

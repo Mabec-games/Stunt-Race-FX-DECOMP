@@ -121,10 +121,10 @@ static uint8_t flat(uint8_t i)
     WR8(heading_sin_a, rd8(SIN_TABLE + i));
     cyc(48 + crossed(COS_TABLE, i));
     WR8(heading_cos_a, rd8(COS_TABLE + i));
-    v = smul_at(W(heading_speed), W(heading_sin_a));
-    store_extended(W(dp_02), v);
-    v = smul_at(W(heading_speed), W(heading_cos_a));
-    store_extended(W(dp_94), v);
+    v = smul_at(WA(heading_speed), WA(heading_sin_a));
+    store_extended(WA(dp_02), v);
+    v = smul_at(WA(heading_speed), WA(heading_cos_a));
+    store_extended(WA(dp_94), v);
     return v;
 }
 
@@ -144,14 +144,14 @@ static uint8_t pitched(uint8_t ia, uint8_t ib)
     WR8(heading_sin_b, rd8(SIN_TABLE + ib));
     cyc(48 + crossed(COS_TABLE, ib));
     WR8(heading_cos_b, rd8(COS_TABLE + ib));
-    WR8(dp_02, cyc_then(14, smul_at(W(heading_speed), W(heading_sin_a))));
-    v = smul_at(W(dp_02), W(heading_cos_b));
-    store_dec(W(dp_02), v);
-    WR8(dp_94, cyc_then(14, smul_at(W(heading_speed), W(heading_cos_a))));
-    v = smul_at(W(dp_94), W(heading_cos_b));
-    store_dec(W(dp_94), v);
-    v = smul_at(W(heading_speed), W(heading_sin_b));
-    store_dec(W(dp_08), v);
+    WR8(dp_02, cyc_then(14, smul_at(WA(heading_speed), WA(heading_sin_a))));
+    v = smul_at(WA(dp_02), WA(heading_cos_b));
+    store_dec(WA(dp_02), v);
+    WR8(dp_94, cyc_then(14, smul_at(WA(heading_speed), WA(heading_cos_a))));
+    v = smul_at(WA(dp_94), WA(heading_cos_b));
+    store_dec(WA(dp_94), v);
+    v = smul_at(WA(heading_speed), WA(heading_sin_b));
+    store_dec(WA(dp_08), v);
     return v;
 }
 

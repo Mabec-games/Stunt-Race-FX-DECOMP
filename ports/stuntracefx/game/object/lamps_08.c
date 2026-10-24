@@ -1344,8 +1344,8 @@ void ObjectContactsCameraPoint(uint8_t bank, LRegs *r)
         r->p &= (uint8_t)~P_M;
         cyc(22);
         for (i = 0; i < 3; i++) {
-            lr_lda(r, cyc_then(24, ((uint32_t)bank << 16) | from[i]));
-            wr16(((uint32_t)bank << 16) | (uint16_t)(to[i] + r->y), cyc_then(30, r->a));
+            lr_lda(r, cyc_then(24, 0x7E0000 | from[i]));
+            wr16(0x7E0000 | (uint16_t)(to[i] + r->y), cyc_then(30, r->a));
         }
         r->p |= P_M;
         cyc(22);

@@ -317,7 +317,7 @@ static int open_window(uint16_t x, uint16_t *a, uint8_t *p, uint32_t line)
  */
 void ResultsOpenTop(uint16_t x, uint16_t *a, uint8_t *p)
 {
-    if (!open_window(x, a, p, W(wram_7F130D)))
+    if (!open_window(x, a, p, WA(wram_7F130D)))
         { cyc(22); return; }
     set_field(x, a, p, 0x08, 0xD91B);
     set_field(x, a, p, 0x0A, 0x0000);
@@ -363,7 +363,7 @@ void abi_ResultsOpenTop(void)
  */
 void ResultsOpenBottom(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    if (!open_window(*x, a, p, W(wram_7F130F)))
+    if (!open_window(*x, a, p, WA(wram_7F130F)))
         { cyc(22); return; }
     set_field(*x, a, p, 0x08, 0xDA8A);
     set_field(*x, a, p, 0x0A, 0x0000);
@@ -375,11 +375,11 @@ void ResultsOpenBottom(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint
     cyc(22);
     *p &= (uint8_t)~P_M;
     cyc(144);
-    byte_of(a, p, W(wram_0FAC));
+    byte_of(a, p, WA(wram_0FAC));
     cmp(*a, p, 0x0000);
     if (*p & P_Z)
         return; else { cyc(58); }
-    byte_of(a, p, W(wram_0DD6));
+    byte_of(a, p, WA(wram_0DD6));
     cmp(*a, p, 0x0008);
     if (!(*p & P_Z))
         return; else { cyc(90); }
@@ -427,11 +427,11 @@ void abi_ResultsOpenBottom(void)
  */
 void ResultsPlaceWait(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    byte_of(a, p, W(wram_0FAC));
+    byte_of(a, p, WA(wram_0FAC));
     cmp(*a, p, rd16(cyc_then(40, fld(*x, 0x22))));
     if (*p & P_Z) {
         cyc(16);
-        byte_of(a, p, W(wram_0DD6));
+        byte_of(a, p, WA(wram_0DD6));
         cmp(*a, p, 0x0008);
         if (*p & P_Z) {
             cyc(104);
@@ -485,7 +485,7 @@ void ResultsCarIndex(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
     (void)bank;
     uint16_t v;
 
-    byte_of(a, p, W(wram_0D4A));
+    byte_of(a, p, WA(wram_0D4A));
     wr16((WA(scratch_11df)), cyc_then(42, *a));
     asl(a, p);
     asl(a, p);
@@ -539,7 +539,7 @@ void ResultsPlaceCar(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
     uint32_t table;
 
-    byte_of(a, p, W(wram_0FAC));
+    byte_of(a, p, WA(wram_0FAC));
     cmp(*a, p, rd16(cyc_then(40, fld(*x, 0x22))));
     table = (*p & P_Z) ? (cyc(12), 0x0BDA17) : (cyc(18), 0x0BDA0F);
     (cyc(50), ResultsCarIndex(bank, x, a, p));
@@ -789,7 +789,7 @@ void ResultsWaitButton(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, uint
 {
     if (!pressed(a, y, p))
         { cyc(100); return; } else { cyc(52); }
-    byte_of(a, p, W(wram_0DD6));
+    byte_of(a, p, WA(wram_0DD6));
     cmp(*a, p, 0x0008);
     if (!(*p & P_Z)) {
         cyc(12);
@@ -918,7 +918,7 @@ void abi_ResultsWaitEnd(void)
  */
 void ResultsOverOrHide(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    byte_of(a, p, W(wram_0DD6));
+    byte_of(a, p, WA(wram_0DD6));
     cmp(*a, p, 0x0008);
     if (*p & P_Z) {
         cyc(82);
@@ -982,7 +982,7 @@ static void place_object(uint8_t bank, uint16_t *x, uint16_t *a, uint16_t *y, ui
 
     lda_imm(a, p, kind);
     find_kind(bank, kind, x, y, p, a);
-    place = byte_of(a, p, W(wram_0FAC));
+    place = byte_of(a, p, WA(wram_0FAC));
     if (!place)
         return;
     cmp(*a, p, 0x0001);
@@ -1074,9 +1074,9 @@ void abi_ResultsLower(void)
 
 /* The sprite tile at $11E3 into the next entry of the group, $11E1 or
    $11E5 (`at`) stepping by 8: the attribute word's low 9 bits replaced. */
-static void tile_at(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
+static void tile_at(uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
 {
-    *x = rd16(cyc_then(24, abs_db(bank, at)));
+    *x = rd16(cyc_then(24, (0x7E0000 | at)));
     *p = nz16(*p, *x);
     cyc(32);
     lda(a, p, RD16X(menu_sprite_attr, (uint32_t)*x));
@@ -1084,20 +1084,20 @@ static void tile_at(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t
     lda(a, p, (uint16_t)(*a | rd16(cyc_then(46, (WA(scratch_11e3))))));
     cyc(32);
     WR16X(menu_sprite_attr, (uint32_t)*x, *a);
-    lda(a, p, rd16(cyc_then(24, abs_db(bank, at))));
+    lda(a, p, rd16(cyc_then(24, (0x7E0000 | at))));
     add(a, p, 0x0008);
-    wr16(abs_db(bank, at), cyc_then(62, *a));
+    wr16((0x7E0000 | at), cyc_then(62, *a));
 }
 
 /* A character two sprites high: tile $11E3 and the one $10 on, through
    the entries at `at`. */
-static void tall_tile(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
+static void tall_tile(uint16_t *x, uint16_t *a, uint8_t *p, uint16_t at)
 {
-    tile_at(bank, x, a, p, at);
+    tile_at(x, a, p, at);
     lda(a, p, rd16(cyc_then(24, (WA(scratch_11e3)))));
     add(a, p, 0x0010);
     wr16((WA(scratch_11e3)), cyc_then(62, *a));
-    tile_at(bank, x, a, p, at);
+    tile_at(x, a, p, at);
     cyc(78);
 }
 
@@ -1113,6 +1113,7 @@ static void tall_tile(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p, uint16
  */
 void ResultsLetterTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
+    (void)bank;
     uint16_t x0 = x;
 
     asl(a, p);
@@ -1120,7 +1121,7 @@ void ResultsLetterTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
     cyc(100);
     lda(a, p, rd16(0x0BDDD3 + (uint32_t)x));
     wr16((WA(scratch_11e3)), *a);
-    tall_tile(bank, &x, a, p, 0x11E5);
+    tall_tile(&x, a, p, 0x11E5);
     *p = nz16(*p, x0);
 }
 
@@ -1157,6 +1158,7 @@ void abi_ResultsLetterTiles(void)
  */
 void ResultsDigitTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
+    (void)bank;
     uint16_t x0 = x;
 
     cmp(*a, p, 0x000F);
@@ -1164,7 +1166,7 @@ void ResultsDigitTiles(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
         lda_imm(a, p, 0x0044); else { cyc(20); }
     add(a, p, 0x0050);
     wr16((WA(scratch_11e3)), cyc_then(118, *a));
-    tall_tile(bank, &x, a, p, 0x11E1);
+    tall_tile(&x, a, p, 0x11E1);
     *p = nz16(*p, x0);
 }
 
@@ -1251,7 +1253,7 @@ void abi_ResultsBcdPair(void)
  */
 void ResultsTimeDigits(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p)
 {
-    byte_of(a, p, W(wram_0DD6));
+    byte_of(a, p, WA(wram_0DD6));
     cmp(*a, p, 0x0008);
     if (*p & P_Z) {
         cyc(104);
@@ -1308,11 +1310,11 @@ static void leader_or_stop(uint16_t *x, uint16_t *a, uint8_t *p, uint16_t field)
 {
     *x = rd16(cyc_then(24, (WA(actor_current))));
     *p = nz16(*p, *x);
-    byte_of(a, p, W(wram_0FAC));
+    byte_of(a, p, WA(wram_0FAC));
     cmp(*a, p, rd16(cyc_then(40, fld(*x, field))));
     if (*p & P_Z) {
         cyc(16);
-        byte_of(a, p, W(wram_0DD6));
+        byte_of(a, p, WA(wram_0DD6));
         cmp(*a, p, 0x0008);
         if (*p & P_Z) {
             *x = rd16(cyc_then(82, (WA(actor_current))));
@@ -1581,10 +1583,11 @@ void abi_ResultsLapTimes(void)
  */
 void ResultsPointsTile(uint8_t bank, uint16_t x, uint16_t *a, uint8_t *p)
 {
+    (void)bank;
     uint16_t x0 = x;
 
     wr16((WA(scratch_11e3)), cyc_then(54, *a));
-    tile_at(bank, &x, a, p, 0x11E1);
+    tile_at(&x, a, p, 0x11E1);
     *p = nz16(*p, x0);
     cyc(78);
 }
@@ -1739,7 +1742,7 @@ void ResultsPhaseAnim(uint16_t x, uint16_t *a, uint8_t *p)
     static const uint16_t anim[5] = {0x01A4, 0x017C, 0x019A, 0x0190, 0x0186};
     unsigned i;
 
-    byte_of(a, p, W(wram_0DD6));
+    byte_of(a, p, WA(wram_0DD6));
     for (i = 0; i < 5; i++) {
         cyc(40);
         cmp(*a, p, phase[i]);
@@ -1793,11 +1796,11 @@ static void place_points(Carried *cr, uint8_t bank, uint16_t *x, uint16_t *a, ui
         { cyc(64); return; }
     wr16(fld(*x, 0x10), cyc_then(38, 0x0000));
     set_field(*x, a, p, 0x08, handler);
-    byte_of(a, p, W(wram_0DD6));
+    byte_of(a, p, WA(wram_0DD6));
     cmp(*a, p, 0x0008);
     if (!(*p & P_Z)) {
         cyc(58);
-        byte_of(a, p, W(wram_0D48));
+        byte_of(a, p, WA(wram_0D48));
         cmp(*a, p, n);
         if (*p & P_Z) {
             cyc(110);

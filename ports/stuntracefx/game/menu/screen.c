@@ -121,7 +121,7 @@ void abi_MenuScrollReset(void)
 uint16_t MenuPaletteLoad(void)
 {
     cyc(108);
-    uint32_t src = rd24(W(dp_fb));
+    uint32_t src = rd24(WA(dp_fb));
     uint16_t c = 0;
     unsigned i;
 
@@ -1551,12 +1551,12 @@ void ChampionScreenOpen(Carried *cr)
     (cyc(46), MenuScrollReset_cr(cr));
     r_sep(cr, P_M);
     cyc(54);
-    r_lda8(cr, W(wram_0DD6));
+    r_lda8(cr, WA(wram_0DD6));
     v = (uint8_t)cr->a;
     set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : (cyc(100), 0))));
     if (v == 0x08) {
         cyc(64);
-        r_lda8(cr, W(wram_0D4A));
+        r_lda8(cr, WA(wram_0D4A));
         v = (uint8_t)cr->a;
         bit = v == 0x00 ? 0x01 : (cyc(38), v == 0x01 ? 0x02 : (cyc(38), v == 0x02 ? 0x04 : 0x00));
         set_p(cr, (uint8_t)((nz8(cr->p, (uint8_t)(v - (v < 0x02 ? v : 0x02))) & ~P_C) | P_C));
@@ -1946,7 +1946,7 @@ void TitleScreenLoop(Carried *cr)
             r_lda16(cr, (uint16_t)(cr->d + 0x0A + cr->x));
             if (!cr->a) {
                 cyc(48);
-                r_lda16(cr, W(wram_1913));
+                r_lda16(cr, WA(wram_1913));
                 cr->a++;
                 set_p(cr, nz16(cr->p, cr->a));
                 cyc(46);
@@ -1963,7 +1963,7 @@ void TitleScreenLoop(Carried *cr)
                     WR8(wram_10DA, 0xFF);
                     r_rep(cr, P_M);
                     cyc(32);
-                    r_lda16(cr, W(wram_1915));
+                    r_lda16(cr, WA(wram_1915));
                     cr->a++;
                     set_p(cr, nz16(cr->p, cr->a));
                     r_and16(cr, 0x0003);

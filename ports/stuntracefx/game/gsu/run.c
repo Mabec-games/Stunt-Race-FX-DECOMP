@@ -387,7 +387,7 @@ void HudFrameWhileGsuRuns(Carried *cr)
     r_lda8(cr, WA(wram_0D62));
     if ((uint8_t)cr->a) {
         cyc(72);
-        r_lda8(cr, W(gsu_buffer_select));
+        r_lda8(cr, WA(gsu_buffer_select));
         cr->y = (uint8_t)cr->a;
         cyc(90);
         run_cmp8(cr, (uint8_t)cr->y, 0x01);
@@ -402,7 +402,7 @@ void HudFrameWhileGsuRuns(Carried *cr)
     }
     cr->x = 0x00;
     cyc(70);
-    r_lda8(cr, W(hud_mode));
+    r_lda8(cr, WA(hud_mode));
     v = (uint8_t)cr->a;
     cyc(42);
     run_cmp8(cr, v, 0x01);
@@ -494,7 +494,7 @@ void FrameRunGsuAB13B(Carried *cr)
     r_rep(cr, P_M);
     b = (uint32_t)cr->db << 16;
     cyc(16);
-    r_lda16(cr, W(gsu_wait_count));
+    r_lda16(cr, WA(gsu_wait_count));
     cyc(24);
     WR16(gsu_ab13_polls, cr->a);
     (cyc(46), w_MapMarkersPanelB(cr));

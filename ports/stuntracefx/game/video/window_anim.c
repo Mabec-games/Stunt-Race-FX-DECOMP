@@ -169,9 +169,9 @@ void abi_WindowStep3439(void)
 
 /* Subtract n from the byte at addr in the bank, stopping at 1 (*x
    counting the stop), as WindowStep3435; the stored byte. */
-static uint8_t window_step_down(uint8_t bank, uint16_t addr, uint8_t n, uint8_t *x, uint8_t *p)
+static uint8_t window_step_down(uint16_t addr, uint8_t n, uint8_t *x, uint8_t *p)
 {
-    uint32_t a = (uint32_t)bank << 16 | addr;
+    uint32_t a = 0x7F0000 | addr;
     cyc(24);
     uint8_t v = rd8(a), r = (uint8_t)(v - n);
 
@@ -198,8 +198,9 @@ static uint8_t window_step_down(uint8_t bank, uint16_t addr, uint8_t n, uint8_t 
  */
 uint8_t WindowStep3433By2(uint8_t bank, uint8_t *x, uint8_t *p)
 {
+    (void)bank;
     cyc(0);
-    return window_step_down(bank, 0x3433, 2, x, p);
+    return window_step_down(0x3433, 2, x, p);
 }
 
 void WindowStep3433By2_cr(Carried *cr)
@@ -234,7 +235,8 @@ void abi_WindowStep3433By2(void)
  */
 uint8_t WindowStep3433By3(uint8_t bank, uint8_t *x, uint8_t *p)
 {
-    return window_step_down(bank, 0x3433, 3, x, p);
+    (void)bank;
+    return window_step_down(0x3433, 3, x, p);
 }
 
 void WindowStep3433By3_cr(Carried *cr)

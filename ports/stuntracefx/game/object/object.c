@@ -133,7 +133,7 @@ void ObjectRunHandlerA(Carried *cr, uint8_t bank, uint16_t obj);
 void ObjectRunHandlerB(Carried *cr, uint8_t bank, uint16_t obj);
 void ObjectsRunHandlers(Carried *cr);
 static void abi_triggers_from(Carried *cr, uint16_t rec, uint16_t x);
-static void add_random(Carried *cr, uint32_t b, uint16_t off, uint16_t mask);
+static void add_random(Carried *cr, uint16_t off, uint16_t mask);
 static void camera_turn_negated(Carried *cr, uint16_t camera);
 static uint32_t car_field(Carried *cr, uint16_t off);
 static void child(Carried *cr, uint16_t off);
@@ -141,11 +141,11 @@ static uint8_t cmp8_flags(Carried *cr, uint8_t a, uint8_t m);
 static uint32_t dp8(Carried *cr, uint8_t off);
 static void move_forward_from(Carried *cr, int arm);
 static uint8_t neg8(Carried *cr, uint8_t a);
-static void parent_place(Carried *cr, uint32_t b, int attached);
-static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage);
+static void parent_place(Carried *cr, int attached);
+static void parent_place_from(Carried *cr, int attached, int stage);
 static void passed_tail(Carried *cr, unsigned extra);
 static void release(Carried *cr);
-static int run_handler(Carried *cr, uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record);
+static int run_handler(Carried *cr, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record);
 static void set_handler(Carried *cr, uint16_t o, uint16_t h);
 static void spawn_sparkle(Carried *cr);
 static void swap_xy(Carried *cr);
@@ -1025,7 +1025,7 @@ uint16_t ObjectLinkEventTrigger(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     cyc(30);
     *y = rd16(b + 0x204F + *y);
     cyc(44);
-    a = rd16(b | *y) & 0x4000;
+    a = rd16(0x7E0000 | *y) & 0x4000;
     if (!a) {
         cyc(24);                        /* AND #, which the other exit has not run */
         *p = (uint8_t)((*p & ~P_N) | P_Z);
@@ -1630,7 +1630,6 @@ void abi_ObjectLinkedHandlerByState(void)
 static uint16_t object_attach_linked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t *p, uint16_t *y)
 {
     static const uint8_t clear[9] = {0x35, 0x37, 0x39, 0x26, 0x28, 0x2A, 0x2C, 0x2E, 0x30};
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t blk, kind, t, add = 0, m;
     unsigned i, s;
 
@@ -1646,7 +1645,7 @@ static uint16_t object_attach_linked(uint8_t bank, uint16_t obj, uint16_t other,
     blk = RD16(wram_1F4E);
     *y = blk;
     cyc(44);
-    wr16(b | (uint16_t)(blk + 0x02), obj);
+    wr16(0x7E0000 | (uint16_t)(blk + 0x02), obj);
     cyc(62);
     t = rd16(0x702396);
     cyc(38);
@@ -1680,14 +1679,14 @@ static uint16_t object_attach_linked(uint8_t bank, uint16_t obj, uint16_t other,
         t = (uint16_t)s;
     }
     cyc(190);
-    wr16(b | (uint16_t)(blk + 0x32), rd16(ATTACH_VALUES + t));
+    wr16(0x7E0000 | (uint16_t)(blk + 0x32), rd16(ATTACH_VALUES + t));
     cyc(60);
     for (i = 0; i < 9; i++)
-        { cyc(30); wr16(b | (uint16_t)(blk + clear[i]), 0x0000); }
+        { cyc(30); wr16(0x7E0000 | (uint16_t)(blk + clear[i]), 0x0000); }
     cyc(54);
-    wr16(b | blk, 0x0005);
+    wr16(0x7E0000 | blk, 0x0005);
     cyc(68);
-    wr8(b | (uint16_t)(blk + 0x34), 0x00);
+    wr8(0x7E0000 | (uint16_t)(blk + 0x34), 0x00);
     *p = nz8(*p, 0);
     cyc(44);
     return 0x0000;
@@ -1880,29 +1879,28 @@ typedef struct {
 } AreaEnd;
 
 /* The body of BucketTriggersFromArea, with everything its exit leaves. */
-static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
+static AreaEnd bucket_triggers_from_area(uint16_t rec, uint8_t p)
 {
     uint32_t c;
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0, y = rec, v, w, n;
     AreaEnd e;
 
     cyc(68);
-    v = (uint16_t)((rd16(b | (uint16_t)(rec + 3)) & 0x00FF) << 8);
+    v = (uint16_t)((rd16(0x7E0000 | (uint16_t)(rec + 3)) & 0x00FF) << 8);
     v = (uint16_t)((v >> 1) | (v & 0x8000));
     v = (uint16_t)((v >> 1) | (v & 0x8000));
     cyc(136);
     WR16(area_row, v);
     cyc(30);
-    v = rd16(b | (uint16_t)(rec + 1)) & 0x00FF;
+    v = rd16(0x7E0000 | (uint16_t)(rec + 1)) & 0x00FF;
     cyc(48);
     WR16(area_rows_left, v);
     cyc(30);
-    v = rd16(b | (uint16_t)(rec + 2)) & 0x00FF;
+    v = rd16(0x7E0000 | (uint16_t)(rec + 2)) & 0x00FF;
     cyc(92);
     WR16(area_col0, (uint16_t)(-v << 1));
     cyc(30);
-    v = rd16(b | (uint16_t)(rec + 0)) & 0x00FF;
+    v = rd16(0x7E0000 | (uint16_t)(rec + 0)) & 0x00FF;
     cyc(48);
     WR16(group_trigger_pos, v);
     do {
@@ -1928,7 +1926,7 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
                 w = RD16(area_window_y);
                 if (!((uint16_t)(v + w) & 0xF800)) {
                     cyc(70);
-                    v = rd16(b | (uint16_t)(y + 4)) & 0x00FF;
+                    v = rd16(0x7E0000 | (uint16_t)(y + 4)) & 0x00FF;
                     if (v != 0x002E) {
                         cyc(94);
                         WR16I(group_trigger_list, x, v);
@@ -2008,12 +2006,13 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
  */
 uint16_t BucketTriggersFromArea(uint8_t bank, uint16_t rec)
 {
-    return bucket_triggers_from_area(bank, rec, 0).x;
+    (void)bank;
+    return bucket_triggers_from_area(rec, 0).x;
 }
 
 void BucketTriggersFromArea_cr(Carried *cr)
 {
-    AreaEnd e = bucket_triggers_from_area(cr->db, cr->a, cr->p);
+    AreaEnd e = bucket_triggers_from_area(cr->a, cr->p);
 
     cr->a = e.a;
     cr->x = e.x;
@@ -2523,16 +2522,15 @@ void abi_ObjectCallHandler(void)
    (word) and bank are kept at $0354/$0356 and the object at $034C, and the
    handler is entered by an RTL with X = the object, A = its address - 1, M
    8-bit, N and Z from that A. Returns 0 when there is no handler. */
-static int run_handler(Carried *cr, uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record)
+static int run_handler(Carried *cr, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t h;
     uint8_t p = cr->p, hb;
 
     cyc(82);
-    WR8(handler_bank, cyc_then(24, rd8(b | (uint16_t)(bank_at + obj))));
+    WR8(handler_bank, cyc_then(24, rd8(0x7E0000 | (uint16_t)(bank_at + obj))));
     cyc(52);
-    h = rd16(b | (uint16_t)(word_at + obj));
+    h = rd16(0x7E0000 | (uint16_t)(word_at + obj));
     cr->a = h;
     if (!h)
         { cyc(130); return 0; }
@@ -2567,7 +2565,8 @@ static int run_handler(Carried *cr, uint8_t bank, uint16_t obj, uint16_t word_at
  */
 void ObjectRunHandlerA(Carried *cr, uint8_t bank, uint16_t obj)
 {
-    run_handler(cr, bank, obj, 0x201A, 0x201C, 0);
+    (void)bank;
+    run_handler(cr, obj, 0x201A, 0x201C, 0);
 }
 
 void ObjectRunHandlerA_cr(Carried *cr)
@@ -2575,7 +2574,7 @@ void ObjectRunHandlerA_cr(Carried *cr)
     uint16_t x = cr->x;
     uint8_t p = cr->p;
 
-    run_handler(cr, cr->db, x, 0x201A, 0x201C, 0);
+    run_handler(cr, x, 0x201A, 0x201C, 0);
     cr->x = x;
     set_p(cr, p);
 }
@@ -2605,7 +2604,8 @@ void abi_ObjectRunHandlerA(void)
  */
 void ObjectRunHandlerB(Carried *cr, uint8_t bank, uint16_t obj)
 {
-    run_handler(cr, bank, obj, 0x201D, 0x201F, 1);
+    (void)bank;
+    run_handler(cr, obj, 0x201D, 0x201F, 1);
 }
 
 void ObjectRunHandlerB_cr(Carried *cr)
@@ -2614,7 +2614,7 @@ void ObjectRunHandlerB_cr(Carried *cr)
     uint8_t p = cr->p;
 
     cyc(0);
-    run_handler(cr, cr->db, x, 0x201D, 0x201F, 1);
+    run_handler(cr, x, 0x201D, 0x201F, 1);
     cr->x = x;
     set_p(cr, p);
     cyc(44);
@@ -3197,7 +3197,7 @@ void abi_ObjectSpawnSparklePair(void)
 }
 
 /* +off += (random & mask), 16-bit. */
-static void add_random(Carried *cr, uint32_t b, uint16_t off, uint16_t mask)
+static void add_random(Carried *cr, uint16_t off, uint16_t mask)
 {
     cyc(62);
     uint16_t w;
@@ -3206,11 +3206,11 @@ static void add_random(Carried *cr, uint32_t b, uint16_t off, uint16_t mask)
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     r_and16(cr, mask);
     cyc(88);
-    w = rd16(b | (uint16_t)(off + cr->x));
+    w = rd16(0x7E0000 | (uint16_t)(off + cr->x));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
     cr->a = alu_adc16(cr->a, w, &cr->p);
     cyc(30);
-    wr16(b | (uint16_t)(off + cr->x), cr->a);
+    wr16(0x7E0000 | (uint16_t)(off + cr->x), cr->a);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
 }
 
@@ -3291,7 +3291,6 @@ void abi_ObjectSparkleStep(void)
  */
 void ObjectSparkleStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     uint16_t w;
 
@@ -3317,11 +3316,11 @@ void ObjectSparkleStart(Carried *cr)
     WR8I(obj_5f, cr->x, 0x0A);
     cyc(46);
     WR8I(obj_48, cr->x, 0x05);
-    add_random(cr, b, 0x2027, 0x007F);
+    add_random(cr, 0x2027, 0x007F);
     cyc(22);
-    add_random(cr, b, 0x2029, 0x003F);
+    add_random(cr, 0x2029, 0x003F);
     cyc(22);
-    add_random(cr, b, 0x202B, 0x007F);
+    add_random(cr, 0x202B, 0x007F);
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_M)));
     cyc(74);
     w = RD16I(obj_27, cr->x);
@@ -3496,7 +3495,6 @@ void abi_ObjectMoveForward(void)
    ($05F3): the stores the zero components never take. */
 static void move_forward_from(Carried *cr, int arm)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint16_t w;
     uint8_t v;
     unsigned i;
@@ -3567,12 +3565,12 @@ turn:
         from[2] = dp8(cr, 0x0A);
         for (i = 0; i < 3; i++) {
             cyc(30);
-            w = rd16(b | (uint16_t)(to[i] + cr->x));
+            w = rd16(0x7E0000 | (uint16_t)(to[i] + cr->x));
             cyc(from[i] < 0x100 ? 30 : 38);  /* CLC, ADC direct page or absolute */
             set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
             cr->a = alu_adc16(w, rd16(from[i]), &cr->p);
             cyc(30);
-            wr16(b | (uint16_t)(to[i] + cr->x), cr->a);
+            wr16(0x7E0000 | (uint16_t)(to[i] + cr->x), cr->a);
         }
         cyc(64);
     }
@@ -3659,7 +3657,7 @@ static void sign_byte_bra(uint32_t at, uint8_t a)
    From stage 1 (the x sign's store of $FF, which cannot run: the x is 0)
    or stage 2 (the trail's y sign's store of 0, which cannot run: the y is
    $F6), with Y the parent and the stores before those made. */
-static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
+static void parent_place_from(Carried *cr, int attached, int stage)
 {
     uint8_t v;
     uint16_t w;
@@ -3698,7 +3696,7 @@ static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
         wr8(dp8(cr, 0x0B), cyc_then(16, 0x00));
     }
     cyc(24);
-    v = rd8(b | (attached ? 0x1F5A : 0x1F58));
+    v = rd8(0x7E0000 | (attached ? 0x1F5A : 0x1F58));
     wr8(dp8(cr, 0x94), cyc_then(16, v));
     cyc(24);
     WR8(area_rows_left, v);
@@ -3733,12 +3731,12 @@ static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
     from[2] = dp8(cr, 0x0A);
     for (i = 0; i < 3; i++) {
         cyc(30);
-        w = rd16(b | (uint16_t)(to[i] + cr->y));
+        w = rd16(0x7E0000 | (uint16_t)(to[i] + cr->y));
         cyc(from[i] < 0x100 ? 30 : 38);  /* CLC, ADC direct page or absolute */
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         cr->a = alu_adc16(w, rd16(from[i]), &cr->p);
         cyc(30);
-        wr16(b | (uint16_t)(to[i] + cr->x), cr->a);
+        wr16(0x7E0000 | (uint16_t)(to[i] + cr->x), cr->a);
     }
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     if (!attached) {
@@ -3755,9 +3753,9 @@ static void parent_place_from(Carried *cr, uint32_t b, int attached, int stage)
     cyc(44);
 }
 
-static void parent_place(Carried *cr, uint32_t b, int attached)
+static void parent_place(Carried *cr, int attached)
 {
-    parent_place_from(cr, b, attached, 0);
+    parent_place_from(cr, attached, 0);
 }
 
 /*
@@ -3834,7 +3832,6 @@ void abi_ObjectSpawnTrail(void)
  */
 void ObjectTrailStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(46);
     WR8I(obj_4b, cr->x, 0x0C);
@@ -3845,7 +3842,7 @@ void ObjectTrailStart(Carried *cr)
     cyc(46);
     WR8I(obj_vel_z, cr->x, 0xD8);
     cyc(22);
-    parent_place(cr, b, 0);
+    parent_place(cr, 0);
 }
 
 void abi_ObjectTrailStart(void)
@@ -3877,7 +3874,6 @@ void abi_ObjectTrailStart(void)
  */
 void ObjectTrailStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(30);
@@ -3903,7 +3899,7 @@ void ObjectTrailStep(Carried *cr)
     v = (uint8_t)(RD8I(obj_4b, cr->x) - 1);
     cyc(6);
     WR8I(obj_4b, cr->x, v);
-    parent_place(cr, b, 0);
+    parent_place(cr, 0);
 }
 
 void abi_ObjectTrailStep(void)
@@ -3932,7 +3928,7 @@ void ObjectTrailSignX(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     set_p(cr, nz8(cr->p, 0xFF));
-    parent_place_from(cr, (uint32_t)cr->db << 16, 0, 1);
+    parent_place_from(cr, 0, 1);
 }
 
 void abi_ObjectTrailSignX(void)
@@ -3960,7 +3956,7 @@ void abi_ObjectTrailSignX(void)
  */
 void ObjectTrailSignY(Carried *cr)
 {
-    parent_place_from(cr, (uint32_t)cr->db << 16, 0, 2);
+    parent_place_from(cr, 0, 2);
 }
 
 void abi_ObjectTrailSignY(void)
@@ -3989,7 +3985,7 @@ void ObjectAttachedSignX(Carried *cr)
 {
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     set_p(cr, nz8(cr->p, 0xFF));
-    parent_place_from(cr, (uint32_t)cr->db << 16, 1, 1);
+    parent_place_from(cr, 1, 1);
 }
 
 void abi_ObjectAttachedSignX(void)
@@ -4083,7 +4079,6 @@ void abi_ObjectSpawnAttached(void)
  */
 void ObjectAttachedStart(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
 
     cyc(46);
     WR8I(obj_4b, cr->x, 0x0C);
@@ -4092,7 +4087,7 @@ void ObjectAttachedStart(Carried *cr)
     cyc(68);
     WR8I(obj_1c, cr->x, 0x08);
     cyc(22);
-    parent_place(cr, b, 1);
+    parent_place(cr, 1);
 }
 
 void abi_ObjectAttachedStart(void)
@@ -4118,7 +4113,6 @@ void abi_ObjectAttachedStart(void)
  */
 void ObjectAttachedStep(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
 
     cyc(30);
@@ -4144,7 +4138,7 @@ void ObjectAttachedStep(Carried *cr)
     v = (uint8_t)(RD8I(obj_4b, cr->x) - 1);
     cyc(6);
     WR8I(obj_4b, cr->x, v);
-    parent_place(cr, b, 1);
+    parent_place(cr, 1);
 }
 
 void abi_ObjectAttachedStep(void)
@@ -4179,7 +4173,6 @@ void abi_ObjectTableE8AF(void);
  */
 void ObjectPlaceOnParent(Carried *cr)
 {
-    uint32_t b = (uint32_t)cr->db << 16;
     uint8_t v;
     uint16_t w, x0;
     unsigned i;
@@ -4283,12 +4276,12 @@ void ObjectPlaceOnParent(Carried *cr)
     from[2] = dp8(cr, 0x0A);
     for (i = 0; i < 3; i++) {
         cyc(30);
-        w = rd16(b | (uint16_t)(to[i] + cr->x));
+        w = rd16(0x7E0000 | (uint16_t)(to[i] + cr->x));
         cyc(from[i] < 0x100 ? 30 : 38);  /* CLC, ADC direct page or absolute */
         set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_C)));
         cr->a = alu_adc16(w, rd16(from[i]), &cr->p);
         cyc(30);
-        wr16(b | (uint16_t)(to[i] + cr->y), cr->a);
+        wr16(0x7E0000 | (uint16_t)(to[i] + cr->y), cr->a);
     }
     cyc(64);
     set_p(cr, (uint8_t)(cr->p | (P_M)));
@@ -4337,7 +4330,7 @@ void ObjectLinkEventTrigger2(Carried *cr)
         cyc(30);
         cr->y = rd16(b + 0x204F + cr->y);
         cyc(44);
-        a = (uint16_t)(rd16(b | cr->y) & 0x4000);
+        a = (uint16_t)(rd16(0x7E0000 | cr->y) & 0x4000);
         cr->a = a;
         set_p(cr, nz16(cr->p, a));
         if (!a) {
@@ -5351,7 +5344,7 @@ static void set_handler(Carried *cr, uint16_t o, uint16_t h)
 static void child(Carried *cr, uint16_t off)
 {
     cyc(30);
-    cr->y = rd16(((uint32_t)cr->db << 16) | (uint16_t)(off + cr->x));
+    cr->y = rd16(0x7E0000 | (uint16_t)(off + cr->x));
     set_p(cr, nz16(cr->p, cr->y));
 }
 
@@ -5519,7 +5512,7 @@ void ObjectListRemove(Carried *cr)
     }
     slot = cr->x;
     cyc(84);
-    r_lda16(cr, W(object_list_len));
+    r_lda16(cr, WA(object_list_len));
     r_tax16(cr);
     cyc(16);
     r_lda16(cr, W(wram_7EFFBB) + cr->x);
@@ -5528,7 +5521,7 @@ void ObjectListRemove(Carried *cr)
     cyc(68);
     WR16X(object_list, cr->x, cr->a);
     cyc(32);
-    r_lda16(cr, W(object_list_len));
+    r_lda16(cr, WA(object_list_len));
     if (!cr->a) {
         cyc(22);
         cr->a = 2;

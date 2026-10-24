@@ -1010,17 +1010,17 @@ static uint8_t below_a;
  */
 int TimeBelowRecord(uint8_t bank, uint16_t x, uint8_t *p)
 {
+    (void)bank;
     static const uint16_t mine[3] = {0x0EEF, 0x0EEE, 0x0EED}, rec[3] = {0x0F81, 0x0F80, 0x0F7F};
-    uint32_t b = (uint32_t)bank << 16;
     uint8_t a = 0, m;
     int i;
 
     for (i = 0; i < 3; i++) {
         cyc(24);
-        a = rd8(b | mine[i]);
+        a = rd8(0x7E0000 | mine[i]);
         *p = nz8(*p, a);
         cyc(24);
-        m = rd8(b | (uint16_t)(rec[i] + x));
+        m = rd8(0x7E0000 | (uint16_t)(rec[i] + x));
         *p = (uint8_t)((nz8(*p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(38), P_C) : (cyc(28), 0)));
         if (a != m)
             { cyc(36); below_a = a; return !(*p & P_C); }

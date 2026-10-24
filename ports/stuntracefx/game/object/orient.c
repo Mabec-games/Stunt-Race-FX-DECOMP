@@ -138,25 +138,20 @@ void abi_ObjectFaceTied(void)
 
 uint16_t ScaleDp02Dp94Long(uint8_t *p);
 
-static uint32_t dbw(uint8_t bank, uint16_t a)
-{
-    return (uint32_t)bank << 16 | a;
-}
-
 /* ScaleDp02Dp94Long, its result and the rescaled $02 and $94 stored at
    `out`, `out` + 2 and `out` + 4; returns the last value stored. */
-static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
+static uint16_t area_origin(uint16_t out, uint8_t *p)
 {
     cyc(62);
     uint16_t v = ScaleDp02Dp94Long(p);
 
-    wr16(dbw(bank, out), cyc_then(112, v));
+    wr16((0x7E0000 | out), cyc_then(112, v));
     cyc(16);
     v = RD16(dp_02);
-    wr16(dbw(bank, (uint16_t)(out + 2)), cyc_then(24, v));
+    wr16((0x7E0000 | (uint16_t)(out + 2)), cyc_then(24, v));
     cyc(16);
     v = RD16(dp_94);
-    wr16(dbw(bank, (uint16_t)(out + 4)), cyc_then(24, v));
+    wr16((0x7E0000 | (uint16_t)(out + 4)), cyc_then(24, v));
     return v;
 }
 
@@ -176,6 +171,7 @@ static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
  */
 uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
 {
+    (void)bank;
     uint16_t obj, v;
 
     *p &= (uint8_t)~(P_M | P_X);
@@ -196,7 +192,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     WR16(dp_02, cyc_then(16, RD16(dp_c5)));
     cyc(16);
     WR16(dp_94, cyc_then(16, RD16(dp_c9)));
-    area_origin(bank, W(view_area_origin), p);
+    area_origin(W(view_area_origin), p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
         v = rd16(cyc_then(64, (WA(view_area_origin))));
@@ -215,7 +211,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     WR16(dp_02, cyc_then(16, RD16X(obj_pos_x_long, obj)));
     cyc(32);
     WR16(dp_94, cyc_then(16, RD16X(obj_pos_z_long, obj)));
-    v = area_origin(bank, W(fixed_area_origin), p);
+    v = area_origin(W(fixed_area_origin), p);
     *p = nz16(*p, rec);
     cyc(80);
     return v;

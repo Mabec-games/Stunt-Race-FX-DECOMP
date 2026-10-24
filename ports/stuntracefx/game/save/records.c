@@ -1123,7 +1123,7 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
  * Entry: M 16-bit, X 16-bit; A = the letters, Y = sprite buffer offset.
  * Exit: A = the third tile; M 16-bit; N, Z, C, V clear (the last add).
  */
-static uint16_t name_letters(uint8_t bank, uint16_t at, const uint16_t *clk, uint16_t v, uint16_t y)
+static uint16_t name_letters(uint16_t at, const uint16_t *clk, uint16_t v, uint16_t y)
 {
     static const uint8_t shift[3] = {0, 5, 10};
     uint16_t a = 0;
@@ -1132,7 +1132,7 @@ static uint16_t name_letters(uint8_t bank, uint16_t at, const uint16_t *clk, uin
     for (i = 0; i < 3; i++) {
         a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
         cyc(clk[i]);
-        wr8((uint32_t)bank << 16 | (uint16_t)(at + i * 4 + y), (uint8_t)a);
+        wr8(0x7E0000 | (uint16_t)(at + i * 4 + y), (uint8_t)a);
     }
     cyc(64);
     return a;
@@ -1140,9 +1140,10 @@ static uint16_t name_letters(uint8_t bank, uint16_t at, const uint16_t *clk, uin
 
 uint16_t RecordNameLetters(uint8_t bank, uint16_t letters, uint16_t y)
 {
+    (void)bank;
     static const uint16_t clk[3] = {190, 264, 220};
 
-    return name_letters(bank, W(wram_039F), clk, letters, y);
+    return name_letters(W(wram_039F), clk, letters, y);
 }
 
 void RecordNameLetters_cr(Carried *cr)
@@ -1229,15 +1230,15 @@ static void record_time_unpack(uint16_t d, uint16_t packed, uint16_t *min, uint1
 /* Large digit d (0-9) at sprite buffer offset `at` + Y: its top tile $50 +
    d and its bottom tile $60 + d four bytes on, as CLC / ADC #$50 then ADC
    #$10 leave them. */
-static uint8_t large_digit(uint32_t b, uint16_t y, uint16_t at, uint8_t d)
+static uint8_t large_digit(uint16_t y, uint16_t at, uint8_t d)
 {
     uint8_t v = (uint8_t)(d + 0x50);
 
     cyc(76);
-    wr8(b | (uint16_t)(at + y), v);
+    wr8(0x7E0000 | (uint16_t)(at + y), v);
     v = (uint8_t)(v + 0x10);            /* no carry: d is a digit */
     cyc(46);
-    wr8(b | (uint16_t)(at + 4 + y), v);
+    wr8(0x7E0000 | (uint16_t)(at + 4 + y), v);
     return v;
 }
 
@@ -1258,7 +1259,7 @@ static uint16_t digits_x;               /* X: the seconds */
 
 uint8_t RecordTimeDigitsLarge(uint8_t bank, uint16_t d, uint16_t packed, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint16_t min, sec;
     uint8_t v, t;
 
@@ -1266,17 +1267,17 @@ uint8_t RecordTimeDigitsLarge(uint8_t bank, uint16_t d, uint16_t packed, uint16_
     digits_high = (uint8_t)(min >> 8);
     digits_x = sec;
     cyc(58);
-    large_digit(b, y, W(wram_0387), (uint8_t)(min & 0x0F));
+    large_digit(y, W(wram_0387), (uint8_t)(min & 0x0F));
     v = rd8(cyc_then(16, dp(d, 0xF3)));
     cyc(40);
-    large_digit(b, y, W(wram_0397), (uint8_t)(v >> 4));
+    large_digit(y, W(wram_0397), (uint8_t)(v >> 4));
     v = rd8(cyc_then(16, dp(d, 0xF3)));
-    large_digit(b, y, W(wram_039F), (uint8_t)(v & 0x0F));
+    large_digit(y, W(wram_039F), (uint8_t)(v & 0x0F));
     v = rd8(cyc_then(16, dp(d, 0xF1)));
     cyc(40);
-    large_digit(b, y, W(wram_03AF), (uint8_t)(v >> 4));
+    large_digit(y, W(wram_03AF), (uint8_t)(v >> 4));
     v = rd8(cyc_then(16, dp(d, 0xF1)));
-    t = large_digit(b, y, W(wram_03B7), (uint8_t)(v & 0x0F));
+    t = large_digit(y, W(wram_03B7), (uint8_t)(v & 0x0F));
     cyc(28);
     cyc(42);                            /* PLP */
     return t;
@@ -1511,20 +1512,20 @@ void abi_RecordLetterTile(void)
 
 /* RecordLetterTile for letter `n`, then its top tile at `at` + Y and its
    bottom tile (+ $10, with the add's carry) four bytes on. */
-static uint8_t large_letter(uint32_t b, uint16_t d, uint16_t y, uint16_t at, uint16_t n)
+static uint8_t large_letter(uint16_t d, uint16_t y, uint16_t at, uint16_t n)
 {
     unsigned s;
     uint8_t v;
 
     v = (uint8_t)(cyc(100), RecordLetterTile(d, n));
     cyc(52);
-    wr8(b | (uint16_t)(at + y), v);
+    wr8(0x7E0000 | (uint16_t)(at + y), v);
     s = (unsigned)v + 0x10 + (tile_flags & P_C);
     tile_flags = (uint8_t)(nz8(0, (uint8_t)s) | (s > 0xFF ? P_C : 0)
                            | ((~(v ^ 0x10) & (v ^ s) & 0x80) ? P_V : 0));
     v = (uint8_t)s;
     cyc(46);
-    wr8(b | (uint16_t)(at + 4 + y), v);
+    wr8(0x7E0000 | (uint16_t)(at + 4 + y), v);
     cyc(22);                            /* REP #$20 */
     return v;
 }
@@ -1542,14 +1543,14 @@ static uint8_t large_letter(uint32_t b, uint16_t d, uint16_t y, uint16_t at, uin
  */
 uint8_t RecordNameLettersLarge(uint8_t bank, uint16_t d, uint16_t letters, uint16_t y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     uint8_t v;
 
-    large_letter(b, d, y, W(wram_03BF), (uint16_t)(letters & 0x001F));
+    large_letter(d, y, W(wram_03BF), (uint16_t)(letters & 0x001F));
     cyc(98);
-    large_letter(b, d, y, 0x03C7, (uint16_t)(((uint16_t)(letters << 3) >> 8) & 0x001F));
+    large_letter(d, y, 0x03C7, (uint16_t)(((uint16_t)(letters << 3) >> 8) & 0x001F));
     cyc(54);
-    v = large_letter(b, d, y, 0x03CF, (uint16_t)(((uint16_t)(letters >> 2) >> 8) & 0x001F));
+    v = large_letter(d, y, 0x03CF, (uint16_t)(((uint16_t)(letters >> 2) >> 8) & 0x001F));
     cyc(42);                            /* RTS */
     return v;
 }
@@ -1582,9 +1583,10 @@ void abi_RecordNameLettersLarge(void)
  */
 uint16_t RecordNameLettersSmall(uint8_t bank, uint16_t letters, uint16_t y)
 {
+    (void)bank;
     static const uint16_t clk[3] = {144, 264, 220};
 
-    return name_letters(bank, W(wram_03B3), clk, letters, y);
+    return name_letters(W(wram_03B3), clk, letters, y);
 }
 
 void RecordNameLettersSmall_cr(Carried *cr)
@@ -1631,7 +1633,6 @@ static uint8_t row_v;
 uint16_t RecordRowDraw(uint8_t bank, uint16_t d, uint16_t sprite)
 {
     static const uint16_t hi[3] = {0x039B, 0x038F, 0x0383}, lo[3] = {0x039F, 0x0393, 0x0387};
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t w, m, r, y, set;
     uint8_t v, t, p = 0;
     unsigned i;
@@ -1661,11 +1662,11 @@ uint16_t RecordRowDraw(uint8_t bank, uint16_t d, uint16_t sprite)
         cyc(i == 0 ? 62 : 30);
         v = RD8I(record_times, i + row_x);
         cyc(86);
-        wr8(b | (uint16_t)(hi[i] + y), (uint8_t)(v >> 4));
+        wr8(0x7E0000 | (uint16_t)(hi[i] + y), (uint8_t)(v >> 4));
         cyc(30);
         t = RD8I(record_times, i + row_x);
         cyc(46);
-        wr8(b | (uint16_t)(lo[i] + y), (uint8_t)(t & 0x0F));
+        wr8(0x7E0000 | (uint16_t)(lo[i] + y), (uint8_t)(t & 0x0F));
     }
     cyc(38);
     w = rd16(dp(d, 0xF5));
@@ -2232,24 +2233,24 @@ void abi_RecordCompareTime1(void)
 }
 
 /* Swap the words at at + x and at + 2 + x (PHA/PLA through A). */
-static void swap_words(uint32_t b, uint16_t at, uint16_t x, int first_read_done, uint16_t first)
+static void swap_words(uint16_t at, uint16_t x, int first_read_done, uint16_t first)
 {
     uint16_t v;
 
     if (first_read_done) {
         cyc(76);
-        v = rd16(b | (uint16_t)(at + x));
+        v = rd16(0x7E0000 | (uint16_t)(at + x));
         cyc(30);
-        wr16(b | (uint16_t)(at + 2 + x), v);
+        wr16(0x7E0000 | (uint16_t)(at + 2 + x), v);
         cyc(66);
-        wr16(b | (uint16_t)(at + x), first);
+        wr16(0x7E0000 | (uint16_t)(at + x), first);
     } else {
         cyc(30);
-        v = rd16(b | (uint16_t)(at + x));
+        v = rd16(0x7E0000 | (uint16_t)(at + x));
         cyc(60);
-        wr16(b | (uint16_t)(at + x), cyc_then(30, rd16(b | (uint16_t)(at + 2 + x))));
+        wr16(0x7E0000 | (uint16_t)(at + x), cyc_then(30, rd16(0x7E0000 | (uint16_t)(at + 2 + x))));
         cyc(66);
-        wr16(b | (uint16_t)(at + 2 + x), v);
+        wr16(0x7E0000 | (uint16_t)(at + 2 + x), v);
     }
 }
 
@@ -2296,9 +2297,9 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
             c = RD16I(special_times, x);
             if (descending ? (v < c || (cyc(16), v == c)) : v >= c)     /* BCC taken, or BCC not taken and BEQ */
                 break;
-            swap_words(b, W(special_times), x, 1, v);
-            swap_words(b, W(special_tags), x, 0, 0);
-            swap_words(b, W(special_words), x, 0, 0);
+            swap_words(W(special_times), x, 1, v);
+            swap_words(W(special_tags), x, 0, 0);
+            swap_words(W(special_words), x, 0, 0);
             if (x >= 0x0014)
                 { cyc(24); break; }
             x = (uint16_t)(x + 2);
@@ -2313,7 +2314,7 @@ static uint16_t ld_a, ld_x, ld_y;
 static int ld_xy, ld_v_set;
 static uint8_t ld_flags, ld_v;
 
-static uint16_t records_player_place(uint32_t b)
+static uint16_t records_player_place(void)
 {
     static const uint16_t tag_at[3] = {0x0F13, 0x0F15, 0x0F17};
     cyc(126);
@@ -2323,7 +2324,7 @@ static uint16_t records_player_place(uint32_t b)
 
     for (i = 0; i < 3; i++) {
         cyc(24);
-        t = rd16(b | tag_at[i]);
+        t = rd16(0x7E0000 | tag_at[i]);
         c = a >= t ? P_C : 0;           /* CMP */
         if (a == t) {
             v = (uint16_t)(i + 1);
@@ -2379,7 +2380,7 @@ uint16_t RecordsLoadSpecialCourse(uint8_t bank, uint16_t d)
         return a;
     }
     records_load_sorted(b, records_offset(d, a), 1);
-    ld_a = records_player_place(b);
+    ld_a = records_player_place();
     ld_x = 0xFFFE;
     ld_y = 0x0018;
     ld_xy = 1;
@@ -2457,7 +2458,7 @@ void abi_RecordsLoadSpecialCourseLong(void)
 }
 
 /* TimeUnpackBcd on A, its Y, X, A (8-bit) stored at `to`, + 1, + 2. */
-static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
+static void unpack_to(uint16_t a, uint16_t to)
 {
     uint16_t min, sec, hund;
     uint8_t p = 0;                      /* M and X 16-bit, binary */
@@ -2468,11 +2469,11 @@ static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
         { ld_v = (uint8_t)(p & P_V); ld_v_set = 1; }
     cyc(22);                            /* SEP #$30 */
     cyc(24);
-    wr8(b | to, (uint8_t)hund);
+    wr8(0x7E0000 | to, (uint8_t)hund);
     cyc(24);
-    wr8(b | (uint16_t)(to + 1), (uint8_t)sec);
+    wr8(0x7E0000 | (uint16_t)(to + 1), (uint8_t)sec);
     cyc(24);
-    wr8(b | (uint16_t)(to + 2), (uint8_t)min);
+    wr8(0x7E0000 | (uint16_t)(to + 2), (uint8_t)min);
     ld_a = min;
     ld_x = (uint8_t)sec;
     ld_y = (uint8_t)hund;
@@ -2499,15 +2500,15 @@ void RecordsLoadCourse(uint8_t bank, uint16_t d)
     a = records_course(d);
     if (a < 0x000C)
         records_load_sorted(b, records_offset(d, a), 0);
-    records_player_place(b);
+    records_player_place();
     cyc(24);
     x = (uint16_t)((RD16(course) & 0x00FF) << 2);
     cyc(150);
-    unpack_to(b, rd16((uint32_t)(0x70FFD0 + x)), 0x0F5B);
+    unpack_to(rd16((uint32_t)(0x70FFD0 + x)), 0x0F5B);
     cyc(90);
-    unpack_to(b, rd16((uint32_t)(0x70FFD2 + x)), 0x0F5E);
+    unpack_to(rd16((uint32_t)(0x70FFD2 + x)), 0x0F5E);
     cyc(46);
-    unpack_to(b, RD16(special_times), 0x0F61);
+    unpack_to(RD16(special_times), 0x0F61);
     cyc(64);                            /* REP, RTS */
 }
 
@@ -2747,17 +2748,17 @@ static void special_move(uint16_t x, uint16_t from, uint16_t to)
 }
 
 /* LDA abs, LDX abs, LDY abs; TimePackBcd: one lap's packed time. */
-static uint16_t special_pack(uint32_t b, uint16_t at)
+static uint16_t special_pack(uint16_t at)
 {
     uint16_t hund, sec, min;
     uint8_t p = 0;                      /* 16-bit registers, binary */
 
     cyc(40);
-    hund = rd16(b | at);
+    hund = rd16(0x7E0000 | at);
     cyc(24);
-    sec = rd16(b | (uint16_t)(at + 1));
+    sec = rd16(0x7E0000 | (uint16_t)(at + 1));
     cyc(24);
-    min = rd16(b | (uint16_t)(at + 2));
+    min = rd16(0x7E0000 | (uint16_t)(at + 2));
     return (cyc(46), TimePackBcd(hund, sec, min, &p));
 }
 
@@ -2870,9 +2871,9 @@ void SpecialRecordInsert(uint8_t bank, uint16_t d, uint16_t t)
             n = (uint16_t)(rd16(cyc_then(90, (uint16_t)(d + W(save_block_offset)))) - 1);
             wr16((uint16_t)(d + W(save_block_offset)), cyc_then(14, n));
         } while (cyc_loop(8, n));
-        r1 = special_pack(b, W(lap_times));
+        r1 = special_pack(W(lap_times));
         cyc(14);
-        r2 = special_pack(b, W(wram_0EF3));
+        r2 = special_pack(W(wram_0EF3));
         cyc(54);
         x = (uint16_t)((RD16(course) & 0x00FF) << 2);
         cyc(2);

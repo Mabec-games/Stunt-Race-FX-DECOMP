@@ -54,10 +54,10 @@ static uint16_t add16(uint16_t a, uint16_t m, uint8_t *p)
 }
 
 /* An angle byte of the target (+$15 or +$14) as the high byte. */
-static uint16_t angle_hi(uint32_t b, uint16_t y, uint16_t field)
+static uint16_t angle_hi(uint16_t y, uint16_t field)
 {
     cyc(30);
-    uint16_t v = rd16(b | (uint16_t)(field + y));
+    uint16_t v = rd16(0x7E0000 | (uint16_t)(field + y));
 
     return (uint16_t)((uint16_t)((v << 8) | (v >> 8)) & 0xFF00);
 }
@@ -96,7 +96,6 @@ static uint8_t cam_flags;               /* N, Z, C, V of the last add */
 
 uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t a, t, f, y, g, w;
     uint8_t p = 0, sp;
     unsigned i;
@@ -165,12 +164,12 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(110);
         y = RD16(cam_target_obj);
         cy = y;
-        a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
+        a = (uint16_t)(~angle_hi(y, 0x2015) + 1);
         cyc(104);
         wr16(CAM(r, W(cam_turn)), a);
         cyc(24);
         WR16(view_turn, a);
-        a = asr_n(angle_hi(b, y, 0x2014), 2);
+        a = asr_n(angle_hi(y, 0x2014), 2);
         cyc(78);
         wr16(CAM(r, W(cam_pitch)), a);
         cyc(24);
@@ -191,7 +190,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         if ((rec & 0x000C) && !(rd16(cyc_then(100, WA(cam_mode))) & 0x0200)) {
             jmp = 24; /* ends in JMP .pitch */
             cyc(40);
-            a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
+            a = (uint16_t)(~angle_hi(y, 0x2015) + 1);
             cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, W(cam_turn))));
             a = asr_n(a, 1);
@@ -199,7 +198,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
             a = (uint16_t)(a + rd16(CAM(r, W(cam_turn))));
         } else {
             cyc((rec & 0x000C) ? 46 : 82);  /* AND, BNE taken; or PLX, AND, BEQ taken */
-            a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
+            a = (uint16_t)(~angle_hi(y, 0x2015) + 1);
             cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, W(cam_turn))));
             cyc(24);
@@ -254,7 +253,7 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
         cyc(24);
         WR16(view_turn, a);
         cyc(jmp);
-        a = asr_round(angle_hi(b, y, 0x2014), 2);
+        a = asr_round(angle_hi(y, 0x2014), 2);
         cyc(66);
         wr16(CAM(r, W(cam_pitch)), a);
         cyc(24);

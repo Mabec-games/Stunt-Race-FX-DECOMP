@@ -144,9 +144,10 @@ static void cmp8_imm(Carried *cr, uint8_t m)
 /* REP #$20, LDA presses, BIT #mask: Z from the test. */
 static int presses(Carried *cr, uint32_t b, uint16_t pad, uint16_t mask)
 {
+    (void)b;
     r_rep(cr, P_M);
     cyc(2);
-    r_lda16(cr, b | pad);
+    r_lda16(cr, 0x7E0000 | pad);
     set_p(cr, (uint8_t)((cr->p & ~P_Z) | ((cr->a & mask) ? (cyc(80), 0) : (cyc(46), P_Z))));
     return (cr->a & mask) != 0;
 }
@@ -965,7 +966,7 @@ static void quit_menu_take(Carried *cr, uint32_t b, uint16_t which, uint8_t d, v
             WR8(wram_10BA, 0xFF);
             lda8_imm(cr, 0xFF);
             cyc(16);
-            wr8(b | which, 0xFF);
+            wr8(0x7E0000 | which, 0xFF);
             lda8_imm(cr, d);
             cyc(16);
             WR8(wram_0D23, d);

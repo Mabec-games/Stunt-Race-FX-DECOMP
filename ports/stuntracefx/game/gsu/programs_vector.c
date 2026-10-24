@@ -581,7 +581,7 @@ static uint8_t view_c;                  /* the adapter's: C from the last divisi
 
 uint16_t ViewFromAnglesGsu8277(uint8_t bank)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    (void)bank;
     static const uint16_t gsu_words[6] = {0x066A, 0x066C, 0x066E, 0x0676, 0x0678, 0x067A};
     uint16_t w;
     uint8_t p = 0;
@@ -647,7 +647,7 @@ uint16_t ViewFromAnglesGsu8277(uint8_t bank)
     wr16(0x70002E, w);
     for (i = 0; i < 6; i++) {
         cyc(24);
-        w = rd16(b | gsu_words[i]);
+        w = rd16(0x7E0000 | gsu_words[i]);
         cyc(32);
         wr16(0x700154 + 2 * i, w);
     }

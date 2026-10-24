@@ -62,7 +62,6 @@ static uint16_t advance(uint8_t bank, uint16_t obj, uint16_t n, uint16_t jmp, ui
  */
 int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)bank << 16;
     uint16_t t = rd16(cyc_then(180, field(bank, obj, OBJ_OFF(obj_29)))), cmd = rd16(cyc_then(212, PATH_TABLE + t));
     uint16_t link, n, v, w;
     unsigned i;
@@ -73,9 +72,9 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         for (i = 0; i < 3; i++) {
             cyc(78);
             v = rd16(PATH_TABLE + 2 + 2 * i + t);
-            wr16(b | (uint16_t)(link + 0x20 + 2 * i), v);
+            wr16(0x7E0000 | (uint16_t)(link + 0x20 + 2 * i), v);
             cyc(30);
-            wr16(b | (uint16_t)(link + 0x1A + 2 * i), v);
+            wr16(0x7E0000 | (uint16_t)(link + 0x1A + 2 * i), v);
         }
         wr16(field(bank, obj, OBJ_OFF(obj_vel_x)), cyc_then(90, 0));
         wr16(field(bank, obj, OBJ_OFF(obj_vel_y)), cyc_then(30, 0));
@@ -88,7 +87,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         v = rd16(PATH_TABLE + 2 + t);
         link = rd16(field(bank, obj, OBJ_OFF(obj_link_w)));
         cyc(30);
-        wr16(b | link, v);
+        wr16(0x7E0000 | link, v);
         *a = advance(bank, obj, 4, 24, p);
         *y = link;
     } else if (cmd == 1) {
@@ -102,7 +101,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         for (i = 0; i < 3; i++) {
             cyc(92);
             v = rd16(PATH_TABLE + 4 + 2 * i + t);
-            w = rd16(b | (uint16_t)(link + 0x20 + 2 * i));
+            w = rd16(0x7E0000 | (uint16_t)(link + 0x20 + 2 * i));
             cyc(24);
             WR16I(wram_1F4E, 2 * i, (uint16_t)(v - w));
         }
