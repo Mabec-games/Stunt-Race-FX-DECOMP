@@ -635,11 +635,11 @@ void MenuSelectionFramesCycle(uint8_t bank, uint16_t *x, uint16_t *a, uint8_t *p
     if (!(n & 0x8000))
         { cyc(64); return; }
     cyc(62);
-    wr16((uint16_t)(obj + 0x0A), 0x0006);
+    wr16((uint16_t)(obj + W(actor_0a)), 0x0006);
     cyc(22);
-    n = (uint16_t)((rd16((uint16_t)(obj + 0x22)) + 1) & 0x0003);
+    n = (uint16_t)((rd16((uint16_t)(obj + W(actor_22))) + 1) & 0x0003);
     cyc(60);
-    wr16((uint16_t)(obj + 0x22), n);
+    wr16((uint16_t)(obj + W(actor_22)), n);
     cyc(100);
     off = rd16(0x0BDFCB + (uint32_t)(n << 1));
     wr16(b | W(scratch_11df), off);

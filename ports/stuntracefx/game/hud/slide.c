@@ -132,7 +132,7 @@ static uint8_t hud_sprites_y(uint32_t b, uint16_t d, uint16_t x)
     cyc(92);
     v0 = rd8(b | W(hud_slide));
     cyc(30);
-    v0 = adc8i(v0, rd8((uint16_t)(d + 0xF9)), &c);
+    v0 = adc8i(v0, rd8((uint16_t)(d + W(hud_panel_y))), &c);
     v = v0;
     for (i = 0; i < 4; i++) {
         if (i) {
@@ -475,7 +475,7 @@ void HudPanelsStep(uint8_t bank, uint16_t d)
             { cyc(22); HudSlideOut(bank); }
         step_x = 0x00;
         cyc(62);
-        wr16((uint16_t)(d + 0xF9), 0x0000);
+        wr16((uint16_t)(d + W(hud_panel_y)), 0x0000);
         step_a = hud_sprites_y(b, d, 0x0000);
         break;
     default:

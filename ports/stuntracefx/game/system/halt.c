@@ -160,11 +160,11 @@ void DebugByteHalt(uint16_t d)
         cyc(40);
         wr8(b | W(fade_level_hi), 0x0F);
         cyc(32);
-        wr8((uint16_t)(d + 0x00), 0x02);
+        wr8((uint16_t)(d + W(dp_00)), 0x02);
         cyc(70);
-        wr8((uint16_t)(d + 0x46), 0x80);
+        wr8((uint16_t)(d + W(text_pos)), 0x80);
         cyc(32);
-        wr8((uint16_t)(d + 0x47), 0x06);
+        wr8((uint16_t)(d + W(text_pos) + 1), 0x06);
         cyc(40);
         wr8(b | W(text_half), 0x00);
         (cyc(90), DebugPrintHexByte(0x03, 0x69, P_M)) /* PLA, JSL */;
@@ -180,7 +180,7 @@ void DebugByteHalt(uint16_t d)
         cyc(56);
         wr16(0x70021A, 0x2C00);
         cyc(16);
-        wr16((uint16_t)(d + 0x48), 0x2C00);
+        wr16((uint16_t)(d + W(gsu_screen_start_dp)), 0x2C00);
         cyc(24);
         v = (uint16_t)(rd16(b | W(gsu_scmr_shadow)) | 0x0018);
         cyc(48);

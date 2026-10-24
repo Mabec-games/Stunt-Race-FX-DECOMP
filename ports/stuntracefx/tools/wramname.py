@@ -291,10 +291,10 @@ def name_offsets(t, names, known):
     return OFFSET.sub(f, t)
 
 
-RECORD = re.compile(r'(\(uint16_t\)\((?:\*?x|rec|cr->x|r) \+ |\b(?:ACTOR|CAM|REC)\((?:x|r), )0x([0-9A-Fa-f]{1,2})(?=\))')
+RECORD = re.compile(r'(\(uint16_t\)\((?:\*?x|rec|cr->x|r|obj) \+ |\b(?:ACTOR|CAM|REC)\((?:x|r), )0x([0-9A-Fa-f]{1,2})(?=\))')
 # Records other than the object table, by the prefix of their fields'
 # names; names on the same offsets that are not fields are left out.
-FAMILIES = {'actor': 'actor_', 'cam': 'cam_', 'draw': 'draw_'}
+FAMILIES = {'actor': 'actor_', 'cam': 'cam_', 'draw': 'draw_', 'tie': 'tie_'}
 NOT_FIELDS = {'cam_tmp_a', 'cam_tmp_b', 'cam_tmp_c', 'cam_target_obj', 'cam_mode', 'cam_lag',
               'cam_offset_x', 'cam_offset_y', 'cam_offset_z', 'draw_count', 'draw_object',
               'draw_next', 'draw_side'}
@@ -323,12 +323,38 @@ def name_records(t, family):
     return RECORD.sub(f, t)
 
 
+DP = re.compile(r'\(uint16_t\)\(((?:cr->)?d) \+ 0x([0-9A-Fa-f]{2})\)')
+
+
+def name_dp(t, names, known):
+    """Direct-page addresses taken from D (LDA $F1 with D the page):
+    (uint16_t)(d + W(digit_count)), by the name the address has in this
+    file's asm."""
+    def f(m):
+        v = int(m.group(2), 16)
+        n = names.get(v)
+        if not n:
+            raise SystemExit('no name for direct page %s' % m.group(0))
+        print('  $%02X %s' % (v, n))
+        return '(uint16_t)(%s + W(%s))' % (m.group(1), n)
+    return DP.sub(f, t)
+
+
 def main(argv):
     if argv == ['header']:
         write_header()
         return 0
     if argv == ['--meter']:
         meter(sorted(glob.glob(os.path.join(G, '*', '*.c'))))
+        return 0
+    if argv and argv[0] == '--dp':
+        for f in argv[1:]:
+            p = os.path.join(G, f)
+            t = open(p).read()
+            n = name_dp(t, *table(f))
+            if n != t:
+                open(p, 'w').write(ensure_include(n))
+                print('direct page named', f)
         return 0
     if argv and argv[0] == '--records':
         for f in argv[2:]:

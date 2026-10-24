@@ -1819,7 +1819,7 @@ void AttractViewStart(Carried *cr)
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0x80);
     set_p(cr, nz8(cr->p, 0x80));
     cyc(32);
-    wr8((uint16_t)(cr->d + 0xA0), 0x80);
+    wr8((uint16_t)(cr->d + W(dp_a0)), 0x80);
     cr->a = (uint16_t)((cr->a & 0xFF00) | 0xFF);
     set_p(cr, nz8(cr->p, 0xFF));
     cyc(40);

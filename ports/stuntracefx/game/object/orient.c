@@ -74,7 +74,7 @@ uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
     if (rd16(rec) & 0x0001) {
         face_y_set = 1;
         cyc(104);
-        x = rd16((uint16_t)(rec + 0x02));
+        x = rd16((uint16_t)(rec + W(tie_object)));
         wr16(W(dp_04), cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
         wr16(W(tie_y), cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
         wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
@@ -97,7 +97,7 @@ uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
     } else { cyc(114); if (rd16(rec) & 0x4000) {
         face_y_set = 1;
         cyc(76);
-        x = rd16((uint16_t)(rec + 0x02));
+        x = rd16((uint16_t)(rec + W(tie_object)));
         cyc(14);
         ease_half(bank, rec, 0x000E, neg_angle(absidx(bank, 0x2014, x)));
         ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, x)));
@@ -106,7 +106,7 @@ uint16_t ObjectFaceTied(uint8_t bank, uint16_t rec)
     cyc(36);
     a = rd16(rec) & 0x8000;
     if (!a)
-        { cyc(62); wr16((uint16_t)(rec + 0x12), 0x0000); } else { cyc(46); }
+        { cyc(62); wr16((uint16_t)(rec + W(tie_angle_12)), 0x0000); } else { cyc(46); }
     cyc(72);
     return a;
 }
@@ -179,16 +179,16 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
 
     *p &= (uint8_t)~(P_M | P_X);
     cyc(44);
-    wr16(W(dp_c5), cyc_then(16, rd16((uint16_t)(rec + 0x08))));
+    wr16(W(dp_c5), cyc_then(16, rd16((uint16_t)(rec + W(tie_x)))));
     cyc(22);
-    wr16(W(dp_c7), cyc_then(16, rd16((uint16_t)(rec + 0x0A))));
+    wr16(W(dp_c7), cyc_then(16, rd16((uint16_t)(rec + W(tie_y)))));
     cyc(22);
-    wr16(W(dp_c9), cyc_then(16, rd16((uint16_t)(rec + 0x0C))));
-    wr16(dbw(bank, 0x0664), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x0E)))));
-    wr16(dbw(bank, 0x0666), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x10)))));
-    wr16(dbw(bank, 0x0668), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x12)))));
+    wr16(W(dp_c9), cyc_then(16, rd16((uint16_t)(rec + W(tie_z)))));
+    wr16(dbw(bank, 0x0664), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_0e))))));
+    wr16(dbw(bank, 0x0666), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_10))))));
+    wr16(dbw(bank, 0x0668), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + W(tie_angle_12))))));
     cyc(52);
-    obj = rd16((uint16_t)(rec + 0x02));
+    obj = rd16((uint16_t)(rec + W(tie_object)));
     cyc(46);
     wr16(0x70247A, cyc_then(32, rd16(W(obj_22_long) + obj)));
     cyc(82);
@@ -209,7 +209,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
         return v;
     }
     cyc(98);
-    obj = rd16((uint16_t)(rec + 0x02));
+    obj = rd16((uint16_t)(rec + W(tie_object)));
     cyc(46);
     wr16(W(tie_object), cyc_then(16, rd16(W(obj_pos_x_long) + obj)));
     cyc(32);
