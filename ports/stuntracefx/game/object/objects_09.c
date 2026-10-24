@@ -625,22 +625,7 @@ static uint32_t db(Carried *cr)
     return (uint32_t)cr->db << 16;
 }
 
-static uint32_t db_g(void)
-{
-    Carried c = {cpu.a, cpu.x, cpu.y, cpu.d, cpu.p, cpu.db};
-    uint32_t ret_ = db(&c);
-
-    cpu.a = c.a;
-    cpu.x = c.x;
-    cpu.y = c.y;
-    cpu.d = c.d;
-    cpu.p = c.p;
-    cpu.db = c.db;
-    return ret_;
-}
-
 /* Object field `f` ($20xx) of object `o`, through the data bank. */
-#define F(f, o) (db_g() | (uint16_t)((f) + (o)))
 #define F_c(f, o) (db(cr) | (uint16_t)((f) + (o)))
 
 /* LDA #v with M 8-bit. */
@@ -12402,7 +12387,7 @@ static void brk_09(Carried *cr, uint16_t next)
     cpu.s = (uint16_t)(cpu.s + 4);
 }
 
-void abi_RasterIrq(void);
+void RasterIrq(Carried *cr);
 
 /* 09:EC71 reached with M 16-bit (a hit while the slide is held at $7FFF):
    the in mark's byte code runs as other instructions. LDA +$25 (a word),
@@ -12412,22 +12397,22 @@ void abi_RasterIrq(void);
    handler runs as a subroutine and returns; the RTI then pulls P (the low
    byte of the JSR's return, $80), PC and PB from the stack, two of them
    from this routine's caller's frame: the CPU leaves the routine there
-   (cpu.unwound; pc where it lands). From ObjectRunHandlerA's dispatch
+   (cpu_leave_to: pc where it lands). From ObjectRunHandlerA's dispatch
    that is $CA:E7EC, ROM data, not code: the original game runs off its
    program on this path. Not reached in the traces so far. */
-static void slide_gate_held_m16(void)
+static void slide_gate_held_m16(Carried *cr)
 {
     uint16_t w, m, lo, hi;
     uint8_t bank;
 
-    op_lda16(F(0x2025, cpu.x));
-    op_and16(0xF001);
-    m = rd16((uint16_t)(cpu.d + 0x5C));
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & m) ? 0 : P_Z));
-    wr16((uint16_t)(cpu.d + 0x5C), (uint16_t)(m | cpu.a));
-    wr16((uint16_t)(cpu.d + 0xEC + cpu.x), cpu.y);
-    cpu.a = (uint16_t)(cpu.a | 0x25BD);
-    cpu.p = nz16(cpu.p, cpu.a);
+    r_lda16(cr, F_c(0x2025, cr->x));
+    r_and16(cr, 0xF001);
+    m = rd16((uint16_t)(cr->d + 0x5C));
+    cr->p = (uint8_t)((cr->p & ~P_Z) | ((cr->a & m) ? 0 : P_Z));
+    wr16((uint16_t)(cr->d + 0x5C), (uint16_t)(m | cr->a));
+    wr16((uint16_t)(cr->d + 0xEC + cr->x), cr->y);
+    cr->a = (uint16_t)(cr->a | 0x25BD);
+    cr->p = nz16(cr->p, cr->a);
     /* JSR $0109: the return $09:EC80 pushed */
     wr8((uint16_t)cpu.s, 0xEC);
     wr8((uint16_t)(cpu.s - 1), 0x80);
@@ -12437,37 +12422,19 @@ static void slide_gate_held_m16(void)
     wr8((uint16_t)(cpu.s - 1), 0x01);
     wr8((uint16_t)(cpu.s - 2), 0x0F);
     cpu.s = (uint16_t)(cpu.s - 3);
-    abi_RasterIrq();
+    RasterIrq(cr);
     rd8((uint16_t)(cpu.s + 1));
     rd8((uint16_t)(cpu.s + 2));
     rd8((uint16_t)(cpu.s + 3));
     cpu.s = (uint16_t)(cpu.s + 3);
     /* $0110: RTI */
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    r_plp(cr, rd8((uint16_t)(cpu.s + 1)));
     lo = rd8((uint16_t)(cpu.s + 2));
     hi = rd8((uint16_t)(cpu.s + 3));
     bank = rd8((uint16_t)(cpu.s + 4));
     cpu.s = (uint16_t)(cpu.s + 4);
     w = (uint16_t)(lo | hi << 8);
-    cpu.pc = (uint32_t)bank << 16 | w;
-    cpu.unwound = 1;
-}
-
-static void slide_gate_held_m16_c(Carried *cr)
-{
-    cpu.a = cr->a;
-    cpu.x = cr->x;
-    cpu.y = cr->y;
-    cpu.d = cr->d;
-    cpu.p = cr->p;
-    cpu.db = cr->db;
-    slide_gate_held_m16();
-    cr->a = cpu.a;
-    cr->x = cpu.x;
-    cr->y = cpu.y;
-    cr->d = cpu.d;
-    cr->p = cpu.p;
-    cr->db = cpu.db;
+    cpu_leave_to((uint32_t)bank << 16 | w);
 }
 
 /* 09:ECB9 reached with M 8-bit (no hit while the screen flashes): the out
@@ -12533,7 +12500,7 @@ static void slide_gate_frame(Carried *cr)
             r_lda16(cr, 0x7F3470);
             r_cmp16(cr, 0x7FFF);
             if (cr->a == 0x7FFF) {
-                slide_gate_held_m16_c(cr);
+                slide_gate_held_m16(cr);
                 return;
             } else { cyc(66); }
             cyc(4);
