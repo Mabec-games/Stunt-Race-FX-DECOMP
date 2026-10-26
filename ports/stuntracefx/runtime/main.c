@@ -414,10 +414,13 @@ int interp_wide(void);
 void interp_wide_set(int on);
 extern uint16_t port_far_cars;          /* ObjectNearFocus's far distance (game/object/object.c) */
 
+static int esc_held;            /* Escape down (held a second: quit) */
+
 static void key(int vk, int down)
 {
     uint16_t m = 0;
     switch (vk) {
+    case 0x1B: esc_held = down; break;
     case 0x26: m = SNES_UP; break;
     case 0x28: m = SNES_DOWN; break;
     case 0x25: m = SNES_LEFT; break;
@@ -876,6 +879,16 @@ static void window_input(int always)
     }
     b0 = (uint16_t)(keys | pad_buttons(0));
     b1 = pad_buttons(1);
+    if (always) {
+        /* quit: Escape, or a controller's View and Menu together, held for
+           a second (back to the launcher) */
+        static int held;
+        host_pad pd;
+        int pad_quit = host_pad_read(0, &pd) && (pd.buttons & 0xC0) == 0xC0;
+        held = esc_held || pad_quit ? held + 1 : 0;
+        if (held >= 60)
+            quit();
+    }
     if (!always && b0 == was0 && b1 == was1)
         return;
     was0 = b0;
@@ -901,6 +914,32 @@ static void frame(void)
         int more;
         const uint32_t *picture = interp_picture();
         smoke_present(frame_no, picture);   /* NULL: the game's (drawn only if traced) */
+        if (getenv("PORT_LAYER_SHOT") && atol(getenv("PORT_LAYER_SHOT")) == frame_no) {
+            /* (a check) the game's picture one layer at a time: layer-N.ppm */
+            static VidFrame lf;
+            static uint32_t px[VID_WIDTH * VID_HEIGHT];
+            int bit, l, i;
+            for (bit = 0; bit < 5; bit++) {
+                char path[512];
+                FILE *f;
+                memcpy(&lf, vid_frame(), sizeof lf);
+                for (l = 0; l <= VID_HEIGHT; l++) {
+                    lf.line[l].tm &= (uint8_t)(1 << bit);
+                    lf.line[l].ts = 0;
+                    lf.line[l].cgadsub = 0;
+                }
+                vid_draw_frame(&lf, px);
+                snprintf(path, sizeof path, "%s/layer-%d.ppm", out_dir, bit);
+                if ((f = fopen(path, "wb"))) {
+                    fprintf(f, "P6\n%d %d\n255\n", VID_WIDTH, VID_HEIGHT);
+                    for (i = 0; i < VID_WIDTH * VID_HEIGHT; i++) {
+                        uint8_t rgb[3] = { (uint8_t)(px[i] >> 16), (uint8_t)(px[i] >> 8), (uint8_t)px[i] };
+                        fwrite(rgb, 1, 3, f);
+                    }
+                    fclose(f);
+                }
+            }
+        }
         {
             /* PORT_HIRES_SHOT=F1,F2,...: frame Fn's picture as shown (the
                high-resolution one, else the in-between, else the game's) to

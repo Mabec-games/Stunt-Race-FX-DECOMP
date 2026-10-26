@@ -406,7 +406,8 @@ static void draw(SDL_Texture *bg)
             "START       RETURN / MENU",
             "SELECT      TAB / VIEW", "",
             "IN GAME:", "F3 SPEED  F4 LOOK-AHEAD  F5 3D RES",
-            "F7 FAR CARS  F8 WIDE  ALT+ENTER FULL", "",
+            "F7 FAR CARS  F8 WIDE  ALT+ENTER FULL",
+            "QUIT: HOLD ESC / VIEW+MENU (1 SEC)", "",
             "PRESS ANY KEY"};
         for (i = 0; i < (int)(sizeof rows / sizeof rows[0]); i++)
             text(24, 74 + i * 14.0f, 1, rows[i], i == 0 ? 255 : 230, i == 0 ? 214 : 230, i == 0 ? 0 : 230);

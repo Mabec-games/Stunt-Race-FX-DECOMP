@@ -96,6 +96,16 @@ typedef struct {
     void *sb;                   /* the whole Super FX as the draw starts */
     uint16_t obj[MAXREC];       /* the object each record came from */
     uint8_t oam[544];           /* the sprite table's buffer ($7E:0375) as it ended: the HUD */
+    /* the text program ($01:D307: a notice, the place badge) the S-CPU ran
+       after the draw: each run's string, its bank, its place */
+    int ntxt, txt_known;
+    uint16_t txt[4][4];
+    uint8_t *after;             /* the game's own draws: the RAM after its texts (the overlay's base) */
+    int after_ok;
+    /* its screen as the S-CPU left it (the place badge, a banner painted
+       into it after the draw), taken as the next draw starts */
+    uint8_t painted[SCREEN_SIZE];
+    volatile int painted_ok;
     int nrec;
     FxCanvas real;              /* what the game drew */
     uint16_t base;              /* its screen buffer (the start at $021A) */
@@ -460,6 +470,9 @@ int interp_gsu_skip(uint8_t bank, uint16_t addr)
 }
 
 /* a Super FX program starting (done 0) or at its STOP (done 1) */
+static void txt_run(uint8_t *ram, int done);
+static void paint_take(Draw *pv, const uint8_t *ram);
+
 void interp_gsu(uint8_t bank, uint16_t addr, int done)
 {
     uint32_t a = (uint32_t)bank << 16 | addr;
@@ -470,6 +483,10 @@ void interp_gsu(uint8_t bank, uint16_t addr, int done)
     if (!enabled() || sandboxed)
         return;
     ram = snes_sfx_ram();
+    if (a == 0x01D307 && live && getenv("PORT_TXT_SMOOTH")) {
+        txt_run(ram, done);
+        return;
+    }
     if (la_child)
         goto draws;             /* a look-ahead copy: its draw only, no traces */
     if (timescale && a == 0x048FCA) {
@@ -729,6 +746,8 @@ draws:
     if (!files && !live)
         return;
     d = dr[(newest + 1) % SLOTS];
+    if (a == 0x01AEF8 && !done && newest >= 0 && dr[newest]->valid)
+        paint_take(dr[newest], ram);
     if (a == 0x01AEF8 && !done) {
         const uint8_t *w = snes_wram();
         int n = rd16(ram, REC_COUNT);
@@ -756,6 +775,9 @@ draws:
         if (!sorted)
             return;
         memcpy(d->post, ram, sizeof d->post);
+        if (getenv("PORT_DIFF_DEBUG") && !la_child)
+            fprintf(stderr, "TXT f%u 2732 %04X 2734 %04X 2738 %04X 273A %04X 273C %04X\n", snes_frame(), rd16(ram, 0x2732), rd16(ram, 0x2734),
+                    rd16(ram, 0x2738), rd16(ram, 0x273A), rd16(ram, 0x273C));
         gsu_sandbox_save(d->sb);
         canvas_capture = &d->real;
         hires_capture(&d->hr);
@@ -772,6 +794,10 @@ draws:
         d->settled = 0;
         d->prepared = 0;
         d->seq = ++draws;
+        d->painted_ok = 0;
+        d->ntxt = 0;
+        d->txt_known = !la_child;   /* (a copy's: known once its next draw comes) */
+        d->after_ok = 0;
         d->valid = 1;
         sorted = 0;
         newest = (newest + 1) % SLOTS;
@@ -1003,7 +1029,7 @@ static const uint8_t *overlay(const Maps *m, const Draw *d, const uint8_t *ram)
             for (p = 0; p < 8; p++) {
                 a[p] = (uint16_t)(d->base + c * 64 + plane[p] + 2 * r);
                 if (m->upl_when[a[p]] >= d->ended)
-                    mask |= (uint8_t)(m->upl[a[p]] ^ d->done[a[p]]);
+                    mask |= (uint8_t)(m->upl[a[p]] ^ (d->after_ok ? d->after : d->done)[a[p]]);
             }
             if (!mask)
                 continue;
@@ -1400,6 +1426,272 @@ static void far_sort(const Draw *cd)
     d->far_sorted = 1;
 }
 
+/* ---- the texts after a draw (the place badge, notices) in the redraws ----
+   The game runs the text program ($01:D307) after its draw, its place set
+   once a race frame; a redraw runs it too, its place t of the way from
+   prev's to now's (the same string in both), so it moves on every video
+   frame. Which screen bytes it drew is kept by the redraw's buffer (keep:
+   the screen before the texts), for the high-resolution picture's mark */
+#define TXT_REG 24
+static struct { const uint8_t *keep; uint8_t *pre; int on; uint16_t base; } txt_reg[TXT_REG];
+static long txt_drawn;
+
+/* the registry entry for redraw buffer keep, the screen before the paint
+   and texts kept there (once a redraw) */
+static int reg_of(const Draw *now, const uint8_t *ram, const uint8_t *keep, int fresh)
+{
+    int r;
+    for (r = 0; r < TXT_REG && txt_reg[r].keep && txt_reg[r].keep != keep; r++)
+        ;
+    if (r == TXT_REG)
+        r = 0;
+    if (fresh || txt_reg[r].keep != keep) {
+        unsigned o;
+        txt_reg[r].keep = keep;
+        txt_reg[r].on = 0;
+        if (!txt_reg[r].pre)
+            txt_reg[r].pre = (uint8_t *)malloc(SCREEN_SIZE);
+        txt_reg[r].base = now->base;
+        for (o = 0; o < SCREEN_SIZE; o++)
+            txt_reg[r].pre[o] = ram[(uint16_t)(now->base + o)];
+    }
+    return r;
+}
+
+/* ---- the S-CPU's paint (the place badge, the banner) in the redraws ----
+   A draw's paint: the pixels its painted screen has that its own draw
+   (done) has not. Between two draws each piece of it (a column cluster of
+   a band of lines) is moved t of the way by its move from the one to the
+   other (found by matching its pixels); a piece that is not the same
+   picture moved takes the nearer draw's. Screen: 8 bits a pixel, a
+   character 64 bytes, 16 characters a column (128 lines) */
+#define PW 208
+#define PH 128
+static long paint_slid, paint_held;
+
+static int scr_get(const uint8_t *scr, int x, int y)
+{
+    unsigned off = (unsigned)(((x >> 3) * 16 + (y >> 3)) * 64 + (y & 7) * 2), n;
+    int bit = 7 - (x & 7), v = 0;
+    for (n = 0; n < 8; n++)
+        v |= ((scr[off + ((n >> 1) << 4) + (n & 1)] >> bit) & 1) << n;
+    return v;
+}
+
+static void scr_set(uint8_t *scr, int x, int y, int v)
+{
+    unsigned off = (unsigned)(((x >> 3) * 16 + (y >> 3)) * 64 + (y & 7) * 2), n;
+    int bit = 7 - (x & 7);
+    for (n = 0; n < 8; n++) {
+        uint8_t *b = &scr[off + ((n >> 1) << 4) + (n & 1)];
+        *b = (uint8_t)((*b & ~(1 << bit)) | (((v >> n) & 1) << bit));
+    }
+}
+
+/* draw d's paint into pt (-1 none, else the colour) */
+static int paint_of(const Draw *d, int16_t *pt)
+{
+    int x, y, n = 0;
+    for (y = 0; y < PH; y++)
+        for (x = 0; x < PW; x++) {
+            int a = scr_get(d->painted, x, y), b = scr_get(d->done + d->base, x, y);
+            pt[y * PW + x] = (int16_t)(a != b ? a : -1);
+            n += a != b;
+        }
+    return n;
+}
+
+static void paint_redraw(const Draw *prev, const Draw *now, double t, uint8_t *ram, const uint8_t *keep)
+{
+    static int16_t P[PW * PH], N[PW * PH];
+    int np = 0, nn = 0, y0, y1, x, y, r;
+    uint8_t *scr = ram + now->base;
+    int pok = prev && prev != now && prev->painted_ok, nok = now->painted_ok;
+    if (!nok && !pok)
+        return;
+    if (nok)
+        nn = paint_of(now, N);
+    if (pok)
+        np = paint_of(prev, P);
+    if (!nn && !np)
+        return;
+    r = reg_of(now, ram, keep, 0);
+    txt_reg[r].on = 1;
+    if (!pok || !nok || t >= 1.0) {
+        /* one draw's paint as it stands */
+        const int16_t *src = nok && (t >= 0.5 || !pok) ? N : P;
+        for (y = 0; y < PH; y++)
+            for (x = 0; x < PW; x++)
+                if (src[y * PW + x] >= 0)
+                    scr_set(scr, x, y, src[y * PW + x]);
+        return;
+    }
+    /* bands of lines with paint in either, then clusters of columns */
+    for (y0 = 0; y0 < PH; y0 = y1) {
+        int any = 0, x0, x1;
+        static uint8_t col[PW];
+        for (; y0 < PH; y0++) {
+            for (x = 0; x < PW && !any; x++)
+                any = P[y0 * PW + x] >= 0 || N[y0 * PW + x] >= 0;
+            if (any)
+                break;
+        }
+        if (y0 >= PH)
+            break;
+        for (y1 = y0; y1 < PH; y1++) {
+            int has = 0;
+            for (x = 0; x < PW && !has; x++)
+                has = P[y1 * PW + x] >= 0 || N[y1 * PW + x] >= 0;
+            if (!has)
+                break;
+        }
+        memset(col, 0, sizeof col);
+        for (y = y0; y < y1; y++)
+            for (x = 0; x < PW; x++)
+                if (P[y * PW + x] >= 0 || N[y * PW + x] >= 0)
+                    col[x] = 1;
+        for (x0 = 0; x0 < PW; x0 = x1) {
+            int cp = 0, cn = 0, best = 0, bdx = 0, dx, gap;
+            for (; x0 < PW && !col[x0]; x0++)
+                ;
+            if (x0 >= PW)
+                break;
+            for (x1 = x0, gap = 0; x1 < PW && gap < 8; x1++)
+                gap = col[x1] ? 0 : gap + 1;
+            x1 -= gap;
+            for (y = y0; y < y1; y++)
+                for (x = x0; x < x1; x++) {
+                    cp += P[y * PW + x] >= 0;
+                    cn += N[y * PW + x] >= 0;
+                }
+            /* the best move other than none (what stands still matches at 0) */
+            if (cp && cn)
+                for (dx = -64; dx <= 64; dx++) {
+                    int m = 0;
+                    if (!dx)
+                        continue;
+                    for (y = y0; y < y1; y++)
+                        for (x = x0; x < x1; x++) {
+                            int v = P[y * PW + x], xx = x + dx;
+                            if (v >= 0 && N[y * PW + x] != v && xx >= 0 && xx < PW && N[y * PW + xx] == v)
+                                m++;
+                        }
+                    if (m > best) {
+                        best = m;
+                        bdx = dx;
+                    }
+                }
+            if (cp && cn) {
+                /* the moving pixels' edge's move: a piece that changes its
+                   picture a little as it flies keeps its edge's pace (the
+                   edge not on the screen's border) */
+                int pl = PW, pr = -1, nl = PW, nr = -1, edx = 0, m = 0;
+                for (y = y0; y < y1; y++)
+                    for (x = x0; x < x1; x++) {
+                        int v = P[y * PW + x], w = N[y * PW + x];
+                        if (v >= 0 && w != v) { if (x < pl) pl = x; if (x > pr) pr = x; }
+                        if (w >= 0 && w != v) { if (x < nl) nl = x; if (x > nr) nr = x; }
+                    }
+                if (pr >= 0 && nr >= 0) {
+                    if (pl > 2 && nl > 2)
+                        edx = nl - pl;
+                    else if (pr < PW - 3 && nr < PW - 3)
+                        edx = nr - pr;
+                }
+                if (edx && edx != bdx && abs(edx) <= 64) {
+                    for (y = y0; y < y1; y++)
+                        for (x = x0; x < x1; x++) {
+                            int v = P[y * PW + x], xx = x + edx;
+                            if (v >= 0 && N[y * PW + x] != v && xx >= 0 && xx < PW && N[y * PW + xx] == v)
+                                m++;
+                        }
+                    if (m * 10 >= best * 6) {
+                        bdx = edx;
+                        best = m > best ? m : best;
+                    }
+                }
+            }
+            {
+                int mp = 0, mn = 0, moving;
+                for (y = y0; y < y1; y++)
+                    for (x = x0; x < x1; x++) {
+                        int v = P[y * PW + x], w = N[y * PW + x];
+                        mp += v >= 0 && w != v;
+                        mn += w >= 0 && w != v;
+                    }
+                /* (a large piece: the badge, the banner; small ones are
+                   digits changing where they stand) */
+                moving = bdx && mp >= 250 && mn >= 250 && best * 10 >= (mp < mn ? mp : mn) * 5;
+                for (y = y0; y < y1; y++)
+                    for (x = x0; x < x1; x++) {
+                        int v = P[y * PW + x], w = N[y * PW + x];
+                        if (moving) {
+                            /* standing still: a whole 8 x 8 cell the same in
+                               both (the timer beside the badge: a moving
+                               picture's pixels that only happen to match do
+                               not stand still); else the new picture brought
+                               back along the move (what comes into view slides
+                               in with it); the old one's leftovers dropped */
+                            int cx = x & ~7, cy = y & ~7, still = 1, ax, ay;
+                            for (ay = cy; ay < cy + 8 && ay < PH && still; ay++)
+                                for (ax = cx; ax < cx + 8 && ax < PW && still; ax++)
+                                    still = P[ay * PW + ax] == N[ay * PW + ax];
+                            if (still) {
+                                if (w >= 0)
+                                    scr_set(scr, x, y, w);
+                            } else if (w >= 0) {
+                                int xx = x - (int)lround(bdx * (1.0 - t));
+                                if (xx >= 0 && xx < PW)
+                                    scr_set(scr, xx, y, w);
+                            }
+                            (void)v;
+                        } else if (w >= 0 && w == v) {
+                            scr_set(scr, x, y, w);      /* standing still */
+                        } else {
+                            const int16_t *src = t >= 0.5 ? N : P;
+                            if (src[y * PW + x] >= 0)
+                                scr_set(scr, x, y, src[y * PW + x]);
+                        }
+                    }
+                if (moving)
+                    paint_slid++;
+                else if (mp || mn)
+                    paint_held++;
+            }
+        }
+    }
+}
+
+static void txt_redraw(const Draw *prev, const Draw *now, double t, uint8_t *ram, const uint8_t *keep)
+{
+    const Draw *tx = (now->txt_known || now->ntxt) ? now : prev;
+    int k, r;
+    r = reg_of(now, ram, keep, 0);
+    if (!tx || !tx->ntxt)
+        return;
+    txt_reg[r].on = 1;
+    for (k = 0; k < tx->ntxt; k++) {
+        uint16_t x = tx->txt[k][2], y = tx->txt[k][3];
+        int j;
+        if (tx == now && prev != now)
+            for (j = 0; j < prev->ntxt; j++)
+                if (prev->txt[j][0] == now->txt[k][0] && prev->txt[j][1] == now->txt[k][1]) {
+                    int dx = (int16_t)(now->txt[k][2] - prev->txt[j][2]), dy = (int16_t)(now->txt[k][3] - prev->txt[j][3]);
+                    if (abs(dx) < 96 && abs(dy) < 96) {
+                        x = (uint16_t)(prev->txt[j][2] + (int)lround(dx * t));
+                        y = (uint16_t)(prev->txt[j][3] + (int)lround(dy * t));
+                    }
+                    break;
+                }
+        wr16(ram, 0x2732, tx->txt[k][0]);
+        wr16(ram, 0x2734, tx->txt[k][1]);
+        wr16(ram, 0x2738, x);
+        wr16(ram, 0x273A, y);
+        gsu_sandbox_run(0x01, 0xD307);
+        txt_drawn++;
+    }
+}
+
 static void draw_between(const Draw *prev, const Draw *now, double t, int interp, uint8_t *keep, uint16_t *angles, HrList *hr)
 {
     uint8_t *ram;
@@ -1571,6 +1863,9 @@ static void draw_between(const Draw *prev, const Draw *now, double t, int interp
     port_lod_near = 0;
     hires_capture_end();
     gsu_plot_clip_w = gsu_plot_clip_h = 0;
+    reg_of(now, ram, keep, 1);    /* (the screen before paint and texts) */
+    paint_redraw(prev, now, interp ? t : 1.0, ram, keep);
+    txt_redraw(prev, now, interp ? t : 1.0, ram, keep);
     interp_active = 0;
     canvas_capture = capture;
     memcpy(keep, ram, RAM_SIZE);
@@ -1743,6 +2038,8 @@ static int hr_row0 = 0, hr_row1 = VID_HEIGHT - 1;
 #define HR_MARK1 (24u << 10 | 24u << 5 | 24u)
 #define HR_MARK2 (8u << 10 | 8u << 5 | 8u)
 static int sky_built;   /* the sky pass laid the panorama above the window (backdrop_above) */
+static const uint8_t *pf_txt_pre, *pf_txt_ram;     /* the shown redraw's texts (picture_on): its screen before them, and after */
+static uint16_t pf_txt_at;
 static int sky_from;    /* the wider view's sky pass: lines above this one drawn as this one (0: as they are) */
 static int hud_x0, hud_y0, hud_x1, hud_y1;     /* mark 2: the window (a HUD sprite is over it) */
 
@@ -1775,7 +2072,28 @@ static void picture_fill(const Draw *b, const uint16_t *a, const uint16_t *own, 
             }
         }
     }
-    patch(pic, &b->sm, overlay(&b->sm, b, hr_ram), b, 0);
+    if (mark == 1 && pf_txt_pre) {
+        /* the redraw's texts stay the picture's (not the 3D's mark): its
+           pixels the text program changed, by the overlay's rule */
+        static const unsigned plane[8] = { 0, 1, 16, 17, 32, 33, 48, 49 };
+        unsigned c, r, q;
+        for (c = 0; c < SCREEN_SIZE / 64; c++)
+            for (r = 0; r < 8; r++) {
+                uint8_t m = 0;
+                for (q = 0; q < 8; q++) {
+                    unsigned off = c * 64 + plane[q] + 2 * r;
+                    m |= (uint8_t)(pf_txt_pre[off] ^ pf_txt_ram[(uint16_t)(pf_txt_at + off)]);
+                }
+                if (!m)
+                    continue;
+                for (q = 0; q < 8; q++) {
+                    unsigned off = c * 64 + plane[q] + 2 * r;
+                    uint8_t *h = &hr_ram[(uint16_t)(b->base + off)];
+                    *h = (uint8_t)((*h & ~m) | (pf_txt_ram[(uint16_t)(pf_txt_at + off)] & m));
+                }
+            }
+    }
+    patch(pic, &b->sm, mark == 1 && pf_txt_pre ? hr_ram : overlay(&b->sm, b, hr_ram), b, 0);
     backdrop(pic, &b->sm, a, own, b->ended);
     if (mark == 2) {
         /* the HUD's sprites (over the window), the rest (the bezel's) off
@@ -2117,13 +2435,121 @@ static int hud_smooth(void)
    ended) */
 static const uint8_t *la_hud_at(uint32_t fr);
 static long hud_found, hud_missed;
+/* sprite sp of table t: on screen, its place and its tile and attributes */
+static int hud_spr(const uint8_t *t, int sp, int *x, int *y, uint16_t *ta)
+{
+    uint8_t hi = (uint8_t)(t[0x200 + (sp >> 2)] >> ((sp & 3) * 2));
+    *x = t[sp * 4] | (hi & 1) << 8;
+    if (*x >= 256)
+        *x -= 512;
+    *y = t[sp * 4 + 1];
+    *ta = (uint16_t)(t[sp * 4 + 2] | t[sp * 4 + 3] << 8 | (hi & 2) << 15);
+    return *y < 224;
+}
+
+/* HUD pieces the game moves once a race frame (the place badge after
+   the finish, a banner): moved on every video frame instead, from where
+   the piece last jumped to where it jumps next (both in the copies'
+   tables: the frames around fr), when it jumps with two others the same
+   way (a group: not a sprite slot used again for another) */
+#define HUD_SPAN 14
+static long hud_glided;
+static void hud_glide(uint32_t fr, uint8_t *out)
+{
+    const uint8_t *tab[2 * HUD_SPAN + 1];
+    int k, sp;
+    for (k = -HUD_SPAN; k <= HUD_SPAN; k++)
+        tab[k + HUD_SPAN] = la_hud_at(fr - 1 + (uint32_t)k);
+    for (sp = 0; sp < 128; sp++) {
+        int x0, y0, x1, y1, xb, yb, back = 0, fwd = 0, dx, dy, same = 0, other;
+        uint16_t t0, t1;
+        if (!hud_spr(out, sp, &x0, &y0, &t0))
+            continue;
+        /* the next jump */
+        for (k = 1; k <= HUD_SPAN && tab[HUD_SPAN + k]; k++) {
+            if (!hud_spr(tab[HUD_SPAN + k], sp, &x1, &y1, &t1) || t1 != t0)
+                break;
+            if (x1 != x0 || y1 != y0) {
+                fwd = k;
+                break;
+            }
+        }
+        if (getenv("PORT_HUD_DEBUG") && y0 > 110 && y0 < 160 && fr > 2680 && fr < 2720)
+            fprintf(stderr, "CAND f%u s%d t%03X at %d,%d fwd %d -> %d,%d\n", fr, sp, t0 & 0x1FF, x0, y0, fwd, fwd ? x1 : 0, fwd ? y1 : 0);
+        if (!fwd)
+            continue;
+        dx = x1 - x0;
+        dy = y1 - y0;
+        if (abs(dx) > 64 || abs(dy) > 64)
+            continue;
+        /* how long it has stood (where it last jumped) */
+        for (k = 1; k <= HUD_SPAN && tab[HUD_SPAN - k]; k++) {
+            if (!hud_spr(tab[HUD_SPAN - k], sp, &xb, &yb, &t1) || t1 != t0 || xb != x0 || yb != y0)
+                break;
+            back = k;
+        }
+        {
+            /* the jump after: stepping (it too more than a frame later), or
+               the piece moving on every frame from here (not glided) */
+            int fwd2 = 0, x2, y2;
+            uint16_t t2;
+            for (k = fwd + 1; k <= HUD_SPAN && tab[HUD_SPAN + k]; k++) {
+                if (!hud_spr(tab[HUD_SPAN + k], sp, &x2, &y2, &t2) || t2 != t0)
+                    break;
+                if (x2 != x1 || y2 != y1) {
+                    fwd2 = k;
+                    break;
+                }
+            }
+            if (fwd2 && fwd2 - fwd < 2)
+                continue;
+            if (back >= HUD_SPAN) {
+                /* from rest: a step's time of lead-in (the next step's, or
+                   the game's race frame) */
+                if (!fwd2)
+                    continue;
+                back = fwd2 - fwd - fwd;
+                if (back < 0)
+                    continue;       /* (not yet: it stands until a step before) */
+            }
+        }
+        if (back + fwd < 2)
+            continue;               /* (moving every frame already) */
+        /* the group: two more sprites making the same jump at the same frame */
+        for (other = 0; other < 128 && same < 2; other++) {
+            int ox0, oy0, ox1, oy1;
+            uint16_t ot0, ot1;
+            if (other == sp || !hud_spr(out, other, &ox0, &oy0, &ot0) ||
+                !hud_spr(tab[HUD_SPAN + fwd], other, &ox1, &oy1, &ot1) || ot1 != ot0)
+                continue;
+            if (ox1 - ox0 == dx && oy1 - oy0 == dy)
+                same++;
+        }
+        if (same < 2)
+            continue;
+        {
+            double t = (double)back / (double)(back + fwd);
+            int x = (int)lround(x0 + dx * t), y = (int)lround(y0 + dy * t);
+            out[sp * 4] = (uint8_t)x;
+            out[sp * 4 + 1] = (uint8_t)y;
+            out[0x200 + (sp >> 2)] = (uint8_t)((out[0x200 + (sp >> 2)] & ~(1 << ((sp & 3) * 2))) | ((x < 0) << ((sp & 3) * 2)));
+            hud_glided++;
+            if (getenv("PORT_HUD_DEBUG"))
+                fprintf(stderr, "GLIDE f%u s%d tile %03X %d,%d -> %d,%d back %d fwd %d at %d,%d\n", fr, sp, t0 & 0x1FF, x0, y0, x1, y1, back, fwd, x, y);
+        }
+    }
+}
+
 static void hud_at(uint32_t fr)
 {
-    static uint8_t last[544];
+    static uint8_t last[544], glided[544];
     static int have;
     hud_a = hud_b = la_hud_at(fr - 1);
     hud_t = 0;
     if (hud_a) {
+        memcpy(glided, hud_a, sizeof glided);
+        hud_glide(fr, glided);
+        hud_a = hud_b = glided;
         memcpy(last, hud_a, sizeof last);
         have = 1;
         hud_found++;
@@ -2170,12 +2596,30 @@ static void picture_on(const Draw *b, const uint8_t *ram, uint16_t at, const uin
             pic_base = (VidFrame *)malloc(sizeof *pic_base);
         memcpy(pic_base, pic, sizeof *pic);
     }
-    patch(pic, &b->sm, overlay(&b->sm, b, tmp_ram), b, 0);
+    {
+        /* a redraw with the paint and texts of its own: those, not the
+           game's (the overlay: its own, a race frame at a time) */
+        int r, own_paint = 0;
+        for (r = 0; r < TXT_REG; r++)
+            if (txt_reg[r].keep == ram && txt_reg[r].on && txt_reg[r].base == at)
+                own_paint = 1;
+        patch(pic, &b->sm, own_paint ? tmp_ram : overlay(&b->sm, b, tmp_ram), b, 0);
+    }
     backdrop(pic, &b->sm, a, own, b->ended);
     vid_draw_frame(pic, px);
     hr_shown = 0;
-    if (hr && hires_scale && !hr->overflow)
+    if (hr && hires_scale && !hr->overflow) {
+        int r;
+        pf_txt_pre = NULL;
+        for (r = 0; r < TXT_REG; r++)
+            if (txt_reg[r].keep == ram && txt_reg[r].on && txt_reg[r].base == at) {
+                pf_txt_pre = txt_reg[r].pre;
+                pf_txt_ram = ram;
+                pf_txt_at = at;
+            }
         compose_hires(b, a, own, px, hr);
+        pf_txt_pre = NULL;
+    }
 }
 
 /* ---- the look-ahead ----
@@ -2373,6 +2817,63 @@ static void la_fork(void)
 
 /* the copy: a draw done (interp_gsu), handed over; ended after the
    look-ahead's depth */
+/* the text program ($01:D307) starting (done 0) or ending: its string
+   and place kept with the draw just made (a copy's: in the shared slot,
+   its draw handed over already); the game's own: its RAM after (the
+   overlay's base: those pixels are the redraws' to make) */
+static void txt_run(uint8_t *ram, int done)
+{
+    Draw *d;
+    if (la_child) {
+        if (!la_slot || la_cur < 0 || la_slot[la_cur].nready < 1)
+            return;
+        d = &la_slot[la_cur].d[la_slot[la_cur].nready - 1];
+    } else {
+        if (newest < 0 || !dr[newest]->valid)
+            return;
+        d = dr[newest];
+    }
+    if (!done) {
+        if (d->ntxt < 4) {
+            d->txt[d->ntxt][0] = rd16(ram, 0x2732);
+            d->txt[d->ntxt][1] = rd16(ram, 0x2734);
+            d->txt[d->ntxt][2] = rd16(ram, 0x2738);
+            d->txt[d->ntxt][3] = rd16(ram, 0x273A);
+            d->ntxt++;
+        }
+    } else if (!la_child) {
+        if (!d->after)
+            d->after = (uint8_t *)malloc(RAM_SIZE);
+        memcpy(d->after, ram, RAM_SIZE);
+        d->after_ok = 1;
+    }
+}
+
+/* the draw before this one (pv): its screen as the S-CPU left it, now that
+   the next draw starts (the screens alternate: pv's still stands); a
+   copy's, into its handed-over draw in the shared slot */
+static void paint_take(Draw *pv, const uint8_t *ram)
+{
+    Draw *to = pv;
+    unsigned o;
+    if (la_child) {
+        LaSlot *sl;
+        int q;
+        if (!la_slot || la_cur < 0)
+            return;
+        sl = &la_slot[la_cur];
+        q = __atomic_load_n(&sl->nready, __ATOMIC_ACQUIRE);
+        if (q < 1 || sl->d[q - 1].seq != pv->seq)
+            return;
+        to = &sl->d[q - 1];
+    }
+    if (to->painted_ok)
+        return;
+    for (o = 0; o < SCREEN_SIZE; o++)
+        to->painted[o] = ram[(uint16_t)(pv->base + o)];
+    __atomic_store_n(&to->painted_ok, 1, __ATOMIC_RELEASE);
+}
+
 static void la_child_done(const Draw *d)
 {
     LaSlot *s = &la_slot[la_cur];
@@ -2395,6 +2896,13 @@ static void la_child_done(const Draw *d)
     o->base = d->base;
     o->ended = d->ended;
     memcpy(o->oam, d->oam, sizeof o->oam);
+    if (q > 0)
+        s->d[q - 1].txt_known = 1;  /* (its texts, if any, came before this draw) */
+    o->ntxt = 0;
+    o->txt_known = 0;
+    o->after = NULL;
+    o->after_ok = 0;
+    o->painted_ok = 0;
     o->seq = d->seq;
     o->valid = 1;
     s->finished = now_ms();
@@ -2603,8 +3111,10 @@ static void la_report(void)
         return;
     la_kill();
     la_report_to(stderr);
+    if (paint_slid + paint_held)
+        fprintf(stderr, "paint: %ld pieces slid between race frames, %ld shown as the nearer one\n", paint_slid, paint_held);
     if (hud_found + hud_missed)
-        fprintf(stderr, "hud: %ld pictures with the copies' HUD of their frame, %ld with the game's own (none recorded)\n", hud_found, hud_missed);
+        fprintf(stderr, "hud: %ld pictures with the copies' HUD of their frame, %ld with the game's own (none recorded); %ld sprites glided between jumps\n", hud_found, hud_missed, hud_glided);
     if (far_draws)
         fprintf(stderr, "far cars: %ld draws with the far cars' list, %ld redrawn; %ld times shown as the game's (the Super FX busy)\n",
                 far_draws, far_redraws, far_busy);
@@ -2669,6 +3179,9 @@ static const Redraw *rd_get(const Draw *x, int make)
     for (i = 0; i < 12; i++)
         key = (key ^ x->post[VIEW_PARAMS + i]) * 16777619u;
     key ^= x->ended;
+    for (i = 0; i < (unsigned)x->ntxt; i++)
+        key = (key ^ x->txt[i][2] ^ (uint32_t)x->txt[i][3] << 16) * 16777619u;
+    key ^= (uint32_t)x->painted_ok << 31;
     for (k = 0; k < RD_KEEP; k++)
         if (rd[k].ram && rd[k].seq == x->seq && rd[k].key == key)
             return &rd[k];
@@ -2694,7 +3207,7 @@ static void show_draw(const Draw *b, const Draw *x)
 {
     uint16_t a[3];
     int c;
-    if ((lod_near() || x->far || (interp_wide() && hires_scale && la_enabled())) && x->map_ok) {
+    if ((lod_near() || x->far || x->ntxt || x->painted_ok || (interp_wide() && hires_scale && la_enabled())) && x->map_ok) {
         Redraw *e = (Redraw *)rd_get(x, 1);
         if (e) {
             e->used = ++rd_clock;
@@ -2728,7 +3241,7 @@ static void la_prefetch(void)
     if (!n)
         return;
     for (d = la_on; d >= 1 && d >= la_on - 1; d--)
-        if ((x = la_get(n->seq + d, 0, NULL)) && (x->far || lod_near() || (interp_wide() && hires_scale)) && x->map_ok)
+        if ((x = la_get(n->seq + d, 0, NULL)) && (x->far || x->ntxt || x->painted_ok || lod_near() || (interp_wide() && hires_scale)) && x->map_ok)
             rd_get(x, 1);
 }
 

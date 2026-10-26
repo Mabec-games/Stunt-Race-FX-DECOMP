@@ -89,7 +89,8 @@ ROM data ends up in the program). The launcher and AppImage are built with
 | Start / Select | Return / Tab | Menu / View |
 
 In game: **F3** speed mode · **F4** look-ahead (3/2/1/off) · **F5** 3D resolution ·
-**F7** far cars in 3D · **F8** wide view · **Alt+Enter** fullscreen.
+**F7** far cars in 3D · **F8** wide view · **Alt+Enter** fullscreen ·
+**hold Esc** (or View + Menu on a controller) for one second to quit.
 
 ## Credits and license
 
