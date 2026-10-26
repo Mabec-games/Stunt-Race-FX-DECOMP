@@ -254,8 +254,17 @@ void abi_FxProjectPoint(void)
  * table's address + 1; the ROM bank $14; flags from the last FMULT.
  * R14 and the ROM buffer move as on the Super FX.
  */
+void hires_sprite_project(int16_t x, int16_t y, int16_t size, int shift, uint16_t scale, int16_t cx, int16_t cy,
+                          uint16_t sx, uint16_t sy, uint16_t ssize);   /* runtime/hires.c */
+
 void FxProjectScaled(int copy)
 {
+    /* the point, size and the halvings (less doublings), and the products,
+       for the port's high-resolution capture */
+    int16_t hx = (int16_t)gsu.r[1], hy = (int16_t)gsu.r[2], hs = (int16_t)gsu.r[5];
+    int hshift = 0;
+    uint16_t hfx, hfy;
+
     gsu.r[0] = 0x0014;
     gsu_code(0x01b2a5, 4);
     gsu_romb(0x14);
@@ -267,6 +276,7 @@ void FxProjectScaled(int copy)
         gsu.r[2] = gsu_asr(gsu.r[2]);
         gsu.r[5] = gsu_asr(gsu.r[5]);
         gsu.r[3] = gsu_asr(gsu.r[3]);       /* BRA's delay slot */
+        hshift++;
         gsu_code(0x01b2af, 10); gsu_code(0x01b2a8, 1);
     }
     for (;;) {
@@ -277,6 +287,7 @@ void FxProjectScaled(int copy)
         gsu.r[1] = gsu_add(gsu.r[1], gsu.r[1], 0);
         gsu.r[2] = gsu_add(gsu.r[2], gsu.r[2], 0);
         gsu.r[3] = gsu_add(gsu.r[3], gsu.r[3], 0);  /* BRA's delay slot */
+        hshift--;
         gsu_code(0x01b2c0, 10); gsu_code(0x01b2b9, 1);
     }
     gsu.r[3] = gsu_bic(gsu.r[3], 0x0001);
@@ -291,11 +302,13 @@ void FxProjectScaled(int copy)
     gsu.r[6] = gsu_getbh(gsu.r[6]);
     gsu_code(0x01b2d9, 2);
     gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
+    hfx = gsu.r[0];
     gsu_code(0x01b2db, 3);
     gsu.r[1] = gsu_ldw(FX_CENTRE);
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[0], 0);
     gsu_code(0x01b2de, 4);
     gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
+    hfy = gsu.r[0];
     gsu_code(0x01b2e2, 3);
     gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
     gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
@@ -303,6 +316,8 @@ void FxProjectScaled(int copy)
     gsu.r[0] = gsu_fmult(gsu.r[5], gsu.r[6]);
     gsu.r[5] = gsu.r[0];
     gsu_code(0x01b2e9, 4);
+    hires_sprite_project(hx, hy, hs, hshift, gsu.r[6], (int16_t)(gsu.r[1] - hfx), (int16_t)(gsu.r[2] - hfy), gsu.r[1],
+                         gsu.r[2], gsu.r[5]);
 }
 
 void abi_FxProjectScaled(void)
@@ -344,8 +359,13 @@ static uint16_t mult4(uint16_t v, int copy)
  * the last RAM address R10. R14 and the ROM buffer move as on the Super
  * FX.
  */
+void hires_project(int16_t x, int16_t y, int16_t d, uint16_t sx, uint16_t sy);   /* runtime/hires.c */
+
 void abi_FxProjectVertex(void)
 {
+    /* the point as it came in, for the port's high-resolution capture */
+    int16_t hx = (int16_t)gsu.r[1], hy = (int16_t)gsu.r[2], hd = (int16_t)gsu.r[6];
+
     for (;;) {
         gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
         if (!gsu.s)
@@ -374,6 +394,7 @@ void abi_FxProjectVertex(void)
         gsu.r[9] = gsu_ldw(0x002A);
         gsu_code(0x018c75, 4);
         gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);       /* the return address, into R15 */
+        hires_project(hx, hy, hd, gsu.r[1], gsu.r[2]);
         return;
     } else { gsu_code(0x018c0f, 6); }
     gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
@@ -433,4 +454,5 @@ code:
     gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[6])), gsu.r[6]);
     gsu_code(0x018c55, 7);
     gsu_code(0x010000 | gsu.r[11], 1);
+    hires_project(hx, hy, hd, gsu.r[1], gsu.r[2]);
 }

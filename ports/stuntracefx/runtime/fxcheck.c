@@ -25,7 +25,8 @@
 #include "dispatch.h"
 #include "rr.h"
 
-extern const uint8_t srfx_rom[], srfx_rom_end[];
+const uint8_t *port_rom(void);
+uint32_t port_rom_size(void);
 
 static int on = -1, open_now;
 static FxCanvas *mine, *chip;
@@ -82,8 +83,8 @@ static long g_random(FxCanvas *ref)
     for (mode = 0; mode < 4; mode++) {
         FxDrawSource s;
         s.ram = ram;
-        s.rom = srfx_rom;
-        s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
+        s.rom = port_rom();
+        s.rom_size = port_rom_size();
         s.mode = mode;
         s.layout = 3;
         memset(ref, 0, sizeof *ref);
@@ -159,7 +160,7 @@ static void gpu_list(const FxDrawSource *s)
     if (gpu_on < 0) {
         gpu_on = getenv("PORT_FXGPUCHECK") != NULL;
         if (gpu_on) {
-            if (!port_rr_headless() || !rr_fill_rom(srfx_rom, (uint32_t)(srfx_rom_end - srfx_rom))) {
+            if (!port_rr_headless() || !rr_fill_rom(port_rom(), port_rom_size())) {
                 fprintf(stderr, "fxgpucheck: the renderer has no 3D canvas\n");
                 exit(2);
             }
@@ -207,8 +208,8 @@ void fx_list_begin(void)
 {
     FxDrawSource s;
     s.ram = snes_sfx_ram();
-    s.rom = srfx_rom;
-    s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
+    s.rom = port_rom();
+    s.rom_size = port_rom_size();
     s.mode = gsu.scmr & 3;
     s.layout = gsu_layout();
     canvas_list(&s);
@@ -228,8 +229,8 @@ void fx_list_begin(void)
     memset(mine, 0, sizeof *mine);
     memset(chip, 0, sizeof *chip);
     s.ram = snes_sfx_ram();
-    s.rom = srfx_rom;
-    s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
+    s.rom = port_rom();
+    s.rom_size = port_rom_size();
     s.mode = gsu.scmr & 3;
     s.layout = 3;                        /* PLOT's own (x, y), as the hook gets them */
     fx_draw_list(&s, mine);

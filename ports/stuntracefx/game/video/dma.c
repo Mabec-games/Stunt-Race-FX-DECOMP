@@ -1205,9 +1205,13 @@ void abi_NmiFrameUpload(void)
    the stack: its RTS ends the caller instead. */
 static uint16_t race_x;                 /* the stage word read: N, Z for stage $1C's exit */
 
+extern int port_fast_upload;    /* the port's one-go screen upload (interp.c): 0 the console's three stages */
+extern int snes_dma_untimed;
+
 static int race_stage(uint32_t b)
 {
     uint16_t sel;
+    int fast = 0;                       /* the port's one-go upload: the three thirds in this stage */
 
     cyc(46);
     set_x(race_x = rd16(b | 0x0D7D));
@@ -1223,6 +1227,14 @@ static int race_stage(uint32_t b)
             upload_sprites_palette(b);
             break;
         } else { cyc(22); }
+        if (port_fast_upload) {
+            /* The one-go path runs the picture stages in this same NMI, so
+               it never reaches the idle stage that uploads the sprite table.
+               Do that here, before the picture, as the idle stage would. */
+            upload_sprites_palette(b);
+            fast = 1;
+            snes_dma_untimed = 1;
+        }
         next_stage(b, 0x0002);
         ld3(0x2200, 0x2C00, 0x0000);
         fx_op_upload(1);                /* a third of the race screen */
@@ -1231,8 +1243,11 @@ static int race_stage(uint32_t b)
         cyc(22);
         ld3(0x0200, 0xE3D7, 0x5BC0);
         dma_from_7f();
+        if (fast)
+            goto a85e;
         break;
     case 0xA85E:
+    a85e:
         cyc(22);
         delay_a(1);
         next_stage(b, 0x0004);
@@ -1244,8 +1259,11 @@ static int race_stage(uint32_t b)
         ld3(0x0240, 0xE5D7, 0x5CC0);
         dma_from_7f();
         flag_0357(b, 0);
+        if (fast)
+            goto a88f;
         break;
     case 0xA88F:
+    a88f:
         cyc(22);
         delay_a(4);
         next_stage(b, 0x0006);
@@ -1268,6 +1286,7 @@ static int race_stage(uint32_t b)
         cyc(78);
         wr16(0x000D81, 0xFFFF);
         frame_done(b);
+        snes_dma_untimed = 0;
         break;
     case 0xA8FA:
         cyc(46);
@@ -1279,6 +1298,13 @@ static int race_stage(uint32_t b)
             upload_sprites_palette(b);
             break;
         }
+        if (port_fast_upload) {
+            /* As at stage 0: the one-go path must not skip the idle
+               stage's sprite-table upload. */
+            upload_sprites_palette(b);
+            fast = 1;
+            snes_dma_untimed = 1;
+        }
         delay_a(1);
         next_stage(b, 0x0008);
         ld3(0x2200, 0xB800, 0x3400);
@@ -1288,8 +1314,11 @@ static int race_stage(uint32_t b)
         cyc(22);
         ld3(0x0200, 0xE817, 0x5DE0);
         dma_from_7f();
+        if (fast)
+            goto a92c;
         break;
     case 0xA92C:
+    a92c:
         delay_a(1);
         next_stage(b, 0x000A);
         ld3(0x2200, 0xDA00, 0x4500);
@@ -1300,8 +1329,11 @@ static int race_stage(uint32_t b)
         ld3(0x0240, 0xEA17, 0x5EE0);
         dma_from_7f();
         flag_0357(b, 0);
+        if (fast)
+            goto a95b;
         break;
     case 0xA95B:
+    a95b:
         delay_a(4);
         cyc(86);
         wr16(b | 0x0D7D, 0x0000);
@@ -1324,6 +1356,7 @@ static int race_stage(uint32_t b)
         cyc(70);
         wr16(b | 0x0D81, 0x0001);
         frame_done(b);
+        snes_dma_untimed = 0;
         break;
     case 0xA9B1:
         upload_rows(b, 1, 0x0010, 0x2C00, 0x0000, 0);

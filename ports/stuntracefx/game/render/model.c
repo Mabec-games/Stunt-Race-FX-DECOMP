@@ -28,6 +28,13 @@
 #define FX_ROM_R14             0x001Au
 #define FX_ROM_BANK            0x001Cu
 #define FX_POINT_OUT           0x001Eu  /* where the next transformed point goes ($0340 on) */
+extern int interp_active;   /* the port's in-between frames (interp.c) */
+void hires_project(int16_t x, int16_t y, int16_t d, uint16_t sx, uint16_t sy);   /* runtime/hires.c */
+static int16_t hires_x, hires_y, hires_d;   /* the point FxProjectVertex's copy here takes, as it came in */
+static uint16_t hires_sx;                   /* command $0C's projection: the screen X it made */
+void hires_project_scaled(int16_t x, int16_t y, uint16_t scale, int16_t cx, int16_t cy, uint16_t sx, uint16_t sy, uint16_t slot);
+void hires_tab_last(uint16_t slot);              /* the last projection is the table's at slot ($04E4 + 6 i) */
+void hires_queue(uint16_t dst, uint16_t slot);   /* a face's corner copied from the table's slot to dst */
 #define FX_OBJECT_ANGLE_X      0x0020u  /* the object's angles (bytes), negated in place */
 #define FX_OBJECT_ANGLE_Y      0x0022u
 #define FX_OBJECT_ANGLE_Z      0x0024u
@@ -361,6 +368,8 @@ l8660:
     R[1] = gsu_ldw(FX_OBJECT_ANGLE_X);
     R[0] = gsu_lob(R[1]);
     R[0] = gsu_swap(R[0]);
+    if (interp_active)
+        R[0] |= (uint16_t)(R[1] >> 8);   /* the in-between angle's fraction */
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
     gsu_code(0x018667, 6);
@@ -369,6 +378,8 @@ l8660:
     R[2] = gsu_ldw(FX_OBJECT_ANGLE_Y);
     R[0] = gsu_lob(R[2]);
     R[0] = gsu_swap(R[0]);
+    if (interp_active)
+        R[0] |= (uint16_t)(R[2] >> 8);   /* the in-between angle's fraction */
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
     gsu_code(0x018670, 6);
@@ -377,6 +388,8 @@ l8660:
     R[3] = gsu_ldw(FX_OBJECT_ANGLE_Z);
     R[0] = gsu_lob(R[3]);
     R[0] = gsu_swap(R[0]);
+    if (interp_active)
+        R[0] |= (uint16_t)(R[3] >> 8);   /* the in-between angle's fraction */
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
     gsu_code(0x018679, 6);
@@ -1589,6 +1602,7 @@ l8BCC:
     abi_FxProjectVertex();
 l8BE0:
     gsu_code(0x018be1, 2);
+    hires_tab_last(R[8]);
     gsu_stw(R[8], R[1]);
     R[8] = gsu_inc(R[8]);
     R[8] = gsu_inc(R[8]);
@@ -1618,6 +1632,9 @@ l8BE0:
     gsu_code(0x018bfc, 3); gsu_code(0x018c79, 1);
     goto l8C79;
 l8BFF:
+    hires_x = (int16_t)R[1];
+    hires_y = (int16_t)R[2];
+    hires_d = (int16_t)R[6];
     R[0] = 0x4400;
     R[0] = gsu_sub(R[0], R[6], 0);
     t = !gsu.s;
@@ -1701,6 +1718,7 @@ l8C54:
     nx = (uint16_t)(R[11]);
     at = nx;
     gsu_code(0x018c55, 7);
+    hires_project(hires_x, hires_y, hires_d, R[1], R[2]);
     goto dispatch;
 l8C5C:
     gsu_code(0x018c5d, 2);
@@ -1715,6 +1733,7 @@ l8C5C:
     abi_FxProjectPoint();
     gsu_code(0x018c69, 1);
 l8C69:
+    hires_project(hires_x, hires_y, hires_d, R[1], R[2]);
     R[12] = R[14];
     gsu_code(0x018c6a, 5);
     R[3] = gsu_ldw(FX_OBJECT_X);
@@ -1808,11 +1827,13 @@ l8CCA:
     gsu_code(0x018cda, 3);
     R[0] = gsu_ldw(R[7]);
     R[0] = gsu_add(R[0], R[3], 0);
+    hires_x = (int16_t)R[0];
     gsu_code(0x018cdd, 4);
     R[6] = gsu_getbh(R[6]);
     gsu_code(0x018ce1, 1);
     R[0] = gsu_fmult(R[0], R[6]);
     R[0] = gsu_add(R[0], R[1], 0);
+    hires_sx = R[0];
     gsu_code(0x018ce2, 2);
     gsu_stw(R[8], R[0]);
     gsu_code(0x018ce4, 2);
@@ -1837,6 +1858,7 @@ l8CF0:
     gsu_code(0x018cf1, 4);
     R[0] = gsu_fmult(R[2], R[6]);
     R[0] = gsu_add(R[0], R[9], 0);
+    hires_project_scaled(hires_x, (int16_t)R[2], R[6], (int16_t)R[1], (int16_t)R[9], hires_sx, R[0], (uint16_t)(R[8] - 2));
     gsu_code(0x018cf5, 2);
     gsu_stw(R[8], R[0]);
     t = gsu.s;
@@ -3019,6 +3041,7 @@ l914E:
     gsu_code(0x019155, 3);
     R[0] = gsu_ldw(R[8]);
     gsu_code(0x019158, 1);
+    hires_queue(R[6], R[8]);
     gsu_stw(R[6], R[0]);
     R[6] = gsu_inc(R[6]);
     R[6] = gsu_inc(R[6]);

@@ -1965,10 +1965,13 @@ void abi_FxPolygonClipScreen(void)
  * DEC R10; the rest as the last shape drawn leaves them. R14, the ROM
  * buffer, the colour and plot options move as on the Super FX.
  */
+void hires_draw_list(void);  /* the port's high-resolution capture (runtime/hires.c) */
+
 void abi_FxDrawList(void)
 {
     int minus;
 
+    hires_draw_list();
     fx_list_begin();
     gsu_code(0x01a932, 3);
     R[1] = gsu_ldw(FX_LIST_END);

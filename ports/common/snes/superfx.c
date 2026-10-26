@@ -21,6 +21,7 @@
  * of 8 pixels reaches the RAM's bitplanes when it is flushed.
  */
 #include <string.h>
+#include <stdlib.h>
 
 #include "snes_internal.h"
 #include "coro.h"
@@ -58,6 +59,13 @@ static GsuClock clk;
 #define MASTER_HZ 21477273u
 static uint64_t run_master, run_clk;   /* a program's start: the console's clock, the model's */
 static Coro *gsu_co, *main_co;
+/* PORT_GSU_SPEED=F: the Super FX F times as fast as the cartridge's (an
+   overclock, as emulators offer: the game's frames come sooner; not the
+   original's pacing) */
+static double gsu_speed = 1.0;
+void gsu_set_speed(double f) { gsu_speed = f >= 0.25 ? f : 1.0; }
+double gsu_get_speed(void) { return gsu_speed; }
+
 
 static void gsu_main(void *arg);
 static inline uint8_t bus_byte(uint32_t addr);
@@ -71,6 +79,10 @@ uint8_t gsu_rpix(uint8_t x, uint8_t y);
 
 void gsu_reset(void)
 {
+    {
+        const char *e = getenv("PORT_GSU_SPEED");
+        gsu_speed = e && atof(e) >= 0.25 ? atof(e) : 1.0;
+    }
     memset(&gsu, 0, sizeof gsu);
     /* a cartridge with no save: its RAM reads $FF throughout, as the
        verification harness powers the original on */
@@ -96,6 +108,69 @@ void gsu_reset(void)
 uint8_t *snes_sfx_ram(void) { return ram_store; }
 int gsu_running(void) { return go; }
 
+/* ---- a sandbox (the port's in-between frames, interp.c) ----
+   Everything of the Super FX's: its RAM, registers, cache and clock, saved
+   and put back whole, so programs can be run on other inputs and leave no
+   trace. Only while no program is running. */
+typedef struct {
+    uint8_t ram[0x20000], cache[0x200];
+    RegsGSU gsu;
+    uint8_t pbr, cfgr, clsr, bramr, cbr_hi, cbr_lo, reg_latch, sfr_irq, sfr_alt, sfr_b;
+    int go, pending;
+    uint64_t gsu_now, gsu_target, run_master, run_clk;
+    GsuClock clk;
+} GsuSandbox;
+
+unsigned long gsu_sandbox_size(void) { return sizeof(GsuSandbox); }
+int gsu_idle(void) { return !go && !pending; }
+
+void gsu_sandbox_save(void *p)
+{
+    GsuSandbox *s = (GsuSandbox *)p;
+    memcpy(s->ram, ram_store, sizeof s->ram);
+    memcpy(s->cache, cache, sizeof s->cache);
+    s->gsu = gsu;
+    s->pbr = pbr; s->cfgr = cfgr; s->clsr = clsr; s->bramr = bramr; s->cbr_hi = cbr_hi; s->cbr_lo = cbr_lo;
+    s->reg_latch = reg_latch; s->sfr_irq = sfr_irq; s->sfr_alt = sfr_alt; s->sfr_b = sfr_b;
+    s->go = go; s->pending = pending;
+    s->gsu_now = gsu_now; s->gsu_target = gsu_target; s->run_master = run_master; s->run_clk = run_clk;
+    s->clk = clk;
+}
+
+/* idle: the state loaded as stopped (no program running), for running
+   programs directly (gsu_sandbox_run) */
+void gsu_sandbox_load(const void *p, int idle)
+{
+    const GsuSandbox *s = (const GsuSandbox *)p;
+    memcpy(ram_store, s->ram, sizeof s->ram);
+    memcpy(cache, s->cache, sizeof cache);
+    gsu = s->gsu;
+    pbr = s->pbr; cfgr = s->cfgr; clsr = s->clsr; bramr = s->bramr; cbr_hi = s->cbr_hi; cbr_lo = s->cbr_lo;
+    reg_latch = s->reg_latch; sfr_irq = s->sfr_irq; sfr_alt = s->sfr_alt; sfr_b = s->sfr_b;
+    go = idle ? 0 : s->go; pending = idle ? 0 : s->pending;
+    gsu_now = s->gsu_now; gsu_target = s->gsu_target; run_master = s->run_master; run_clk = s->run_clk;
+    clk = s->clk;
+}
+
+/* the program at bank:addr run to its STOP here and now, with GO clear:
+   its C never hands back to the S-CPU (clk_sync, bus_wait); the clock's
+   bookkeeping skipped (the sandbox is put back after: its time is
+   nobody's), the pixels still plotted through the caches */
+static int untimed;
+/* the port's own extra Super FX work inside a running program's STOP (the
+   time scale's re-posed cars): untimed, so it never hands back */
+void gsu_set_untimed(int on) { untimed = on; }
+
+void gsu_sandbox_run(uint8_t bank, uint16_t addr)
+{
+    pbr = bank;
+    gsu.r[15] = addr;
+    gsu.pre_b = gsu.pre_alt1 = gsu.pre_alt2 = gsu.pre_sreg = gsu.pre_dreg = 0;
+    untimed = 1;
+    snes_gsu_run_hook(bank, addr);
+    untimed = 0;
+}
+
 /* ---- time ---- */
 
 /* The Super FX's clock as the model has moved it; past the S-CPU's time,
@@ -104,7 +179,7 @@ static void clk_sync(void)
 {
     if (!go)
         return;
-    gsu_now = run_master + (clk.now - run_clk) * MASTER_HZ / GSU_HZ;
+    gsu_now = run_master + (uint64_t)((double)(clk.now - run_clk) * MASTER_HZ / GSU_HZ / gsu_speed);
     if (gsu_now >= gsu_target)
         coro_switch(gsu_co, main_co);
 }
@@ -277,7 +352,7 @@ static uint8_t *ram_byte(uint32_t addr)
 uint8_t gsu_rd8(uint32_t addr)
 {
     addr &= 0xFFFFFF;
-    if (is_ram(addr) && go) {
+    if (is_ram(addr) && go && !untimed) {
         gsuclk_ram_read(&clk);
         clk_sync();
     }
@@ -289,7 +364,7 @@ void gsu_wr8(uint32_t addr, uint8_t value)
     addr &= 0xFFFFFF;
     if (!is_ram(addr))
         return;
-    if (go) {
+    if (go && !untimed) {
         gsuclk_ram_write(&clk);
         clk_sync();
     }
@@ -301,12 +376,14 @@ static uint8_t pix_read(GsuClock *c, uint32_t addr) { (void)c; return *ram_byte(
 static void pix_write(GsuClock *c, uint32_t addr, uint8_t v) { (void)c; *ram_byte(addr) = v; }
 
 /* ---- the time the C states (gsu.h) ---- */
-void gsu_code(uint32_t addr, uint32_t n) { gsuclk_code(&clk, addr, n); clk_sync(); }
-void gsu_cache(uint16_t r15) { gsuclk_cache(&clk, r15); }
-void gsu_cyc(uint32_t clocks) { gsuclk_step(&clk, GSUCLK_INSN, clocks); clk_sync(); }
+void gsu_code(uint32_t addr, uint32_t n) { if (untimed) return; gsuclk_code(&clk, addr, n); clk_sync(); }
+void gsu_cache(uint16_t r15) { if (untimed) return; gsuclk_cache(&clk, r15); }
+void gsu_cyc(uint32_t clocks) { if (untimed) return; gsuclk_step(&clk, GSUCLK_INSN, clocks); clk_sync(); }
 
 void gsu_time(int what)
 {
+    if (untimed)
+        return;
     if (what == 0)
         gsuclk_mult(&clk);         /* GSU_T_MULT */
     else
@@ -316,6 +393,8 @@ void gsu_time(int what)
 
 void gsu_buffer(int what)
 {
+    if (untimed)
+        return;
     if (what == 0)
         gsuclk_r14(&clk);          /* GSU_B_R14 */
     else if (what == 2)
@@ -338,11 +417,16 @@ static GsuScreen screen(void)
 }
 
 void (*snes_gsu_plot_hook)(uint8_t x, uint8_t y, uint8_t c);
+/* the port's wider redraws (a sandbox drawing past the game's buffer):
+   pixels at or past these left out (0: none) */
+int gsu_plot_clip_w, gsu_plot_clip_h;
 
 void gsu_plot(uint8_t x, uint8_t y)
 {
     GsuScreen s = screen();
     uint8_t c = gsu.colr;
+    if (gsu_plot_clip_w && (x >= gsu_plot_clip_w || y >= gsu_plot_clip_h))
+        return;
     if (!(gsu.por & 0x01)) {
         if (s.md == 3) {
             if (gsu.por & 0x08) {

@@ -972,6 +972,8 @@ void abi_TilemapRowToE3D7(void)
 uint16_t ObjectLinkFlag4000Step(void);
 
 /* The body of BackdropRowsUpdate; returns A as the code leaves it. */
+void interp_note_backdrop(uint16_t sel);   /* the port's in-between frames (interp.c): reads work RAM itself, no bus time */
+
 static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
 {
     uint32_t b = (uint32_t)bank << 16;
@@ -980,6 +982,7 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     unsigned n;
 
     (cyc(90), ObjectLinkFlag4000Step());
+    interp_note_backdrop(sel);
     cyc(140);
     h = rd16(0x0006CD);
     s = (uint16_t)((h << 1) + 0x42 + (h >> 15));

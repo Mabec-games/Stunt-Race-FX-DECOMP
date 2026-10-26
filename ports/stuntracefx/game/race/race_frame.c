@@ -3,6 +3,9 @@
  * sets up the Super FX, runs the course script and steps two frames.
  */
 #include "machine.h"
+void port_race_mode(int race);  /* the port's speed modes: on in a race frame, off elsewhere (interp.c) */
+void port_hud_begin(int world); /* the HUD's Super FX drawings recorded, or drawn again between (interp.c) */
+void port_hud_end(void);
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
@@ -146,6 +149,7 @@ void RaceFrameStep(Carried *cr)
     uint16_t arg = cr->a, w;
     uint8_t v;
 
+    port_race_mode(0);             /* a menu's 3D (the car and course previews): the original's */
     set_p(cr, (uint8_t)(cr->p | (P_M)));
     set_p(cr, (uint8_t)(cr->p & ((uint8_t)~P_X)));
     cr->db = 0x03;
@@ -1258,6 +1262,15 @@ static void frame_lda8_imm(Carried *cr, uint8_t v)
 
 /* The frame's start: data bank $02 (PHK, PLB), the frames counted since
    the last ($0306) taken into $06D4, and $00 = 2. */
+extern int port_steady_ticks;   /* the port's steady game speed (interp.c): 0 the original's */
+extern int port_timescale_k;    /* the port's time scale (interp.c): 0 off */
+void port_wait_begin(void);     /* the steady wait before a race frame begins and ends (interp.c: the look-ahead) */
+void port_wait_end(void);
+int world_frame = 1;            /* this race frame runs the race's phases (the time scale's K-th); interp.c reads it */
+static uint8_t frames_kept;     /* $0306 left counting through the frames between */
+static uint16_t cam_rec, cam_prev[6], cam_cur[6];   /* the camera's last two places (+$08-$12) */
+static int cam_ok, sub_shown;
+
 static void frame_start(Carried *cr)
 {
     uint32_t b = 0x020000;
@@ -1267,11 +1280,28 @@ static void frame_start(Carried *cr)
     cr->db = 0x02;
     set_p(cr, nz8(cr->p, 0x02));
     cyc(140);
+    /* the port's steady speed: a race frame starts no sooner than
+       port_steady_ticks video frames after the last (the Super FX is
+       overclocked so that it is never later either) */
+    if (port_steady_ticks) {
+        /* the look-ahead's copy of the game runs the next race frame from
+           here (interp.c) */
+        port_wait_begin();
+        while (rd8(cyc_then(46, b | 0x0306)) < (uint8_t)(frames_kept + port_steady_ticks))
+            ;
+        port_wait_end();
+    }
     r_lda8(cr, b | 0x0306);
     cyc(24);
     wr8(b | 0x06D4, (uint8_t)cr->a);
     cyc(24);
-    wr8(b | 0x0306, 0x00);
+    /* with the time scale, $0306 keeps counting until the phase frame's
+       end (RaceFrameRun): the phases count real time by it
+       (PanelDelayCount), the frames since they last ran */
+    if (!port_timescale_k)
+        wr8(b | 0x0306, 0x00);
+    else
+        frames_kept = (uint8_t)cr->a;
     frame_lda8_imm(cr, 0x02);
     cyc(32);
     wr8(cr->d, 0x02);
@@ -1394,14 +1424,65 @@ void RaceFrameRun(Carried *cr)
 {
     uint8_t p0 = cr->p, db = cr->db;
     uint32_t b;
+    /* the port's time scale K (60 a second): the race's phases, HUD and
+       sounds every K-th race frame, at the original's pace; the cars'
+       physics every frame, scaled */
+    static int sub;
+    int world = !port_timescale_k || ++sub >= port_timescale_k;
 
+    if (world)
+        sub = 0;
+    world_frame = world;
+    port_race_mode(1);
     frame_start(cr);
-    frame_view_from(cr, 0x0346);
+    if (port_timescale_k) {
+        /* the camera moves every K-th frame (its objects run then): the
+           view from between its last two places, put back after */
+        uint16_t cam = rd16(0x7E0000 | (uint16_t)(0x204F + rd16(0x7E0000 | (uint16_t)(0x204F + rd16(0x020346)))));
+        uint16_t now_v[6];
+        int i;
+        /* a world frame shows the camera's latest place (its objects
+           move it after the view is taken); the frames after it step
+           through the new move, 1/K to (K-1)/K */
+        int part = world ? port_timescale_k : sub_shown + 1;
+        sub_shown = world ? 0 : part;
+        for (i = 0; i < 6; i++)
+            now_v[i] = rd16((uint16_t)(cam + 0x08 + 2 * i));
+        if (cam == cam_rec && cam_ok) {
+            int cut = 0;
+            for (i = 0; i < 6; i++) {
+                int d = (int16_t)(uint16_t)(cam_cur[i] - cam_prev[i]);
+                if (d > (i < 3 ? 0x800 : 0x2000) || d < -(i < 3 ? 0x800 : 0x2000))
+                    cut = 1;                         /* a cut: no between */
+            }
+            for (i = 0; i < 6 && !cut; i++) {
+                int d = (int16_t)(uint16_t)(cam_cur[i] - cam_prev[i]);
+                wr16((uint16_t)(cam + 0x08 + 2 * i), (uint16_t)(cam_prev[i] + d * part / port_timescale_k));
+            }
+        }
+        frame_view_from(cr, 0x0346);
+        for (i = 0; i < 6; i++)
+            wr16((uint16_t)(cam + 0x08 + 2 * i), now_v[i]);
+    } else
+        frame_view_from(cr, 0x0346);
     (cyc(62), PlayerControlsFrame(cr));
     frame_side0(cr);
     r_sep(cr, P_M);
     r_rep(cr, P_X);
     (cyc(128), w_ObjectsRunHandlers(cr));
+    if (port_timescale_k && world) {
+        /* the camera's place after its frame: the last two kept */
+        uint16_t cam = rd16(0x7E0000 | (uint16_t)(0x204F + rd16(0x7E0000 | (uint16_t)(0x204F + rd16(0x020346)))));
+        int i;
+        if (cam != cam_rec)
+            cam_ok = 0;
+        for (i = 0; i < 6; i++) {
+            cam_prev[i] = cam_ok ? cam_cur[i] : rd16((uint16_t)(cam + 0x08 + 2 * i));
+            cam_cur[i] = rd16((uint16_t)(cam + 0x08 + 2 * i));
+        }
+        cam_rec = cam;
+        cam_ok = 1;
+    }
     (cyc(62), ViewUpdateAndGsuAEF8_cr(cr));
     (cyc(62), PaletteFadeStep_cr(cr));
     (cyc(62), WordCopyStep_cr(cr));
@@ -1445,7 +1526,25 @@ void RaceFrameRun(Carried *cr)
     } else {
         cyc(106);
         r_sep(cr, P_M);
-        RaceSoundsAndHud(cr);
+        port_hud_begin(world);
+        if (world) {
+            /* the phases' panel delays (PanelDelayCount) take $0306 near
+               the frame's end: on the console about the frame's whole
+               length. The port's speeds finish a frame early and wait at
+               the next one's start: so here the length a frame stands
+               for (the time scale's K, or the steady speed's frames) */
+            /* (read only with a speed mode: a read takes the console's time) */
+            uint8_t counted = (port_timescale_k || port_steady_ticks) ? rd8(0x020306) : 0;
+            if (port_timescale_k)
+                wr8(0x020306, (uint8_t)port_timescale_k);
+            else if (port_steady_ticks)
+                wr8(0x020306, (uint8_t)port_steady_ticks);
+            RaceSoundsAndHud(cr);
+            /* the real count back: the steady wait goes by it */
+            if (port_timescale_k || port_steady_ticks)
+                wr8(0x020306, counted);
+        }
+        port_hud_end();
         cyc(46);
     }
     w_GsuScreenToggle(cr);
@@ -1453,6 +1552,13 @@ void RaceFrameRun(Carried *cr)
     b = (uint32_t)cr->db << 16;
     cyc(46);
     wr8(b | 0x0357, 0x00);
+    if (port_timescale_k && world) {
+        /* the count since the phases last ran, taken off; a video frame
+           that began during this frame still counts (as the original's
+           clear at the frame's start keeps it) */
+        wr8(0x020306, (uint8_t)(rd8(0x020306) - frames_kept));
+        frames_kept = 0;
+    }
     frame_time(cr, db, p0);
     cyc(58);                            /* its return */
 }

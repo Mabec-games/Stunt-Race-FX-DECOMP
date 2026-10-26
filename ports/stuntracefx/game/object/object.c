@@ -8,6 +8,10 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "carried.h"
+#include "object_calls.h"
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has);
 uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj);
@@ -1291,6 +1295,15 @@ static uint16_t magnitude(uint16_t v)
  * 8-bit; near: as ObjectSet5DByKind (V from the distance add); far: A = the
  * +$5D value, N, Z, C, V from its add.
  */
+/* port: the distance (|dX| + |dZ|) out to which the other cars are drawn
+   in 3D (PORT_FAR_CARS / F7); the original's $1194 = off. The game itself
+   always goes by $1194 (a car near or far changes which of its parts run,
+   and those step the random numbers the opponents drive by): the farther
+   distance applies only in the picture's untimed rebuild of the draw list
+   (port_far_cars_list) */
+uint16_t port_far_cars = 0x1194;
+extern int snes_untimed;
+
 uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
@@ -1307,7 +1320,7 @@ uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
     s = (unsigned)dz + dx;
     sum = (uint16_t)s;
     *p = (uint8_t)((*p & ~P_V) | ((~(dz ^ dx) & (dz ^ sum) & 0x8000) ? P_V : 0));
-    if ((uint16_t)(sum - 0x1194) & 0x8000) {
+    if ((uint16_t)(sum - 0x1194) & 0x8000 || (snes_untimed && sum < port_far_cars)) {
         wr8(field(bank, obj, 0x24), cyc_then(46, rd8(cyc_then(168, field(bank, obj, 0x24))) & 0xF7));
         wr8(field(bank, obj, 0x5F), cyc_then(46, 0x00));
         return cyc_then(64, ObjectSet5DByKind(bank, obj, rd8(cyc_then(30, field(bank, obj, 0x49))), p));
@@ -2689,23 +2702,48 @@ void abi_ObjectReleaseY(void)
  * M 8-bit, X 16-bit; N, Z from the restored data bank; C, V as the handlers
  * leave them.
  */
+extern int port_timescale_k;   /* the port's time scale (interp.c): 0 off */
+extern int world_frame;        /* the race frame that runs the world's own work (race_frame.c) */
+
+/* With the port's time scale, the objects that run every race frame: those
+   with a Super FX record (the cars, their parts, what the physics touches)
+   and those that only follow a parent (ObjectAttachFollow,
+   ObjectLampOnParent); the rest (the camera, the course's animations) run
+   every K-th frame, at the original's pace. */
+static int every_frame_object(uint16_t x)
+{
+    uint8_t bank = rd8(0x7E0000 | (uint16_t)(0x201C + x));
+    uint16_t h = rd16(0x7E0000 | (uint16_t)(0x201A + x));
+    if (rd16(0x7E0000 | (uint16_t)(0x2022 + x)))
+        return 1;
+    return bank == 0x08 && (h == 0xDDB4 || h == 0xE653);
+}
+
 void ObjectsRunHandlers(Carried *cr)
 {
     uint32_t b = (uint32_t)cr->db << 16;
     uint8_t db = cr->db, v;
     uint16_t x, y = cr->y;
+    int some = port_timescale_k && !world_frame;   /* only the every-frame objects */
 
     cyc(46);
-    v = (uint8_t)(rd8(b | 0x05E9) + 1);
-    cyc(6);
-    wr8(b | 0x05E9, v);
-    if (!v)
-        { cyc(40); wr8(b | 0x05EA, cyc_then(6, (uint8_t)(rd8(b | 0x05EA) + 1))); } else { cyc(22); }
+    if (!some) {
+        /* the frame count the animations go by: the original's pace */
+        v = (uint8_t)(rd8(b | 0x05E9) + 1);
+        cyc(6);
+        wr8(b | 0x05E9, v);
+        if (!v)
+            { cyc(40); wr8(b | 0x05EA, cyc_then(6, (uint8_t)(rd8(b | 0x05EA) + 1))); } else { cyc(22); }
+    }
     cr->db = 0x7E;
     b = 0x7E0000;
     cyc(134);
     x = rd16(b | 0x0329);
     while (x) {
+        if (some && !every_frame_object(x)) {
+            x = rd16(b | (uint16_t)(0x2000 + x));
+            continue;
+        }
         cyc(24);
         wr8(b | 0x035C, 0x00);
         cyc(30);
@@ -2766,6 +2804,276 @@ void ObjectsRunHandlers(Carried *cr)
     cr->y = 0;
     cr->db = db;
     set_p(cr, (uint8_t)((nz8(cr->p, db) | P_M) & ~P_X));
+}
+
+/* ---- port: the other cars in 3D farther out (the picture only) ----
+   After the game's draw list is built: on a copy of the state, with no
+   time passing (snes_untimed), each car the game has made far (its +$24
+   bit 3, +$5D its far sprite's $99A3 + 2 x kind) but within
+   port_far_cars is made near again (ObjectNearFocus), its hidden parts
+   (wheels, lamps: +$06 the car, +$24 bit 5) run their own frame once to
+   be placed on it, and the draw list is built again; that list goes to
+   the picture's redraws (interp_far_take: the in-betweens and the
+   look-ahead's pictures draw it in the Super FX sandbox), then the state
+   is put back. The game's own list and draw stay as they were (a longer
+   draw would change the game's timing). Thrown away when the rebuild
+   touched a register or filled the list. */
+void interp_far_take(const uint8_t *rec, uint16_t n);
+void interp_far_pose(uint16_t rec);
+extern int snes_untimed_refused;
+const uint8_t *snes_wram(void);
+uint8_t *snes_sfx_ram(void);
+long port_far_lists, port_far_cars_drawn, port_far_refused, port_far_full;
+static uint16_t far_w16(const uint8_t *w, uint16_t a) { return (uint16_t)(w[a] | w[(uint16_t)(a + 1)] << 8); }
+
+/* car x: far by the game's distance, within the port's: its distance
+   (0: not such a car) */
+static unsigned far_car(const uint8_t *w, uint16_t x)
+{
+    uint16_t dx, dz, k;
+    if ((w[0x2024 + x] & 0x28) != 0x08)
+        return 0;
+    k = far_w16(w, (uint16_t)(0x205D + x));
+    if (k < 0x99A3 || k > 0x99A3 + 0x40 || !(k & 1))
+        return 0;
+    dx = (uint16_t)(far_w16(w, 0x1A6C) - far_w16(w, (uint16_t)(0x200C + x)));
+    dz = (uint16_t)(far_w16(w, 0x1A70) - far_w16(w, (uint16_t)(0x2010 + x)));
+    if (dx & 0x8000)
+        dx = (uint16_t)-dx;
+    if (dz & 0x8000)
+        dz = (uint16_t)-dz;
+    return (unsigned)dx + dz < port_far_cars ? (unsigned)dx + dz : 0;
+}
+
+/* The far cars' heading as they move: a far car's physics keeps its
+   heading for a few race frames, then turns it 20-40 degrees at once
+   (the sprite's direction only needed it roughly); in 3D that looks
+   like a twitch sideways. Each car's place last race frame kept: a far
+   car moving steadily is turned the way it went (heading = atan2(-dX,
+   dZ), 256 to a turn), unless that is far from the game's (a spin, a
+   crash) */
+#define FAR_TRACK 32
+static uint16_t track_obj[FAR_TRACK];
+static int16_t track_x[FAR_TRACK], track_z[FAR_TRACK];
+
+static int far_heading(const uint8_t *w, uint16_t car, uint8_t *heading)
+{
+    int k, dx, dz, d;
+    double a;
+    for (k = 0; k < FAR_TRACK && track_obj[k] != car; k++)
+        ;
+    if (k == FAR_TRACK)
+        return 0;
+    dx = (int16_t)far_w16(w, (uint16_t)(0x200C + car)) - track_x[k];
+    dz = (int16_t)far_w16(w, (uint16_t)(0x2010 + car)) - track_z[k];
+    if (abs(dx) + abs(dz) < 40 || abs(dx) + abs(dz) > 1500)
+        return 0;
+    a = atan2(-(double)dx, (double)dz) * 128.0 / 3.14159265358979;
+    *heading = (uint8_t)(int)lround(a < 0 ? a + 256.0 : a);
+    d = (int8_t)(uint8_t)(*heading - w[0x2015 + car]);
+    return abs(d) < 44;
+}
+
+/* every car's place, for the next race frame's headings */
+static void far_track(const uint8_t *w)
+{
+    uint16_t x;
+    int k = 0;
+    for (x = far_w16(w, 0x0329); x && k < FAR_TRACK; x = far_w16(w, (uint16_t)(0x2000 + x)))
+        if (far_w16(w, (uint16_t)(0x2022 + x)) && far_w16(w, (uint16_t)(0x205D + x)) >= 0x99A3 &&
+            far_w16(w, (uint16_t)(0x205D + x)) <= 0x99A3 + 0x40) {
+            track_obj[k] = x;
+            track_x[k] = (int16_t)far_w16(w, (uint16_t)(0x200C + x));
+            track_z[k] = (int16_t)far_w16(w, (uint16_t)(0x2010 + x));
+            k++;
+        }
+    for (; k < FAR_TRACK; k++)
+        track_obj[k] = 0;
+}
+
+/* The far cars' place as shown: a far car's simplified driving moves it
+   at one speed a stretch of course, then another (219, 160, 214, 533 a
+   race frame), at times not at all for a race frame and then twice as
+   far; in 3D that is a lurch forward. Shown: where its own recent speed
+   takes it, pulled half way back to the game's place each race frame
+   (never far from it; a jump of more than 1,500, the car put back on
+   the course, taken at once) */
+static struct { uint16_t obj; long seen; double x, z, vx, vz; } smooth[FAR_TRACK];
+static long smooth_calls;
+static int16_t shown_x[32], shown_z[32];
+
+static void far_smooth(const uint8_t *w, const uint16_t *cars, int ncars)
+{
+    int i, k, free_k;
+    smooth_calls++;
+    for (i = 0; i < ncars; i++) {
+        double tx = (int16_t)far_w16(w, (uint16_t)(0x200C + cars[i])), tz = (int16_t)far_w16(w, (uint16_t)(0x2010 + cars[i]));
+        free_k = -1;
+        for (k = 0; k < FAR_TRACK; k++) {
+            if (smooth[k].obj == cars[i] && smooth[k].seen == smooth_calls - 1)
+                break;
+            if (free_k < 0 && smooth[k].seen < smooth_calls - 1)
+                free_k = k;
+        }
+        if (k < FAR_TRACK) {
+            double px = smooth[k].x + smooth[k].vx, pz = smooth[k].z + smooth[k].vz;
+            double sx = tx - smooth[k].x, sz = tz - smooth[k].z;
+            if (fabs(tx - px) + fabs(tz - pz) > 1500) {
+                smooth[k].x = tx;
+                smooth[k].z = tz;
+            } else {
+                /* its speed: the shown steps' average; its place: the
+                   prediction half way to the game's */
+                smooth[k].vx = smooth[k].vx * 0.7 + sx * 0.3;
+                smooth[k].vz = smooth[k].vz * 0.7 + sz * 0.3;
+                smooth[k].x = (px + tx) / 2;
+                smooth[k].z = (pz + tz) / 2;
+            }
+        } else if ((k = free_k) >= 0) {
+            smooth[k].obj = cars[i];
+            smooth[k].x = tx;
+            smooth[k].z = tz;
+            smooth[k].vx = smooth[k].vz = 0;
+        }
+        if (k >= 0) {
+            smooth[k].seen = smooth_calls;
+            shown_x[i] = (int16_t)lround(smooth[k].x);
+            shown_z[i] = (int16_t)lround(smooth[k].z);
+        } else {
+            shown_x[i] = (int16_t)tx;
+            shown_z[i] = (int16_t)tz;
+        }
+    }
+}
+
+/* the first m cars made near on the state (w, sfx), the draw list built
+   again: its count, or 0 when the rebuild touched a register */
+static uint16_t far_rebuild(uint8_t *w, uint8_t *sfx, const uint16_t *cars, int m, const uint16_t *near_obj, const uint8_t *near_18)
+{
+    int refused0 = snes_untimed_refused, i, k;
+    uint16_t y;
+    for (i = 0; i < m; i++) {
+        uint8_t p = P_M, v;
+        uint16_t rec = far_w16(w, (uint16_t)(0x2022 + cars[i]));
+        ObjectNearFocus(0x7E, cars[i], &p);
+        v = (uint8_t)(0x8C | (w[0x2018 + cars[i]] & 0x03));   /* as set up (ObjectCarRecordTake) */
+        for (k = 0; k < 32 && near_obj[k]; k++)
+            if (near_obj[k] == cars[i])
+                v = near_18[k];
+        w[0x2018 + cars[i]] = v;
+        if (rec && far_heading(w, cars[i], &v)) {
+            /* (the heading from the game's places; the place shown below) */
+            w[0x2015 + cars[i]] = v;            /* the body (record +$05) */
+            sfx[(uint16_t)(rec + 0x25)] = v;    /* and its parts (FxCarPose) */
+        }
+        w[0x200C + cars[i]] = (uint8_t)shown_x[i];
+        w[0x200D + cars[i]] = (uint8_t)((uint16_t)shown_x[i] >> 8);
+        w[0x2010 + cars[i]] = (uint8_t)shown_z[i];
+        w[0x2011 + cars[i]] = (uint8_t)((uint16_t)shown_z[i] >> 8);
+        if (rec) {
+            /* its record's far mark ($0400 at +$16: the parts kept hidden)
+               off, and its parts placed on it as it stands: where the
+               object is (a far car's record can be a race frame behind
+               it: its wheels would trail it) */
+            sfx[(uint16_t)(rec + 0x17)] &= (uint8_t)~0x04;
+            for (k = 0; k < 3; k++) {
+                static const uint8_t from[3] = { 0x0C, 0x0E, 0x10 }, to[3] = { 0x1E, 0x20, 0x22 };
+                sfx[(uint16_t)(rec + to[k])] = w[0x2000 + cars[i] + from[k]];
+                sfx[(uint16_t)(rec + to[k] + 1)] = w[0x2000 + cars[i] + from[k] + 1];
+            }
+            interp_far_pose(rec);
+        }
+        for (y = far_w16(w, 0x0329); y; y = far_w16(w, (uint16_t)(0x2000 + y))) {
+            uint8_t c36 = w[0x2036 + y];
+            Carried c = {0, y, y, 0, (uint8_t)P_M, 0x7E};
+            if (far_w16(w, (uint16_t)(0x2006 + y)) != cars[i] || !(w[0x2024 + y] & 0x20) || y == cars[i])
+                continue;
+            if (c36 & 0x80) {
+                w[0x2036 + y] = 0x03;
+                ObjectRunHandlerB_cr(&c);
+            } else if (c36 > 1) {
+                w[0x2036 + y] = (uint8_t)(c36 - 1);
+                ObjectRunHandlerA_cr(&c);
+            }
+        }
+    }
+    ObjectDrawListBuild(0);
+    return snes_untimed_refused == refused0 ? far_w16(w, 0x0CEE) : 0;
+}
+
+static void far_cars_list(void);
+
+void port_far_cars_list(void)
+{
+    if (port_far_cars <= 0x1194)
+        return;
+    far_cars_list();
+    far_track(snes_wram());
+}
+
+static void far_cars_list(void)
+{
+    static uint8_t *keep_w, *keep_s;
+    static uint16_t near_obj[32];
+    static uint8_t near_18[32];
+    uint8_t *w = (uint8_t *)snes_wram(), *sfx = snes_sfx_ram();
+    Regs65816 keep_cpu;
+    uint16_t x, n = 0, cars[32];
+    unsigned dist[32], d;
+    int ncars = 0, i, m;
+    if (port_far_cars <= 0x1194)
+        return;
+    for (x = far_w16(w, 0x0329); x && ncars < 32; x = far_w16(w, (uint16_t)(0x2000 + x))) {
+        if ((d = far_car(w, x)) != 0) {
+            /* nearest first */
+            for (i = ncars++; i > 0 && dist[i - 1] > d; i--) {
+                cars[i] = cars[i - 1];
+                dist[i] = dist[i - 1];
+            }
+            cars[i] = x;
+            dist[i] = d;
+        } else if (far_w16(w, (uint16_t)(0x2022 + x)) && (w[0x2024 + x] & 0x18) == 0x10) {
+            /* a near car's +$18 (the model's frame byte, record +$1A: its
+               colours), which the far sprite's direction overwrites */
+            for (i = 0; i < 31 && near_obj[i] && near_obj[i] != x; i++)
+                ;
+            near_obj[i] = x;
+            near_18[i] = w[0x2018 + x];
+        }
+    }
+    far_smooth(w, cars, ncars);
+    if (!ncars)
+        return;
+    if (!keep_w) {
+        keep_w = (uint8_t *)malloc(0x20000);
+        keep_s = (uint8_t *)malloc(0x10000);
+    }
+    memcpy(keep_w, w, 0x20000);
+    memcpy(keep_s, sfx, 0x10000);
+    keep_cpu = cpu;
+    snes_untimed = 1;
+    /* all of them; with the list full (the game's limit, $31 records:
+       objects left out), the farthest left as the game has them */
+    for (m = ncars; m > 0; m--) {
+        n = far_rebuild(w, sfx, cars, m, near_obj, near_18);
+        if (n && n < 0x31)
+            interp_far_take(w + 0xF77F, n);   /* the list, for the picture's redraws */
+        memcpy(w, keep_w, 0x20000);
+        memcpy(sfx, keep_s, 0x10000);
+        cpu = keep_cpu;
+        if (!n || n < 0x31)
+            break;
+    }
+    /* the game's list again, as it was (the in-betweens' note of each
+       record's object, interp_note_record, follows the last build) */
+    ObjectDrawListBuild(0);
+    snes_untimed = 0;
+    port_far_lists++;
+    if (!n)
+        port_far_refused++;
+    else if (m < ncars)
+        port_far_full++;
+    port_far_cars_drawn += n && n < 0x31 ? m : 0;
 }
 
 void ObjectsRunHandlers_g(void)

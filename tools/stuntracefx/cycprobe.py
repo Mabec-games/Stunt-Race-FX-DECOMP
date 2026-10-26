@@ -601,7 +601,7 @@ def build_lib(outdir, lib):
         hybrid.main(outdir, lib)                   # its routine table
     table = os.path.join(os.path.dirname(lib), 'routines.c')
     files = sorted(glob.glob(os.path.join(outdir, '**', '*.c'), recursive=True))
-    p = subprocess.run(['cc', '-O2', '-w', '-std=gnu99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',
+    p = subprocess.run(['cc', '-O2', '-w', '-std=gnu99', '-shared', '-fPIC', *((['-undefined', 'dynamic_lookup'] if sys.platform == 'darwin' else ['-D_GNU_SOURCE'])),
                         '-I', os.path.join(outdir, 'include'), '-o', lib, table] + files, capture_output=True, text=True)
     if p.returncode:
         raise SystemExit('cycprobe: the library does not build:\n' + p.stderr[-3000:])

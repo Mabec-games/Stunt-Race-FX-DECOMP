@@ -36,7 +36,8 @@
 #include "gsu.h"
 #include "draw_list.h"
 
-extern const uint8_t srfx_rom[], srfx_rom_end[];
+const uint8_t *port_rom(void);
+uint32_t port_rom_size(void);
 
 #define CANVASES 2
 
@@ -371,6 +372,24 @@ static void finish(Screen *s)
     }
 }
 
+/* ---- the capture (interp.c): when set, every operation is also filled
+   into this canvas in software, whatever the buffer ---- */
+FxCanvas *canvas_capture;
+static FxDrawSource capture_src;
+
+static void capture_row(void *ctx, const FxSpan *s)
+{
+    (void)ctx;
+    fx_fill_span(&capture_src, canvas_capture, s);
+}
+
+static void capture_source(void)
+{
+    capture_src.ram = snes_sfx_ram();
+    capture_src.rom = port_rom();
+    capture_src.rom_size = port_rom_size();
+}
+
 /* ---- the operations ---- */
 void fx_op_clear(void)
 {
@@ -378,11 +397,15 @@ void fx_op_clear(void)
     uint16_t base = (uint16_t)(ram[0x021A] | ram[0x021B] << 8);   /* the buffer FxScreenClear clears */
     Screen *s;
     int c;
+    if (canvas_capture) {
+        memset(canvas_capture->px, 0, sizeof canvas_capture->px);
+        memset(canvas_capture->set, 1, sizeof canvas_capture->set);
+    }
     if (check < 0) {
         check = getenv("PORT_CANVASCHECK") != NULL;
         if (check) {
-            src.rom = srfx_rom;
-            src.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
+            src.rom = port_rom();
+            src.rom_size = port_rom_size();
             atexit(report);
         }
         if (check || gpu)
@@ -423,9 +446,16 @@ void fx_op_upload(int up)
 }
 
 /* a row, into the buffer PLOT draws in */
+void hires_span(const FxSpan *s);   /* the high-resolution capture (hires.c) */
+
 void fx_op_span(const FxSpan *s)
 {
     int c;
+    hires_span(s);
+    if (canvas_capture) {
+        capture_source();
+        fx_fill_span(&capture_src, canvas_capture, s);
+    }
     if ((!check && !gpu) || check < 0 || (c = screen_of((uint16_t)(gsu.scbr << 10), 0)) < 0)
         return;
     rows++;
@@ -473,6 +503,10 @@ static void list_row(void *ctx, const FxSpan *s)
 /* a draw list's rows (from fx_list_begin, as FxDrawList starts) */
 void canvas_list(const FxDrawSource *s)
 {
+    if (canvas_capture) {
+        capture_source();
+        fx_list_spans(s, capture_row, NULL);
+    }
     if ((!check && !gpu) || check < 0)
         return;
     fx_list_spans(s, list_row, NULL);

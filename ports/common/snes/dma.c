@@ -108,17 +108,23 @@ void dma_reg(uint8_t reg, uint8_t v) { dma_write((uint16_t)(0x4300 | (reg & 0x7F
 void dma_go(uint8_t channels) { dma_start(channels); }
 void hdma_set(uint8_t channels) { dma_hdmaen = channels; }
 
+/* set: transfers take no time (the port's one-go screen upload, not the
+   console's: the CPU is not held, the bytes arrive at once) */
+int snes_dma_untimed;
+
 void dma_start(uint8_t channels)
 {
     int i;
-    snes_tick(18);
+    if (!snes_dma_untimed)
+        snes_tick(18);
     for (i = 0; i < 8; i++) {
         Channel *c = &ch[i];
         unsigned k = 0, mode;
         if (!(channels & (1u << i)))
             continue;
         mode = c->dmap & 7;
-        snes_tick(8);
+        if (!snes_dma_untimed)
+            snes_tick(8);
         do {
             move(c, (uint32_t)c->a1b << 16 | c->a1t, (uint8_t)(c->bbad + pattern[mode][k & 3]));
             k++;
@@ -126,7 +132,8 @@ void dma_start(uint8_t channels)
             if (!(c->dmap & 0x08))
                 c->a1t = (uint16_t)(c->a1t + ((c->dmap & 0x10) ? -1 : 1));
             c->das--;
-            snes_tick(8);
+            if (!snes_dma_untimed)
+                snes_tick(8);
         } while (c->das);
     }
 }

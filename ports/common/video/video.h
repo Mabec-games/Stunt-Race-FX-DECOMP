@@ -54,6 +54,10 @@ const VidFrame *vid_frame(void);
 /* a frame drawn from its record (the reference the GPU compositor is held
    to): VID_WIDTH x VID_HEIGHT pixels, 0xFFRRGGBB */
 void vid_draw_frame(const VidFrame *f, uint32_t *out);
+/* a sprite's size (OBSEL's size bits, the sprite's large bit) */
+void vid_obj_size(uint8_t obsel, int big, unsigned *w, unsigned *h);
+/* rows first to last (0-223) only */
+void vid_draw_lines(const VidFrame *f, uint32_t *out, unsigned first, unsigned last);
 
 void vid_reset(void);
 /* One part of the screen state: the console picture unit's register

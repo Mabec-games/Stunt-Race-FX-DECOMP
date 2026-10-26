@@ -58,6 +58,25 @@ void snes_power(const SnesCart *cart);
    the save): sfx_ram_size bytes. */
 uint8_t *snes_sfx_ram(void);
 
+/* The Super FX's whole state saved and put back (superfx.c), to run its
+   programs on other inputs without a trace (the in-between frames,
+   interp.c); only while none is running (gsu_idle). gsu_sandbox_load with
+   idle set loads it stopped; gsu_sandbox_run runs a program to its STOP
+   there and then. */
+unsigned long gsu_sandbox_size(void);
+void gsu_sandbox_save(void *p);
+void gsu_sandbox_load(const void *p, int idle);
+void gsu_sandbox_run(uint8_t bank, uint16_t addr);
+void gsu_set_untimed(int on);
+int gsu_idle(void);
+/* the Super FX's speed against the cartridge's (an overclock; PORT_GSU_SPEED) */
+void gsu_set_speed(double f);
+/* DMA that takes no time (the port's one-go screen upload; dma.c) */
+extern int snes_dma_untimed;
+/* the S-CPU's speed against the console's (an overclock; bus.c) */
+void snes_set_cpu_speed(double f);
+double gsu_get_speed(void);
+
 /* ---- time ------------------------------------------------------------------------ */
 extern uint64_t snes_clock;            /* master clocks since power on */
 uint32_t snes_frame(void);             /* frames begun since power on */

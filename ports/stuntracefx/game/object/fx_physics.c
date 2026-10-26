@@ -88,6 +88,8 @@
 #define FX_PARAM_GRIP_AHEAD      0x2676u
 #define FX_PARAM_CURVE_A         0x267Au
 #define FX_PARAM_CURVE_B         0x267Cu
+/* The port scales only boost consumption when physics runs at 60 Hz. */
+uint16_t interp_boost_cost(uint16_t rec, uint16_t cost);
 #define FX_PARAM_SPEED_CAP       0x267Eu
 #define FX_PARAM_SLIDE_LIMIT     0x2680u
 #define FX_PARAM_JUMP            0x2682u
@@ -4904,7 +4906,7 @@ lB45F:
     if (t) { gsu_code(0x04b49d, 1); goto lB49D; }
     gsu_code(0x04b482, 5);
     R[0] = gsu_ldw(FX_PARAM_SPEED_CAP);
-    R[6] = gsu_sub(R[6], R[0], 0);
+    R[6] = gsu_sub(R[6], interp_boost_cost(R[8], R[0]), 0);
     t = !gsu.s;
     gsu_code(0x04b487, 4);
     if (t) { gsu_code(0x04b48d, 1); goto lB48D; }

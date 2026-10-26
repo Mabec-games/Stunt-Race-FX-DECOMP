@@ -275,13 +275,19 @@ void irq_mask_set(int masked)
 }
 
 /* ---- the Super FX and the SPC700 ---- */
+void interp_gsu(uint8_t bank, uint16_t addr, int done);   /* the in-between frames (interp.c) */
+int interp_gsu_skip(uint8_t bank, uint16_t addr);         /* the time scale's skipped programs (interp.c) */
+
 static void gsu_run(uint8_t bank, uint16_t addr)
 {
     const PortRoutine *r = find((uint32_t)bank << 16 | addr);
     if (!r)
         snes_fatal("Super FX program at $%02X:%04X has no C", bank, addr);
     traced("gsu", r);
-    r->abi();
+    interp_gsu(bank, addr, 0);
+    if (!interp_gsu_skip(bank, addr))
+        r->abi();
+    interp_gsu(bank, addr, 1);
 }
 
 static void spc_run(uint16_t addr)

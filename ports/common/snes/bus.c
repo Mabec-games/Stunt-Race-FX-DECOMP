@@ -39,6 +39,23 @@ int (*snes_irq_masked)(void);
 void (*snes_frame_hook)(void);
 void (*snes_write_hook)(uint32_t addr, uint8_t value);
 
+/* The S-CPU's speed against the console's (the port's overclock, as
+   emulators offer it; 1 the console's): the clocks its accesses and its
+   C's stated cycles take, scaled, the fractions carried. Delay loops
+   (snes_cpu_wait) keep their time: they wait on the sound CPU. */
+static double cpu_speed = 1.0, cpu_frac;
+void snes_set_cpu_speed(double f) { cpu_speed = f >= 0.25 ? f : 1.0; cpu_frac = 0; }
+static unsigned cpu_time(unsigned clocks)
+{
+    unsigned n;
+    if (cpu_speed == 1.0)
+        return clocks;
+    cpu_frac += clocks / cpu_speed;
+    n = (unsigned)cpu_frac;
+    cpu_frac -= n;
+    return n;
+}
+
 static uint8_t wram[0x20000];
 static uint32_t wram_port;
 /* the bytes of the first 8 KB whose last write was an interrupt's frame
@@ -232,8 +249,16 @@ static void run_events(void)
     events_next();
 }
 
+/* the port's untimed stretch (a picture worked out on a copy of the
+   state, put back after): no time passes, no interrupt is taken, and no
+   register but the multiplier/divider is written (a write refused is
+   counted: the stretch's work is then thrown away) */
+int snes_untimed, snes_untimed_refused;
+
 void snes_tick(unsigned clocks)
 {
+    if (snes_untimed)
+        return;
     snes_clock += clocks;
     if (snes_clock >= next_event)
         run_events();
@@ -243,6 +268,8 @@ void snes_cart_irq(int level) { cart_irq = level; }
 
 static void check_interrupts(void)
 {
+    if (snes_untimed)
+        return;
     if (nmi_pending) {
         nmi_pending = 0;
         dbg_nmis++;
@@ -643,7 +670,7 @@ static uint8_t access_rd(uint32_t addr)
     last_read = addr;
     last_was_read = 1;
     /* the clock first: what the read sees is the machine at its end */
-    snes_tick(rom_data(addr) ? 0 : snes_access_clocks(addr));
+    snes_tick(cpu_time(rom_data(addr) ? 0 : snes_access_clocks(addr)));
     v = bus_read(addr, &cost, 0);
     snes_mdr = v;
     return v;
@@ -675,10 +702,14 @@ static void access_wr(uint32_t addr, uint8_t value)
 {
     unsigned cost;
     addr &= 0xFFFFFF;
+    if (snes_untimed && reg_addr(addr) && !((uint16_t)addr >= 0x4202 && (uint16_t)addr <= 0x4206)) {
+        snes_untimed_refused++;
+        return;
+    }
     last_was_read = 0;
-    snes_tick(snes_access_clocks(addr));
+    snes_tick(cpu_time(snes_access_clocks(addr)));
     snes_mdr = value;
-    if (snes_write_hook)
+    if (snes_write_hook && !snes_untimed)
         snes_write_hook(addr, value);
     bus_write(addr, value, &cost, 0);
 }
@@ -712,7 +743,7 @@ void io_read_time(uint32_t addr, uint8_t value)
         check_interrupts();
     last_read = addr;
     last_was_read = 1;
-    snes_tick(snes_access_clocks(addr));
+    snes_tick(cpu_time(snes_access_clocks(addr)));
     snes_mdr = value;
 }
 
@@ -722,8 +753,10 @@ uint16_t input_pad(int port) { return joy_auto[port & 1]; }
 void io_write_time(uint32_t addr, uint8_t value)
 {
     addr &= 0xFFFFFF;
+    if (snes_untimed && !((uint16_t)addr >= 0x4202 && (uint16_t)addr <= 0x4206))
+        snes_untimed_refused++;     /* (its work done by the C all the same: counted, the stretch thrown away) */
     last_was_read = 0;
-    snes_tick(snes_access_clocks(addr));
+    snes_tick(cpu_time(snes_access_clocks(addr)));
     snes_mdr = value;
 }
 
@@ -739,7 +772,7 @@ void snes_cpu_wait(uint32_t clocks)
     }
     last_was_read = 0;
 }
-void snes_cpu_clocks(uint32_t clocks) { snes_tick(clocks); }
+void snes_cpu_clocks(uint32_t clocks) { snes_tick(cpu_time(clocks)); }
 void snes_cpu_interrupts(void) { check_interrupts(); }
 
 /* ---- power ---------------------------------------------------------------------- */

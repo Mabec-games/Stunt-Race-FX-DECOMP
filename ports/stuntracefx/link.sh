@@ -40,13 +40,16 @@ case "$TARGET" in
   *mingw*|*windows*) SYM=srfx_rom;  SEC='.section .rdata,"dr"';;
   *)                SYM=srfx_rom;  SEC='.section .rodata';;
 esac
+# ROM_EXTERNAL=1: none in the executable (a build to give away: the
+# player's own ROM is read at start, --rom / SRFX_ROM)
+if [ "${ROM_EXTERNAL:-0}" = 1 ]; then INCBIN=""; else INCBIN=".incbin \"$ROMABS\""; fi
 cat > "$OUT/gen/romdata.S" <<EOS
     $SEC
     .globl ${SYM}
     .globl ${SYM}_end
     .p2align 4
 ${SYM}:
-    .incbin "$ROMABS"
+    $INCBIN
 ${SYM}_end:
 EOS
 
@@ -122,6 +125,10 @@ esac
 LIBS="$OSLIBS $RLIBS"
 case "$HOST" in
   null)    compile ports/common/host/null/host_null.c "-Wall -Iports/common/host";;
+  sdl)     compile ports/common/host/sdl/host_sdl.c "-Wall -Iports/common/host $(pkg-config --cflags sdl2)"
+           LIBS="$LIBS $(pkg-config --libs sdl2)";;
+  sdl3)    compile ports/common/host/sdl3/host_sdl3.c "-Wall -Iports/common/host $(pkg-config --cflags sdl3)"
+           LIBS="$LIBS $(pkg-config --libs sdl3)";;
   macos)   compile ports/common/host/macos/host_macos.m "-Wall -fobjc-arc -Iports/common/host"
            LIBS="$LIBS -framework Cocoa -framework QuartzCore -framework AudioToolbox -framework CoreAudio -framework GameController";;
   windows) compile ports/common/host/windows/host_windows.c "-Wall -Iports/common/host"

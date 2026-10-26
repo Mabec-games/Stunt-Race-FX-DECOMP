@@ -132,6 +132,8 @@ static void link_slot(void)
  * and the last RAM address as the last slot left them; the ROM bank 0.
  * R14 and the ROM buffer move as on the Super FX.
  */
+int port_sort_wide;     /* the port's wider view (interp.c, its redraws only) */
+
 void FxSortObjectsProgram(void)
 {
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
@@ -182,7 +184,10 @@ void FxSortObjectsProgram(void)
         gsu.r[0] = absolute((gsu_ldw(gsu_code_then(0x01afa6, 5, field(0x12, GSU_COPY(9))))), GSU_COPY(1));
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[1], 0);
         gsu_sub(gsu.r[0], gsu.r[3], 0);
-        if (!gsu.s)
+        /* (port: the wider view's redraws keep what is out to 1.25 times
+           the angle's tangent: the picture's edge is at the game's 45
+           degrees, and a sprite's size passes its radius) */
+        if (port_sort_wide ? 4 * (int)(int16_t)gsu.r[0] - 5 * (int)(int16_t)gsu.r[3] >= 0 : !gsu.s)
             { gsu_code(0x01afb2, 9); gsu_code(0x01b01f, 1); goto next; } else { gsu_code(0x01afb2, 5); gsu_code(0x01afbb, 1); }
         /* The depth key, and the slot into the list. */
         gsu.r[0] = (gsu_ldw(gsu_code_then(0x01afbc, 5, field(0x08, GSU_COPY(10)))));

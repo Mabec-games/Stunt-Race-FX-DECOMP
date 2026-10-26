@@ -19,11 +19,14 @@
    $C5/$C7/$C9 unless bit 7 of +$24 says absolute) and its depth key at
    +$02, model +$08, angles +$04-$07, link fields or 0, flags, palette and
    frame bytes and the animation word. */
+void interp_note_record(uint16_t r, uint16_t o);   /* the port's in-between frames (interp.c) */
+
 static uint16_t draw_record(uint16_t o, uint16_t r)
 {
     uint16_t a, t;
     uint8_t v;
 
+    interp_note_record(r, o);
     cyc(68);
     if (rd16(OBJ(o, 0x24)) & 0x0080) {
         cyc(70);
@@ -224,6 +227,9 @@ static void draw_triggers(unsigned end, ObjectDrawListEnd *e)
     }
 }
 
+void port_far_cars_list(void);
+extern int snes_untimed;
+
 ObjectDrawListEnd ObjectDrawListBuild(uint16_t y)
 {
     ObjectDrawListEnd e = {0, y};
@@ -235,6 +241,8 @@ ObjectDrawListEnd ObjectDrawListBuild(uint16_t y)
     cyc(40);
     wr16(DRAW_NEXT, DRAW_LIST);
     draw_triggers(144, &e);
+    if (!snes_untimed)
+        port_far_cars_list();   /* port: the other cars in 3D farther out (object.c) */
     return e;
 }
 

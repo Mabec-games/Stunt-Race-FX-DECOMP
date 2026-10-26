@@ -476,6 +476,12 @@ static void draw_m7(int n, unsigned line)
 static const uint8_t obj_w[8][2] = { { 8, 16 }, { 8, 32 }, { 8, 64 }, { 16, 32 }, { 16, 64 }, { 32, 64 }, { 16, 32 }, { 16, 32 } };
 static const uint8_t obj_h[8][2] = { { 8, 16 }, { 8, 32 }, { 8, 64 }, { 16, 32 }, { 16, 64 }, { 32, 64 }, { 32, 64 }, { 32, 32 } };
 
+void vid_obj_size(uint8_t obsel, int big, unsigned *w, unsigned *h)
+{
+    *w = obj_w[obsel >> 5][big & 1];
+    *h = obj_h[obsel >> 5][big & 1];
+}
+
 typedef struct {
     uint16_t color;
     uint8_t opaque, prio, math;
@@ -748,6 +754,24 @@ void vid_draw_frame(const VidFrame *f, uint32_t *out)
     unsigned line, keep = mosaic_y;
     mosaic_y = 1;
     for (line = 1; line <= VID_HEIGHT; line++) {
+        s = &f->line[line];
+        mosaic_y = f->mosaic_row[line];
+        d_vram = f->vram[f->version[line]];
+        d_cgram = f->palette[line];
+        d_oam = f->oam[f->version[line]];
+        draw_line(line, out + (line - 1) * VID_WIDTH);
+    }
+    mosaic_y = keep;
+}
+
+/* rows first to last (0-223) of a frame only, into out's rows of them */
+void vid_draw_lines(const VidFrame *f, uint32_t *out, unsigned first, unsigned last)
+{
+    unsigned line, keep = mosaic_y;
+    if (last >= VID_HEIGHT)
+        last = VID_HEIGHT - 1;
+    mosaic_y = 1;
+    for (line = first + 1; line <= last + 1; line++) {
         s = &f->line[line];
         mosaic_y = f->mosaic_row[line];
         d_vram = f->vram[f->version[line]];

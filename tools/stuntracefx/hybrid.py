@@ -181,7 +181,7 @@ def main(src=None, lib=None):
                     | ({0xFFC0} if any('spc_boot_rom()' in open(f).read() for f in files) else set()))
         t.write('const uint16_t sfx_spc_jump_entries[] = {%s0};\nconst int sfx_spc_jump_entry_count = %d;\n'
                 % (''.join('0x%04X, ' % a for a in sj), len(sj)))
-    cmd = ['cc', '-O2', '-g', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',
+    cmd = ['cc', '-O2', '-g', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', *((['-undefined', 'dynamic_lookup'] if sys.platform == 'darwin' else ['-D_GNU_SOURCE'])),
            '-I', os.path.join(SRC, 'include'), '-o', LIB, table] + files
     # SRFX_GATE_SHIM: C the judged tree needs from its own runtime (the
     # port's native interfaces, as bus accesses), built in with it

@@ -56,6 +56,9 @@ static void row_close(void)
 #define FX_MODEL_AT              0x0016u
 #define FX_MODEL_18              0x0018u
 #define FX_ROM_BANK              0x001Cu
+uint16_t interp_angle_frac(uint16_t at);   /* the port's in-between frames (interp.c): 0 outside them */
+extern int port_lod_near;                  /* the port's redraws: near shapes at any depth (interp.c) */
+extern long port_lod_forced;               /* (how many objects it changed) */
 #define FX_OBJECT_ANGLE_X        0x0020u
 #define FX_CAR_0022              0x0022u
 #define FX_OBJECT_ANGLE_Z        0x0024u
@@ -253,17 +256,17 @@ lAB90:
     gsu_code(0x01ab9c, 8);
     R[0] = gsu_ldb(R[1]);
     gsu_code(0x01aba4, 3);
-    gsu_stw(FX_OBJECT_ANGLE_X, R[0]);
+    gsu_stw(FX_OBJECT_ANGLE_X, (uint16_t)(R[0] | interp_angle_frac(R[1])));
     R[1] = gsu_inc(R[1]);
     gsu_code(0x01aba7, 3);
     R[0] = gsu_ldb(R[1]);
     gsu_code(0x01abaa, 3);
-    gsu_stw(FX_CAR_0022, R[0]);
+    gsu_stw(FX_CAR_0022, (uint16_t)(R[0] | interp_angle_frac(R[1])));
     R[1] = gsu_inc(R[1]);
     gsu_code(0x01abad, 3);
     R[0] = gsu_ldb(R[1]);
     gsu_code(0x01abb0, 3);
-    gsu_stw(FX_OBJECT_ANGLE_Z, R[0]);
+    gsu_stw(FX_OBJECT_ANGLE_Z, (uint16_t)(R[0] | interp_angle_frac(R[1])));
     R[1] = gsu_inc(R[1]);
     gsu_code(0x01abb3, 4);
     R[4] = gsu_ldb(R[1]);
@@ -439,6 +442,15 @@ lAC6D:
     gsu_stw(R[10], R[3]);
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
+    if (port_lod_near) {
+        /* the port's high-resolution redraws (interp.c, sandbox only):
+           every object's near shape, whatever its depth */
+        if (R[6] >= 0x03E8)
+            port_lod_forced++;
+        R[0] = R[6];
+        gsu_code(0x01acc0, 1);
+        goto lACC0;
+    }
     R[0] = R[6];
     R[5] = 0x0BB8;
     gsu_sub(R[0], R[5], 0);   /* CMP */
