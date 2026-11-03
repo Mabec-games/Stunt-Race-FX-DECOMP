@@ -1379,6 +1379,7 @@ static void sort_like(const Draw *ref, const Draw *prev, const Draw *now, uint8_
 #define WIDE_R 24
 #define WIDE_T 31
 #define WIDE_B 8
+#define WIDE_TOP (64 + WIDE_T)      /* the wider view's centre line: pixels above it */
 extern int gsu_plot_clip_w, gsu_plot_clip_h;
 extern int port_sort_wide;          /* game/render/sort.c */
 static int wide_on = -1;
@@ -1836,6 +1837,23 @@ static void draw_between(const Draw *prev, const Draw *now, double t, int interp
             wr16(ram, 0x36, 64 + WIDE_T);
             wr16(ram, 0x3A, 207 + WIDE_L + WIDE_R);
             wr16(ram, 0x3E, 128 + WIDE_T + WIDE_B);
+            /* Textured faces are cut in 3D before their projection, at the
+               view's side planes z = x * $92 * 4 and top/bottom z = |y| *
+               $94 * 8 (FxPolygonClipLeft/Right/Top/Bottom): the game's
+               $4EC4 and $4000 are its window's 104 and 64 pixels a side at
+               the focal length 128, so in the wider view the stands,
+               chevron boards, flags ... ended at the old window's edges.
+               The planes widened to the wider screen: 128 a side ($4000),
+               and WIDE_TOP (64 + WIDE_T) up and down (one slope serves
+               both, so the screen's bottom edge goes as far below the
+               centre as its top is above: rows past the picture's 3D are
+               drawn off its canvas, and a corner past an edge is not
+               pulled in onto it, which would bend the face). */
+            if (rd16(ram, 0x92) == 0x4EC4 && rd16(ram, 0x94) == 0x4000) {
+                wr16(ram, 0x92, 0x4000);
+                wr16(ram, 0x94, (uint16_t)((65536 * 128 / 8 + WIDE_TOP / 2) / WIDE_TOP));
+                wr16(ram, 0x3E, 2 * WIDE_TOP);
+            }
             gsu_plot_clip_w = 208;
             gsu_plot_clip_h = 128;
         }
