@@ -46,6 +46,8 @@ typedef struct {
 void hires_capture(HrList *l);
 void hires_capture_begin(void);
 void hires_capture_end(void);
+/* the list the capture ending next is also copied into (once) */
+void hires_tee(HrList *l);
 
 /* small shapes as they are (1), or widened and grown like all (0) */
 void hires_set_small(int on);

@@ -473,6 +473,9 @@ int interp_gsu_skip(uint8_t bank, uint16_t addr)
 static void txt_run(uint8_t *ram, int done);
 static void paint_take(Draw *pv, const uint8_t *ram);
 
+void menu3d_gsu(uint32_t a, int done);     /* menu3d.c */
+const uint32_t *menu3d_picture(int *w, int *h);
+int interp_in_race(void) { return in_race; }
 void interp_gsu(uint8_t bank, uint16_t addr, int done)
 {
     uint32_t a = (uint32_t)bank << 16 | addr;
@@ -480,6 +483,8 @@ void interp_gsu(uint8_t bank, uint16_t addr, int done)
     Draw *d;
     if (!sandboxed && !la_child)
         hires_gsu(a, done);
+    if (!sandboxed && !la_child)
+        menu3d_gsu(a, done);         /* the 3D outside races (menu3d.c) */
     if (!enabled() || sandboxed)
         return;
     ram = snes_sfx_ram();
@@ -1991,6 +1996,8 @@ static void live_prepare(void)
    under the HUD's sprites or the bezel). There the 3D drawn at S x lies
    over the sky, by its coverage; everywhere else p0, each pixel S x S. */
 static int hires_scale, hires_aa = 2;
+int interp_hires_scale(void) { return hires_scale; }
+int interp_hires_aa(void) { return hires_aa; }
 /* the redraws (the sandbox's: in-betweens, and the frames that would show
    a draw as the game made it) with every object's near shape, whatever its
    depth (frame.c: no far models, no flat sprites for far cars); with the
@@ -2028,6 +2035,8 @@ int interp_hires(void) { return hires_scale; }
 /* the last picture's high-resolution one (w x h), or NULL */
 const uint32_t *interp_picture_hr(int *w, int *h)
 {
+    if (in_race <= 0)
+        return menu3d_picture(w, h);    /* the 3D of a menu (menu3d.c) */
     if (!live || !live_pic || !hr_shown)
         return NULL;
     *w = VID_WIDTH * hires_scale;
@@ -3818,6 +3827,7 @@ static void files_frame(long frame)
 static void interp_frame_(long frame);
 void interp_frame(long frame)
 {
+    if (getenv("PORT_MENU3D_EVERY")) { int tw, th; if (in_race <= 0) menu3d_picture(&tw, &th); }   /* (headless checks: the menus' 3D made every frame, as the window does) */
     double t0 = now_ms(), t;
     interp_frame_(frame);
     log_frame(now_ms() - t0);

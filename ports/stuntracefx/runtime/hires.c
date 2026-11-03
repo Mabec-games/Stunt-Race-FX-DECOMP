@@ -50,6 +50,10 @@ static int sprite_open;          /* the last op a sprite still taking rows */
 static uint16_t rd16(const uint8_t *m, unsigned a) { return (uint16_t)(m[a & 0xFFFF] | m[(a + 1) & 0xFFFF] << 8); }
 
 void hires_capture(HrList *l) { next = l; }
+/* a list the capture ending next is also copied into (menu3d.c: the
+   game's own draw, whoever captures it), once */
+static HrList *tee;
+void hires_tee(HrList *l) { tee = l; }
 static long hr_dbg_found, hr_dbg_ambiguous, hr_dbg_missing;
 static void dbg_report(void)
 {
@@ -98,6 +102,9 @@ void hires_capture_end(void)
     }
     if (cur)
         dump_end();
+    if (tee && cur && cur != tee)
+        memcpy(tee, cur, sizeof *tee);
+    tee = NULL;
     cur = next = NULL;
     sprite_open = 0;
 }
