@@ -56,8 +56,11 @@ with the keys below) to get back to the original's look.
 - ✅ Speed Trax races (Novice courses tested most), pause, results.
 - 🟡 Wide view (experimental): sprite assets at the edges, some courses not yet checked.
 - 🟡 Other courses (e.g. Big Ravine, Night Owl) need a pass each.
-- ⬜ Menus, car select and 2-player battle are shown at the original resolution, without in-between frames.
-- ⬜ Packaged builds: a Linux AppImage beta exists and will be published here later.
+- ✅ Car selection (Speed, Stunt, Battle Trax): the turning vehicle in high resolution.
+- ✅ Windows: the same as Linux (look-ahead, wide view, hi-res, launcher), portable (everything stays in its folder).
+- 🟡 Some stages may still show artifacts at tunnel entrances.
+- ⬜ Other menus and 2-player battle races are shown at the original resolution, without in-between frames.
+- ✅ Packaged builds: beta 0.2 for Linux (AppImage) and Windows (zip).
 
 ## Running
 
@@ -77,6 +80,23 @@ HOST=sdl3 ROM_EXTERNAL=1 OUT=build/stuntracefx/port/sdl3 \
 The build reads the ROM once to generate a table of routine addresses (no
 ROM data ends up in the program). The launcher and AppImage are built with
 `sh ports/stuntracefx/launcher/build-appimage.sh`.
+
+### Windows (cross-built on Linux)
+
+Requirements: MinGW-w64 (`x86_64-w64-mingw32-gcc`), SDL3's MinGW
+development package from [libsdl-org/SDL's releases](https://github.com/libsdl-org/SDL/releases)
+(its `x86_64-w64-mingw32` folder in `SDL3_MINGW`, a path without spaces), and
+your ROM for the build step above.
+
+```sh
+SDL3_MINGW=/path/to/SDL3-x.y.z/x86_64-w64-mingw32 SRFX_ROM="/path/to/rom.sfc" \
+  sh ports/stuntracefx/launcher/build-windows.sh
+```
+
+This makes a portable folder and zip in `../dist`. Windows has no `fork()`,
+so the look-ahead's copies there come from a snapshot of the running game in
+a second process (`runtime/la_win.c`); the game and its pictures are the same
+as on Linux.
 
 ### Controls
 
