@@ -315,7 +315,7 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     cyc(32);
     wr16(b | 0x11DF, (uint16_t)(rd16(cyc_then(180, 0x03B540 + ((rd16(0x0018C9) & 3) << 1))) << 4));
     cyc(32);
-    v = (uint16_t)(rd16(cyc_then(124, 0x03B540 + ((rd16(0x0018CB) & 3) << 1))) | rd16(b | 0x11DF));
+    v = (uint16_t)(({ uint16_t l_ = (rd16(cyc_then(124, 0x03B540 + ((rd16(0x0018CB) & 3) << 1)))); (uint16_t)(l_ | rd16(b | 0x11DF)); }));
     cyc(54);
     wr8(0x70FC0E, (uint8_t)v);
     (cyc(84), SaveChecksum());
@@ -324,14 +324,14 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     cyc(32);
     wr16(0x0018D5, 0x0000);
     cyc(32);
-    if (rd16(0x0018CB) == rd16(cyc_then(32, 0x0018C9)))
+    if (({ uint16_t l_ = (rd16(0x0018CB)); (int)(l_ == rd16(cyc_then(32, 0x0018C9))); }))
         { cyc(48); wr16(b | 0x18D5, rd16(cyc_then(100, 0x03B464 + (uint16_t)(rd16(0x0018C9) << 1)))); } else { cyc(22); }
     cyc(32);
-    *x = (uint16_t)((uint16_t)((uint16_t)(rd16(0x0018CB) << 2) + rd16(cyc_then(74, 0x0018D3))) << 1);
+    *x = (uint16_t)((uint16_t)(({ uint16_t l_ = ((uint16_t)(rd16(0x0018CB) << 2)); (uint16_t)(l_ + rd16(cyc_then(74, 0x0018D3))); })) << 1);
     cyc(108);
     wr16(0x0018E3, rd16(0x03B46C + *x));
     cyc(32);
-    *x = (uint16_t)((uint16_t)((uint16_t)(rd16(0x0018C9) << 2) + rd16(cyc_then(74, 0x0018D5))) << 1);
+    *x = (uint16_t)((uint16_t)(({ uint16_t l_ = ((uint16_t)(rd16(0x0018C9) << 2)); (uint16_t)(l_ + rd16(cyc_then(74, 0x0018D5))); })) << 1);
     cyc(108);
     v = rd16(0x03B46C + *x);
     wr16(0x0018E5, v);

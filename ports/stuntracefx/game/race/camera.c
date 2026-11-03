@@ -218,11 +218,11 @@ uint16_t CameraFollowStep(uint8_t bank, uint16_t r, uint16_t cy)
                 if (w & 0x8000)
                     w = (uint16_t)(~w + 1);
                 cyc(36 + 24 + (((w - 0x7EF4) & 0x8000) ? 16 : 22) + 24);
-                a = asr_round(rd16(b | CAM_LAG), cyc_then(22, (w - 0x7EF4) & 0x8000 ? 2 : 1));
+                { uint16_t l_ = rd16(b | CAM_LAG); a = asr_round(l_, cyc_then(22, (w - 0x7EF4) & 0x8000 ? 2 : 1)); }
                 break;
             case 0x0800:
                 cyc(174);
-                a = asr_round(rd16(b | CAM_LAG), cyc_then(22, 2));
+                { uint16_t l_ = rd16(b | CAM_LAG); a = asr_round(l_, cyc_then(22, 2)); }
                 break;
             case 0x0C00:
                 cyc(214);

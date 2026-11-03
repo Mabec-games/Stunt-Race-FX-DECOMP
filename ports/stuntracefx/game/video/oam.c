@@ -2234,9 +2234,9 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
     wr8(0x0000F1, 0x03);
     do {
         cyc(24);
-        wr8(b | (uint16_t)(0x0375 + *y), (uint8_t)(rd8(b | 0x10BD) + rd8(cyc_then(84, 0x1CF11E + *x))));
+        wr8(b | (uint16_t)(0x0375 + *y), (uint8_t)(({ uint8_t l_ = (rd8(b | 0x10BD)); (uint8_t)(l_ + rd8(cyc_then(84, 0x1CF11E + *x))); })));
         cyc(24);
-        wr8(b | (uint16_t)(0x0376 + *y), (uint8_t)(rd8(b | 0x10BF) + rd8(cyc_then(84, 0x1CF11F + *x))));
+        wr8(b | (uint16_t)(0x0376 + *y), (uint8_t)(({ uint8_t l_ = (rd8(b | 0x10BF)); (uint8_t)(l_ + rd8(cyc_then(84, 0x1CF11F + *x))); })));
         {
             cyc(24);
             uint8_t base = rd8(b | 0x10C1), add = rd8(cyc_then(84, 0x1CF120 + *x));
@@ -2248,7 +2248,7 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
         }
         cyc(24);
         if (rd8(b | 0x10C5))
-            { cyc(102); attr = (uint8_t)((rd8(0x1CF121 + *x) & 0xF1) | rd8(b | 0x10C5)); }
+            { cyc(102); attr = (uint8_t)(({ uint8_t l_ = ((rd8(0x1CF121 + *x) & 0xF1)); (uint8_t)(l_ | rd8(b | 0x10C5)); })); }
         else
             { cyc(78); attr = rd8(0x1CF121 + *x); }
         cyc(30);

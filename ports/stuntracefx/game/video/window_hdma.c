@@ -589,13 +589,13 @@ uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p)
     cyc(136);
     uint8_t v0 = rd8(b | pair), v1, v;
 
-    wr8(0x7FF883 + rd16(b | 0x19B4), cyc_then(32, v0));
+    { uint32_t at_ = 0x7FF883 + rd16(b | 0x19B4); wr8(at_, cyc_then(32, v0)); }
     cyc(188);
     v = mirror80(rd8(b | pair), p);
-    wr8(0x7FF884 + rd16(b | 0x19B4), cyc_then(32, v));
+    { uint32_t at_ = 0x7FF884 + rd16(b | 0x19B4); wr8(at_, cyc_then(32, v)); }
     cyc(128);
     v1 = rd8(b | (uint16_t)(pair + 1));
-    wr8(0x7FF885 + rd16(b | 0x19B4), cyc_then(32, v1));
+    { uint32_t at_ = 0x7FF885 + rd16(b | 0x19B4); wr8(at_, cyc_then(32, v1)); }
     cyc(200);
     if (rd8(b | (uint16_t)(pair + 1)) == 0x81) {
         *p |= P_C;
@@ -604,7 +604,7 @@ uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p)
         cyc(64);
         v = mirror80(rd8(b | (uint16_t)(pair + 1)), p);
     }
-    wr8(0x7FF886 + rd16(b | 0x19B4), cyc_then(32, v));
+    { uint32_t at_ = 0x7FF886 + rd16(b | 0x19B4); wr8(at_, cyc_then(32, v)); }
     return v;
 }
 

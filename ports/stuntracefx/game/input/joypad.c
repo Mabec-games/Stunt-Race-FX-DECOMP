@@ -24,7 +24,7 @@ uint16_t JoypadRead(void)
     cyc(98);
     uint16_t now1 = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    uint16_t new1 = (uint16_t)((now1 ^ rd16(JOY1_HELD)) & io_rd16(cyc_then(32, JOY1L), input_pad(0)));
+    uint16_t new1 = (uint16_t)(({ uint16_t l_ = ((now1 ^ rd16(JOY1_HELD))); (uint16_t)(l_ & io_rd16(cyc_then(32, JOY1L), input_pad(0))); }));
     uint16_t now2;
     uint16_t new2;
 
@@ -35,7 +35,7 @@ uint16_t JoypadRead(void)
     cyc(32);
     now2 = io_rd16(JOY2L, input_pad(1));
     cyc(54);
-    new2 = (uint16_t)((now2 ^ rd16(JOY2_HELD)) & io_rd16(cyc_then(32, JOY2L), input_pad(1)));
+    new2 = (uint16_t)(({ uint16_t l_ = ((now2 ^ rd16(JOY2_HELD))); (uint16_t)(l_ & io_rd16(cyc_then(32, JOY2L), input_pad(1))); }));
     cyc(24);
     wr16(JOY2_PRESSED, new2);
     cyc(24);
@@ -96,25 +96,25 @@ uint16_t JoypadAccumulate(void)
     cyc(68);
     now = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    wr16(JOY1_PRESSED_COPY, cyc_then(24, (uint16_t)(((now ^ rd16(JOY1_LAST)) & io_rd16(cyc_then(24, JOY1L), input_pad(0))) | rd16(cyc_then(24, JOY1_PRESSED_COPY)))));
+    wr16(JOY1_PRESSED_COPY, cyc_then(24, (uint16_t)((({ uint16_t l_ = ((now ^ rd16(JOY1_LAST))); (uint16_t)(l_ & io_rd16(cyc_then(24, JOY1L), input_pad(0))); })) | rd16(cyc_then(24, JOY1_PRESSED_COPY)))));
     cyc(60);
     wr16(JOY1_LAST, now);
     cyc(24);
     now = io_rd16(JOY2L, input_pad(1));
     cyc(54);
-    wr16(JOY2_PRESSED_COPY, cyc_then(24, (uint16_t)(((now ^ rd16(JOY2_LAST)) & io_rd16(cyc_then(24, JOY2L), input_pad(1))) | rd16(cyc_then(24, JOY2_PRESSED_COPY)))));
+    wr16(JOY2_PRESSED_COPY, cyc_then(24, (uint16_t)((({ uint16_t l_ = ((now ^ rd16(JOY2_LAST))); (uint16_t)(l_ & io_rd16(cyc_then(24, JOY2L), input_pad(1))); })) | rd16(cyc_then(24, JOY2_PRESSED_COPY)))));
     cyc(60);
     wr16(JOY2_LAST, now);
 
     cyc(24);
     now = io_rd16(JOY1L, input_pad(0));
     cyc(54);
-    wr16(JOY2_PRESSED, cyc_then(24, (uint16_t)((now ^ rd16(JOY2_HELD)) & io_rd16(cyc_then(24, JOY1L), input_pad(0)))));
+    wr16(JOY2_PRESSED, cyc_then(24, (uint16_t)(({ uint16_t l_ = ((now ^ rd16(JOY2_HELD))); (uint16_t)(l_ & io_rd16(cyc_then(24, JOY1L), input_pad(0))); }))));
     {
         cyc(24);
         uint16_t now2 = io_rd16(JOY2L, input_pad(1));
         cyc(54);
-        wr16(JOY2_PRESSED, cyc_then(24, (uint16_t)((now2 ^ rd16(JOY2_HELD)) & io_rd16(cyc_then(24, JOY2L), input_pad(1)))));
+        wr16(JOY2_PRESSED, cyc_then(24, (uint16_t)(({ uint16_t l_ = ((now2 ^ rd16(JOY2_HELD))); (uint16_t)(l_ & io_rd16(cyc_then(24, JOY2L), input_pad(1))); }))));
         cyc(60);
         wr16(JOY2_HELD, cyc_then(24, (uint16_t)(now2 | rd16(JOY2_HELD))));
     }

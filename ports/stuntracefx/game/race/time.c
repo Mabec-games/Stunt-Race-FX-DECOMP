@@ -45,7 +45,7 @@ static uint16_t add_course_value(uint32_t table, uint8_t bra, uint16_t *x, uint8
 
     *x = i;
     cyc(138 + bra);                     /* LDA long, [BRA,] REP, SED, AND #, CLC, ADC */
-    v = adc_bcd16(rd8(table + i), rd16(0x000E70), p);
+    { uint8_t l_ = rd8(table + i); v = adc_bcd16(l_, rd16(0x000E70), p); }
     cyc(24);
     wr16(0x000E70, v);
     cyc(80);

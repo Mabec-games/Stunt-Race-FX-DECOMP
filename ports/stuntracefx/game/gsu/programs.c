@@ -1689,7 +1689,7 @@ uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
     cyc(56);
     wr16(0x700214, 0x0100);
     cyc(24);
-    x = add16(rd16(cyc_then(86, 0x070000 | (uint16_t)(0x9806 + rd16(b | 0x0D6B)))), rd16(b | 0x0D6D), p);
+    { uint16_t l_ = rd16(cyc_then(86, 0x070000 | (uint16_t)(0x9806 + rd16(b | 0x0D6B)))); x = add16(l_, rd16(b | 0x0D6D), p); }
     wr16(0x0000F1, x);
     for (i = 0; i < 6; i++) {
         if (i == 4) {
@@ -2456,7 +2456,7 @@ uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
     wr16(0x000008, v);
     cyc(24);
     object_cv = 0;
-    v = sub16(rd16(b | 0x000A), rd16(cyc_then(44, b | (uint16_t)(0x200E + x))), &object_cv);
+    { uint16_t l_ = rd16(b | 0x000A); v = sub16(l_, rd16(cyc_then(44, b | (uint16_t)(0x200E + x))), &object_cv); }
     cyc(16);
     wr16(0x000002, v);
     v = (cyc(62), Gsu81E3Long());
@@ -2562,7 +2562,7 @@ uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
 
     fa5a_unit_scale();
     cyc(24);
-    x = add16(rd16(cyc_then(86, 0x079806 + rd16(b | 0x0D6B))), rd16(b | 0x0D6D), p);
+    { uint16_t l_ = rd16(cyc_then(86, 0x079806 + rd16(b | 0x0D6B))); x = add16(l_, rd16(b | 0x0D6D), p); }
     wr16(0x0000F1, x);
     cyc(32);
     wr16(0x70020A, x);

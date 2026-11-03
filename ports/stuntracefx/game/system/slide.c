@@ -26,9 +26,9 @@ uint16_t SlideStep(uint16_t a)
         { cyc(38); return (uint16_t)(a & 0xFF00); }
     cyc(78);
     if (!(rd16(0x0019FC) & 0x8000))
-        { cyc(40); v = (uint16_t)(rd16(0x0019F6) + rd16(cyc_then(38, 0x0019F8))); }
+        { cyc(40); v = (uint16_t)(({ uint16_t l_ = (rd16(0x0019F6)); (uint16_t)(l_ + rd16(cyc_then(38, 0x0019F8))); })); }
     else
-        { cyc(68); v = (uint16_t)(rd16(0x0019F6) - rd16(cyc_then(38, 0x0019F8))); }
+        { cyc(68); v = (uint16_t)(({ uint16_t l_ = (rd16(0x0019F6)); (uint16_t)(l_ - rd16(cyc_then(38, 0x0019F8))); })); }
     cyc(24);
     if (v == rd16(0x0019FA)) {
         cyc(46);

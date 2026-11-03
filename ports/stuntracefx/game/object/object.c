@@ -1312,11 +1312,19 @@ uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
     uint8_t k;
 
     cyc(76);
-    dx = magnitude(sub16v(rd16(b | 0x1A6C), rd16(cyc_then(44, field(bank, obj, 0x0C))), p));
+    /* the focus first, then the object (the cartridge's order; as two
+       arguments of one call the compiler would pick the order) */
+    {
+        uint16_t f = rd16(b | 0x1A6C), o = rd16(cyc_then(44, field(bank, obj, 0x0C)));
+        dx = magnitude(sub16v(f, o, p));
+    }
     cyc(46);
     wr16(b | 0x1F2B, dx);
     cyc(30);
-    dz = magnitude(sub16v(rd16(b | 0x1A70), rd16(cyc_then(44, field(bank, obj, 0x10))), p));
+    {
+        uint16_t f = rd16(b | 0x1A70), o = rd16(cyc_then(44, field(bank, obj, 0x10)));
+        dz = magnitude(sub16v(f, o, p));
+    }
     s = (unsigned)dz + dx;
     sum = (uint16_t)s;
     *p = (uint8_t)((*p & ~P_V) | ((~(dz ^ dx) & (dz ^ sum) & 0x8000) ? P_V : 0));
@@ -1328,7 +1336,7 @@ uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
     k = (uint8_t)(rd8(cyc_then(174, field(bank, obj, 0x18))) & 0x03);
     wr8(field(bank, obj, 0x18), cyc_then(46, k));
     cyc(54);
-    k = (uint8_t)(((uint8_t)(rd8(b | 0x1A75) + rd8(cyc_then(44, field(bank, obj, 0x15)))) >> 3 & 0xFC) | 0x80 | k);
+    k = (uint8_t)(((uint8_t)(({ uint8_t l_ = (rd8(b | 0x1A75)); (uint8_t)(l_ + rd8(cyc_then(44, field(bank, obj, 0x15)))); })) >> 3 & 0xFC) | 0x80 | k);
     wr8(field(bank, obj, 0x18), cyc_then(142, k));
     wr8(field(bank, obj, 0x24), cyc_then(46, rd8(cyc_then(30, field(bank, obj, 0x24))) | 0x08));
     wr8(field(bank, obj, 0x3A), cyc_then(46, 0x00));

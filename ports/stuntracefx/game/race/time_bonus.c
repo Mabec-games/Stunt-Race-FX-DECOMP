@@ -499,7 +499,7 @@ static void sound_push_decimal(uint8_t command)
         cyc(46);
         wr8(SOUND_PORT0_COUNT, cyc_then(6, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1)));
         cyc(24);
-        wr8(SOUND_PORT0_QUEUE + rd8(SOUND_PORT0_HEAD), cyc_then(30, command));
+        { uint32_t at_ = SOUND_PORT0_QUEUE + rd8(SOUND_PORT0_HEAD); wr8(at_, cyc_then(30, command)); }
     } else if (n < 0x10) {
         c = 0;
         slot = adc_decimal8(n, rd8(SOUND_PORT0_HEAD), &c);

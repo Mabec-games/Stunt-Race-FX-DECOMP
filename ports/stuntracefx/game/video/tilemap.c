@@ -537,7 +537,7 @@ void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a, uint8_t entry)
 {
     cyc(entry);                         /* JSR and LDA long, or PLX falling in */
     do {
-        uint8_t v = (uint8_t)((rd8(0x7F93D7 + *x) & 0xE3) | rd8(cyc_then(32, 0x0000F1)));
+        uint8_t v = (uint8_t)(({ uint8_t l_ = ((rd8(0x7F93D7 + *x) & 0xE3)); (uint8_t)(l_ | rd8(cyc_then(32, 0x0000F1))); }));
 
         cyc(32);
         wr8(0x7F93D7 + *x, v);
@@ -999,11 +999,11 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     ppu_mul_factor = 0x0140;
     cyc(46);
     /* M7B, then M7C (no part here) */
-    io_wr16(0x00211C, mb = cyc_then(98, (uint16_t)(((uint16_t)(rd16(b | 0x06CD) + rd16(cyc_then(38, b | 0x0DA2))) >> 3) & 0x003F)));
+    io_wr16(0x00211C, mb = cyc_then(98, (uint16_t)(((uint16_t)(({ uint16_t l_ = (rd16(b | 0x06CD)); (uint16_t)(l_ + rd16(cyc_then(38, b | 0x0DA2))); })) >> 3) & 0x003F)));
     cyc(32);
     wr16(0x0000F1, cyc_then(16, io_rd16(0x002134, (uint16_t)ppu_mul((uint8_t)mb))));
     cyc(24);
-    x = (uint16_t)(((rd16(b | 0x06CF) >> 3) & 0x00FE) + rd16(cyc_then(96, 0x0000F1)));
+    x = (uint16_t)(({ uint16_t l_ = (((rd16(b | 0x06CF) >> 3) & 0x00FE)); (uint16_t)(l_ + rd16(cyc_then(96, 0x0000F1))); }));
     cyc(186);
     wr16(0x0000F1, 0x0011);
     cyc(32);

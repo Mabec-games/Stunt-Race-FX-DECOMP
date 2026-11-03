@@ -31,7 +31,7 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
         cyc(46);
         wr8(count, cyc_then(6, (uint8_t)(rd8(count) + 1)));
         cyc(24);
-        wr8(queue + rd8(head), cyc_then(30, value));
+        { uint32_t at_ = queue + rd8(head); wr8(at_, cyc_then(30, value)); }
     } else if (n < 0x10) {
         cyc(122);
         uint8_t slot = (uint8_t)(n + rd8(head));

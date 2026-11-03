@@ -154,7 +154,7 @@ uint16_t GsuRecordSetFlags(uint8_t bank, uint16_t obj, uint16_t *a)
 
     if (rec) {
         cyc(92);
-        *a = (uint16_t)(rd16(0x700016 + rec) | rd16(cyc_then(16, 0x000002)));
+        *a = (uint16_t)(({ uint16_t l_ = (rd16(0x700016 + rec)); (uint16_t)(l_ | rd16(cyc_then(16, 0x000002))); }));
         cyc(32);
         wr16(0x700016 + rec, *a);
     }
@@ -363,7 +363,7 @@ uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has)
     uint16_t rec, w;
 
     cyc(30);
-    *has = (rd8(b | (uint16_t)(0x2022 + obj)) | rd8(cyc_then(30, b | (uint16_t)(0x2023 + obj)))) != 0;
+    *has = (({ uint8_t l_ = (rd8(b | (uint16_t)(0x2022 + obj))); (uint8_t)(l_ | rd8(cyc_then(30, b | (uint16_t)(0x2023 + obj)))); })) != 0;
     if (!*has) {
         cyc(62);
         wr8(b | (uint16_t)(0x2036 + obj), 0xFF);
@@ -1349,7 +1349,7 @@ uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t 
     cyc(22);
     wr8(b | 0x1F2B, cyc_then(24, rd8(0x001A77)));
     cyc(66);
-    sum = (uint8_t)(rd8(b | (uint16_t)(0x2016 + obj)) + rd8(cyc_then(38, b | 0x1F2B)));
+    sum = (uint8_t)(({ uint8_t l_ = (rd8(b | (uint16_t)(0x2016 + obj))); (uint8_t)(l_ + rd8(cyc_then(38, b | 0x1F2B))); }));
     a = (uint8_t)((sum >> 1) | (sum & 0x80));
     if (a & 0x80)
         { cyc(70); a = (uint8_t)-(uint8_t)((uint8_t)-a & 0xFC); }
@@ -1361,7 +1361,7 @@ uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t 
     cyc(168);
     wr8(b | 0x1F58, a);
     cyc(30);
-    t = (uint8_t)(rd8(b | (uint16_t)(0x2015 + obj)) - rd8(cyc_then(38, b | 0x1F5A)));
+    t = (uint8_t)(({ uint8_t l_ = (rd8(b | (uint16_t)(0x2015 + obj))); (uint8_t)(l_ - rd8(cyc_then(38, b | 0x1F5A))); }));
     if (t & 0x80)
         { cyc(24); t = (uint8_t)-t; }
     cyc(60);

@@ -314,7 +314,7 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
         cyc(74);
         x = rd16(0x001239 + i);
         cyc(22);
-        if (rd8((uint16_t)(x + 0x1A)) == rd8(cyc_then(24, 0x0011E1)))
+        if (({ uint8_t l_ = (rd8((uint16_t)(x + 0x1A))); (int)(l_ == rd8(cyc_then(24, 0x0011E1))); }))
             break; else { cyc(28); }
     }
     return x;
