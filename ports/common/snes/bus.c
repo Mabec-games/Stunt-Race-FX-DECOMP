@@ -131,6 +131,34 @@ static uint32_t last_read = 0xFFFFFFFFu;
 static unsigned dbg_irqs, dbg_nmis;          /* for PORT_DEBUG */
 static int last_was_read;
 
+/* Writes too are places an interrupt is taken, as on the console: a loop
+   that only writes (backdrop_rows_update's fill of the tilemap buffer)
+   otherwise holds off the race's line-208 IRQ for up to ~37 lines, the
+   upload then ends past line 16 of the next frame, the VTIME = 16 write
+   comes too late for that line's unblank IRQ and the whole frame stays
+   black (a lost vblank count too). Not taken: before a word's second byte
+   (a write next to the last one with no CPU time between; a fill loop's
+   next word comes after its loop time), before the write of a
+   read-modify-write (straight after the read of that byte or word) and
+   during the interrupt's own pushes (snes_irq_hold).
+   PORT_IRQ_READS_ONLY=1: the old rule, interrupts at reads only. */
+static void check_interrupts(void);
+static uint32_t last_write = 0xFFFFFFFFu;
+static int last_was_write, irq_hold, irq_at_writes = -1, time_since_access;
+void snes_irq_hold(int on) { irq_hold += on ? 1 : -1; }
+static void write_interrupts(uint32_t addr)
+{
+    int second, rmw;
+    if (irq_at_writes < 0) {
+        const char *e = getenv("PORT_IRQ_READS_ONLY");
+        irq_at_writes = !(e && *e && *e != '0');
+    }
+    second = last_was_write && !time_since_access && addr == ((last_write + 1) & 0xFFFFFF);
+    rmw = last_was_read && (addr == last_read || addr == ((last_read - 1) & 0xFFFFFF));
+    if (irq_at_writes && !irq_hold && !second && !rmw)
+        check_interrupts();
+}
+
 void snes_fatal(const char *fmt, ...)
 {
     va_list ap;
@@ -669,6 +697,8 @@ static uint8_t access_rd(uint32_t addr)
         check_interrupts();
     last_read = addr;
     last_was_read = 1;
+    last_was_write = 0;
+    time_since_access = 0;
     /* the clock first: what the read sees is the machine at its end */
     snes_tick(cpu_time(rom_data(addr) ? 0 : snes_access_clocks(addr)));
     v = bus_read(addr, &cost, 0);
@@ -706,7 +736,11 @@ static void access_wr(uint32_t addr, uint8_t value)
         snes_untimed_refused++;
         return;
     }
+    write_interrupts(addr);
     last_was_read = 0;
+    last_write = addr;
+    last_was_write = 1;
+    time_since_access = 0;
     snes_tick(cpu_time(snes_access_clocks(addr)));
     snes_mdr = value;
     if (snes_write_hook && !snes_untimed)
@@ -743,6 +777,8 @@ void io_read_time(uint32_t addr, uint8_t value)
         check_interrupts();
     last_read = addr;
     last_was_read = 1;
+    last_was_write = 0;
+    time_since_access = 0;
     snes_tick(cpu_time(snes_access_clocks(addr)));
     snes_mdr = value;
 }
@@ -755,7 +791,11 @@ void io_write_time(uint32_t addr, uint8_t value)
     addr &= 0xFFFFFF;
     if (snes_untimed && !((uint16_t)addr >= 0x4202 && (uint16_t)addr <= 0x4206))
         snes_untimed_refused++;     /* (its work done by the C all the same: counted, the stretch thrown away) */
+    write_interrupts(addr);
     last_was_read = 0;
+    last_write = addr;
+    last_was_write = 1;
+    time_since_access = 0;
     snes_tick(cpu_time(snes_access_clocks(addr)));
     snes_mdr = value;
 }
@@ -771,8 +811,15 @@ void snes_cpu_wait(uint32_t clocks)
         check_interrupts();
     }
     last_was_read = 0;
+    last_was_write = 0;
+    time_since_access = 1;
 }
-void snes_cpu_clocks(uint32_t clocks) { snes_tick(cpu_time(clocks)); }
+void snes_cpu_clocks(uint32_t clocks)
+{
+    if (clocks)
+        time_since_access = 1;
+    snes_tick(cpu_time(clocks));
+}
 void snes_cpu_interrupts(void) { check_interrupts(); }
 
 /* ---- power ---------------------------------------------------------------------- */

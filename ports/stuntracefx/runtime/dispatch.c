@@ -201,10 +201,12 @@ static void take_interrupt(int nmi)
     /* the interrupt's sequence: two internal cycles; the frame it pushes,
        PB, PC, P; the vector read; then I set, D clear */
     snes_cpu_clocks(6 + 6);
+    snes_irq_hold(1);
     push8((uint8_t)(cpu.pc >> 16));
     push8((uint8_t)(cpu.pc >> 8));
     push8((uint8_t)cpu.pc);
     push8(cpu.p);
+    snes_irq_hold(0);
     snes_cpu_clocks(fetch(vector) + fetch(vector + 1));
     cpu.p = (uint8_t)((cpu.p | P_I) & ~P_D);
     cpu.pc = at;
@@ -226,10 +228,12 @@ static void take_interrupt(int nmi)
                    states its RTL */
                 uint16_t ret = (uint16_t)(at + 3);
                 snes_cpu_clocks(fetch(at) + fetch(at + 1) + fetch(at + 2));
+                snes_irq_hold(1);
                 push8(0x00);
                 snes_cpu_clocks(6 + fetch(at + 3));
                 push8((uint8_t)(ret >> 8));
                 push8((uint8_t)ret);
+                snes_irq_hold(0);
                 traced("interrupt", r);
                 r->abi();
                 if (cpu.unwound)
