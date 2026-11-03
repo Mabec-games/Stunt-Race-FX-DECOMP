@@ -3,12 +3,14 @@
  * joypad mask. Last input is held; the race clock's first rising edge is t=0.
  * PORT_SMOKE_TRACE: JSONL, version 1. Does not change game state or saves.
  */
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "snes.h"
 #include "video.h"
 #include "smoke.h"
+#include "dispatch.h"
 
 extern int world_frame;
 static FILE *trace;
@@ -16,6 +18,7 @@ static struct { long frame; unsigned buttons; } inputs[256];
 static int input_count, input_at;
 static long race_start = -1, tick;
 static unsigned buttons;
+static int autopilot;
 static long stop_after = -1;
 
 static unsigned word(const uint8_t *p, unsigned a)
@@ -34,6 +37,8 @@ static void close_trace(void)
 void smoke_init(int headless)
 {
     const char *path = getenv("PORT_DRIVE_SCRIPT"), *out = getenv("PORT_SMOKE_TRACE");
+    if (headless && getenv("PORT_AUTOPILOT"))
+        autopilot = atoi(getenv("PORT_AUTOPILOT"));
     if (!headless || (!path && !out))
         return;
     if (getenv("PORT_SMOKE_FRAMES")) {
@@ -71,8 +76,45 @@ void smoke_init(int headless)
     }
 }
 
+/* PORT_AUTOPILOT=N (headless, a check's own driving): B held and steered
+   at the course's segment table ($70:1092 in bank $70:1094's byte: x, y,
+   z words), two waypoints past the nearest, until the nearest is segment
+   N; then nothing pressed (the car rolls to a stop there), or with
+   PORT_AUTOPILOT_OFF=1 (2) B and left (right) held: off the road */
+static unsigned rom_word(const uint8_t *r, unsigned a)
+{
+    return r[a] | (unsigned)r[a + 1] << 8;
+}
+
+static unsigned autopilot_buttons(void)
+{
+    const uint8_t *w = snes_wram(), *g = snes_sfx_ram(), *r = port_rom();
+    unsigned a = word(g, 0x1092), off = (g[0x1094] & 0x3F) * 0x8000u + (a & 0x7FFF), n = rom_word(r, off), i, best = 0;
+    double px = (int16_t)word(w, 0x1A6C), pz = (int16_t)word(w, 0x1A70), bd = 1e30, tx, tz;
+    int want, diff;
+    if (a < 0x8000 || !n)
+        return 0x8000;
+    for (i = 0; i < n; i++) {
+        double dx = (int16_t)rom_word(r, off + 2 + i * 8) - px, dz = (int16_t)rom_word(r, off + 6 + i * 8) - pz;
+        if (dx * dx + dz * dz < bd)
+            bd = dx * dx + dz * dz, best = i;
+    }
+    if ((int)best + 1 >= autopilot)
+        return getenv("PORT_AUTOPILOT_OFF") ? (atoi(getenv("PORT_AUTOPILOT_OFF")) == 2 ? 0x8100u : 0x8200u) : 0;   /* or off the road (1 left, 2 right) */
+    i = (best + 2) % n;
+    tx = (int16_t)rom_word(r, off + 2 + i * 8);
+    tz = (int16_t)rom_word(r, off + 6 + i * 8);
+    want = (int)lround(atan2(tx - px, tz - pz) * 128 / M_PI) & 0xFF;
+    diff = (int8_t)(want - w[0x0667]);
+    return 0x8000 | (diff > 4 ? 0x0100 : diff < -4 ? 0x0200 : 0);
+}
+
 void smoke_input(long frame, uint16_t *p0, uint16_t *p1)
 {
+    if (autopilot && snes_wram()[0x0E5B]) {
+        *p0 = (uint16_t)autopilot_buttons();
+            *p1 = 0;
+    }
     if (!trace && !input_count) return;
     if (race_start < 0 && snes_wram()[0x0E5B]) {
         race_start = frame;

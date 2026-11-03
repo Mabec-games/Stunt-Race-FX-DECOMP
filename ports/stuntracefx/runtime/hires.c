@@ -115,6 +115,7 @@ static HrOp *new_op(int kind)
     memset(o, 0, offsetof(HrOp, x));
     o->kind = (uint8_t)kind;
     o->nrows = 0;
+    o->model = rd16(snes_sfx_ram(), 0x16);
     sprite_open = kind == HR_SPRITE;
     return o;
 }

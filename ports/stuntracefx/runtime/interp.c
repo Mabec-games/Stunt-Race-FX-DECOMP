@@ -1384,6 +1384,7 @@ extern int port_sort_wide;          /* game/render/sort.c */
 static int wide_on = -1;
 static long wide_repeats;
 static uint32_t wide_m1[VID_HEIGHT], wide_m2[VID_HEIGHT];
+static uint32_t wide_floor[VID_HEIGHT][2];   /* the wider view: a line's 3D at the window's left and right edges, carried past them (0 none) */
 
 int interp_wide(void)
 {
@@ -2336,7 +2337,35 @@ static void compose_hires(const Draw *b, const uint16_t *a, const uint16_t *own,
             line = VID_HEIGHT;
         /* (at full brightness: the screen's own way with colours is laid
            on below, pixel by pixel) */
+        hires_line_palettes((const uint16_t (*)[256])pic_base->palette, ry0 + 1, VID_HEIGHT);
         hires_render(hr, port_rom(), port_rom_size(), pic_base->palette[line], 15, S, A, RW, RH, hr_3d);
+    }
+    if (RW != CW) {
+        /* the wider view: a line whose 3D stops at the window's edge (rows
+           the game plotted only as wide as its window: Aqua Tunnel's water
+           floor) goes on past it, as its colour at the edge */
+        int row;
+        for (row = 0; row < VID_HEIGHT; row++) {
+            const uint32_t *r3 = hr_3d + (size_t)((row - ry0) * S + S / 2) * RW * S;
+            int l = (x0 - rx0) * S, r = (x0 - rx0 + CW) * S - 1;
+            wide_floor[row][0] = wide_floor[row][1] = 0;
+            if (row < y0 || row >= y0 + CH || row < ry0 || row >= ry0 + RH)
+                continue;
+            {
+                /* a floor: the window's whole line drawn (all but a twentieth),
+                   one colour for a few pixels in from the edge; its smoothed
+                   edge a pixel past the window */
+                int q, n = 0;
+                for (q = l; q <= r; q += S)
+                    n += r3[q] >> 24 == 255;
+                if (n * 20 < CW * 19)
+                    continue;
+            }
+            if (l >= 2 * S && r3[l + S] >> 24 == 255 && r3[l + S] == r3[l + 4 * S] && !(r3[l - 2 * S] >> 24))
+                wide_floor[row][0] = r3[l + S];
+            if (r + 2 * S < RW * S && r3[r - S] >> 24 == 255 && r3[r - S] == r3[r - 4 * S] && !(r3[r + 2 * S] >> 24))
+                wide_floor[row][1] = r3[r - S];
+        }
     }
     for (y = 0; y < VID_HEIGHT * S; y++) {
         int sy = y / S, k;
@@ -2371,10 +2400,18 @@ static void compose_hires(const Draw *b, const uint16_t *a, const uint16_t *own,
             }
             if (shows3d) {
                 uint32_t h = hr_3d[(size_t)cy * RW * S + cx], al = h >> 24, bg = hr_sky[i];
-                if (!in_window && RW != CW && ((wide_m1[sy] & 0xFFFFFF) != 0xC6C6C6 || (wide_m2[sy] & 0xFFFFFF) != 0x424242)) {
+                if (!in_window && RW != CW && al < 255) {
+                    /* (below the window: its last line's floor, on down) */
+                    int fy = sy >= y0 + CH ? y0 + CH - 1 : sy, side = sy >= y0 + CH ? sx >= x0 + CW / 2 : sx >= x0;
+                    if (fy >= y0 && wide_floor[fy][side])
+                        h = wide_floor[fy][side], al = 255;
+                }
+                if (!in_window && RW != CW && (sy > y0 + CH - 1 || (wide_m1[sy] & 0xFFFFFF) != 0xC6C6C6 || (wide_m2[sy] & 0xFFFFFF) != 0x424242)) {
                     /* a line the game tints in its window (a flash, a
                        tunnel): its sky past the window untinted, the
-                       window's edge sky carried out instead */
+                       window's edge sky carried out instead; below the
+                       window too (the plane there holds other tiles, seen
+                       where the 3D leaves gaps: Aqua Tunnel's water) */
                     int ex = sx < x0 ? x0 : sx > x0 + CW - 1 ? x0 + CW - 1 : sx, ey = sy < y0 ? y0 : sy > y0 + CH - 1 ? y0 + CH - 1 : sy;
                     bg = hr_sky[ey * VID_WIDTH + ex];
                 }
@@ -2385,13 +2422,26 @@ static void compose_hires(const Draw *b, const uint16_t *a, const uint16_t *own,
                     int own_marks = in_window && hr_mask[i] != hr_mask2[i];
                     uint32_t m1 = own_marks ? hr_mask[i] : RW != CW ? wide_m1[sy] : 0xFFC6C6C6u;
                     uint32_t m2 = own_marks ? hr_mask2[i] : RW != CW ? wide_m2[sy] : 0xFF424242u, o = h & 0xFF000000u;
-                    int sh = (m1 & 0xFFFFFF) == 0xC6C6C6 && (m2 & 0xFFFFFF) == 0x424242 ? 24 : 0;   /* as it is */
-                    if (sh)
-                        o = h;
-                    for (; sh < 24; sh += 8) {
-                        int c1 = (int)(m1 >> sh & 0xFF), c2 = (int)(m2 >> sh & 0xFF), v = (int)(h >> sh & 0xFF);
-                        int out = c2 + (c1 - c2) * (v - 66) / (198 - 66);
-                        o |= (uint32_t)(out < 0 ? 0 : out > 255 ? 255 : out) << sh;
+                    if ((m1 & 0xFFFFFF) == 0xC6C6C6 && (m2 & 0xFFFFFF) == 0x424242)
+                        o = h;                  /* as it is */
+                    else {
+                        /* (a table a channel for these marks, made again
+                           only when they change: most lines have one) */
+                        static uint32_t tm1 = 1, tm2 = 1;
+                        static uint8_t tab[3][256];
+                        int ch;
+                        if ((m1 & 0xFFFFFF) != tm1 || (m2 & 0xFFFFFF) != tm2) {
+                            tm1 = m1 & 0xFFFFFF;
+                            tm2 = m2 & 0xFFFFFF;
+                            for (ch = 0; ch < 3; ch++) {
+                                int c1 = (int)(tm1 >> (ch * 8) & 0xFF), c2 = (int)(tm2 >> (ch * 8) & 0xFF), v;
+                                for (v = 0; v < 256; v++) {
+                                    int out = c2 + (c1 - c2) * (v - 66) / (198 - 66);
+                                    tab[ch][v] = (uint8_t)(out < 0 ? 0 : out > 255 ? 255 : out);
+                                }
+                            }
+                        }
+                        o |= (uint32_t)tab[0][h & 0xFF] | (uint32_t)tab[1][h >> 8 & 0xFF] << 8 | (uint32_t)tab[2][h >> 16 & 0xFF] << 16;
                     }
                     h = o;
                 }

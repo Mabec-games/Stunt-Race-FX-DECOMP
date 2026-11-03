@@ -29,9 +29,23 @@
 static uint32_t *samp;
 static size_t samp_size;
 static uint32_t lut[256];
+/* each Super FX row's colours (the screen's palette on its line: a game
+   changing colours line by line, Aqua Tunnel's water); lut where the same */
+#define LUT_ROWS 256
+static const uint32_t *row_lut[LUT_ROWS];
+static uint32_t row_luts[LUT_ROWS][256];
+static const uint16_t (*line_pal)[256];
+static int line_first, line_last;
+#define LUT(j) row_lut[(j) / N < LUT_ROWS ? (j) / N : LUT_ROWS - 1]
 static const uint8_t *rom_p;
 static uint32_t rom_n;
 static int SW, SH, N;
+/* PORT_SEE_TUNNELS (default on): a tunnel's mouth, one black face drawn
+   over the tunnel's inside (the game draws the inside first, then hides it
+   with the mouth), drawn behind instead: only where nothing is yet */
+static int see_tunnels = -1;
+static uint8_t behind[HR_MAXOPS];
+static const HrOp *cur_ops;
 
 static uint8_t rom_byte(uint8_t bank, uint16_t addr)
 {
@@ -295,9 +309,13 @@ static void poly(const HrOp *o, int b0, int b1)
             if (!row_span(x, y, n, j, &i0, &i1, tex ? u : NULL, v, &ul, &vl, &ur, &vr, &xl, &xr))
                 continue;
             if (!tex) {
-                uint32_t c = lut[o->colour];
-                for (i = i0; i < i1; i++)
-                    row[i] = c;
+                uint32_t c = LUT(j)[o->colour];
+                if (behind[o - cur_ops])
+                    for (i = i0; i < i1; i++)
+                        row[i] = row[i] ? row[i] : c;
+                else
+                    for (i = i0; i < i1; i++)
+                        row[i] = c;
                 continue;
             }
             for (i = i0; i < i1; i++) {
@@ -313,7 +331,7 @@ static void poly(const HrOp *o, int b0, int b1)
                 at = (uint16_t)((((vi & 0xFF00) | (ui >> 8 & 0xFF)) & o->mask) + o->base);
                 c = shape(o->colour, o->options, rom_byte(o->bank, at));
                 if (c >= 0)
-                    row[i] = lut[c];
+                    row[i] = LUT(j)[c];
             }
         }
     }
@@ -413,7 +431,7 @@ static void sprite(const HrList *l, const HrOp *o, int b0, int b1)
                 continue;
             c = span_texel(r, exact ? kk : floorf(kk), fy, dvrow, vlo, vhi);
             if (c >= 0)
-                row[i] = lut[c];
+                row[i] = LUT(j)[c];
         }
     }
 }
@@ -464,6 +482,93 @@ static void *band(void *arg)
     return NULL;
 }
 
+static uint32_t rgb_of(unsigned c, int bright)
+{
+    unsigned r = c & 31, g = c >> 5 & 31, b = c >> 10 & 31;
+    if (bright != 15) {
+        r = r * (bright + 1u) / 16u;
+        g = g * (bright + 1u) / 16u;
+        b = b * (bright + 1u) / 16u;
+    }
+    return 0xFF000000u | (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
+}
+
+/* a flat op's extent */
+static void extent(const HrOp *o, float *x0, float *y0, float *x1, float *y1)
+{
+    int k;
+    *x0 = *y0 = 1e30f;
+    *x1 = *y1 = -1e30f;
+    for (k = 0; k < o->n; k++) {
+        if (o->x[k] < *x0) *x0 = o->x[k];
+        if (o->x[k] > *x1) *x1 = o->x[k];
+        if (o->y[k] < *y0) *y0 = o->y[k];
+        if (o->y[k] > *y1) *y1 = o->y[k];
+    }
+}
+
+/* the tunnels' mouths: a (near) black flat, 400 pixels or more, over at
+   least 4 earlier faces of other models wholly inside it (the tunnel's
+   inside) */
+static void mouths(const HrList *l)
+{
+    static float ex[HR_MAXOPS][4];
+    int k, q;
+    for (k = 0; k < l->nops; k++) {
+        const HrOp *o = &l->ops[k];
+        if (o->kind == HR_FLAT || o->kind == HR_TEX)
+            extent(o, &ex[k][0], &ex[k][1], &ex[k][2], &ex[k][3]);
+        else
+            ex[k][0] = 1e30f;           /* (inside nothing) */
+    }
+    for (k = 0; k < l->nops; k++) {
+        const HrOp *o = &l->ops[k];
+        const float *e = ex[k];
+        int n = 0;
+        if (o->kind != HR_FLAT || (lut[o->colour] & 0xE0E0E0) != 0)   /* (near black: $0821 on Aqua Tunnel) */
+            continue;
+        if ((e[2] - e[0]) * (e[3] - e[1]) < 400)
+            continue;
+        for (q = 0; q < k && n < 4; q++)
+            n += l->ops[q].model != o->model && ex[q][0] >= e[0] && ex[q][2] <= e[2] && ex[q][1] >= e[1] && ex[q][3] <= e[3];
+        behind[k] = n >= 4;
+    }
+    /* of those, a model's biggest alone, and only within its own frame:
+       the model's other (not dark) faces spanning it side to side and
+       reaching as high (a mouth's surround; not a tunnel's ceiling, nor a
+       mouth's dark sides) */
+    for (k = 0; k < l->nops; k++) {
+        const float *e = ex[k];
+        float fx0 = 1e30f, fy0 = 1e30f, fx1 = -1e30f;
+        if (!behind[k])
+            continue;
+        for (q = 0; q < l->nops; q++) {
+            const HrOp *f = &l->ops[q];
+            if (q == k || f->model != l->ops[k].model || ex[q][0] > 1e29f)
+                continue;
+            if (behind[q] && (ex[q][2] - ex[q][0]) * (ex[q][3] - ex[q][1]) > (e[2] - e[0]) * (e[3] - e[1]))
+                break;                  /* (a bigger one) */
+            if (f->kind == HR_FLAT && !(lut[f->colour] & 0xE0E0E0))
+                continue;
+            if (ex[q][0] < fx0) fx0 = ex[q][0];
+            if (ex[q][2] > fx1) fx1 = ex[q][2];
+            if (ex[q][1] < fy0) fy0 = ex[q][1];
+        }
+        if (q < l->nops || fx0 > e[0] + 2 || fx1 < e[2] - 2 || fy0 > e[1] + 2)
+            behind[k] = 2;              /* (not: cleared below) */
+    }
+    for (k = 0; k < l->nops; k++)
+        if (behind[k] == 2)
+            behind[k] = 0;
+}
+
+void hires_line_palettes(const uint16_t (*pal)[256], int first, int last)
+{
+    line_pal = pal;
+    line_first = first;
+    line_last = last;
+}
+
 void hires_render(const HrList *l, const uint8_t *rom, uint32_t rom_size, const uint16_t *palette, int bright,
                   int s, int a, int cw, int ch, uint32_t *argb)
 {
@@ -490,15 +595,28 @@ void hires_render(const HrList *l, const uint8_t *rom, uint32_t rom_size, const 
     }
     rom_p = rom;
     rom_n = rom_size;
-    for (k = 0; k < 256; k++) {
-        unsigned c = palette[k], r = c & 31, g = c >> 5 & 31, b = c >> 10 & 31;
-        if (bright != 15) {
-            r = r * (bright + 1u) / 16u;
-            g = g * (bright + 1u) / 16u;
-            b = b * (bright + 1u) / 16u;
+    for (k = 0; k < 256; k++)
+        lut[k] = rgb_of(palette[k], bright);
+    for (t = 0; t < LUT_ROWS; t++) {
+        int line = line_first + t;
+        row_lut[t] = lut;
+        if (!line_pal || t >= ch || line < 1 || line > line_last)
+            continue;
+        if (t > 0 && line > 1 && !memcmp(line_pal[line], line_pal[line - 1], 512))
+            row_lut[t] = row_lut[t - 1];        /* (as the line above) */
+        else if (memcmp(line_pal[line], palette, 512)) {
+            for (k = 0; k < 256; k++)
+                row_luts[t][k] = line_pal[line][k] == palette[k] ? lut[k] : rgb_of(line_pal[line][k], bright);
+            row_lut[t] = row_luts[t];
         }
-        lut[k] = 0xFF000000u | (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
     }
+    line_pal = NULL;
+    if (see_tunnels < 0)
+        see_tunnels = !getenv("PORT_SEE_TUNNELS") || atoi(getenv("PORT_SEE_TUNNELS"));
+    cur_ops = l->ops;
+    memset(behind, 0, sizeof behind);
+    if (see_tunnels)
+        mouths(l);
     for (t = 0; t < threads; t++) {
         bd[t].l = l;
         bd[t].s = s;

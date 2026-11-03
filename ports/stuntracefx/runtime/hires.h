@@ -25,6 +25,7 @@ enum { HR_FLAT, HR_LINE, HR_TEX, HR_SPRITE, HR_ROWS };
 typedef struct {
     uint8_t kind, n, colour, options, bank;
     uint16_t base, mask;
+    uint16_t model;                    /* the model drawing it ($0016) */
     float x[HR_MAXV], y[HR_MAXV];      /* exact corners (Super FX pixels) */
     uint16_t u[HR_MAXV], v[HR_MAXV];   /* textured: 8.8 */
     /* sprites: the projection (whole and exact) and its rows */
@@ -55,5 +56,10 @@ int hires_get_small(void);
    colours from palette (256 BGR555 words) at brightness bright (0-15) */
 void hires_render(const HrList *l, const uint8_t *rom, uint32_t rom_size, const uint16_t *palette, int bright,
                   int s, int a, int cw, int ch, uint32_t *argb);
+
+/* the next hires_render's colours line by line: its row r from
+   pal[first + r] (lines first..last; 1 the screen's first) where that
+   differs from its palette; for that render only */
+void hires_line_palettes(const uint16_t (*pal)[256], int first, int last);
 
 #endif
