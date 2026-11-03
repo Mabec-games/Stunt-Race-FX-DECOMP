@@ -1066,8 +1066,25 @@ static void vidcheck_report(void)
                 vid_check_bad, vid_version_overflow);
 }
 
+#ifdef _WIN32
+#include "coro.h"
+int la_win_worker_main(int argc, char **argv);
+/* the game on a stack of its own (la_win.c: in the memory a snapshot holds) */
+static void game_main(void *arg)
+{
+    (void)arg;
+    port_start();
+    exit(0);
+}
+#endif
+
 int main(int argc, char **argv)
 {
+#ifdef _WIN32
+    /* the look-ahead's worker: the copies of the running game (la_win.c) */
+    if (argc > 1 && !strcmp(argv[1], "--la-worker"))
+        return la_win_worker_main(argc, argv);
+#endif
     atexit(vidcheck_report);
     atexit(far_report);
     static SnesCart cart;
@@ -1184,6 +1201,10 @@ int main(int argc, char **argv)
         s_rs = resample_new(32040, OUT_RATE);
         host_audio_open(OUT_RATE, audio_cb, NULL);
     }
+#ifdef _WIN32
+    coro_switch(coro_self(), coro_new(game_main, NULL, 8u << 20));
+#else
     port_start();
+#endif
     return 0;
 }

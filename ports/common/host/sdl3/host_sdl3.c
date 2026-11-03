@@ -9,7 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <sys/stat.h>
 
 #include <SDL3/SDL.h>
@@ -37,13 +39,34 @@ void host_set_app_name(const char *dir, const char *title)
 void host_init(int argc, char **argv)
 {
     const char *x = getenv("XDG_DATA_HOME"), *home = getenv("HOME");
+#ifndef _WIN32
     char exe[1024];
     ssize_t n;
+#endif
     (void)argc;
     (void)argv;
     SDL_SetHint(SDL_HINT_APP_ID, "stuntracefx");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
         fprintf(stderr, "host: SDL could not start: %s\n", SDL_GetError());
+    if (getenv("PORT_SAVEDIR")) {
+        /* (checks) a save folder of their own */
+        snprintf(s_save, sizeof s_save, "%s", getenv("PORT_SAVEDIR"));
+        host_mkdir(s_save);
+        snprintf(s_res, sizeof s_res, "%s", getenv("PORT_RESDIR") ? getenv("PORT_RESDIR") : ".");
+        return;
+    }
+#ifdef _WIN32
+    /* Windows: portable, all of it in the program's own folder (saves in
+       its save folder, beside the resources) */
+    (void)x;
+    (void)home;
+    {
+        const char *b = SDL_GetBasePath();
+        snprintf(s_save, sizeof s_save, "%ssave", b ? b : "./");
+        host_mkdir(s_save);
+        snprintf(s_res, sizeof s_res, "%s", getenv("PORT_RESDIR") ? getenv("PORT_RESDIR") : b ? b : ".");
+    }
+#else
     if (x && *x)
         snprintf(s_save, sizeof s_save, "%s/%s", x, s_dir);
     else {
@@ -63,6 +86,7 @@ void host_init(int argc, char **argv)
         snprintf(s_res, sizeof s_res, "%s", exe);
     } else
         snprintf(s_res, sizeof s_res, ".");
+#endif
 }
 
 void host_shutdown(void)

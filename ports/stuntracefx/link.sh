@@ -56,7 +56,9 @@ EOS
 CFLAGS="-O2 -g -std=gnu11 -fno-strict-aliasing -ffp-contract=off"
 INC="-Iports/common/snes -Iports/common/video -Iports/common/audio -Iports/common/render -Iports/common/host -I$GAME/include -Iports/stuntracefx/runtime"
 case "$TARGET" in
-  *mingw*|*windows*) OSHOST=ports/common/host/win32/host_win32.c; EXE=.exe; OSLIBS="-static -lwinmm";;
+  *mingw*|*windows*) OSHOST=ports/common/host/win32/host_win32.c; EXE=.exe
+                     # (loaded where it was linked: its static data at the same addresses in every process)
+                     OSLIBS="-static -lwinmm -Wl,--disable-dynamicbase -Wl,--disable-high-entropy-va";;
   *)                 OSHOST=ports/common/host/posix/host_posix.c; EXE=;     OSLIBS=;;
 esac
 
@@ -65,10 +67,33 @@ OBJS=
 HDR="$OUT/obj/.headers"
 NEWEST=$(ls -t "$GAME"/include/*.h ports/common/*/*.h ports/stuntracefx/runtime/*.h | head -1)
 [ -f "$HDR" ] && [ ! "$NEWEST" -nt "$HDR" ] || touch -r "$NEWEST" "$HDR"
+# Windows: the game's own memory and static data where a snapshot of them
+# is the running game (the look-ahead's copy, runtime/la_win.c): every C
+# file of the game, the machine and the runtime allocates through
+# port_mem.h, and its .data and .bss go to .data$srfx_m and .bss$srfx_m
+# (bounded by win_marks.S); the hosts (the window, sound, the system's
+# calls) and the copy's own manager keep theirs
+case "$TARGET" in
+  *mingw*|*windows*) WINSNAP=1; OBJCOPY=${OBJCOPY:-x86_64-w64-mingw32-objcopy};;
+  *)                 WINSNAP=0;;
+esac
+own_state() {   # a source whose static data and memory belong to the game
+  case "$1" in
+    ports/common/host/*|ports/stuntracefx/runtime/la_win.c|*.S) return 1;;
+  esac
+  return 0
+}
 compile() {   # source, extra flags
   o="$OUT/obj/$(echo "$1" | sed 's#/#__#g').o"
   if [ ! -f "$o" ] || [ "$1" -nt "$o" ] || [ ports/stuntracefx/link.sh -nt "$o" ] || [ "$HDR" -nt "$o" ]; then
-    $CC $CFLAGS $2 -c "$1" -o "$o"
+    extra=
+    if [ "$WINSNAP" = 1 ] && own_state "$1"; then
+      case "$1" in ports/common/snes/port_mem.c) ;; *.c) extra="-include ports/common/snes/port_mem.h";; esac
+    fi
+    $CC $CFLAGS $2 $extra -c "$1" -o "$o"
+    if [ "$WINSNAP" = 1 ] && own_state "$1"; then
+      $OBJCOPY --rename-section '.data=.data$srfx_m' --rename-section '.bss=.bss$srfx_m' "$o"
+    fi
   fi
   OBJS="$OBJS $o"
 }
@@ -86,7 +111,8 @@ for f in ports/common/snes/*.c ports/common/video/*.c ports/common/audio/*.c por
   fi
 done
 case "$TARGET" in
-  *mingw*|*windows*) ;;
+  *mingw*|*windows*) compile ports/common/snes/coro_win64.S ""
+                     compile ports/common/snes/win_marks.S "";;
   aarch64*|arm64*) compile ports/common/snes/coro_arm64.S "";;
   x86_64*)         compile ports/common/snes/coro_x86_64.S "";;
 esac
@@ -144,6 +170,7 @@ if [ "$HOST" = lib ]; then
   ar rcs "$OUT/libstuntracefx.a" $OBJS
   echo "link: $OUT/libstuntracefx.a"
 else
-  $CC -o "$OUT/stuntracefx$EXE" $OBJS $LIBS -lm
+  # LDEXTRA: more for the link (a Windows release: -mwindows, no console window)
+  $CC -o "$OUT/stuntracefx$EXE" $OBJS $LIBS -lm ${LDEXTRA:-}
   echo "link: $OUT/stuntracefx$EXE"
 fi

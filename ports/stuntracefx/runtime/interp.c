@@ -42,6 +42,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "port_mem.h"
 #include "snes.h"
 #include "draw_list.h"
 #include "video.h"
@@ -2175,8 +2176,8 @@ static void compose_hires(const Draw *b, const uint16_t *a, const uint16_t *own,
     double t0 = now_ms(), t;
     static int reported;
     if (!hr_out) {
-        hr_out = (uint32_t *)malloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
-        hr_3d = (uint32_t *)malloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
+        hr_out = (uint32_t *)port_pic_alloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
+        hr_3d = (uint32_t *)port_pic_alloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
         hr_sky = (uint32_t *)malloc(VID_WIDTH * VID_HEIGHT * 4);
         hr_mask = (uint32_t *)malloc(VID_WIDTH * VID_HEIGHT * 4);
         hr_mask2 = (uint32_t *)malloc(VID_WIDTH * VID_HEIGHT * 4);
@@ -2716,9 +2717,56 @@ static void picture_on(const Draw *b, const uint8_t *ram, uint16_t at, const uin
    than the in-betweens from N - 1 to N. Without the copy's draw: N. */
 #include <signal.h>
 #include <stddef.h>
+#ifndef _WIN32
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#else
+/* Windows: no fork(). The copy is made by la_win.c: the game's memory and
+   static data snapshotted into a second process of this program, which
+   goes on from fork()'s jump buffer as the copy (la_win.c's head comment);
+   waitpid, kill and _exit through it, the shared slots its section. */
+#include <windows.h>
+#undef far                       /* (old 16-bit words windows.h defines; fields here) */
+#undef near
+typedef int pid_t;
+#define WNOHANG 1
+#define SIGKILL 9
+#define WIFEXITED(s) 1
+#define WEXITSTATUS(s) (s)
+#define PROT_READ 1
+#define PROT_WRITE 2
+#define MAP_SHARED 1
+#define MAP_ANONYMOUS 2
+#define MAP_FAILED ((void *)-1)
+int la_win_fork(void **ctx);
+int la_win_wait(int *st, int wait);
+void la_win_kill(void);
+void la_win_exit(int code);
+int la_win_aborted(void);
+void *la_win_shared(size_t n);
+static void *la_ctx[5];             /* where the copy goes on (in the static data it gets) */
+static pid_t fork(void)
+{
+    if (__builtin_setjmp(la_ctx))
+        return 0;                   /* the copy, in the worker */
+    return la_win_fork(la_ctx) ? 4242 : -1;
+}
+static pid_t waitpid(pid_t p, int *st, int o)
+{
+    int r = la_win_wait(st, !(o & WNOHANG));
+    return r > 0 ? p : r;
+}
+static int kill(pid_t p, int s) { (void)p; (void)s; la_win_kill(); return 0; }
+static void usleep(unsigned us) { (void)us; Sleep(0); }
+#define _exit(c) la_win_exit(c)
+static void *mmap(void *a, size_t n, int pr, int fl, int fd, long off)
+{
+    void *m = la_win_shared(n);
+    (void)a, (void)pr, (void)fl, (void)fd, (void)off;
+    return m ? m : MAP_FAILED;
+}
+#endif
 
 #define LA_HUD 40                /* a copy's video frames' HUD kept */
 #define LA_SLOTS 3               /* copies' results kept: the running one's, the last finished, one before */
@@ -3001,6 +3049,10 @@ void interp_lookahead_child_frame(void)
     }
     if (++la_child_frames > 4 * MAXSTEPS)
         _exit(1);
+#ifdef _WIN32
+    if (la_win_aborted())
+        _exit(9);                   /* ended (kill): at its next frame, as near as a signal */
+#endif
 }
 
 /* the HUD the copies saw at video frame fr (the newest copy's that has
@@ -3377,7 +3429,7 @@ static int pause_frame(const Draw *n)
         if (!hr_shown_last)
             return 0;
         if (!pz_hr)
-            pz_hr = (uint32_t *)malloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
+            pz_hr = (uint32_t *)port_pic_alloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
         if (!pz_game_ok)
             return 0;
         memcpy(pz_hr, hr_out, (size_t)W * VID_HEIGHT * S * 4);

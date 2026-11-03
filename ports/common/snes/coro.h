@@ -5,7 +5,8 @@
  * control back and forth with the S-CPU's (the program's own stack), one
  * running at a time: a deterministic schedule, no threads. The switch is a
  * few instructions of assembly on arm64 and x86-64 (coro_arm64.S,
- * coro_x86_64.S); on Windows, the system's fibers.
+ * coro_x86_64.S, coro_win64.S: on Windows too, not the system's fibers,
+ * so that the stacks are ours, in a snapshot of the program's memory).
  */
 #ifndef PORT_CORO_H
 #define PORT_CORO_H
@@ -22,5 +23,9 @@ Coro *coro_new(void (*fn)(void *), void *arg, size_t stack);
 /* leave the running coroutine `from` for `to` (until something switches
    back to `from`) */
 void coro_switch(Coro *from, Coro *to);
+/* the coroutines' stacks: how many, and each one's lowest address, size and
+   saved stack pointer (not current for the running one) */
+int coro_stack_count(void);
+void coro_stack_info(int i, void **lo, size_t *size, void **sp);
 
 #endif

@@ -9,7 +9,7 @@
 # ../img/2.png) and SDL3. Out: ../dist/StuntRaceFX-Beta-x86_64.AppImage.
 set -e
 ART=${1:-../img/2.png}
-VERSION=${VERSION:-beta-0.1}
+VERSION=${VERSION:-beta-0.2}
 B=build/appimage
 APPDIR=$B/AppDir
 DIST=../dist

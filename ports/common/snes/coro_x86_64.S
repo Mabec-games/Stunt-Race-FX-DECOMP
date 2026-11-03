@@ -1,5 +1,5 @@
 /* coro_x86_64.S: the coroutine switch on x86-64 (System V: rbx, rbp and
-   r12-r15 are the callee's to keep). Windows uses fibers (coro.c). */
+   r12-r15 are the callee's to keep). Windows: coro_win64.S. */
 #if defined(__x86_64__) && !defined(_WIN32)
 #ifdef __APPLE__
 #define SYM(x) _##x

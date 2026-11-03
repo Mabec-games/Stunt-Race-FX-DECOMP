@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "port_mem.h"
 #include "hires.h"
 
 static uint32_t *samp;
@@ -590,7 +591,7 @@ void hires_render(const HrList *l, const uint8_t *rom, uint32_t rom_size, const 
     need = (size_t)SW * SH;
     if (need > samp_size) {
         free(samp);
-        samp = (uint32_t *)malloc(need * 4);
+        samp = (uint32_t *)port_pic_alloc(need * 4);
         samp_size = need;
     }
     rom_p = rom;

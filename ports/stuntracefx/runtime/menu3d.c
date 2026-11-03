@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "port_mem.h"
 #include "hires.h"
 #include "video.h"
 #include <time.h>
@@ -443,8 +444,8 @@ const uint32_t *menu3d_picture(int *w, int *h)
     {
         int W = VID_WIDTH * S, sx, sy;
         if (!hi) {
-            hi = (uint32_t *)malloc((size_t)GW * GH * 36 * 4);
-            out = (uint32_t *)malloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
+            hi = (uint32_t *)port_pic_alloc((size_t)GW * GH * 36 * 4);
+            out = (uint32_t *)port_pic_alloc((size_t)VID_WIDTH * VID_HEIGHT * 36 * 4);
         }
         hires_render(&ring[best], port_rom(), port_rom_size(), f->palette[line], bright, S, A, GW, GH, hi);
         for (y = 0; y < VID_HEIGHT; y++)

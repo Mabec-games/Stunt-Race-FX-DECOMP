@@ -2,7 +2,9 @@
  * launcher.c: Stunt Race FX's launcher (SDL3): the player's ROM chosen and
  * checked, the port's options set, the game started with them and the
  * launcher shown again when it ends. Settings in
- * $XDG_CONFIG_HOME/stuntracefx/launcher.cfg (~/.config/...).
+ * $XDG_CONFIG_HOME/stuntracefx/launcher.cfg (~/.config/...); on Windows
+ * portable: launcher.cfg beside the programs, the saves and logs in their
+ * save folder, nothing elsewhere.
  *
  * Keyboard (arrows, Return, Escape), game controller (d-pad, A, B) or
  * mouse. The game is the `stuntracefx` beside this program; the
@@ -12,9 +14,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifndef _WIN32
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#endif
 
 #include <SDL3/SDL.h>
 
@@ -140,6 +144,9 @@ static char cfg_path[1024], save_dir[1024];
 
 static void mkdirs(const char *path)
 {
+#ifdef _WIN32
+    SDL_CreateDirectory(path);      /* (the folders on the way too) */
+#else
     char b[1024];
     char *p;
     snprintf(b, sizeof b, "%s", path);
@@ -150,10 +157,18 @@ static void mkdirs(const char *path)
             *p = '/';
         }
     mkdir(b, 0755);
+#endif
 }
 
 static void paths(void)
 {
+#ifdef _WIN32
+    /* portable: everything in the folder the programs are in */
+    const char *bp = SDL_GetBasePath();
+    snprintf(cfg_path, sizeof cfg_path, "%slauncher.cfg", bp ? bp : "./");
+    snprintf(save_dir, sizeof save_dir, "%ssave", bp ? bp : "./");
+    mkdirs(save_dir);
+#else
     const char *x = getenv("XDG_CONFIG_HOME"), *d = getenv("XDG_DATA_HOME"), *h = getenv("HOME");
     char dir[1024];
     if (x && *x)
@@ -167,6 +182,7 @@ static void paths(void)
     else
         snprintf(save_dir, sizeof save_dir, "%s/.local/share/Stunt Race FX", h ? h : ".");
     mkdirs(save_dir);
+#endif
 }
 
 static void cfg_load(void)
@@ -295,6 +311,61 @@ static void set_status(const char *s, Uint8 r, Uint8 g, Uint8 b)
     status_b = b;
 }
 
+#ifdef _WIN32
+/* Windows: the game started by SDL's process calls, the options in its
+   environment (as setenv before exec elsewhere) */
+static int run_game(SDL_Window *win)
+{
+    static const char *hires[] = {"0", "2", "3", "4"};
+    char game[1200], logs[1200], look[4];
+    const char *args[4];
+    SDL_Environment *env;
+    SDL_PropertiesID props;
+    SDL_Process *proc;
+    int code = 0;
+    snprintf(game, sizeof game, "%sstuntracefx.exe", base_dir);
+    snprintf(logs, sizeof logs, "%s/logs", save_dir);
+    mkdirs(logs);
+    env = SDL_CreateEnvironment(true);
+    snprintf(look, sizeof look, "%d", opt[O_LOOK].value);
+    SDL_SetEnvironmentVariable(env, "PORT_FULLSCREEN", opt[O_DISPLAY].value ? "1" : "0", true);
+    SDL_SetEnvironmentVariable(env, "PORT_HIRES", hires[opt[O_RES].value], true);
+    SDL_SetEnvironmentVariable(env, "PORT_LOOKAHEAD", look, true);
+    SDL_SetEnvironmentVariable(env, "PORT_FAR_CARS", opt[O_FAR].value ? "18000" : "4500", true);
+    SDL_SetEnvironmentVariable(env, "PORT_WIDE", opt[O_WIDE].value ? "1" : "0", true);
+    SDL_SetEnvironmentVariable(env, "PORT_SPEED", opt[O_SPEED].value ? "original" : "10", true);
+    SDL_SetEnvironmentVariable(env, "PORT_VSYNC", opt[O_VSYNC].value ? "1" : "0", true);
+    SDL_SetEnvironmentVariable(env, "PORT_LOG_DIR", logs, true);
+    args[0] = game;
+    args[1] = "--rom";
+    args[2] = rom_path;
+    args[3] = NULL;
+    props = SDL_CreateProperties();
+    SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, (void *)args);
+    SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ENVIRONMENT_POINTER, env);
+    SDL_SetStringProperty(props, SDL_PROP_PROCESS_CREATE_WORKING_DIRECTORY_STRING, save_dir);
+    proc = SDL_CreateProcessWithProperties(props);
+    SDL_DestroyProperties(props);
+    SDL_DestroyEnvironment(env);
+    if (!proc) {
+        set_status(SDL_GetPathInfo(game, NULL) ? "THE GAME COULD NOT START" : "THE GAME IS MISSING", 255, 96, 96);
+        return 0;
+    }
+    SDL_HideWindow(win);
+    while (!SDL_WaitProcess(proc, false, &code)) {
+        SDL_PumpEvents();
+        SDL_Delay(50);
+    }
+    SDL_DestroyProcess(proc);
+    SDL_ShowWindow(win);
+    SDL_RaiseWindow(win);
+    if (code != 0)
+        set_status("THE GAME STOPPED WITH AN ERROR", 255, 96, 96);
+    else
+        set_status("", 255, 255, 255);
+    return 1;
+}
+#else
 static int run_game(SDL_Window *win)
 {
     char game[1200], logs[1200];
@@ -342,6 +413,7 @@ static int run_game(SDL_Window *win)
         set_status("", 255, 255, 255);
     return 1;
 }
+#endif
 
 /* ---- the screen ---- */
 enum { M_PLAY, M_ROM, M_OPT0, M_CONTROLS = M_OPT0 + NOPT, M_QUIT, NMENU };
@@ -523,6 +595,15 @@ int main(int argc, char **argv)
     }
     if (rom_state == 2)
         set_status("THE SAVED ROM IS NOT VALID: CHOOSE AGAIN", 255, 96, 96);
+    if (getenv("LAUNCHER_TEST_PLAY")) {
+        /* (a check) PLAY with this ROM, then quit */
+        snprintf(rom_path, sizeof rom_path, "%s", getenv("LAUNCHER_TEST_PLAY"));
+        rom_check();
+        if (rom_state == 1)
+            run_game(win);
+        fprintf(stderr, "launcher: test play %s, status '%s'\n", rom_state == 1 ? "ran" : "had no valid ROM", status);
+        running = 0;
+    }
     while (running) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
