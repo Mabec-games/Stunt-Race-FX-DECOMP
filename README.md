@@ -27,6 +27,8 @@ players remember. The original stays one switch away.
 If you have a game you would like to see again, write to me at
 [retro@strutb.com](mailto:retro@strutb.com).
 
+## Stunt Race FX
+
 <p>
 <img src="docs/stuntracefx/img/original-race.png" width="27%" alt="Stunt Race FX in Original mode: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
 <img src="docs/stuntracefx/img/enhanced-race.png" width="36%" alt="Stunt Race FX in Enhanced mode: the coupe on the same course at 16:9, the 3D, hills and HUD filling the window">
