@@ -1,11 +1,13 @@
 #!/bin/sh
-# builder/build.sh: build Stunt Race FX Builder for macOS and Windows.
+# builder/build.sh: build Stunt Race FX Builder for macOS, Windows and Linux.
 #
 #   build/builder/dist/StuntRaceFXBuilder-VERSION-macOS.zip    Stunt Race FX Builder.app, universal:
 #                                                              builds Stunt Race FX for the Mac or
 #                                                              for the iPhone and iPad
 #   build/builder/dist/StuntRaceFXBuilder-VERSION-Windows.zip  Stunt Race FX Builder\StuntRaceFXBuilder.exe
 #                                                              and game\ (the payload), x64
+#   build/builder/dist/StuntRaceFXBuilder-VERSION-Linux-x86_64.tar.gz  Stunt Race FX Builder/StuntRaceFXBuilder
+#   build/builder/dist/StuntRaceFXBuilder-VERSION-Linux-arm64.tar.gz   and game/ (the payload), per CPU
 #
 # Each carries the game (native/stuntracefx on nativeshvc) built with none of
 # the cartridge's data in it: the game reads cart.dat, which the builder
@@ -22,7 +24,9 @@
 # Xcode's clang and the iOS SDK, cmake and ninja, glslangValidator and
 # spirv-cross (the game's shaders; dxc for their D3D12 form), mingw-w64
 # (x86_64-w64-mingw32-*) and the Vulkan headers (brew's vulkan-headers) for
-# Windows.
+# Windows and Linux. Linux is built on a Linux machine over ssh (LINUX_HOST,
+# default strutb@192.168.1.25, in ~/srfx-linux there): builder/linux/
+# build-linux.sh says what it needs on it.
 set -e
 cd "$(dirname "$0")/.."
 ROOT=$PWD
@@ -48,8 +52,8 @@ if [ -n "$(ls -A "$G/assets" | grep -v '^\.gitkeep$')" ]; then
     echo "build.sh: the game's assets folder holds files at $REV; the payload must carry no data" >&2
     exit 1
 fi
-rm -rf $B/payload-macos $B/payload-windows $B/gen $B/game-*
-mkdir -p $DIST $B/payload-macos/ios $B/payload-windows $B/win $B/gen
+rm -rf $B/payload-macos $B/payload-windows $B/payload-linux-* $B/gen $B/game-* $B/linux
+mkdir -p $DIST $B/payload-macos/ios $B/payload-windows $B/win $B/gen $B/linux
 
 # the game for one system, as nativeshvc's nshvc-build configures it
 game() {    # DIR CMAKE-ARGS...
@@ -110,6 +114,37 @@ for s, e in rows:
     print('    { 0x%06X, 0x%06X },' % (s, e))
 print('};')
 EOF
+
+# ---- the payload and builder: Linux, x86_64 and arm64 -----------------------------------------
+# built on a Linux machine against Ubuntu 22.04's C library (builder/linux/), from the same commit
+LINUX_HOST=${LINUX_HOST:-strutb@192.168.1.25}
+LW=srfx-linux
+ssh -o BatchMode=yes $LINUX_HOST "mkdir -p $LW/src/native $LW/nshvc $LW/vk $LW/gen"
+rsync -a --delete --exclude build --exclude assets "$G" $LINUX_HOST:$LW/src/native/
+rsync -a --delete --exclude build "$TREE/builder" $LINUX_HOST:$LW/src/
+rsync -a --delete "$NSHVC/src" "$NSHVC/include" "$NSHVC/cmake" "$NSHVC/tools" "$NSHVC/CMakeLists.txt" $LINUX_HOST:$LW/nshvc/
+rsync -aL --delete "$(brew --prefix)/include/vulkan" "$(brew --prefix)/include/vk_video" $LINUX_HOST:$LW/vk/
+rsync -a $B/gen/cart_table.h $LINUX_HOST:$LW/gen/
+ssh -o BatchMode=yes $LINUX_HOST "mkdir -p $LW/src/native/stuntracefx/assets && sh $LW/src/builder/linux/build-linux.sh $LW $VERSION" \
+    > $B/linux/build.log 2>&1 || { tail -30 $B/linux/build.log; echo "build.sh: the Linux build failed ($B/linux/build.log)" >&2; exit 1; }
+grep -E "^built|needs glibc" $B/linux/build.log
+for A in amd64 arm64; do
+    rsync -a $LINUX_HOST:$LW/out-$A/ $B/payload-linux-$A/
+done
+python3 builder/check_payload.py "$ROM" "$G/tools/assets.csv" $B/payload-linux-amd64/stuntracefx \
+    $B/payload-linux-arm64/stuntracefx
+rm -f $DIST/StuntRaceFXBuilder-*-Linux-*.tar.gz
+for A in amd64 arm64; do
+    [ $A = amd64 ] && CPU=x86_64 || CPU=arm64
+    L="$B/linux/$CPU/Stunt Race FX Builder"
+    mkdir -p "$L/game"
+    cp $B/payload-linux-$A/StuntRaceFXBuilder "$L/"
+    cp $B/payload-linux-$A/stuntracefx $B/payload-linux-$A/icon.png $B/payload-linux-$A/icon.argb "$L/game/"
+    cp -R $B/payload-linux-$A/shaders "$L/game/shaders"
+    chmod 755 "$L/StuntRaceFXBuilder" "$L/game/stuntracefx"
+    COPYFILE_DISABLE=1 tar -C "$B/linux/$CPU" --no-mac-metadata --uid 0 --gid 0 --uname root --gname root -czf "$DIST/StuntRaceFXBuilder-$VERSION-Linux-$CPU.tar.gz" \
+        "Stunt Race FX Builder"
+done
 
 # ---- macOS: Stunt Race FX Builder.app ---------------------------------------------------------
 APP="$B/mac/Stunt Race FX Builder.app"

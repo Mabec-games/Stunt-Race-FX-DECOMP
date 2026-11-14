@@ -11,6 +11,12 @@
  *   player to sign
  * Windows: a folder
  *   Stunt Race FX\Stunt Race FX.exe (its icon built in), shaders\, cart.dat
+ * Linux: a folder
+ *   Stunt Race FX/Stunt Race FX     the game
+ *                /shaders/, cart.dat
+ *                /icon.png, icon.argb      its icon: the desktop file's, the window's
+ *                /Stunt Race FX.desktop    a launcher for the folder as built (copy it to
+ *                                          ~/.local/share/applications to list the game)
  *
  * The build is made in a hidden folder beside its destination and renamed
  * into place when complete; an earlier build is replaced only when it carries
@@ -35,7 +41,10 @@ extern char **environ;
 #define IOS_APP RB_PRODUCT ".app"
 #define COPIER_HEADER 512u                 /* a copier's header before the ROM (.smc) */
 
-const char *rb_target_name(int t) { return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : "Windows"; }
+const char *rb_target_name(int t)
+{
+    return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : t == RB_LINUX ? "Linux" : "Windows";
+}
 
 const char *rb_output_name(int t)
 {
@@ -164,7 +173,7 @@ int rb_ios_signing(char *desc, size_t n)
 #endif
 
 /* the marker sits in the app's Resources (Mac), the app inside the .ipa
- * (iPhone), or the folder (Windows) */
+ * (iPhone), or the folder (Windows, Linux) */
 static void marker_path(int target, const char *root, char *out, size_t n)
 {
     char r[2048], a[2048];
@@ -319,9 +328,18 @@ static int stage(ctx *c)
     snprintf(c->res, sizeof c->res, "%s", c->root);
     if (!rb_mkdirs(c->root))
         goto nodir;
-    rb_join(path, sizeof path, c->root, RB_PRODUCT ".exe");
+    rb_join(path, sizeof path, c->root, t == RB_LINUX ? RB_PRODUCT : RB_PRODUCT ".exe");
     if (!payload(c, "game", path, 0))
         return 0;
+    if (t == RB_LINUX) {
+        rb_set_exec(path);
+        rb_join(path, sizeof path, c->root, "icon.png");
+        if (!payload(c, "icon-png", path, 0))
+            return 0;
+        rb_join(path, sizeof path, c->root, "icon.argb");
+        if (!payload(c, "icon-argb", path, 0))
+            return 0;
+    }
     rb_join(path, sizeof path, c->root, "shaders");
     return payload(c, "shaders", path, 1);
 nodir:
@@ -360,12 +378,39 @@ static int data(ctx *c)
     return ok && !cancelled(c);
 }
 
+/* Linux: a launcher for the game where it will be once moved into place */
+static int linux_desktop(ctx *c)
+{
+    char out[2048], path[2048], buf[8192];
+    rb_output_path(c->job, out, sizeof out);
+    snprintf(buf, sizeof buf,
+             "[Desktop Entry]\n"
+             "Type=Application\n"
+             "Name=%s\n"
+             "Comment=Stunt Race FX, built from your cartridge\n"
+             "Exec=\"%s/%s\"\n"
+             "Path=%s\n"
+             "Icon=%s/icon.png\n"
+             "Categories=Game;\n"
+             "Terminal=false\n",
+             RB_PRODUCT, out, RB_PRODUCT, out, out);
+    rb_join(path, sizeof path, c->root, RB_PRODUCT ".desktop");
+    if (!rb_write_file(path, buf, strlen(buf))) {
+        rb_err(c->err, c->errlen, "cannot write the game's desktop file");
+        return 0;
+    }
+    rb_set_exec(path);
+    return 1;
+}
+
 /* sealed and moved into place */
 static int finish(ctx *c)
 {
     char out[2048], mk[2048], staged[2048];
     int ours = 0, t = c->job->target;
     if (t == RB_MACOS && !mac_plist(c))
+        return 0;
+    if (t == RB_LINUX && !linux_desktop(c))
         return 0;
     marker_path(t, c->root, mk, sizeof mk);
     if (!rb_write_file(mk, RB_VERSION "\n", strlen(RB_VERSION "\n"))) {

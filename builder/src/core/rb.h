@@ -1,4 +1,4 @@
-/* rb.h: the release builder's core, shared by the macOS and Windows front ends.
+/* rb.h: the release builder's core, shared by the macOS, Windows and Linux front ends.
  *
  * The builder turns the player's own copy of Stunt Race FX into a build of
  * the native game (native/stuntracefx on nativeshvc). The code ships inside
@@ -8,7 +8,8 @@
  * (native/stuntracefx/tools/assets.csv) as cart.dat: an image of the ROM
  * with each range at its offset and nothing where the ROM's code was. The
  * result needs no ROM once built. It is for the system the builder runs on
- * (Windows: Windows; macOS: the Mac, or the iPhone and iPad as an .ipa).
+ * (Windows: Windows; Linux: Linux; macOS: the Mac, or the iPhone and iPad as an
+ * .ipa).
  *
  * Paths are UTF-8 everywhere. Every long call reports progress through an
  * rb_progress and stops early (with an error) when *cancel becomes nonzero.
@@ -24,7 +25,7 @@ extern "C" {
 #endif
 
 /* what the build is for */
-enum { RB_MACOS, RB_IOS, RB_WINDOWS };
+enum { RB_MACOS, RB_IOS, RB_WINDOWS, RB_LINUX };
 
 typedef void (*rb_progress)(void *ctx, double fraction, const char *status);
 
@@ -35,9 +36,9 @@ typedef void (*rb_progress)(void *ctx, double fraction, const char *status);
 
 #define RB_PRODUCT "Stunt Race FX"
 #define RB_BUILDER "Stunt Race FX Builder"
-const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" */
+const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" / "Linux" */
 /* what the build is called in the destination folder: "Stunt Race FX.app"
- * (Mac), "Stunt Race FX.ipa" (iPhone), the folder "Stunt Race FX" (Windows) */
+ * (Mac), "Stunt Race FX.ipa" (iPhone), the folder "Stunt Race FX" (Windows, Linux) */
 const char *rb_output_name(int target);
 
 /* ---- checking what the player provides ---------------------------------------- */
@@ -53,7 +54,7 @@ int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, vol
 
 /* ---- building ---------------------------------------------------------------------- */
 typedef struct rb_job {
-    int         target;       /* RB_MACOS / RB_IOS / RB_WINDOWS */
+    int         target;       /* RB_MACOS / RB_IOS / RB_WINDOWS / RB_LINUX */
     const char *rom;          /* the cartridge's ROM */
     const char *dest_dir;     /* the folder the build goes into */
 } rb_job;
@@ -81,7 +82,8 @@ uint8_t *rb_cart(const uint8_t *rom, size_t *n, char *err, size_t errlen);
 /* where a piece shipped inside the builder is (a file, or a folder):
  * "game" (the game for this system), "shaders" (its shaders' folder), "icon"
  * (the Mac app's AppIcon.icns), "ios-app" (the iPhone app's folder, its
- * shaders in it), "ios-sign"; 1 on success */
+ * shaders in it), "ios-sign", "icon-png" and "icon-argb" (the Linux game's
+ * icon for its desktop file, and its window's); 1 on success */
 int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t errlen);
 
 /* ---- utilities the core shares (util.c, md5.c) ---------------------------------- */
