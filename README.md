@@ -1,17 +1,19 @@
 # Stunt Race FX: bit-exact decompilation
 
 <p>
-<img src="docs/stuntracefx/img/original-race.png" width="43%" alt="Stunt Race FX in Original mode: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
-<img src="docs/stuntracefx/img/enhanced-race.png" width="56%" alt="Stunt Race FX in Enhanced mode: the coupe on the same course at 16:9, the 3D, hills and HUD filling the window">
+<img src="docs/stuntracefx/img/original-race.png" width="27%" alt="Stunt Race FX in Original mode: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
+<img src="docs/stuntracefx/img/enhanced-race.png" width="36%" alt="Stunt Race FX in Enhanced mode: the coupe on the same course at 16:9, the 3D, hills and HUD filling the window">
+<img src="docs/stuntracefx/img/overhead-race.png" width="36%" alt="Stunt Race FX in the view from above: the player's car leading two rivals past the gantry on Easy Ride, the course seen at an angle from above">
 </p>
 
 *Left: Original mode, the decompiled game on
 [nativeshvc](https://github.com/jeff-strutb/nativeshvc) as the cartridge drew
-it, at its own pace. Right: Enhanced mode on the same course, at 60 frames a
+it, at its own pace. Middle: Enhanced mode on the same course, at 60 frames a
 second and filling a 16:9 window, the 3D drawn at the window's resolution on
-the GPU ([the native build](#playing-it-natively-on-nativeshvc)). Both are
-shots from the native build's headless renderer, which the GPU's is checked
-against.*
+the GPU ([the native build](#playing-it-natively-on-nativeshvc)). Right: the
+view from above, Enhanced mode's other camera, the race seen at an angle
+from overhead. All three are shots from the native build's headless
+renderer, which the GPU's is checked against.*
 
 **Complete: 100% of the game's code is decompiled, behaviour exact and byte
 exact.** Started October 11, 2026; behaviour and byte exact October 18, 2026.
