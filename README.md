@@ -1,5 +1,32 @@
 # Stunt Race FX: bit-exact decompilation
 
+> ## Bring your classic game to a new generation
+>
+> **Jeffrey Wilbur, Strut B, LLC** ·
+> [retro@strutb.com](mailto:retro@strutb.com)
+>
+> If you hold the rights to a classic game, I would love to help it live
+> again. This repository shows what I do: I take a shipped cartridge back
+> to readable, commented source that rebuilds the original ROM byte for
+> byte, prove every routine behaves exactly as the original did, and then
+> run that source natively on today's hardware, with no emulation of any
+> processor. From there the game can grow: 60 frames a second, widescreen,
+> 3D drawn at full resolution on the GPU, new camera views, and builds for
+> macOS, Windows, Linux, iOS and Android, all without losing the game your
+> players remember. The original stays one switch away.
+>
+> - **Preserve** it: source you own and can read, maintain and build on,
+>   recovered from the code that shipped, checked against the original at
+>   every step.
+> - **Remaster** it: modern frame rates, screens and controls, on the
+>   platforms your audience plays on today, with the feel of the original
+>   intact.
+> - **Reach new players**, and give your longtime fans the version they
+>   always pictured.
+>
+> If you have a game you would like to see again, write to me at
+> [retro@strutb.com](mailto:retro@strutb.com).
+
 <p>
 <img src="docs/stuntracefx/img/original-race.png" width="27%" alt="Stunt Race FX in Original mode: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
 <img src="docs/stuntracefx/img/enhanced-race.png" width="36%" alt="Stunt Race FX in Enhanced mode: the coupe on the same course at 16:9, the 3D, hills and HUD filling the window">
@@ -51,9 +78,6 @@ library ([how it plays here](#playing-it-natively-on-nativeshvc)), with no emula
 The numbers are from the full gate on the final tree (`python3
 tools/stuntracefx/gate.py --full`, with every script retraced); the
 generated blocks under Current Status carry the same figures.
-
-**Maintainer:** Jeffrey Wilbur, Strut B, LLC\
-**Contact:** [retro@strutb.com](mailto:retro@strutb.com)
 
 ## License, and no claim to the game
 
