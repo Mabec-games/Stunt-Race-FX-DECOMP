@@ -30,16 +30,16 @@ If you have a game you would like to see again, write to me at
 ## Stunt Race FX
 
 <p>
-<img src="docs/stuntracefx/img/original-race.png" width="27%" alt="Stunt Race FX as the cartridge drew it: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
-<img src="docs/stuntracefx/img/enhanced-race.png" width="36%" alt="Stunt Race FX filling a 16:9 window: the coupe on the same course, the 3D, hills and HUD filling the window">
-<img src="docs/stuntracefx/img/overhead-race.png" width="36%" alt="Stunt Race FX in the view from above: the player's car leading two rivals past the gantry on Easy Ride, the course seen at an angle from above">
+<img src="docs/stuntracefx/img/original-race.png" width="25%" alt="Stunt Race FX as the cartridge drew it: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
+<img src="docs/stuntracefx/img/enhanced-race.png" width="40%" alt="Stunt Race FX Remastered at 16:9: the car under the red bridge on Easy Ride, polygon mountains behind, solid 3D tyres, the HUD across the window">
+<img src="docs/stuntracefx/img/overhead-race.png" width="34%" alt="Stunt Race FX in the view from above: the player's car leading two rivals past the gantry on Easy Ride, the course seen at an angle from above">
 </p>
 
 *Left: the race as the cartridge drew it, 256 x 224 on a 4:3 screen.
-Middle: the same course filling a 16:9 window, the 3D drawn at the window's
-resolution on the GPU (taken October 29, 2026, before the new land and the
-depth-tested 3D). Right: the view from above on Easy Ride (November 14,
-2026). All three are frames of the headless renderer.*
+Middle: Stunt Race FX Remastered on the same course at 16:9, the 3D, its
+new mountains and solid tyres drawn at the window's resolution on the GPU.
+Right: the view from above on Easy Ride. All three are frames of the
+headless renderer; the middle and right ones from November 14, 2026.*
 
 This repository holds two things:
 
