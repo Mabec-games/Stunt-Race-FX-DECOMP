@@ -8,6 +8,16 @@ code `CQ`, version 1. Native NMI/IRQ vectors point into WRAM (0x0108,
 
 The decomp is **C**. A byte-exact companion in assembly rebuilds the ROM.
 
+> **Status (2026-11-14).** Done: M1 and M2 at 100% since October 18, 2026 (the
+> README's Current Status, from the gate of that day). The assembly has not
+> changed since; the C was edited through November 5 (the timing statements
+> out, the October front end's code in `remaster/`) and has not been through
+> the gates since. The playable game is no longer this C
+> run as a cartridge: it is `native/stuntracefx`, converted from it on the
+> nativeshvc engine (`docs/stuntracefx/native/PLAN.md`). Where this plan speaks
+> of the cartridge, the console, the cost profile or `ports/stuntracefx/front`,
+> it describes the October front end, which nothing builds now.
+
 | | |
 |---|---|
 | M1 | every game routine T3: its C is behaviour exact, proven by the live oracle |
@@ -76,6 +86,11 @@ moment, so the hybrid is charged exactly the cycles the original spent. State
 then stays comparable frame by frame.
 
 ### Timing: behavior-exact (2026-10-28)
+
+(The standard below still holds for the decomp's C. The cost profile and the
+open items describe the October front end; the native game paces a race by a
+whole step every 6 updates, with no slowdown, by Jeff's decision of
+2026-11-09.)
 
 The decomp's C is the cartridge played on nativeshvc (the console), and both
 are behavior-accurate native implementations, not emulators. The C's logic
@@ -276,7 +291,9 @@ Bookkeeping:
     plays, checked against the original on nativeshvc. Fixes go into it; there
     is no separate copy. Only the cartridge's glue lives outside it
     (`ports/stuntracefx/front`: the build, the Super FX on nativeshvc's
-    connector, the front end's hooks).
+    connector, the front end's hooks). *Superseded 2026-11-09:* the native
+    game is a separate tree, `native/stuntracefx`, converted from the record,
+    which stays untouched (`docs/stuntracefx/native/PLAN.md`, section 3).
 21. Parallelise long runs across the cores; heavy jobs one at a time.
 
 ## 7. Risks named now
@@ -292,5 +309,5 @@ Bookkeeping:
   address both labelled.
 - Emulator accuracy. Two cores, control scripts.
 - The C writes the machine model directly (WRAM, GSU RAM, PPU registers). The
-  first port supplied the same model natively; the native port replaces it
-  with its own components (`ports/stuntracefx/PLAN.md`).
+  first port supplied the same model natively; the native game replaces it
+  with the engine's calls (`docs/stuntracefx/native/PLAN.md`).

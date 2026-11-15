@@ -1,6 +1,6 @@
 # Stunt Race FX native port: plan
 
-> **Superseded (2026-10-28).** This plan predates the cartridge/console
+> **Superseded twice.** Nothing builds from `ports/` now (2026-11-14): the game is now `native/stuntracefx` on nativeshvc (the README's "The native game" section, and `docs/stuntracefx/native/PLAN.md`). Before that (2026-10-28): This plan predates the cartridge/console
 > split. The game is now built as a cartridge (`src/stuntracefx`, unchanged
 > by any port) on the nativeshvc console library, from
 > `ports/stuntracefx/front/`; its timing is behaviour exact through a

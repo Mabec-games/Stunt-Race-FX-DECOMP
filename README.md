@@ -11,9 +11,9 @@ to readable, commented source that rebuilds the original ROM byte for
 byte, prove every routine behaves exactly as the original did, and then
 run that source natively on today's hardware, with no emulation of any
 processor. From there the game can grow: 60 frames a second, widescreen,
-3D drawn at full resolution on the GPU, new camera views, and builds for
-macOS, Windows, Linux, iOS and Android, all without losing the game your
-players remember. The original stays one switch away.
+3D drawn at full resolution on the GPU, new terrain, new camera views, and
+builds for macOS, Windows, Linux, iPhone, iPad and Android, all without
+losing the game your players remember.
 
 - **Preserve** it: source you own and can read, maintain and build on,
   recovered from the code that shipped, checked against the original at
@@ -30,42 +30,49 @@ If you have a game you would like to see again, write to me at
 ## Stunt Race FX
 
 <p>
-<img src="docs/stuntracefx/img/original-race.png" width="27%" alt="Stunt Race FX in Original mode: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
-<img src="docs/stuntracefx/img/enhanced-race.png" width="36%" alt="Stunt Race FX in Enhanced mode: the coupe on the same course at 16:9, the 3D, hills and HUD filling the window">
+<img src="docs/stuntracefx/img/original-race.png" width="27%" alt="Stunt Race FX as the cartridge drew it: the coupe chasing two rivals through the trees, in the original's 4:3 screen with its bezel and panels">
+<img src="docs/stuntracefx/img/enhanced-race.png" width="36%" alt="Stunt Race FX filling a 16:9 window: the coupe on the same course, the 3D, hills and HUD filling the window">
 <img src="docs/stuntracefx/img/overhead-race.png" width="36%" alt="Stunt Race FX in the view from above: the player's car leading two rivals past the gantry on Easy Ride, the course seen at an angle from above">
 </p>
 
-*Left: Original mode, the decompiled game on
-[nativeshvc](https://github.com/jeff-strutb/nativeshvc) as the cartridge drew
-it, at its own pace. Middle: Enhanced mode on the same course, at 60 frames a
-second and filling a 16:9 window, the 3D drawn at the window's resolution on
-the GPU ([the native build](#playing-it-natively-on-nativeshvc)). Right: the
-view from above, Enhanced mode's other camera, the race seen at an angle
-from overhead. All three are shots from the native build's headless
-renderer, which the GPU's is checked against.*
+*Left: the race as the cartridge drew it, 256 x 224 on a 4:3 screen.
+Middle: the same course filling a 16:9 window, the 3D drawn at the window's
+resolution on the GPU (taken October 29, 2026, before the new land and the
+depth-tested 3D). Right: the view from above on Easy Ride (November 14,
+2026). All three are frames of the headless renderer.*
 
-**Complete: 100% of the game's code is decompiled, behaviour exact and byte
-exact.** Started October 11, 2026; behaviour and byte exact October 18, 2026.
-The C is the game itself, played natively on
-[nativeshvc](https://github.com/jeff-strutb/nativeshvc), a native SNES console
-library ([how it plays here](#playing-it-natively-on-nativeshvc)), with no emulation of any processor.
+This repository holds two things:
 
-> **Behaviour exact, not cycle exact.** The C states no instruction timing:
-> instruction counts are an emulator's bookkeeping and were never part of the
-> original source. Where the game's behaviour depends on how long the
-> original chips took (its race speed, its frame drops), each chip charges a
-> cost for the work it is given, from a cost profile measured from the
-> original ROM by a documented, tool-driven standard. See
-> [Timing](#timing-behaviour-exact).
+1. **The decompilation, complete.** 100% of the game's code is decompiled,
+   behaviour exact and byte exact: readable C for every routine, proven
+   against the running original, and commented assembly that rebuilds the
+   ROM byte for byte (`src/stuntracefx`, `asm/stuntracefx`). Started October
+   11, 2026; behaviour and byte exact October 18, 2026. It is the record the
+   native game was converted from, and the conversion leaves it untouched.
+2. **Stunt Race FX Remastered, the native game** (`native/stuntracefx`). The
+   decomp's C rewritten as an ordinary native game on
+   [nativeshvc](https://github.com/jeff-strutb/nativeshvc), a native engine
+   for SNES games: typed C that calls the engine from its update and draw,
+   with no emulation of any processor and no imitated hardware between them.
+   The game's own logic (its physics, cars, menus, rules and sound) is the
+   original's; how it is shown is a modern game's: any window shape, 3D at
+   full resolution on the GPU, 60 updates a second, new land and water on
+   every course and a new view from above.
+   [The native game](#the-native-game-stunt-race-fx-remastered) says what
+   it does and what is not done.
+
+> **Behaviour exact, not cycle exact.** The decomp's C states no instruction
+> timing: instruction counts are an emulator's bookkeeping and were never
+> part of the original source. See [Timing](#timing-behaviour-exact).
 
 | | Behaviour exact (M1) | Byte exact (M2) |
 |---|---|---|
-| **All code** | **100%** (215,370 of 215,370 B) | **100%** (215,370 of 215,370 B) |
-| S-CPU (65816) | 100% (150,944 B) | 100% |
+| **All code** | **100%** (215,373 of 215,373 B) | **100%** (215,373 of 215,373 B) |
+| S-CPU (65816) | 100% (150,947 B) | 100% |
 | Super FX (GSU-1) | 100% (51,491 B) | 100% |
 | SPC700 (sound) | 100% (12,935 B) | 100% |
 
-- **Every routine is decompiled.** All 2,411 routines the routine census
+- **Every routine is decompiled.** All 2,417 routines the routine census
   names, including code the game never runs, have C and commented, symbolic
   assembly in the tree, filed by area. The census finds no routine left
   unnamed and no orphaned code.
@@ -77,9 +84,13 @@ library ([how it plays here](#playing-it-natively-on-nativeshvc)), with no emula
   are judged by that lockstep run.
 - **The whole ROM rebuilds byte for byte** from the companion assembly.
 
-The numbers are from the full gate on the final tree (`python3
-tools/stuntracefx/gate.py --full`, with every script retraced); the
-generated blocks under Current Status carry the same figures.
+The numbers are from the last full gate on the decomp (`python3
+tools/stuntracefx/gate.py --full`, October 18, 2026, 5b5068ef); the
+generated blocks under Current Status carry the same figures. The assembly
+has not changed since. The C has: through November 5, 2026 its instruction
+timing was taken out (the behaviour-exact standard) and it was edited for
+the October front end (its Enhanced code is `src/stuntracefx/remaster`), and
+the gates have not been run on it since October 18.
 
 ## License, and no claim to the game
 
@@ -95,15 +106,152 @@ Super FX racer Nintendo and Argonaut made in 1994 can still be read, studied,
 built and played long after the cartridges and hardware it shipped on are
 gone.
 
-The work that is my own (the tools, the test harness and the ports' platform
-code) is dedicated to the public domain under [CC0 1.0 Universal](LICENSE).
-Anyone may use it for any purpose, with no permission or credit needed.
+The work that is my own (the tools, the test harness, the builder and the
+native game's platform code) is dedicated to the public domain under
+[CC0 1.0 Universal](LICENSE). Anyone may use it for any purpose, with no
+permission or credit needed.
 
 **Why CC0.** A preservation project should claim as little as possible. CC0
 asserts nothing over the reconstructed game, and it gives everything that is
 mine to the public domain, with a fallback licence for countries where
 copyright cannot be waived outright. That fallback is why CC0 was chosen over
 the Unlicense, which has the same intent but no fallback.
+
+## Playing it
+
+Players don't need this tree. **Stunt Race FX Builder**
+([builder/](builder/README.md), 0.99 at this commit; players download it
+from the repository's Releases page) builds the native game from the player's own No-Intro ROM of Stunt Race
+FX (USA) (Rev 1), checked by MD5, and ships none of the ROM's data:
+
+| Builder runs on | Builds | The game needs |
+|---|---|---|
+| macOS 12+ (Apple silicon and Intel) | the Mac app (universal), or the iPhone and iPad app (`.ipa`, signed with the player's own Xcode signing when there is one) | macOS 12+, Metal; iOS 15+ |
+| Windows 10+ (64-bit) | a folder with the game | a Vulkan driver |
+| Linux, glibc 2.35+ (x86_64, arm64) | a folder with the game | X11 or XWayland, a Vulkan driver |
+
+The game also builds for Android (the engine's Android host), which the
+builder does not make. The PSP is tabled (Jeff, 2026-11-05): the tag
+`psp-tabled` holds its port as last run.
+
+## The native game: Stunt Race FX Remastered
+
+`native/stuntracefx` is the game on nativeshvc. Each `update` is one 60 Hz
+frame of the original's work; `draw` describes the picture from the game's
+state. The game's C reaches the engine only through its calls (`nshvc_*`):
+no register-shaped state, no translation layer and no imitated PPU, DMA,
+sound chip, Super FX or bus. The engine runs no processor instructions.
+The plan, its decisions and its progress are in
+[docs/stuntracefx/native/PLAN.md](docs/stuntracefx/native/PLAN.md).
+
+There is no original mode (Jeff, 2026-11-09: "Enhanced IS the native game").
+The game's logic is the original's, so a crash, a wrong value or a misplaced
+object is a bug; matching the original's pictures or pace is not the aim.
+Recordings of the original are kept only to find such bugs.
+
+### Not done
+
+- **The conversion's final audit (the plan's section 8 and stage 11).** The
+  engine's hardware finder reports nothing, but interim forms remain,
+  named in the plan: the Super FX record links are still places in the
+  chip's RAM, read and written by place (`rec_get`/`rec_put`, 193 calls),
+  and some of the chip's other words are still read by their address.
+- **Platforms:** Windows and Linux are built by the builder; the plan
+  records Windows run headless only (matching the Mac) and no run on
+  Linux. On iOS and Android it records only runs judged from logs; the
+  iPhone build has since been played by hand.
+- **The view from above** is one player only: two players and the course
+  screen keep the game's own camera, sprites' facing frames are still the
+  chase camera's, and the rival arrows are placed for the chase camera.
+- **Displays faster than 60 Hz:** the 2D drawn between updates has not been
+  run on one.
+
+### What it adds
+
+- **Any window, any shape.** 4:3, 16:9, ultrawide, or narrower down to a
+  phone held upright: the race, the course screen and the menus fill the
+  window, the view's width follows its aspect, and the HUD sits inside the
+  screen's safe area (a notch, rounded corners). Two players are side by
+  side or above and below, by the window's shape.
+- **3D at the display's resolution, on the GPU.** The CPU runs the game and
+  builds draw lists; the GPU draws every picture (Metal on Apple devices,
+  Vulkan on Windows and Linux), edges antialiased. View distance is
+  unlimited: what the original culled at its 45-degree view and its draw
+  distance is kept.
+- **A true 60 Hz tick and an unlocked frame rate.** The race runs the
+  original's whole step every 6 updates, its physics and handling step for
+  step the original's, with no slowdown; the 3D is drawn between steps from
+  the cameras and objects eased between them, and on a display faster than
+  60 Hz the engine draws between updates too.
+- **New land and water on every course,** in each course's own style and
+  colours, out to the horizon: polygon mountains, mesas and canyon rock, an
+  ocean on Aqua Tunnel, Sea Breeze, Lake Side and Harbor City, King's
+  Forest's forest of the course's own 3D trees (instanced), Night Owl's flat
+  ground under its skyline, Night Cruise's pavement and city of buildings,
+  White Land's snowfields, Sky Ramp's sea of clouds; the battle and bonus
+  courses too (the stunt arenas keep their floors).
+- **Depth-tested 3D** ([DEPTH.md](docs/stuntracefx/native/DEPTH.md)): exact
+  corners from the model data, closed models one-sided and open ones
+  two-sided, so what is in front is decided pixel by pixel for any camera.
+  Cars stand on the track the game drives them on.
+- **Solid 3D tyres, wheels, eyes and trees** in place of the original's
+  sprites, for every car, near and far.
+- **Rain and snow** drawn at the window's pixels across the whole view.
+- **The view from above.** The race seen from high up at 25 degrees down,
+  its heading fixed for the course; what hides the player's car
+  turns see-through about it in quarter steps (the ground wholly at the
+  middle). A view button beside the pause button switches between the two
+  views over 2 seconds, the game held; the choice is saved.
+- **The game's own pause screen.** Escape, Select with Start, or the corner
+  button (a pointer or a touch) opens it over the blurred picture: rebinding
+  keys and a controller's buttons, defaults, and Auto-Accelerate. On the
+  iPhone and iPad it is a menu: resume, Auto-Accelerate, quit the race.
+- **Touch controls** on the iPhone and iPad, in landscape and portrait: the
+  wheel under the finger, brake and boost pedals, the gas held by
+  Auto-Accelerate, swipes and taps in the menus.
+- **The keyboard and controllers as themselves:** the initials typed on a
+  keyboard; the keys and a controller's buttons rebound on the pause screen
+  and saved.
+
+### Building it from source
+
+The build expects nativeshvc's checkout beside this one (`../nativeshvc`)
+and the cartridge's data, which is never committed:
+
+```sh
+python3 native/stuntracefx/tools/extract_assets.py "reference/stuntracefx/Stunt Race FX (USA) (Rev 1).sfc" native/stuntracefx/assets
+cmake -S native/stuntracefx -B native/stuntracefx/build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DNSHVC_ROOT=../nativeshvc -DNSHVC_HOST=macos -DNSHVC_RENDER=metal
+cmake --build native/stuntracefx/build/macos
+```
+
+`extract_assets.py` checks the ROM's SHA-1 and writes `cart.dat`: an image
+of the cartridge with the data the game reads (`tools/assets.csv`) at its
+place and nothing where the code was. Other hosts take `NSHVC_HOST` and
+`NSHVC_RENDER` as `builder/build.sh` sets them (iOS with Metal, Windows
+with Vulkan through mingw-w64); plain cmake with no host builds the
+headless, null-rendered game.
+
+Switches for looking at the game while it is worked on, in the environment:
+
+| | |
+|---|---|
+| `SRFX_COURSE=<n>` | start that course's race at once ($00-$16; the logo, title and menus left out, their choices made as data) |
+| `SRFX_CAMERA=overhead` | start in the view from above |
+| `SRFX_FPS=0` | hide the pictures-a-second counter at the top left (shown otherwise) |
+| `SRFX_PROFILE=1` | print where a picture's time goes, once a second |
+
+The engine's own flags run it headless: `--headless --updates N --shots DIR
+--input FILE`.
+
+### Checks
+
+`native/checks` holds the tools the conversion was checked with: `record.sh`
+(a play of the original recorded in bsnes), `replay` and `compare.py` (a
+recording's pictures through the engine, compared exactly), `music_check`
+(the sound driver's voice events against a recording), `fx_check` and
+`fx_view` (the Super FX logic against recorded jobs and pictures) and
+`pause_check`. The recordings of the original are kept outside git.
 
 ## The Decompilation Standard
 
@@ -143,212 +291,37 @@ produced these bytes, so no C can rebuild them. Each routine therefore has two
 sources:
 
 - **C, the decompilation.** Readable C per routine, certified behaviour exact
-  against the running original (T3). It is also the game a native build
-  plays: the cartridge, on the nativeshvc console.
+  against the running original (T3). It is the source the native game was
+  converted from.
 - **Assembly, the byte-exact companion.** Symbolic, commented assembly that
   rebuilds the ROM byte for byte (T4). It is the reading the C is written
   from, and the byte-exact rebuild proves that reading is right.
 
 ## Timing: behaviour exact
 
-**The standard is behaviour exact, not cycle exact** (decided October 28,
-2026). The C states no instruction time on any processor. Statements of how
-long the original's instructions took (`cyc()` on the S-CPU, code-fetch
-statements on the Super FX, `spc_cyc()` on the SPC700) are an emulator's
-bookkeeping: they were never in the original source, so a preservation
-decompilation does not carry them, even where that makes the code harder
-to play natively.
+**The decomp's standard is behaviour exact, not cycle exact** (decided
+October 28, 2026). Its C states no instruction time on any processor.
+Statements of how long the original's instructions took (`cyc()` on the
+S-CPU, code-fetch statements on the Super FX, `spc_cyc()` on the SPC700) are
+an emulator's bookkeeping: they were never in the original source, so a
+preservation decompilation does not carry them.
 
-**Why timing still matters.** Stunt Race FX ties its speed to its chips: a
-race frame moves the cars a fixed amount however long it took to compute,
-and the race loop never waits. On the SNES its pace, and its slowdown under
-load, came from how long the S-CPU and the Super FX took to do each frame's
-work. With no time at all, a race never advances.
+**Why timing mattered.** Stunt Race FX ties its speed to its chips: a race
+frame moves the cars a fixed amount however long it took to compute, and the
+race loop never waits. On the SNES its pace, and its slowdown under load,
+came from how long the S-CPU and the Super FX took to do each frame's work.
 
-**How it is kept.** Each chip charges a cost for the work the game hands
-it, and nothing in the game's C says what that is:
-
-- The console (nativeshvc) charges each S-CPU access its real bus time, plus
-  a weight per kind of access (read or write; work RAM, ROM, cartridge RAM,
-  I/O) for the CPU work around it that the C does not make.
-- The cartridge's Super FX charges each program a fixed part plus a weight
-  per operation it observes (RAM loads and stores, pixel-cache flushes,
-  pixel reads), so a busy frame costs more, as on the original.
-- The weights are the game's **cost profile**, measured from the original
-  ROM on the reference emulator by nativeshvc's tool (`tools/nshvc-profile`,
-  standard in nativeshvc's `docs/cost-profile.md`): ROM in, profile and
-  report out, by a fixed fit, never set by a person. The cartridge declares
-  it once at power-on (`ports/stuntracefx/front/cost_profile.c`).
-
-The first report: the S-CPU's per-frame time is predicted with -0.7% bias
-and 5.3% mean error (bus time alone would be 76% short); the Super FX's two
-main programs, 92% of its time, within about 3% per job. That is behaviour
-exact on average, not frame for frame: a frame the original only just made
-or missed can land a TV frame differently. The acceptance bar is still to
-be set.
+**How the native game paces it.** A race step every 6 updates, always: the
+original's physics, step for step, at a steady pace with no slowdown, the
+pictures between steps drawn from the eased cameras and objects. The
+earlier front end (October 2026, `ports/stuntracefx/front`, no longer built)
+played the decomp's C at the original's pace from a measured cost profile;
+that work and its tools are in the history.
 
 **History.** The C was first made cycle exact against the original under the
 lockstep harness (all 325 scripts 0 master clocks off on all three
 processors, October 20, 2026). That work, its tools and its cycle
 statements are kept on branch `shelf/cycle-exact`.
-
-## Playing it natively on nativeshvc
-
-**[nativeshvc](https://github.com/jeff-strutb/nativeshvc)**, a separate project checked out beside this one, is a native SNES console library: the PPU,
-the sound DSP, DMA and HDMA, timers, interrupts, the multiplier and divider
-and the memory map, with real hardware timing. It runs no processor
-instructions. A game is C calling into the console's registers, under a
-written contract (`docs/contract.md` there).
-
-The decomp's C (`src/stuntracefx`) is the cartridge: the game's three
-programs as native C, with no separate port copy. On top of it:
-
-| | |
-|---|---|
-| `ports/stuntracefx/front/` | the cartridge's description for nativeshvc (`main.c`, `cart.c`), its Super FX on nativeshvc's chip connector (`superfx_cart.c`), its cost profile (`cost_profile.c`, generated), touch and art |
-| `ports/common/snes/superfx.c` | the cartridge's Super FX: its registers, RAM and pixel caches, a program run to its STOP when started, its duration from the cost profile |
-| `src/stuntracefx/include/waits.h` | the places the original waited on the hardware (vertical and horizontal blank, its own interrupts' flags, the Super FX, the sound CPU's ports), as the console's waits |
-| `src/stuntracefx/remaster/` | Enhanced mode: the 60-frame steps and the pictures between (`remaster.c`, `tween.c`), the full-window race (`fullwindow.c`) and menus (`menuwindow.c`), the options (`options.c`) |
-| `ports/stuntracefx/front/gpu_metal.m` | the cartridge's GPU on Apple devices: the full window's 3D filled by a Metal kernel |
-
-### Platforms
-
-| Build | How | Drawn by |
-|---|---|---|
-| **macOS** (Apple silicon and Intel, macOS 12+) | `NSHVC=../nativeshvc sh ports/stuntracefx/front/package_app.sh`, then open `build/stuntracefx/front/macos/Stunt Race FX.app` | Metal: the console's compositor and the cartridge's 3D fill |
-| **iPhone and iPad** | `IOS_SDK=iphoneos IOS_SIGN=... IOS_PROFILE=... sh ports/stuntracefx/front/package_ios.sh` | Metal; touch controls, landscape and portrait |
-| **Windows** (10+, 64-bit) | the builder, or `ports/stuntracefx/front/build.sh` with MinGW | OpenGL 3.3: the console's compositor. Vulkan: the cartridge's 3D fill (`GPU_VULKAN=1`), on the CPU where there is no Vulkan |
-| headless | `sh ports/stuntracefx/front/build.sh` (nativeshvc `build/null`) | the CPU: the plays and checks |
-
-Players don't need this tree: **Stunt Race FX Builder**
-([builder/](builder/README.md)) builds the Mac app, the iPhone's `.ipa` or the
-Windows folder from the player's own No-Intro ROM, checked by MD5, and ships
-none of the ROM's data. Linux is not built yet: nativeshvc has no Linux window host at
-the pin (dab5da4), so the Vulkan code compiles there only against its headless host.
-The PSP is tabled (Jeff, 2026-11-05): its port and GE renderer are gone from the tree,
-and the tag `psp-tabled` holds them.
-
-```sh
-build/stuntracefx/front/null/stuntracefx --script PLAY --headless --out DIR   # an input-only play
-```
-
-The build expects nativeshvc's checkout beside this one (`NSHVC=../nativeshvc`,
-contract 2.15 or later, at least its commit 9ff3702: the screen canvas at no
-whole scale).
-
-**The screen and the window.** Enhanced's screen is the nearest even width
-to the window's shape at 224 lines (or, narrower than 4:3, the nearest even
-height). Its 3D is drawn at the window's
-own resolution, a texel a window pixel. The console's picture around it
-(the HUD, panels, sprites and menus) is presented over the window with
-sharp bilinear: with today's nativeshvc at the console's exact pixel shape
-(4:3 for 256 x 224), which leaves a gap at the edges of up to about a
-column; presented over the whole
-window, each axis at its own scale, the console's pixels are within a
-fraction of a percent of that shape and nothing is left unlit (asked of
-nativeshvc).
-
-`--pacing FILE` logs each race frame's TV frames (`$06D4`), the measure to
-compare with the original's.
-
-### Original and Enhanced modes
-
-A preserved decompilation has three tiers: the assembly, bit exact; the C,
-behaviour exact; and an Enhanced mode, the C brought to a modern standard
-with nativeshvc's extensions. The native build plays both C modes.
-**Enhanced is the default.** **Tab** switches between them, and a badge says
-which is on for three seconds at launch and at each change; the choice is
-saved (`remaster.cfg`; `RM_OPT_FRAMERATE=0` or `1` forces one for a run).
-**F2** turns Enhanced's full window off and on (4:3 or the window's shape).
-Right Shift is SELECT. The attract demos always play in Original mode.
-
-- **Original mode** is the preservation record: the game paced by its
-  chips' work, from the cost profile above, slowdown included, on the
-  original's 4:3 screen. The pace is approximate: races run about 5% fast
-  (5.64 TV frames a race frame against the original's 5.95). The profile's
-  S-CPU weights were fitted to the original's accesses, and the C makes
-  fewer of them (work-RAM reads 0.70x, writes 0.60x, I/O reads 0.14x); a
-  per-kind fit was tried and dropped, as it overcharges access-dense code
-  about 2.5x.
-- **Enhanced mode** makes the game independent of processor speed, as a
-  modern game is, and fits it to the window. Its game state is the
-  original's, step for step: only how it is shown changes.
-
-### Enhanced mode's features
-
-- **60 frames a second, the original's physics.** A race runs the
-  original's whole step every 6 TV frames (its physics and handling step
-  for step the original's), and the 5 frames between show the 3D drawn
-  part of the way from the step's start to its end, the hills and the sky
-  turning with it. The menus' 3D (car selection's turning car) shares each
-  of its steps over the frames instead, which matches the original's turn
-  rate. The 3D's work takes no console time (contract 2.2); the boot, the
-  menus, the sound driver and the raster interrupt keep the original's
-  timing.
-- **The race fills the window, any shape and size.** The window can be
-  resized to anything: 4:3, 16:9, ultrawide, or narrower than 4:3 down to
-  portrait (a phone held upright). The console's screen becomes the
-  window's shape (to 1024 console pixels each way) with the original's
-  picture at its centre, and the 3D is drawn across all of it at the
-  window's own resolution, the same picture at every scale.
-- **Everything in view is drawn.** Objects beside the view and as far as
-  the course goes are kept (the original's 45-degree cull and draw distance
-  are lifted for it), and faces that reach behind the camera are clipped
-  exactly at a near plane instead of in the original's 16-bit steps.
-- **Textures perspective-correct.** The original's textures are affine,
-  which a wide view turns into streaks at its edges (the grandstands
-  beside the road); Enhanced fills each textured face from its planes in
-  view space. Each edge of every face is placed exactly from its corners.
-- **The hills and the sky across the whole window.** The backdrop's full
-  turn (1,024 pixels) is laid either side of the original's picture, so the
-  hills are seamless at any width and turn every frame; the sky's gradient
-  is remapped to the 3D's horizon on every line.
-- **The HUD in reach.** The race's messages, timer, speed and panels are
-  placed in a box at most 16:9 wide, inside the screen's safe area (a
-  notch, rounded corners), so on an ultrawide screen they don't sit at the
-  far edges.
-- **The menus fill the window too,** their background texture carried past
-  the original's screen and their contents kept to it.
-- **Touch controls** on the iPhone and iPad (the gas held while steering,
-  an option).
-
-### How it is drawn: the cartridge and the console
-
-The split is the hardware's. On the SNES the Super FX drew the whole 3D
-picture on the cartridge and handed it to the console as BG1; the console
-drew everything else. The native build keeps that:
-
-- **The cartridge** (`src/stuntracefx/remaster/fullwindow.c`) draws the
-  Super FX's picture at the window's resolution: the game's own Super FX
-  programs run as C, and their polygons become spans that the cartridge's
-  GPU fills (Metal on Apple devices: `ports/stuntracefx/front/gpu_metal.m`;
-  the CPU elsewhere, with the CPU's fill as the reference the GPU's is
-  checked against, 0 pixels apart). The picture goes to the console as BG1
-  (`nshvc_ext_canvas_screen`).
-- **The console** (nativeshvc) draws the rest by its own rules: the hills
-  (BG2) from the game's maps (on a VRAM page of their own, with
-  `nshvc_ext_layer_outside` past the original's picture), the sprites, the
-  sky's gradient by the game's HDMA, colour maths and brightness, on a
-  screen the window's shape (`nshvc_ext_screen`, `nshvc_ext_screen_origin`).
-
-Nothing in Original mode passes through any of this.
-
-### State (October 29, 2026)
-
-The game boots, plays its menus and runs races in both modes, on macOS, the
-iPhone and Windows. Known and not yet right:
-
-- In Enhanced's crash flash (the screen tinted red), the bottom panels are
-  tinted too, where the original's window kept them clear; they are in the
-  same BG1 picture as the 3D.
-- The race music: the fix for its garbled upload (the sound CPU's accesses
-  costing their bus time) is in nativeshvc (328e308); the music has not
-  been rechecked since.
-- The attract demo reaches a slide-gate path (09:EC71) no recording of the
-  original reaches; it was seen before the cost profile and is not yet
-  rechecked.
-- The sound driver's own slowdowns in busy music are not reproduced (a
-  decision: the driver is untimed, so the music plays as written).
 
 ## Current Status
 
@@ -387,9 +360,13 @@ the M1 corpus.
 
 ## More
 
-- [docs/stuntracefx/PLAN.md](docs/stuntracefx/PLAN.md): the plan and the standard.
-- [docs/stuntracefx/HANDBOOK.md](docs/stuntracefx/HANDBOOK.md): what the work has learned, one rule per finding.
-- [docs/stuntracefx/DECOMP.md](docs/stuntracefx/DECOMP.md): standard, layout and tools in one page.
+- [docs/stuntracefx/PLAN.md](docs/stuntracefx/PLAN.md): the decomp's plan and standard.
+- [docs/stuntracefx/HANDBOOK.md](docs/stuntracefx/HANDBOOK.md): what the decomp learned, one rule per finding.
+- [docs/stuntracefx/DECOMP.md](docs/stuntracefx/DECOMP.md): the decomp's standard, layout and tools in one page.
+- [docs/stuntracefx/native/PLAN.md](docs/stuntracefx/native/PLAN.md): the native game: its plan, decisions and progress.
+- [docs/stuntracefx/native/DEPTH.md](docs/stuntracefx/native/DEPTH.md): the depth-tested 3D.
+- [docs/stuntracefx/native/ENGINE_REQUESTS.md](docs/stuntracefx/native/ENGINE_REQUESTS.md): what the game asked of nativeshvc.
+- [builder/README.md](builder/README.md): Stunt Race FX Builder.
 
 ## Stunt Race FX decompilation
 
@@ -479,8 +456,11 @@ passes the provenance check.
     config/stuntracefx/          verdict ledgers
     tools/stuntracefx/           tracer, disassembler, build, gates, oracles, progress
     tools/stuntracefx/sfxbox/    the headless runner and both oracles
-    ports/stuntracefx/front/     the native build: the cartridge on nativeshvc
-    ports/common/snes/           the cartridge's Super FX (superfx.c)
+    native/stuntracefx/          the native game on nativeshvc: src/ by area,
+                                 shaders/, icon/, tools/ (assets.csv, extract_assets.py)
+    native/checks/               the conversion's checks against recordings of the original
+    builder/                     Stunt Race FX Builder (macOS, Windows, Linux)
+    ports/                       the earlier front ends (October 2026), no longer built
     tools/common/                git hooks, provenance check
     tools/toolchains/            pinned asar and bsnes (staged by setup.sh), local patches
     docs/stuntracefx/            plan, standard, handbook, dated notes

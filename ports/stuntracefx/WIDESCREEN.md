@@ -1,5 +1,8 @@
 # Widescreen: the race out of its frame, any aspect
 
+> **Superseded (2026-11-14).** The widescreen design for the earlier front end, with its Original mode beside it. Nothing
+> builds from `ports/` now: the game is now `native/stuntracefx` on nativeshvc (the README's "The native game" section, and `docs/stuntracefx/native/PLAN.md`), which fills the window at any shape and has no Original mode.
+
 A Remaster Option, as Boss Rally's Widescreen: **On**, a race's 3D fills the
 window at any aspect, the bezel gone, the HUD anchored to the window's
 edges over the 3D; **Off**, the original 256 x 224 at 4:3, exactly as now

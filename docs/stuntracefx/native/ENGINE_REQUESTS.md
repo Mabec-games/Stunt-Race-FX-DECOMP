@@ -5,6 +5,9 @@ names no game. None has been made in the engine by the game's sessions.
 
 ## 1. Every native input, as true inputs (Jeff, 2026-11-09)
 
+Done: keys and the pointer in API 4.5 (the pause screen's keys, 99f2701b's corner button); every device as itself in API
+5.0, where the game maps each device itself (5ae88cab).
+
 Jeff: "NativeSVHC should support all native inputs that it runs on, whether mouse, keyboard, or controller, and make those
 available to the game as true inputs. If it doesn't now, it needs to."
 
@@ -25,6 +28,8 @@ game keeps updating and stops its own logic; this needs nothing from the engine.
 considered.
 
 ## 3. Typing
+
+Done in API 4.5: keys that type text press no pad button while text input is on (abe00b42).
 
 - **Keys that type text, kept off the pad while typing.** Today every key that goes down is put in the text queue and
   also presses whatever pad button it is bound to. The default bindings put B, Y, A, X, L and R on Z, A, X, S, Q and W.
@@ -120,3 +125,17 @@ Withdrawn: a second part, asking for the window's pixel to be composed at severa
 `pb_window(uint(pos.x), uint(pos.y))` without its body; the engine already composes each window pixel from its footprint
 on the texel grid (each texel solid, a pixel a texel edge crosses mixed by that coverage) for the maps, sprites, per-line
 changes and draw-list rows, mode 7 by its own coverage. No picture had shown otherwise.
+
+## Later engine features the game uses
+
+Asked through the engine's own sessions with Jeff's approval, each general, for every game; listed here so this file shows
+what the game depends on. The engine's documents are the reference for each.
+
+- **6.0 and 6.1, the new renderer** (nativeshvc 6271570): a vertex's colour is a colour, no longer a palette entry; the game
+  draws its one-entry shapes through a 256 x 1 indexed image (0840b5e2).
+- **6.2, instanced meshes** (`nshvc_draw_mesh`, f8f8fba): King's Forest's land trees (4b21e1b7) and the other courses'
+  instanced land (buildings, clouds).
+- **6.3, depth settings** for a draw list (cull mode, depth bias, depth write, the list's own depth): the depth-tested 3D
+  (d90d168e, [DEPTH.md](DEPTH.md)).
+- **6.4, `nshvc_pixel`** in a game's shader: the view from above's stepped see-through (235f98fc, `shaders/fade.shade`).
+  It uses no blended drawing: quarter steps are exact as sample coverage.

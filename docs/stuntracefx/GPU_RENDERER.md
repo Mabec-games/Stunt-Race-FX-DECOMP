@@ -1,5 +1,9 @@
 # The cartridge's GPU renderer (design; stage 1 being built)
 
+> **Superseded (2026-11-14).** This was the design for the earlier front end's renderer (`ports/stuntracefx/front`,
+> `src/stuntracefx/remaster`), with an Original mode. Neither is built now: the game is now `native/stuntracefx` on nativeshvc (the README's "The native game" section, and `docs/stuntracefx/native/PLAN.md`), which draws every picture
+> through the engine's draw lists on the GPU and has no Original mode. Kept as the record of that work.
+
 Every picture SRFX draws is drawn by a GPU: Metal (macOS, iOS) and Vulkan
 (Windows, Linux), from one display list. The CPU runs the
 game and builds the display list: meshes, matrices, materials, draw order.

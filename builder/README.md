@@ -48,7 +48,7 @@ app on iOS 15 or later.
 ## Building
 
 ```sh
-builder/build.sh                 # build/builder/dist/StuntRaceFXBuilder-VERSION-{macOS,Windows}.zip
+builder/build.sh                 # build/builder/dist/: the macOS and Windows zips, a Linux tar.gz per CPU
 builder/release.sh --dry-run     # the release notes and files, nothing published
 builder/release.sh               # tag vVERSION at HEAD (already pushed) and publish
 ```
@@ -58,14 +58,15 @@ uncommitted work, and `cart.dat`, which is never committed, cannot ship), as
 nativeshvc's `nshvc-build` configures it: on macOS universal (arm64 and x86_64
 built apart and joined) drawn with Metal, with its shaders and icon, and the
 iPhone app beside it (unsigned); on Windows drawn with Vulkan, its shaders
-beside it. The builder's data table (`cart_table.h`) is written from the
+beside it; on Linux (x86_64 and arm64) drawn with Vulkan, built on a Linux
+machine over ssh (`LINUX_HOST`) against Ubuntu 22.04's C library. The builder's data table (`cart_table.h`) is written from the
 game's `assets.csv` at the same commit, so the two always agree. Building
 needs nativeshvc's checkout (`NSHVC`, `../nativeshvc`), Xcode's clang and the
 iOS SDK, cmake and ninja, glslangValidator and spirv-cross (dxc for the D3D12
 shaders), mingw-w64 and brew's vulkan-headers for Windows, and the ROM (`ROM`,
 default under `reference/`; `check_payload.py` reads it to prove its absence).
 
-Both front ends take arguments for a scripted run:
+Every front end takes arguments for a scripted run:
 `--dest DIR --rom FILE --build`, and on macOS `--target mac|ios`. A scripted
 run quits when the build is done (exit code 0 on success); the Windows one
 writes its result to `builder-result.txt` beside the builder.

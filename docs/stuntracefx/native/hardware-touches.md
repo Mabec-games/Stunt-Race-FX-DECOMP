@@ -1,5 +1,8 @@
 # Every hardware touch in the game's C, and what replaces it
 
+> The conversion's starting inventory, taken 2026-11-09 over the decomp's C. On the native game (`native/stuntracefx`) the
+> finder now reports nothing; what is still left of section 8 is in [PLAN.md](PLAN.md), "Where it stands".
+
 `tools/nshvc-find-hardware` of nativeshvc 6456fe0 (API 4.4) over `src/stuntracefx` at c0c3b709: 32,613 lines. Its "bus access" lines are divided here by what the address is. Every site of a real hardware touch is in `hardware-touches-sites.txt` (3,554 lines), with its replacement. The finder also reports `ports/stuntracefx/front`: 7 lines, the console connector.
 
 ## Hardware

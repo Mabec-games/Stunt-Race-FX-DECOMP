@@ -1,5 +1,8 @@
 # Stunt Race FX native port: where it stands
 
+> **Superseded (2026-11-14).** The state of the first native port, October 21, 2026. Nothing builds from `ports/` now:
+> the game is now `native/stuntracefx` on nativeshvc (the README's "The native game" section, and `docs/stuntracefx/native/PLAN.md`).
+
 Read with `PLAN.md` (the plan and its decisions) and `PORT.md` (the port as
 first built; partly out of date: it still describes the console model).
 State as of commit 99a18db, 2026-10-21. Everything is local; nothing is

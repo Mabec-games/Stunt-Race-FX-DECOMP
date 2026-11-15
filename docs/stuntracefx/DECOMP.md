@@ -46,6 +46,12 @@ responsibility, never by address range.
 | `reference/stuntracefx/` | ROMs (not tracked) |
 | `build/stuntracefx/` | everything generated |
 
+Beside the decomp (not part of its standard): `native/stuntracefx/`, the
+native game converted from it on nativeshvc
+([native/PLAN.md](native/PLAN.md)); `native/checks/`, the conversion's
+checks; `builder/`, Stunt Race FX Builder; `ports/`, the earlier front ends,
+no longer built.
+
 ## Tools
 
 | | |

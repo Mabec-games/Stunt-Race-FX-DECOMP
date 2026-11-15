@@ -1,5 +1,9 @@
 # Routine census
 
+> **An early snapshot (2026-10-14).** The census grew as entry points were filed and scripts traced: at the last full gate
+> (October 18, 2026) it counts 2,417 routines, every one named, filed and certified, over 215,373 B of code (the README's
+> Current Status). The method below still holds.
+
 How many routines Stunt Race FX has, counting the ones no script has run.
 Taken at 6cd8b4b with `tools/stuntracefx/census.py` (about 4 seconds; static,
 reads the traces already in build/, runs nothing).

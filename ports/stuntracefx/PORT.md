@@ -1,6 +1,6 @@
 # Stunt Race FX: the native port
 
-> **Out of date (2026-10-28).** This describes the first native port, on
+> **Superseded (2026-11-14).** Nothing builds from `ports/` now: the game is now `native/stuntracefx` on nativeshvc (the README's "The native game" section, and `docs/stuntracefx/native/PLAN.md`). Earlier note (2026-10-28): This describes the first native port, on
 > its own console model (`ports/common/snes`). The game now runs on the
 > nativeshvc console library from `ports/stuntracefx/front/`; of
 > `ports/common/snes` only the cartridge's Super FX (`superfx.c`) is used.
