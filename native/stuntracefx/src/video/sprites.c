@@ -988,7 +988,7 @@ void sprites_place_full(nshvc_sprite *out, const nshvc_sprite *in, uint32_t coun
         up[i] = i;
         hud[i] = s->priority == 3;
         shown[i] = !(((t & 0x1F8) == 0x40 && s->palette == 3) ||
-                     ((t & 0x1F0) == 0xA0 && s->palette == 3 && lamps_gone) ||
+                     ((t & 0x1F0) == 0xA0 && s->palette == 3 && (x < 48 || x >= 208) && lamps_gone) ||   /* (the lamps, at the screen's edges: the pause's turning picture has the same characters in its third row, mid-screen) */
                      y < 0 || y >= PANEL_END || y + h <= ROW0 || x + w <= 0 || x >= 256 ||
                      (!hud[i] && (x + w <= VIEW_X || x >= VIEW_X + VIEW_W || y + h <= VIEW_Y || y >= VIEW_Y + VIEW_H)) ||
                      (hud[i] && y >= VIEW_Y && y + h <= VIEW_Y + VIEW_H && (x + w <= VIEW_X || x >= VIEW_X + VIEW_W)) ||
@@ -1008,7 +1008,7 @@ void sprites_place_full(nshvc_sprite *out, const nshvc_sprite *in, uint32_t coun
         if (shown[i]) {
             int p = piece_root(up, i);
 
-            lamp[p] |= (sprite_name(&in[i]) & 0x1F0) == 0xA0 && in[i].palette == 3;
+            lamp[p] |= (sprite_name(&in[i]) & 0x1F0) == 0xA0 && in[i].palette == 3 && (in[i].x < 48 || in[i].x >= 208);
             x0[p] = in[i].x < x0[p] ? in[i].x : x0[p];
             x1[p] = in[i].x + in[i].width * 8 - 1 > x1[p] ? in[i].x + in[i].width * 8 - 1 : x1[p];
             y0[p] = in[i].y < y0[p] ? in[i].y : y0[p];

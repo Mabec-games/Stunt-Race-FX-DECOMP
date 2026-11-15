@@ -443,6 +443,17 @@ uint16_t sky_colour_at(int at)
     return c;
 }
 
+/* The same without the fade's tint (a tunnel's): the sky outside, as an
+   exit's opening shows it from inside (fx_draw.c). */
+uint16_t sky_colour_open(int at)
+{
+    if (at < 0)
+        at = 0;
+    if (at > 511)
+        at = 511;
+    return colour_blend(gradient.day[at], gradient.night[at], palettes.weather);
+}
+
 /* One gradient band rebuilt from the day and night lists at `offset` bytes:
    a repeated colour in both lists repeats the last result. */
 static void gradient_band_rebuild(void)

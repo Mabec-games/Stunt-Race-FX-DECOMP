@@ -234,6 +234,7 @@ FxObjectsDrawResult FxObjectsDraw(uint16_t draw_list_end, uint16_t *stack)
             model_field_ptr = (uint16_t)(flags_ptr + 1);
             model_header_ptr = fx_ldw(model_field_ptr);
             fx_solid_object(model_header_ptr, object_ptr);
+            fx_face_shape_now(model_header_ptr);
             selected_model_ptr = model_header_ptr;
             if (model_header_ptr != 0) {
                 pos_y_ptr = (uint16_t)(model_field_ptr + 8);

@@ -50,6 +50,11 @@
 #include "race/race.h"
 #include "save/save.h"
 #include "system/game.h"
+#include "system/chip.h"
+#include "system/state.h"
+#include "object/object.h"
+#include "data/cart.h"
+#include "fx/fx.h"
 
 /* ---- the keyboard and the controllers ---- */
 
@@ -447,6 +452,66 @@ static uint16_t touch_pad(const nshvc_input *in)
     return (uint16_t)(held | (gas ? PAD_B : 0) | (updates < pulse_until ? pulse : 0));
 }
 
+/* ---- a check's own driving (SRFX_AUTOPILOT=N, headless test runs) ----
+   B held and steered at the course's segment table (its x, z words), a few
+   waypoints past the nearest (SRFX_AUTOPILOT_AHEAD, 2), until the nearest
+   is segment N; then nothing pressed. Off unless the variable is set. */
+static void autopilot_pad(uint16_t *pad)
+{
+    static int on = -1;
+    uint16_t rec, table;
+    uint8_t bank;
+    int n, i, best = 0, want, diff, ahead;
+    double px, pz, bd = 1e30, tx, tz;
+
+    {
+        /* SRFX_FINISH (tests): the player's lap count set to 3 every 50
+           updates, as the checks' finish script pokes $70:1D52 */
+        static int finish = -1, count;
+        if (finish < 0)
+            finish = getenv("SRFX_FINISH") ? atoi(getenv("SRFX_FINISH")) : 0;
+        ++count;
+        if (finish == 1 && fx16(FXIN_PLAYER1_RECORD) && !(count % 50))
+            fx16_set(0x1D52, 3);
+        if (getenv("SRFX_NOTIME") && !(count % 20))     /* (tests: the time kept at 50, as the checks' scripts poke $0E70/$0E78) */
+            g.time_left = g.time_left_shown = 0x50;
+        if (finish >= 2 && fx16(FXIN_PLAYER1_RECORD) && count == 50)   /* (2, 3: that many laps once, the rest driven to the line) */
+            fx16_set(0x1D52, (uint16_t)finish);
+    }
+    if (on < 0)
+        on = getenv("SRFX_AUTOPILOT") ? atoi(getenv("SRFX_AUTOPILOT")) : 0;
+    if (!on)
+        return;
+    rec = fx16(FXIN_PLAYER1_RECORD);
+    table = fx16(0x1092);
+    bank = (uint8_t)fx16(0x1094);
+    if (!rec || table < 0x8000)
+        return;
+    n = cart16(bank, table);
+    if (!n)
+        return;
+    px = (int16_t)rec_get(rec, FXREC_POS_X);
+    pz = (int16_t)rec_get(rec, FXREC_POS_Z);
+    for (i = 0; i < n; i++) {
+        double dx = (int16_t)cart16(bank, (uint16_t)(table + 2 + i * 8)) - px;
+        double dz = (int16_t)cart16(bank, (uint16_t)(table + 6 + i * 8)) - pz;
+        if (dx * dx + dz * dz < bd)
+            bd = dx * dx + dz * dz, best = i;
+    }
+    if (best + 1 >= on) {
+        *pad = 0;
+        return;
+    }
+    ahead = getenv("SRFX_AUTOPILOT_AHEAD") ? atoi(getenv("SRFX_AUTOPILOT_AHEAD")) : 2;
+    i = (best + ahead) % n;
+    tx = (int16_t)cart16(bank, (uint16_t)(table + 2 + i * 8));
+    tz = (int16_t)cart16(bank, (uint16_t)(table + 6 + i * 8));
+    want = (int)lround(atan2(tx - px, tz - pz) * 128 / M_PI) & 0xFF;
+    /* the record keeps the heading the other way round (0x40: toward -x) */
+    diff = (int8_t)(want + (rec_get(rec, FXREC_HEADING) >> 8));
+    *pad = (uint16_t)((*pad & ~(PAD_B | PAD_LEFT | PAD_RIGHT)) | PAD_B | (diff > 4 ? PAD_RIGHT : diff < -4 ? PAD_LEFT : 0));   /* (other buttons as given: a test's Start) */
+}
+
 /* ---- each update ---- */
 
 void controls_read(const nshvc_input *in, uint16_t pad[2])
@@ -466,6 +531,7 @@ void controls_read(const nshvc_input *in, uint16_t pad[2])
         source = CONTROLS_TOUCH;
     pad[0] = (uint16_t)(keyboard_pad(in) | controller_pad(in, 0, ctl_of) | touch_pad(in));
     pad[1] = controller_pad(in, 1, k_ctl_default);
+    autopilot_pad(&pad[0]);
 }
 
 /* ---- the touch controls' pictures ---- */

@@ -27,12 +27,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "data/cart.h"
 #include "fx/fx.h"
 #include "fx/fx_draw.h"
 #include "fx/fx_far.h"
 #include "fx/fx_ground.h"
 #include "fx/fx_view.h"
 #include "object/object.h"
+#include "system/chip.h"
 #include "system/state.h"
 
 enum { SLOTS = 0x31, SLOT_SIZE = 0x1E, SLOT_FIRST = 0x0AAA };
@@ -83,9 +85,70 @@ static uint16_t rom_word(uint16_t a)
 
 static int64_t magnitude(int64_t v) { return v < 0 ? -v : v; }
 
+/* ---- the course ahead (fx_far_pass in a tunnel's zone) ----
+   The course's segment table (the chip's $1092 in bank $1094: a count, then
+   x, y, z and a word a segment): from the segment nearest the eye, the next
+   ALONG_SEGMENTS of them; an object is along the course when it lies within
+   ALONG_WIDE of one of their stretches across the ground. */
+enum { ALONG_SEGMENTS = 12 };
+#define ALONG_WIDE 2200.0
+
+static int16_t along_x[ALONG_SEGMENTS + 1], along_z[ALONG_SEGMENTS + 1];
+static int along_n;
+static int32_t along_eye[2];
+
+static int along_setup(void)
+{
+    uint16_t table = (uint16_t)(fx_ram[0x1092] | fx_ram[0x1093] << 8);
+    uint8_t bank = fx_ram[0x1094];
+    int n, i, best = 0;
+    double bd = 1e30;
+
+    along_n = 0;
+    if (table < 0x8000)
+        return 0;
+    n = cart16(bank, table);
+    if (n < 2)
+        return 0;
+    along_eye[0] = (int16_t)cameras[0].x;
+    along_eye[1] = (int16_t)cameras[0].z;
+    for (i = 0; i < n; i++) {
+        double dx = (int16_t)cart16(bank, (uint16_t)(table + 2 + i * 8)) - along_eye[0];
+        double dz = (int16_t)cart16(bank, (uint16_t)(table + 6 + i * 8)) - along_eye[1];
+        if (dx * dx + dz * dz < bd)
+            bd = dx * dx + dz * dz, best = i;
+    }
+    /* from the one before the nearest (the eye trails the car) */
+    for (i = 0; i <= ALONG_SEGMENTS; i++) {
+        int k = (best - 1 + i + n) % n;
+        along_x[i] = (int16_t)cart16(bank, (uint16_t)(table + 2 + k * 8));
+        along_z[i] = (int16_t)cart16(bank, (uint16_t)(table + 6 + k * 8));
+    }
+    along_n = ALONG_SEGMENTS + 1;
+    return 1;
+}
+
+static int along_course(double x, double z)
+{
+    int i;
+
+    for (i = 0; i + 1 < along_n; i++) {
+        double ax = along_x[i], az = along_z[i], bx = along_x[i + 1] - ax, bz = along_z[i + 1] - az;
+        double l = bx * bx + bz * bz, t = l > 0 ? ((x - ax) * bx + (z - az) * bz) / l : 0, px, pz;
+
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        px = ax + t * bx - x;
+        pz = az + t * bz - z;
+        if (px * px + pz * pz < ALONG_WIDE * ALONG_WIDE)
+            return 1;
+    }
+    return 0;
+}
+
 void fx_far_pass(void)
 {
     unsigned count = far_word(FX_FAR_COUNT), i, k;
+    int along;
     int32_t m[9], centre, half;
 
     nparked = 0;
@@ -94,6 +157,11 @@ void fx_far_pass(void)
     if (count > FX_FAR_MAX)
         count = FX_FAR_MAX;
     fx_ram[FX_FAR_BANK + FX_FAR_COUNT] = fx_ram[FX_FAR_BANK + FX_FAR_COUNT + 1] = 0;
+    /* in a sealed tunnel or a zone of the alternate backdrop (bits 3 and 6
+       of $0DA5, which Aqua Tunnel's gates set under the water) only the far
+       objects along the course ahead: the tube's next sections at full
+       distance, not the lap's other sections seen across the water */
+    along = (g.picture_effects & 0x48) && !getenv("SRFX_FAR_IN_TUNNEL") && along_setup();
     for (i = 0; i < 9; i++)
         m[i] = (int16_t)ram_word((uint16_t)(0x00E4 + 2 * i));
     /* the view's half-width, as the sort takes it */
@@ -116,6 +184,8 @@ void fx_far_pass(void)
         for (c = 0; c < 3; c++)
             v[c] = (d[0] * m[c] >> 15) + (d[1] * m[3 + c] >> 15) + (d[2] * m[6 + c] >> 15);
         if (v[2] + radius < 0)
+            continue;
+        if (along && !along_course((double)along_eye[0] + (double)d[0], (double)along_eye[1] + (double)d[2]))
             continue;
         x = magnitude(v[0]);
         z = magnitude(v[2]);

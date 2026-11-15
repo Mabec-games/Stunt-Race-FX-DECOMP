@@ -47,6 +47,9 @@ typedef struct {
     /* a face seen from behind (an open model's: fx_face_model_done), drawn
        behind a face facing the eye at the same depth */
     uint8_t back;
+    /* a tunnel's exit seen from inside (fx_face.c's mouths): drawn as its
+       opening, the sky outside at the farthest depth */
+    uint8_t opening;
     /* its corners in view space, whole and exact (at most 8; 0: not kept,
        a solid's or the land's), for the layers of faces on one plane
        (fx_draw.c) */
@@ -152,5 +155,8 @@ int fx_sprite_map(uint16_t left, uint16_t top, float *cx, float *cy, float *bx, 
 /* Whether the sprite fx_sprite_map last gave is of fixed size (its size
    byte negative: the same pixels at any depth, as the rank sign's). */
 int fx_sprite_fixed(void);
+
+/* the model whose faces are being walked (frame.c), and its face count */
+void fx_face_shape_now(uint16_t shape);
 
 #endif

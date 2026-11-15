@@ -484,6 +484,49 @@ static void full_windows(nshvc_windows *w, int width)
     }
 }
 
+/* A window of the band table that is not the view's opening (its edges
+   moving from line to line: RETIRE?'s oval) is drawn as the original drew
+   it, line by line where the original's 256 x 224 lies in the window, and
+   covers nothing beyond; returns 0 for the view's opening (full_windows). */
+static int full_window_shaped(const ScreenShape *sh)
+{
+    static int32_t l1[224], r1[224], l2[224], r2[224], rows[4][1024];
+    int line, r, k, shaped = 0, first[2] = { -1, -1 };
+
+    window_band_values(l1, r1, l2, r2);
+    for (line = 0; line < 224; line++) {
+        int32_t lw[2] = { l1[line], l2[line] }, rw[2] = { r1[line], r2[line] };
+        for (k = 0; k < 2; k++) {
+            if (lw[k] > rw[k])
+                continue;
+            if (first[k] < 0)
+                first[k] = line;
+            else if (lw[k] != (k ? l2 : l1)[first[k]] || rw[k] != (k ? r2 : r1)[first[k]])
+                shaped = 1;
+        }
+    }
+    if (!shaped)
+        return 0;
+    for (r = 0; r < sh->height && r < 1024; r++) {
+        line = r - sh->origin_y;
+        if (line < 0 || line > 223) {
+            rows[0][r] = rows[2][r] = 1;
+            rows[1][r] = rows[3][r] = 0;
+            continue;
+        }
+        rows[0][r] = l1[line] <= r1[line] ? l1[line] + sh->origin_x : 1;
+        rows[1][r] = l1[line] <= r1[line] ? r1[line] + sh->origin_x : 0;
+        rows[2][r] = l2[line] <= r2[line] ? l2[line] + sh->origin_x : 1;
+        rows[3][r] = l2[line] <= r2[line] ? r2[line] + sh->origin_x : 0;
+    }
+    k = sh->height < 1024 ? sh->height : 1024;
+    nshvc_lines(0, (uint32_t)k, NSHVC_LINE_WIN1_LEFT, rows[0]);
+    nshvc_lines(0, (uint32_t)k, NSHVC_LINE_WIN1_RIGHT, rows[1]);
+    nshvc_lines(0, (uint32_t)k, NSHVC_LINE_WIN2_LEFT, rows[2]);
+    nshvc_lines(0, (uint32_t)k, NSHVC_LINE_WIN2_RIGHT, rows[3]);
+    return 1;
+}
+
 static void full_window_draw(const ScreenShape *sh)
 {
     static uint16_t palette[256];
@@ -500,7 +543,7 @@ static void full_window_draw(const ScreenShape *sh)
     hills.scroll_y = pic.race.wide_y - sh->origin_y;
     layer_send(1, &hills);
     layer_send(2, &pic.bg[2]);
-    if (g.line_effects.window_bands)
+    if (g.line_effects.window_bands && !full_window_shaped(sh))
         full_windows(&w, sh->width);
     nshvc_windows_set(&w);
     nshvc_blend_set(&pic.blend);

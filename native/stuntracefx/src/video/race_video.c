@@ -767,6 +767,17 @@ uint16_t race_full_sky_colour(int row)
     return sky_colour_at(sky_offset_of(full_pitch_now()) / 2 + row - screen_shape()->origin_y - 32);
 }
 
+/* The sky outside on a row of the full window, while a tunnel blacks the
+   lists: race_full_sky_colour's place in the lists, the colours untinted. */
+uint16_t race_open_sky_colour(int row)
+{
+    int horizon;
+
+    if (full_horizon_row(&horizon))
+        return sky_colour_open(SKY_AT_HORIZON + row - horizon);
+    return sky_colour_open(sky_offset_of(full_pitch_now()) / 2 + row - screen_shape()->origin_y - 32);
+}
+
 /* The race screen handed back: the next screen sets its own layers, and
    none of the race's are left behind it. */
 void race_screen_end(void)
@@ -1142,7 +1153,7 @@ void ResultsMapRowsUpload(void)
         for (i = 0; i < 26; i++) {
             uint16_t w = backdrop_map(0)[r * 32 + i];
 
-            row[i] = (uint16_t)((w & 0xDC00) | (((w & 0x3FF) + 0x200) & 0x3FF));
+            row[i] = (uint16_t)((w & 0xFC00) | (((w & 0x3FF) + 0x200) & 0x3FF));   /* (its priority bit kept: the text over the car, as the original) */
         }
         video_map_write(race_video.backdrop_one, 0, (uint32_t)(32 + r), 26, 1, row);
     }

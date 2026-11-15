@@ -2794,6 +2794,30 @@ static void shape_draw_body(const FxShape *sh)
     float row_at = (float)(recording ? recording->oy : offset_y);
     int verge = 0;
 
+    if (sh->opening) {
+        /* a tunnel's exit from inside: the sky outside by row, at the
+           farthest depth, so what lies outside is drawn over it and
+           nothing past the tunnel's walls shows it */
+        if (!target.id && !recording)
+            return;
+        memset(v, 0, sizeof v);
+        while (done < sh->count) {
+            uint32_t n = sh->count - done > 48 ? 48 : sh->count - done;
+
+            for (i = 0; i < n; i++) {
+                uint16_t bgr = race_open_sky_colour((int)floorf(c[done + i].y + row_at));
+                uint32_t r = bgr & 31, gc = bgr >> 5 & 31, b = bgr >> 10 & 31;
+
+                v[i].x = c[done + i].x;
+                v[i].y = c[done + i].y;
+                v[i].z = 1e-6f;
+                v[i].colour = 0xFF000000u | (r << 3 | r >> 2) << 16 | (gc << 3 | gc >> 2) << 8 | (b << 3 | b >> 2);
+            }
+            emit(v, n, 0, sh->line);
+            done += n;
+        }
+        return;
+    }
     if (m->textured) {
         uint8_t bank = m->bank;
         uint16_t word = m->word, base = m->base, mask = m->mask;

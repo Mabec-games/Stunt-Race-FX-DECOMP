@@ -1,3 +1,4 @@
+#include <stdio.h>
 /*
  * fx_face.c: the race's shapes in floats (plan stage 10, "Stage 10's 3D").
  *
@@ -31,6 +32,10 @@
 #include "fx/fx.h"
 #include "fx/fx_draw.h"
 #include "fx/fx_face.h"
+#include "fx/fx_ground.h"
+#include "system/state.h"
+#include "video/picture.h"
+#include "fx/fx_draw.h"
 #include "fx/fx_far.h"
 #include "fx/fx_track.h"
 
@@ -164,11 +169,16 @@ static int view_of(double e[3][3])
     return 1;
 }
 
+static int ndefer;
+static void defer_flush(void);
+
 void fx_face_object(uint16_t record)
 {
     double rel[3];
     int in_view = 0, j, k;
 
+    if (ndefer)                         /* (the last model's held faces, in its own state) */
+        defer_flush();
     object_now.known = 0;
     object_now.chip_z = record ? ldexp((int16_t)(fx_ram[(uint16_t)(record + 0x14)] | fx_ram[(uint16_t)(record + 0x15)] << 8),
                                       fx_far_shift()) : 0;     /* its view-space Z, as fx_ground.c reads a record's */
@@ -284,6 +294,8 @@ void fx_face_model(uint16_t flags)
     double m[3][3], e[3][3];
     int i, j, k;
 
+    if (ndefer)
+        defer_flush();
     exact.made++;
     exact.on = 0;
     if (!object_now.known)
@@ -327,6 +339,8 @@ void fx_face_point(uint16_t record, uint16_t x, uint16_t y, uint16_t z)
 
     if (i >= POINTS)
         return;
+    if (i == 0 && ndefer)               /* (held faces drawn in their own projection) */
+        defer_flush();
     if (i == 0)                         /* every projection starts at the first point */
         projection++;
     point[i].made = projection;
@@ -502,6 +516,7 @@ static void check_point(unsigned i, const View *v)
 typedef struct {
     double x, y, z, u, v;
 } Corner3;
+static void hole_note(const Corner3 *c, int n);
 
 /* The colour FxModelMaterial chose last (fx_face_material), taken by the
    face queued next. */
@@ -530,6 +545,7 @@ static FxCorner corners[CORNERS];
 static uint32_t ncorners;
 
 static void commit(const FxMaterial *m);
+static int commit_opening;      /* the face committed is a tunnel exit's opening (defer_flush) */
 
 /* The model's distance tier is the place of its colour table ($0052) past
    the tables' base ($004E), $88 bytes a tier (FxModelProject), or of its
@@ -631,6 +647,24 @@ void fx_face_begin_back(int textured)
     face.back = 1;
 }
 
+/* a held face noted for its model's closing (fx_face.c's mouths: a plug,
+   not drawn, leaves its model open) */
+static void walked_note_of(const Corner3 *c, int n)
+{
+    int k;
+
+    if (n < 3 || n > WALKED_CORNERS)
+        return;
+    if (nwalked == WALKED) {
+        walked_lost = 1;
+        return;
+    }
+    walked[nwalked].n = n;
+    for (k = 0; k < n; k++)
+        walked[nwalked].key[k] = corner_key(&c[k]);
+    nwalked++;
+}
+
 /* the face just ended, noted for its model's closing */
 static void walked_note(void)
 {
@@ -648,12 +682,348 @@ static void walked_note(void)
     nwalked++;
 }
 
+
+/* ---- the tunnels' mouths (SRFX reboot) ----
+   A tunnel piece's entrance is a facade of flat faces laid right across
+   the opening, with a dark plug painted over the opening after them in the
+   same plane: the original's way of drawing a hole (its inside drawn
+   later, nearer, as the car comes). Seen at true depth the plug is a wall.
+   A tunnel piece's flat faces are held until its walk is done; a face
+   drawn after others in their plane, every corner of it on one of them,
+   is a plug: it is cut out of those faces and not drawn, so the opening
+   shows the tunnel's inside from any distance. */
+static uint16_t shape_now;
+enum { DEFER = 64, DEFER_CORNERS = 16, CUT_MOST = MOST };
+static struct {
+    int n, textured;
+    View view;
+    Tint tint;
+    FxMaterial m;
+    int dark, back;
+    Corner3 c[DEFER_CORNERS];
+} defer[DEFER];
+static int deferring;                  /* faces copied for the mouth test */
+static int holding;                     /* and held: a model known to have a mouth */
+static uint16_t mouth_shapes[64];
+static int nmouth;
+
+static int mouth_known(uint16_t shape)
+{
+    int i;
+    for (i = 0; i < nmouth; i++)
+        if (mouth_shapes[i] == shape)
+            return 1;
+    return 0;
+}
+
+static void defer_commit(int k, const Corner3 *c, int n)
+{
+    FxMaterial m = defer[k].m;
+    int i;
+
+    if (defer[k].back) {                /* seen from behind: to the model's held faces, as fx_face_end holds them */
+        if (n < 3 || n > WALKED_CORNERS || nheld == HELD)
+            return;
+        held[nheld].n = n;
+        held[nheld].textured = defer[k].textured;
+        held[nheld].view = defer[k].view;
+        held[nheld].tint = defer[k].tint;
+        held[nheld].material = m;
+        for (i = 0; i < n; i++) {
+            held[nheld].c[i] = c[i];
+            held[nheld].key[i] = corner_key(&c[i]);
+        }
+        nheld++;
+        return;
+    }
+    face.open = 0;
+    face.back = 0;
+    face.whole = 1;
+    face.n = n;
+    face.textured = defer[k].textured;
+    face.view = defer[k].view;
+    face.tint = defer[k].tint;
+    for (i = 0; i < n; i++)
+        face.c[i] = c[i];
+    if (fx_face_full())
+        fx_draw_queued();
+    commit(&m);
+}
+
+typedef struct { double n[3], d, tol; int ax, ay; } Plane;
+
+static void plane_of(const Corner3 *c, int n, Plane *p)
+{
+    double big = 0, len;
+    int i, k;
+
+    p->n[0] = p->n[1] = p->n[2] = 0;
+    for (i = 0; i < n; i++) {
+        const Corner3 *a = &c[i], *b = &c[(i + 1) % n];
+        p->n[0] += (a->y - b->y) * (a->z + b->z);
+        p->n[1] += (a->z - b->z) * (a->x + b->x);
+        p->n[2] += (a->x - b->x) * (a->y + b->y);
+    }
+    len = sqrt(p->n[0] * p->n[0] + p->n[1] * p->n[1] + p->n[2] * p->n[2]);
+    if (len > 0)
+        for (k = 0; k < 3; k++)
+            p->n[k] /= len;
+    p->d = p->n[0] * c[0].x + p->n[1] * c[0].y + p->n[2] * c[0].z;
+    for (i = 0; i < n; i++) {
+        double m = fmax(fabs(c[i].x), fmax(fabs(c[i].y), fabs(c[i].z)));
+        if (m > big)
+            big = m;
+    }
+    p->tol = 4.0 + big * 0.002;
+    /* the 2D the cut works in: the two axes the normal leans on least */
+    k = fabs(p->n[0]) > fabs(p->n[1]) ? (fabs(p->n[0]) > fabs(p->n[2]) ? 0 : 2) : (fabs(p->n[1]) > fabs(p->n[2]) ? 1 : 2);
+    p->ax = k == 0 ? 1 : 0;
+    p->ay = k == 2 ? 1 : 2;
+}
+
+static double axis(const Corner3 *c, int a) { return a == 0 ? c->x : a == 1 ? c->y : c->z; }
+
+static int on_plane(const Plane *p, const Corner3 *c, int n)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (fabs(p->n[0] * c[i].x + p->n[1] * c[i].y + p->n[2] * c[i].z - p->d) > p->tol)
+            return 0;
+    return 1;
+}
+
+static double area2(const Plane *p, const Corner3 *c, int n)
+{
+    double s = 0;
+    int i;
+    for (i = 0; i < n; i++) {
+        const Corner3 *a = &c[i], *b = &c[(i + 1) % n];
+        s += axis(a, p->ax) * axis(b, p->ay) - axis(b, p->ax) * axis(a, p->ay);
+    }
+    return s / 2;
+}
+
+/* point q's side of edge a-b (in 2D): > 0 left */
+static double side(const Plane *p, const Corner3 *a, const Corner3 *b, const Corner3 *q)
+{
+    return (axis(b, p->ax) - axis(a, p->ax)) * (axis(q, p->ay) - axis(a, p->ay)) -
+           (axis(b, p->ay) - axis(a, p->ay)) * (axis(q, p->ax) - axis(a, p->ax));
+}
+
+static int convex(const Plane *p, const Corner3 *c, int n)
+{
+    double s = area2(p, c, n);
+    int i;
+    for (i = 0; i < n; i++)
+        if (side(p, &c[i], &c[(i + 1) % n], &c[(i + 2) % n]) * s < -1e-6 * fabs(s))
+            return 0;
+    return s != 0;
+}
+
+/* q inside (or on) the face c, n corners, in 2D: by the crossings */
+static int inside(const Plane *p, const Corner3 *c, int n, const Corner3 *q, double slack)
+{
+    double s = area2(p, c, n), len;
+    int i, in = 1;
+    for (i = 0; i < n; i++) {
+        const Corner3 *a = &c[i], *b = &c[(i + 1) % n];
+        len = hypot(axis(b, p->ax) - axis(a, p->ax), axis(b, p->ay) - axis(a, p->ay));
+        if ((s > 0 ? 1 : -1) * side(p, a, b, q) < -slack * len)
+            in = 0;
+    }
+    return in;
+}
+
+static Corner3 lerp3(const Corner3 *a, const Corner3 *b, double t)
+{
+    Corner3 r;
+    r.x = a->x + (b->x - a->x) * t;
+    r.y = a->y + (b->y - a->y) * t;
+    r.z = a->z + (b->z - a->z) * t;
+    r.u = a->u + (b->u - a->u) * t;
+    r.v = a->v + (b->v - a->v) * t;
+    return r;
+}
+
+/* polygon in (n) split by the line a-b: the part on side sgn (> 0 left) */
+static int clip_half(const Plane *p, const Corner3 *in, int n, const Corner3 *a, const Corner3 *b, double sgn, Corner3 *out)
+{
+    int i, m = 0;
+    for (i = 0; i < n && m < CUT_MOST - 1; i++) {
+        const Corner3 *c = &in[i], *d = &in[(i + 1) % n];
+        double sc = sgn * side(p, a, b, c), sd = sgn * side(p, a, b, d);
+        if (sc >= 0)
+            out[m++] = *c;
+        if ((sc >= 0) != (sd >= 0))
+            out[m++] = lerp3(c, d, sc / (sc - sd));
+    }
+    return m >= 3 ? m : 0;
+}
+
+/* face k less the convex plug c (n corners), each piece drawn */
+static void cut_and_commit(int k, const Plane *p, const Corner3 *plug, int pn)
+{
+    Corner3 rem[CUT_MOST], tmp[CUT_MOST], outp[CUT_MOST];
+    double s = area2(p, plug, pn), in_sgn = s > 0 ? 1 : -1;
+    int rn = defer[k].n, i, on;
+
+    for (i = 0; i < rn; i++)
+        rem[i] = defer[k].c[i];
+    for (i = 0; i < pn && rn; i++) {
+        const Corner3 *a = &plug[i], *b = &plug[(i + 1) % pn];
+        on = clip_half(p, rem, rn, a, b, -in_sgn, outp);
+        if (on && fabs(area2(p, outp, on)) > 1.0)
+            defer_commit(k, outp, on);
+        rn = clip_half(p, rem, rn, a, b, in_sgn, tmp);
+        memcpy(rem, tmp, sizeof(Corner3) * (size_t)rn);
+    }
+}
+
+static void defer_flush_now(void);
+
+/* the held faces drawn, the face being made (its global state) kept */
+static void defer_flush(void)
+{
+    static __typeof__(face) kept;
+
+    kept = face;
+    defer_flush_now();
+    face = kept;
+}
+
+static void defer_flush_now(void)
+{
+    int plug[DEFER], i, j, k, n = ndefer;
+    Plane pl[DEFER];
+
+    ndefer = 0;
+    for (i = 0; i < n; i++) {
+        plane_of(defer[i].c, defer[i].n, &pl[i]);
+        plug[i] = 0;
+    }
+    /* the plugs: a convex face whose corners each lie on an earlier face
+       of its plane */
+    for (i = 0; i < n; i++) {
+        int all = 1;
+        /* the tunnels' openings: six-cornered (the tunnel's cross-section)
+           and upright or leaning (Aqua Tunnel's dives: the eye's up within 0.8); a car's or a piece's dark
+           faces are four- or eight-cornered, or lie flat */
+        if (!defer[i].dark || defer[i].n != 6 || fabs(pl[i].n[1]) > 0.8 || !convex(&pl[i], defer[i].c, defer[i].n))
+            continue;
+        for (k = 0; k < defer[i].n && all && 0; k++) {     /* (a facade under it not needed: Aqua's frame is round its opening) */
+            int found = 0;
+            for (j = 0; j < i && !found; j++)
+                found = !plug[j] && fabs(pl[i].n[0] * pl[j].n[0] + pl[i].n[1] * pl[j].n[1] + pl[i].n[2] * pl[j].n[2]) > 0.995 &&
+                        on_plane(&pl[i], defer[j].c, defer[j].n) &&
+                        inside(&pl[i], defer[j].c, defer[j].n, &defer[i].c[k], pl[i].tol);
+            all = found;
+        }
+        if (all) {
+            /* an opening: faces of its model beyond its plane, seen through it */
+            double eye = -pl[i].d, x0 = 1e30, x1 = -1e30, y0 = 1e30, y1 = -1e30;
+            int behind = 0;
+            for (k = 0; k < defer[i].n; k++) {
+                double a = axis(&defer[i].c[k], pl[i].ax), b = axis(&defer[i].c[k], pl[i].ay);
+                x0 = fmin(x0, a), x1 = fmax(x1, a), y0 = fmin(y0, b), y1 = fmax(y1, b);
+            }
+            if (fmax(x1 - x0, y1 - y0) < ldexp(2500.0, -corner_shift()) && !holding)
+                continue;               /* (a tunnel's cross-section, 3,840 across; a car's dark panel is a tenth of it) */
+            for (j = 0; j < n; j++) {
+                int far = 1, over = 0;
+                if (j == i)
+                    continue;
+                for (k = 0; k < defer[j].n; k++) {
+                    const Corner3 *q = &defer[j].c[k];
+                    double h = pl[i].n[0] * q->x + pl[i].n[1] * q->y + pl[i].n[2] * q->z - pl[i].d;
+                    double a = axis(q, pl[i].ax), b = axis(q, pl[i].ay);
+                    if (defer[i].back ? h * eye < pl[i].tol : h * eye > -pl[i].tol)
+                        far = 0;                /* (on the eye's side, or in the plane; a plug seen from
+                                                   inside: beyond it, the tunnel being on the eye's side) */
+                    if (a > x0 && a < x1 && b > y0 && b < y1)
+                        over = 1;
+                }
+                behind += far && over;
+            }
+            all = behind >= 2 || holding;      /* (a known mouth's plug: its inside may face away now) */
+        }
+        plug[i] = all;
+    }
+    if (!holding) {                     /* drawn already: only learn whether it has a mouth */
+        for (i = 0; i < n; i++)
+            if (plug[i] && !mouth_known(shape_now) && nmouth < 64)
+                mouth_shapes[nmouth++] = shape_now;
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        int cut = 0;
+        if (plug[i]) {
+            hole_note(defer[i].c, defer[i].n);  /* (not drawn; its edge still bounds the water's hole) */
+            if (g.picture_effects & 0x08) {     /* in the tunnel: its exit, drawn as the opening to the sky outside */
+                defer[i].back = 0;
+                commit_opening = 1;
+                defer_commit(i, defer[i].c, defer[i].n);
+                commit_opening = 0;
+            }
+            continue;
+        }
+        walked_note_of(defer[i].c, defer[i].n);
+        for (j = i + 1; j < n && !cut; j++)
+            if (plug[j] && on_plane(&pl[j], defer[i].c, defer[i].n)) {
+                cut_and_commit(i, &pl[j], defer[j].c, defer[j].n);
+                cut = 1;
+            }
+        if (!cut)
+            defer_commit(i, defer[i].c, defer[i].n);
+    }
+}
+
+
+void fx_face_shape_now(uint16_t shape)
+{
+    if (ndefer)
+        defer_flush();
+    shape_now = shape;
+    {
+        static int off = -1;
+        if (off < 0)
+            off = getenv("SRFX_NO_MOUTH") != NULL;
+        deferring = !off;
+        holding = deferring && mouth_known(shape) && !survey_face && !survey_sink;   /* (the ground's survey sees every face as drawn) */
+    }
+}
+
 void fx_face_end(const FxMaterial *material)
 {
+    int eligible;
+
     if (!face.open)
         return;
     face.open = 0;
-    walked_note();
+    /* a face the mouths take: whole, of a size, and facing the eye (or
+       either way in a known mouth, whose exit is seen from inside) */
+    eligible = face.whole && face.n >= 3 && face.n <= DEFER_CORNERS && ndefer < DEFER;
+    if (!(holding && eligible))
+        walked_note();                  /* (a held face: noted when drawn, defer_flush) */
+    if (deferring && !eligible) {
+        if (ndefer && holding)          /* (the faces before it first: the model's order kept) */
+            defer_flush();
+    } else if (deferring) {
+        int k;
+        uint16_t bgr = pic.palette[fx_draw_ink(material->colour)];
+        int r = (bgr & 31) << 3, gg = (bgr >> 5 & 31) << 3, b = (bgr >> 10 & 31) << 3;
+        defer[ndefer].dark = !face.textured && r < 32 && gg < 32 && b < 32;     /* (near black: $0821, as the original paints a mouth) */
+        defer[ndefer].n = face.n;
+        defer[ndefer].back = face.back;
+        defer[ndefer].textured = face.textured;
+        defer[ndefer].view = face.view;
+        defer[ndefer].tint = face.tint;
+        defer[ndefer].m = *material;
+        for (k = 0; k < face.n; k++)
+            defer[ndefer].c[k] = face.c[k];
+        ndefer++;
+        if (holding)
+            return;
+    }
     if (face.back) {                    /* held until its model's walk is done */
         int k;
 
@@ -762,6 +1132,9 @@ static uint8_t colour_behind(Tint *t, uint8_t front)
 void fx_face_model_done(void)
 {
     int h, k;
+
+    if (ndefer)
+        defer_flush();
 
     if (nheld && !walked_closed())
         for (h = 0; h < nheld; h++) {
@@ -1227,6 +1600,20 @@ static void hole_finish(void)
         nholes++;
 }
 
+/* a face not drawn whose crossings still bound the water's hole (a
+   tunnel's plug, fx_face.c's mouths) */
+static void hole_note(const Corner3 *c, int n)
+{
+    if (!cut.on)
+        return;
+    if (hole_model != projection) {
+        if (nhole_points)
+            hole_finish();
+        hole_model = projection;
+    }
+    hole_points_of(c, n);
+}
+
 const FxHole *fx_face_holes(int *n)
 {
     if (cut.on && nhole_points)
@@ -1317,6 +1704,18 @@ static void commit(const FxMaterial *m)
 
     if (!face.whole || face.n < 2 || nshapes == SHAPES)
         return;
+    if ((shape_now == 0xA5D4 || shape_now == 0xA660 || shape_now == 0xA67C || shape_now == 0xA6D0) && object_now.known
+        && !survey_face && !survey_sink && !getenv("SRFX_GOAL_FULL")) {
+        /* the GOAL letters flown at the eye past the line: at half their
+           size about their own place, so they no longer reach down through
+           the road the original painted them over (Martin, 2026-11-15) */
+        int k;
+        for (k = 0; k < face.n; k++) {
+            face.c[k].x = object_now.place[0] + 0.5 * (face.c[k].x - object_now.place[0]);
+            face.c[k].y = object_now.place[1] + 0.5 * (face.c[k].y - object_now.place[1]);
+            face.c[k].z = object_now.place[2] + 0.5 * (face.c[k].z - object_now.place[2]);
+        }
+    }
     if (survey_face && face.n >= 3) {
         double c[MOST][3];
         int i;
@@ -1339,6 +1738,7 @@ static void commit(const FxMaterial *m)
     if (seat_now.car && !seat_now.tyre && object_now.known && face.n >= 3)
         lay_on_ground();
     s->back = (uint8_t)face.back;
+    s->opening = (uint8_t)commit_opening;
     s->ncorner3 = 0;
     if (face.n <= 8) {                  /* its corners at full size, for its layer (fx_draw.c) */
         int k;
