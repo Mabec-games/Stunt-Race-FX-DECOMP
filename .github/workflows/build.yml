@@ -28,7 +28,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Packages
         run: |
@@ -107,19 +107,19 @@ jobs:
           # nothing of the ROM's text in the shipped game
           ! strings squashfs-root/usr/bin/game/stuntracefx | grep -q "STUNT RACE FX"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: linux-appimage
           path: dist/StuntRaceFX-DECOMP-${{ env.VERSION }}-x86_64.AppImage
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: windows-zip
           path: dist/StuntRaceFX-DECOMP-${{ env.VERSION }}-windows-x86_64.zip
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: launcher-screens-linux
           path: '*.bmp'
@@ -128,7 +128,7 @@ jobs:
     needs: build
     runs-on: windows-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: windows-zip
 
@@ -159,13 +159,23 @@ jobs:
           $r = Get-Content "$dir\builder-result.txt" -Raw
           Write-Host "builder: exit $($p.ExitCode): $r"
           if ($p.ExitCode -eq 0 -or $r -notmatch '^failed') { throw "the builder accepted a wrong ROM" }
-          # the game starts without its data and stops (no crash, no hang)
+          # the game starts (its DLLs found, the engine up). The runner has no
+          # GPU, so the engine stops at its own dialog "The renderer could not
+          # start on this computer" and waits for OK: a window of the game's
+          # own is the pass here; a crash or a missing DLL ends it with an error.
           $g = Start-Process -FilePath "$dir\game\stuntracefx.exe" -PassThru
-          if (-not $g.WaitForExit(20000)) { $g.Kill(); throw "the game hung without its data" }
-          Write-Host "game exit: $($g.ExitCode)"
-          if ($g.ExitCode -eq -1073741819 -or $g.ExitCode -eq -1073741515) { throw "the game crashed or a DLL is missing ($($g.ExitCode))" }
+          if (-not $g.WaitForExit(20000)) {
+            $g.Refresh()
+            $title = $g.MainWindowTitle
+            $g.Kill()
+            if (-not $title) { throw "the game hung with no window" }
+            Write-Host "game started and is showing its dialog '$title' (no GPU on the runner)"
+          } else {
+            Write-Host "game exit: $($g.ExitCode)"
+            if ($g.ExitCode -lt 0) { throw "the game crashed or a DLL is missing ($($g.ExitCode))" }
+          }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: launcher-screens-windows
           path: '*.bmp'
