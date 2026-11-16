@@ -218,9 +218,10 @@ static const struct {
                                            39c58b), a car off the arena lands in it ("SPLASH"); Aqua
                                            Tunnel's ocean in those colours at the lowest place its shapes
                                            meet the ground, so the arena stands in it (Lake Side's) */
-    [0x13] = { SURF_WATER, 0, CLS_BAND_WHOLE, 0, 0, 0, 0, 0, 0 }, /* the night city, Harbor City's sky and band:
-                                           Aqua Tunnel's ocean in its band's navies, at its floor as
-                                           before */
+    [0x13] = { SURF_WATER, WATER_DEEPEST, CLS_BAND_WHOLE, 0, 0, 0, 0, 0, 0 }, /* the night city, Harbor City's sky
+                                           and band: Aqua Tunnel's ocean in its band's navies, at the
+                                           lowest place its shapes meet the ground (as the beach's): at 0
+                                           its start's road, lower, showed the water over it */
     [0x14] = { SURF_GRASS, 0, 10, 0, 0, 0, 0, 0, 0 }, /* the bonus courses (Speed Trax's truck runs, one a class):
                                            Easy Ride's palette, sky and backdrop, so Easy Ride's land,
                                            class 10 */
@@ -1368,6 +1369,7 @@ static void plane_vertices(double y, uint32_t colour, const double eye[3], const
    rock); the ground (ground) the one the survey's fit of shade against
    facing gives a level face (nw, in the world's axes). With one shade, it;
    with none, the browns of class 11. */
+static uint32_t ground_now;             /* the land's plane's colour this picture (0: none yet) */
 static uint32_t face_colour(int cls, const double nv[3], const double nw[3], int ground)
 {
     if (cls == CLS_ROCK && grid.shades > 1 && !ground) {
@@ -1384,6 +1386,29 @@ static uint32_t face_colour(int cls, const double nv[3], const double nw[3], int
         k = k < 0 ? 0 : k >= grid.shades ? grid.shades - 1 : k;
         return rgb_of(pic.palette[fx_draw_ink(grid.shade[k])]);
     }
+    if (cls == CLS_BAND_WHOLE && !ground && surface[g.course < 0x20 ? g.course : 0].mesas && ground_now) {
+        /* a battle course's mesa (the red-rock desert): the two players'
+           palettes hold no shade rows and the band a view shows is nearly
+           one colour, so each face came out the ground's flat brown; the
+           ground's colour instead, its tops as it is, its walls darker by
+           a sun fixed in the world (its sides each their own shade: the
+           chip's light, fixed to the view, gave walls facing the eye the
+           ground's own level, so they showed no shade) */
+        static const double sun[3] = { 0.7, -0.5, 0.5 };    /* toward it; world y is down */
+        double len = sqrt(nw[0] * nw[0] + nw[1] * nw[1] + nw[2] * nw[2]);
+        double d = len > 0 ? (nw[0] * sun[0] + nw[1] * sun[1] + nw[2] * sun[2]) / (len * sqrt(0.99)) : 0;
+        double f = len > 0 && nw[1] / len < -0.99 ? 1.0 : 0.72 + 0.22 * d;    /* (nw not of unit length) */
+        uint32_t out = 0xFF000000u;
+        int k;
+
+        (void)nv;
+        for (k = 0; k < 24; k += 8) {
+            double c = (ground_now >> k & 255) * f;
+
+            out |= (uint32_t)(c > 255 ? 255 : c) << k;
+        }
+        return out;
+    }
     return land_colour(cls == CLS_ROCK ? 11 : cls, nv);
 }
 
@@ -1391,7 +1416,6 @@ static uint32_t face_colour(int cls, const double nv[3], const double nw[3], int
    and its outward normal nw: left out when it faces away from the eye;
    else turned to the view, kept to it, each corner at its depth (from the
    face's own 1 / Z, the world's true depth), into v from *nv. */
-static uint32_t ground_now;             /* the land's plane's colour this picture (0: none yet) */
 
 static void land_face(const double (*pts)[3], int n, const double nw[3], int cls, const double eye[3], const double m[9],
                       nshvc_vertex *v, uint32_t *nv, uint32_t room)

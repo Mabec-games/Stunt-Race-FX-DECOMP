@@ -329,10 +329,16 @@ static void two_players_first_half(void)
 void RaceFrameRunTwoPlayers(void)
 {
     frame_start();
-    ObjectsRunHandlers();
+    /* The original ran the objects (the cameras among them) first, then the
+       controls and the cars' physics, so each player's camera followed where
+       its car had been a step before: a step (6 updates) more lag from a
+       button to the picture than one player's order, controls, physics,
+       objects (RaceFrameRun). Here the two-player step takes that order too. */
     ViewFromRecord(view_camera(g.player_car));
     PlayerControlsFrame();
     frame_side0();
+    ObjectsRunHandlers();
+    ViewFromRecord(view_camera(g.player_car));
     ViewUpdateAndSort();
     BackdropAnglesFromView();
     ViewFromRecord(view_camera(g.player2_car));

@@ -77,6 +77,8 @@ void course_wipe_overlay(const int32_t left[224], const int32_t right[224], cons
 void course_wipe_overlay_off(void);
 nshvc_image fx_noise_image(void);              /* fx_draw.c: the static's noise texture */
 uint16_t fx_static_seed(int line);             /* fx_draw.c: the seed line 0-127 of the static's block was drawn with */
+void race_half_blank_set(int half, int on);    /* the split screen's half blanked (race/flow.c split_picture) */
+int race_half_blank(int half);
 void race_two_full_window_ready(int on);       /* interim: the 3D's side turns it on with its two-player rectangles */
 void race_hills_full(void);                    /* its hills and sky for the picture shown, or one between steps */
 uint16_t sky_colour_open(int at);               /* the same untinted: the sky outside a tunnel */

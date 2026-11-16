@@ -156,17 +156,41 @@ static void rows_of(double z, double x, double y, double m[3][3])
     m[2][0] = cx * sy * sz - sx * cy; m[2][1] = cx * cy * sz + sx * sy; m[2][2] = cx * cz;
 }
 
-/* the view's turn from its angles, when the chip's own at $00E4 is it */
-static int view_of(double e[3][3])
+/* The angles the chip last built its view matrix at $00E4 from (its
+   program reads them at $0020: FxMatrixFromAnglesProgram). With two players
+   the race sets the first player's view, sorts it, then puts the second
+   player's angles at $00DE (RaceViewForPicture, as the original's order)
+   before the first player's picture is drawn: $00DE no longer matches the
+   matrix that picture draws with, which left all its corners the chip's
+   rounded ones (no layers: its road markings fought the road). */
+static uint16_t built_angles[3];
+static int built_known;
+
+void fx_face_view_built(uint16_t a, uint16_t b, uint16_t c)
+{
+    built_angles[0] = a;
+    built_angles[1] = b;
+    built_angles[2] = c;
+    built_known = 1;
+}
+
+static int view_matches(uint16_t a, uint16_t b, uint16_t c, double e[3][3])
 {
     int i, j;
 
-    rows_of(turn_of(word(VIEW_ANGLES)), turn_of(word((uint16_t)(VIEW_ANGLES + 2))), turn_of(word((uint16_t)(VIEW_ANGLES + 4))), e);
+    rows_of(turn_of(a), turn_of(b), turn_of(c), e);
     for (i = 0; i < 3; i++)
         for (j = 0; j < 3; j++)
             if (fabs(e[i][j] - (int16_t)word((uint16_t)(VIEW_MATRIX + 6 * i + 2 * j)) / 32768.0) > VIEW_STEPS / 32768.0)
                 return 0;
     return 1;
+}
+
+/* the view's turn from its angles, when the chip's own at $00E4 is it */
+static int view_of(double e[3][3])
+{
+    return view_matches(word(VIEW_ANGLES), word((uint16_t)(VIEW_ANGLES + 2)), word((uint16_t)(VIEW_ANGLES + 4)), e)
+        || (built_known && view_matches(built_angles[0], built_angles[1], built_angles[2], e));
 }
 
 static int ndefer;

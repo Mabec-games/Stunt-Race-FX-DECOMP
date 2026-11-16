@@ -6,8 +6,9 @@
  * player 1's bindings (the pause screen changes them): by default arrows to
  * steer, Z the gas (B), X the brake (A), A boost (Y), S X, Q and W the hard
  * turns (L, R), Return Start, Shift Select; a controller by each button's
- * place, the SNES's own layout, its d-pad and left stick steering. Player 2
- * is the second controller, by the same places.
+ * place, the SNES's own layout, its d-pad and left stick steering. With no
+ * controller the keyboard is player 1; with one, the controller is player 1
+ * and the keyboard player 2; with two, the second controller is player 2.
  *
  * The touch screen is the earlier front end's touch scheme, the race's pad
  * (object/gsu_record.c ctl_player: B accelerates, A brakes and reverses
@@ -516,21 +517,37 @@ static void autopilot_pad(uint16_t *pad)
 
 void controls_read(const nshvc_input *in, uint16_t pad[2])
 {
-    uint16_t now = in->controller[0].on ? in->controller[0].buttons : 0;
-    int i, keys = 0;
+    int i, keys = 0, c0 = -1, c1 = -1;
+    uint16_t now, kb;
 
+    /* the players' controllers: the first two connected, whatever their slots */
+    for (i = 0; i < 8; i++)
+        if (in->controller[i].on) {
+            if (c0 < 0)
+                c0 = i;
+            else if (c1 < 0)
+                c1 = i;
+        }
+    now = c0 >= 0 ? in->controller[c0].buttons : 0;
     updates++;
     for (i = 0; i < 8; i++)
         keys |= in->keys_pressed[i] != 0;
     if (keys)
         source = CONTROLS_KEYBOARD;
-    if ((now & ~ctl_last) || (in->controller[0].on && (fabsf(in->controller[0].lx) > 0.5f || fabsf(in->controller[0].ly) > 0.5f)))
+    if (c0 >= 0 && ((now & ~ctl_last) || fabsf(in->controller[c0].lx) > 0.5f || fabsf(in->controller[c0].ly) > 0.5f))
         source = CONTROLS_CONTROLLER;
     ctl_last = now;
     if (in->touches)
         source = CONTROLS_TOUCH;
-    pad[0] = (uint16_t)(keyboard_pad(in) | controller_pad(in, 0, ctl_of) | touch_pad(in));
-    pad[1] = controller_pad(in, 1, k_ctl_default);
+    /* no controller: the keyboard is player 1; one: it is player 1 and the
+       keyboard player 2; two: the second is player 2 (the keyboard player 1's too) */
+    kb = keyboard_pad(in);
+    pad[0] = (uint16_t)((c0 >= 0 ? controller_pad(in, c0, ctl_of) : 0) | touch_pad(in));
+    pad[1] = c1 >= 0 ? controller_pad(in, c1, k_ctl_default) : 0;
+    if (c0 >= 0 && c1 < 0)
+        pad[1] |= kb;
+    else
+        pad[0] |= kb;
     autopilot_pad(&pad[0]);
 }
 

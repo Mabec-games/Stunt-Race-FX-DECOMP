@@ -16,6 +16,8 @@
  * a home bar).
  */
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "nshvc/nshvc.h"
 #include "video/video.h"
@@ -45,6 +47,20 @@ void screen_window_set(const float *values, int count)
     checking = values[0] > 0.0f && values[1] > 0.0f;
 }
 
+/* SRFX_ASPECT=4:3 (the launcher's ASPECT): the original's 256 x 224 at any
+   window, shown whole in its middle; else the screen widens with the window */
+static int screen_four_three(void)
+{
+    static int on = -1;
+
+    if (on < 0) {
+        const char *s = getenv("SRFX_ASPECT");
+
+        on = s && !strcmp(s, "4:3");
+    }
+    return on;
+}
+
 void screen_update(void)
 {
     nshvc_display d = nshvc_display_info();
@@ -61,7 +77,7 @@ void screen_update(void)
         for (i = 0; i < 4; i++)
             safe[i] = check_window[2 + i];
     }
-    if (ww > 0.0f && wh > 0.0f) {
+    if (ww > 0.0f && wh > 0.0f && !screen_four_three()) {
         a = (ww / wh) / (4.0f / 3.0f);
         if (a >= 1.0f) {
             w = (int)(256.0f * a / 2.0f + 0.5f) * 2;
@@ -183,7 +199,16 @@ enum { TWO_SEAM = 2, TWO_SIDE_W = 288 };
 
 int screen_two_side(void)
 {
-    return shape.width >= TWO_SIDE_W;
+    /* SRFX_SPLIT=stacked (the launcher's 2P SPLIT): the players above and
+       below at any width; else side by side once the screen is wide enough */
+    static int stacked = -1;
+
+    if (stacked < 0) {
+        const char *s = getenv("SRFX_SPLIT");
+
+        stacked = s && !strcmp(s, "stacked");
+    }
+    return !stacked && shape.width >= TWO_SIDE_W;
 }
 
 void screen_two_rect(int player, int *x, int *y, int *w, int *h)

@@ -159,6 +159,7 @@ int fx_sprite_map(uint16_t left, uint16_t top, float *cx, float *cy, float *bx, 
 int fx_sprite_fixed(void);
 
 /* the model whose faces are being walked (frame.c), and its face count */
+void fx_face_view_built(uint16_t a, uint16_t b, uint16_t c);   /* the angles $00E4 was last built from (render/matrix.c) */
 void fx_face_shape_now(uint16_t shape);
 
 #endif

@@ -131,13 +131,19 @@ static void text(float x, float y, float s, const char *t, Uint8 r, Uint8 g, Uin
 
 
 /* ---- settings ---- */
-enum { O_DISPLAY, O_CARS, NOPT };
+enum { O_DISPLAY, O_ASPECT, O_CARS, O_SPLIT, O_FPS, NOPT };
 typedef struct { const char *name, *key; int n, value; const char *const *labels; } Option;
 static const char *const l_display[] = {"WINDOW", "FULLSCREEN"};
 static const char *const l_cars[] = {"3D", "ORIGINAL SPRITES"};
+static const char *const l_aspect[] = {"16:9 WIDESCREEN", "4:3 ORIGINAL"};
+static const char *const l_onoff[] = {"OFF", "ON"};
+static const char *const l_split[] = {"SIDE BY SIDE", "TOP AND BOTTOM"};
 static Option opt[NOPT] = {
     {"DISPLAY", "display", 2, 0, l_display},
+    {"ASPECT", "aspect", 2, 0, l_aspect},
     {"VEHICLES", "cars", 2, 0, l_cars},
+    {"2P SPLIT", "split", 2, 0, l_split},
+    {"FPS COUNTER", "fps", 2, 1, l_onoff},
 };static char rom_path[1024];
 static int rom_state;            /* 0 none, 1 checked good, 2 bad */
 static char cfg_path[1024], old_cfg_path[1100], save_dir[1024];
@@ -411,6 +417,9 @@ static int run_game(SDL_Window *win)
         }
         setenv("PORT_FULLSCREEN", opt[O_DISPLAY].value ? "1" : "0", 1);
         setenv("SRFX_ORIGINAL_CARS", opt[O_CARS].value ? "1" : "0", 1);
+        setenv("SRFX_ASPECT", opt[O_ASPECT].value ? "4:3" : "wide", 1);
+        setenv("SRFX_FPS", opt[O_FPS].value ? "1" : "0", 1);
+        setenv("SRFX_SPLIT", opt[O_SPLIT].value ? "stacked" : "side", 1);
         execl(game, game, (char *)NULL);
         fprintf(stderr, "launcher: cannot start %s: %s\n", game, strerror(errno));
         _exit(127);
@@ -436,11 +445,11 @@ static int run_game(SDL_Window *win)
 }
 
 /* ---- the screen ---- */
-enum { M_PLAY, M_ROM, M_OPT0, M_CONTROLS = M_OPT0 + NOPT, M_QUIT, NMENU };
+enum { M_PLAY, M_ROM, M_OPT0, M_CONTROLS = M_OPT0 + NOPT, M_CREDITS, M_QUIT, NMENU };
 static int sel;
-static int show_controls;
+static int show_controls, show_credits;
 
-static float item_y(int i) { return 140.0f + (float)i * 17.0f + (i >= M_OPT0 ? 5.0f : 0.0f) + (i >= M_CONTROLS ? 5.0f : 0.0f); }
+static float item_y(int i) { return 124.0f + (float)i * 15.0f + (i >= M_OPT0 ? 5.0f : 0.0f) + (i >= M_CONTROLS ? 5.0f : 0.0f); }
 
 static void rom_label(char *out, size_t n)
 {
@@ -504,6 +513,36 @@ static void draw(SDL_Texture *bg)
             text(24, 96 + i * 12.0f, 1, rows[i], i == 0 ? 255 : 230, i == 0 ? 214 : 230, i == 0 ? 0 : 230);
         return;
     }
+    if (show_credits) {
+        /* who made what: the native game and its engine (Jeff Wilbur), and this release's work */
+        static const char *rows[] = {
+            "CREDITS", "",
+            "STUNT RACE FX (C) 1994 NINTENDO",
+            "",
+            "NATIVE GAME AND ENGINE - JEFF WILBUR (STRUT B)",
+            " THE GAME DECOMPILED TO C, RUNNING NATIVELY",
+            " NATIVESHVC ENGINE: NATIVE GPU 3D (VULKAN), AGPL-3.0",
+            " WIDESCREEN, 60 FPS, HIGH RESOLUTION 3D",
+            " GITHUB.COM/JEFF-STRUTB/STUNTRACEFX",
+            "",
+            "DECOMP 1.0 REBOOTED - MABEC GAMES",
+            " LAUNCHER, LINUX APPIMAGE, FULLSCREEN, OPTIONS",
+            " TUNNEL OPENINGS, AQUA TUNNEL VIEW, GOAL SIGN",
+            " RESULTS, PAUSE AND RETIRE SCREENS, 2P MENU",
+            " ORIGINAL SPRITE CARS, 2P SPLIT, PLAYER SETUP",
+            " GITHUB.COM/MABEC-GAMES/STUNT-RACE-FX-DECOMP",
+            "",
+            "NO ROM INCLUDED: USE YOUR OWN STUNT RACE FX ROM",
+            "PRESS ANY KEY TO GO BACK"};
+        SDL_FRect panel = {8, 26, LW - 16, LH - 34};
+        SDL_SetRenderDrawColor(ren, 0, 0, 12, 200);
+        SDL_RenderFillRect(ren, &panel);
+        for (i = 0; i < (int)(sizeof rows / sizeof rows[0]); i++) {
+            int head = i == 0 || i == 4 || i == 10;     /* the title and the two parts' names in yellow */
+            text(16, 34 + i * 13.0f, 1, rows[i], head ? 255 : 230, head ? 214 : 230, head ? 0 : 230);
+        }
+        return;
+    }
     for (i = 0; i < NMENU; i++) {
         float y = item_y(i);
         int on = i == sel;
@@ -526,10 +565,11 @@ static void draw(SDL_Texture *bg)
             text(236, y, 1, v, 140, 200, 255);
         } else if (i == M_CONTROLS)
             text(24, y, 1, "CONTROLS", r, g, b);
+        else if (i == M_CREDITS)
+            text(24, y, 1, "CREDITS", r, g, b);
         else
             text(24, y, 1, "QUIT", r, g, b);
     }
-    text(24, LH - 52, 1, "NATIVE GPU REMASTER BY JEFF WILBUR (STRUT B)", 170, 170, 190);
     if (status[0])
         text(24, LH - 34, 1, status, status_r, status_g, status_b);
     text(24, LH - 16, 1, "ARROWS / D-PAD   RETURN / A   ESC / B", 150, 150, 170);
@@ -558,6 +598,8 @@ static void activate(SDL_Window *win, int dir)
         SDL_ShowOpenFileDialog(picked_cb, NULL, win, filters, 2, rom_path[0] ? rom_path : NULL, false);
     } else if (sel == M_CONTROLS)
         show_controls = 1;
+    else if (sel == M_CREDITS)
+        show_credits = 1;
 }
 
 static int menu_at(float x, float y)
@@ -629,9 +671,9 @@ int main(int argc, char **argv)
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_EVENT_QUIT)
                 running = 0;
-            else if (show_controls && (e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
+            else if ((show_controls || show_credits) && (e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
                                        e.type == SDL_EVENT_MOUSE_BUTTON_DOWN))
-                show_controls = 0;
+                show_controls = show_credits = 0;
             else if (e.type == SDL_EVENT_KEY_DOWN) {
                 switch (e.key.key) {
                 case SDLK_UP: sel = (sel + NMENU - 1) % NMENU; break;
@@ -692,6 +734,8 @@ int main(int argc, char **argv)
                 set_status("NOT STUNT RACE FX (USA) REV 1", 255, 96, 96);
         }
         SDL_UnlockMutex(pick_lock);
+        if (getenv("LAUNCHER_SHOT") && getenv("LAUNCHER_PAGE"))     /* (a check of a page: credits or controls) */
+            (strcmp(getenv("LAUNCHER_PAGE"), "credits") ? &show_controls : &show_credits)[0] = 1;
         draw(bg);
         if (getenv("LAUNCHER_SHOT")) {
             /* (a check: one picture saved, then out) */

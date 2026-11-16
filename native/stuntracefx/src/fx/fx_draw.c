@@ -1177,9 +1177,12 @@ nshvc_draw_list fx_draw_picture(int picture)
     static int composed_origin = -1;
     int origin = origin_x || origin_y;
 
+    static int composed_blank = -1;
+    int blank = g.split_screen ? race_half_blank(0) | race_half_blank(1) << 1 : 0;
+
     picture &= 1;
     screen_list_size(&w, &h);
-    if (composed_picture != picture || composed_split != split || composed_w != w || composed_h != h || composed_origin != origin
+    if (composed_blank != blank || composed_picture != picture || composed_split != split || composed_w != w || composed_h != h || composed_origin != origin
         || composed_key[picture] != picture_key(picture)
         || (two && composed_key[!picture] != picture_key(!picture))) {
         composed_w = w;
@@ -1191,9 +1194,12 @@ nshvc_draw_list fx_draw_picture(int picture)
         /* the race's frame and panels, not on another screen's picture */
         if (!origin_x && !origin_y)
             race_frame_art_draw(screen_list);
+        composed_blank = blank;
         if (two) {
-            compose_picture(0);
-            compose_picture(1);
+            if (!(blank & 1))
+                compose_picture(0);
+            if (!(blank & 2))
+                compose_picture(1);
             composed_key[0] = picture_key(0);
             composed_key[1] = picture_key(1);
         } else {

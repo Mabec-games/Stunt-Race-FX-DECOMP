@@ -10,6 +10,7 @@
  */
 
 #include "fx/fx.h"
+#include "fx/fx_face.h"
 
 /*
  * @routine 01:972B FxMatrixTranspose
@@ -310,6 +311,7 @@ FxMatrixFromAnglesProgramResult FxMatrixFromAnglesProgram(void)
 {
     uint16_t where_store_out;
 
+    fx_face_view_built(fx_ldw(0x0020), fx_ldw(0x0022), fx_ldw(0x0024));     /* the angles the view's matrix is made of (fx_face.c) */
     { FxMatrixFromAngles01Result r_ = FxMatrixFromAngles01(0x00E4); where_store_out = r_.where_store_out; };
     return (FxMatrixFromAnglesProgramResult){where_store_out, 0x832D};
 }

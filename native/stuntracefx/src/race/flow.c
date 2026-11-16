@@ -183,6 +183,7 @@ static void two_player_rows(int want, uint8_t next)
 static void split_picture(int half)
 {
     race_half_characters_write(half, (const uint8_t *)(const void *)race_map_buffer() + 0x0800);
+    race_half_blank_set(half, 1);       /* the full window's half: its 3D off too, as the characters are */
     g.split_stage = 0x10;
     palettes.buffer[0] = 0x1CC4;
     pic.palette[0] = 0x1CC4;            /* CGRAM's colour 0 written with it */
@@ -251,6 +252,8 @@ void race_frame_upload(void)
         split_upload();
         return;
     }
+    race_half_blank_set(0, 0);          /* the race's pictures uploaded again */
+    race_half_blank_set(1, 0);
     switch (g.fx_upload_stage) {
     case 0x00:
         if (!g.fx_buffer) {

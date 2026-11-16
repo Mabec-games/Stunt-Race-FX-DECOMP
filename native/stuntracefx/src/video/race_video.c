@@ -4,6 +4,7 @@
  * backdrop and the sprites share is one tile set; the frame around the 3D and
  * the HUD art another, 8bpp in the one-player screen.
  */
+#include <math.h>
 #include <string.h>
 
 #include "audio/sound.h"
@@ -52,6 +53,20 @@ static int shown_buffer;
 /* Two players fill the window: once the 3D draws each player's picture in
    its rectangle (the Enhanced 3D session turns this on with that). */
 static int two_full_ready;
+
+/* A half the results or the quit menu blanked (split_picture): the full
+   window draws no 3D there until the race's own uploads resume. */
+static uint8_t half_blank[2];
+
+void race_half_blank_set(int half, int on)
+{
+    half_blank[half & 1] = (uint8_t)(on != 0);
+}
+
+int race_half_blank(int half)
+{
+    return half_blank[half & 1];
+}
 
 void race_two_full_window_ready(int on)
 {
@@ -1729,7 +1744,7 @@ static void two_full_backdrop(nshvc_draw_list list)
         screen_two_rect(p, &x, &y, &w, &h);
         rcx = x + w / 2;
         rcy = y + h / 2;
-        if (two_horizon_row(p, &horizon)) {
+        if (!pic.race.panel[p] && two_horizon_row(p, &horizon)) {     /* (the hills only: a panel stands where the game put it) */
             /* the hills down by the rows the 3D's horizon is below where the
                original put the half's sky entry SKY_AT_HORIZON: the half's
                middle + SKY_AT_HORIZON - $21 - 40 - its pitch (BackdropScrollFromView's
@@ -1737,6 +1752,42 @@ static void two_full_backdrop(nshvc_draw_list list)
             int pitch = (int16_t)(uint16_t)(pic.race.backdrop_y[p] - backdrop_two_scroll_base(p));
 
             sy -= horizon - (rcy + SKY_AT_HORIZON - 0x21 - 40 - pitch);
+        }
+        if (pic.race.panel[p] && race_half_blank(p)) {
+            /* the results' or quit menu's panel in a blanked half: the original's
+               144 x 80 window of it, scaled whole into the rectangle, on colour 0
+               (split_picture's); the art around that window is another page's */
+            float bx, by, bw, bh, fx = (float)x, fy = (float)y, fw = (float)w, fh = (float)h, k;
+
+            /* clear of the player's boxes: above their row, or left of their column */
+            screen_two_box(p, 0, &bx, &by, &bw, &bh);
+            if (screen_two_side())
+                fh = by - fy;
+            else
+                fw = bx - fx;
+            k = fw / 144.0f < fh / 80.0f ? fw / 144.0f : fh / 80.0f;
+            {
+                /* the window's diamond pattern carried out to the half's edges:
+                   its top left 16 x 16 (the pattern only, a whole repeat) tiled
+                   from the window's corner, cut at the rectangle */
+                float wx = fx + (fw - 144.0f * k) / 2, wy = fy + (fh - 80.0f * k) / 2, t = 16.0f * k, tx, ty;
+                int u0 = (centre_x[p] - 72 + sx) & 255, v0 = (centre_y[p] + 1 - 40 + sy) & 255;
+
+                colour_rect(list, x, y, x + w, y + h, direct_of(pic.palette[0]));
+                for (ty = wy - ceilf((wy - (float)y) / t) * t; ty < (float)(y + h); ty += t)
+                    for (tx = wx - ceilf((wx - (float)x) / t) * t; tx < (float)(x + w); tx += t) {
+                        float l = fmaxf(tx, (float)x), r = fminf(tx + t, (float)(x + w));
+                        float tp = fmaxf(ty, (float)y), bt = fminf(ty + t, (float)(y + h));
+
+                        if (r <= l || bt <= tp)
+                            continue;
+                        image_quad_scaled(list, race_video.panel_image, l, tp, r - l, bt - tp,
+                                          u0 + (int)lroundf((l - tx) / k), v0 + (int)lroundf((tp - ty) / k),
+                                          (int)lroundf((r - l) / k), (int)lroundf((bt - tp) / k), 0, 0);
+                    }
+                image_quad_scaled(list, race_video.panel_image, wx, wy, 144.0f * k, 80.0f * k, u0, v0, 144, 80, 0, 0);
+            }
+            continue;
         }
         for (r = 0; r < h; r++)
             colour_rect(list, x, y + r, x + w, y + r + 1, direct_of(race_two_sky_colour(p, y + r)));
