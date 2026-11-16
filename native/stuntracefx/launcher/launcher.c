@@ -1,5 +1,5 @@
 /*
- * launcher.c: Stunt Race FX Reboot's launcher (SDL3, Linux): the player's
+ * launcher.c: Stunt Race FX Reboot's launcher (SDL3, Linux and Windows): the player's
  * ROM chosen and checked, the native game built from it once by the
  * bundled builder (StuntRaceFXBuilder beside this program, its game/ the
  * payload) into $XDG_DATA_HOME/stuntracefx-reboot, started, and the
@@ -12,6 +12,12 @@
  * nativeshvc engine (AGPL-3.0), with the reboot's fixes; this launcher is
  * the earlier port's (CC0).
  *
+ * On Windows the same, portable: the game is built into `built\` beside
+ * the launcher and its settings are `launcher-reboot.cfg` beside it. The
+ * builder and the game are started with SDL's process calls on both.
+ *
+ * `--version` prints the version and quits (no window): the CI's smoke test.
+ *
  * Keyboard (arrows, Return, Escape), game controller (d-pad, A, B) or
  * mouse. The background `launcher-bg.bmp` beside it or in
  * ../share/stuntracefx.
@@ -20,16 +26,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#ifdef _WIN32
-#error "the reboot launcher is Linux only for now"
-#else
-#include <unistd.h>
+#ifndef _WIN32
 #include <sys/stat.h>
-#include <sys/wait.h>
-#include <fcntl.h>
 #endif
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+
+#ifdef _WIN32
+#define EXE ".exe"
+#else
+#define EXE ""
+#endif
+#define LAUNCHER_VERSION "1.0 Rebooted"
 
 #define LW 512                  /* the launcher's own pixels (scaled to the window) */
 #define LH 320
@@ -171,7 +180,8 @@ static void paths(void)
 #ifdef _WIN32
     /* portable: everything in the folder the programs are in */
     const char *bp = SDL_GetBasePath();
-    snprintf(cfg_path, sizeof cfg_path, "%slauncher.cfg", bp ? bp : "./");
+    snprintf(cfg_path, sizeof cfg_path, "%slauncher-reboot.cfg", bp ? bp : "./");
+    snprintf(old_cfg_path, sizeof old_cfg_path, "%slauncher.cfg", bp ? bp : "./");
     snprintf(save_dir, sizeof save_dir, "%ssave", bp ? bp : "./");
     mkdirs(save_dir);
 #else
@@ -335,7 +345,7 @@ static void stamp_of(char *out, size_t n)
 {
     char game[1200];
     SDL_PathInfo pi;
-    snprintf(game, sizeof game, "%sgame/stuntracefx", base_dir);
+    snprintf(game, sizeof game, "%sgame/stuntracefx%s", base_dir, EXE);
     if (!SDL_GetPathInfo(game, &pi))
         memset(&pi, 0, sizeof pi);
     snprintf(out, n, "%s|%llu|%lld", rom_path, (unsigned long long)pi.size, (long long)pi.modify_time);
@@ -344,21 +354,58 @@ static void stamp_of(char *out, size_t n)
 static void draw(SDL_Texture *bg);
 static SDL_Texture *bg_now;
 
+/* a program started (no input; in `dir` when given) and waited for with the
+   window kept alive: its exit code, or -1 when it could not start */
+static int run_wait(const char *const *args, const char *dir)
+{
+    SDL_PropertiesID p = SDL_CreateProperties();
+    SDL_Process *proc;
+    int code = -1;
+    SDL_SetPointerProperty(p, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, (void *)args);
+    SDL_SetNumberProperty(p, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+    SDL_SetNumberProperty(p, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_INHERITED);
+    SDL_SetNumberProperty(p, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_INHERITED);
+    if (dir)
+        SDL_SetStringProperty(p, SDL_PROP_PROCESS_CREATE_WORKING_DIRECTORY_STRING, dir);
+    proc = SDL_CreateProcessWithProperties(p);
+    SDL_DestroyProperties(p);
+    if (!proc) {
+        fprintf(stderr, "launcher: cannot start %s: %s\n", args[0], SDL_GetError());
+        return -1;
+    }
+    while (!SDL_WaitProcess(proc, false, &code)) {
+        SDL_PumpEvents();
+        SDL_Delay(50);
+    }
+    SDL_DestroyProcess(proc);
+    return code;
+}
+
+/* the folder the game is built into */
+static void built_dir(char *dest, size_t n)
+{
+#ifdef _WIN32
+    snprintf(dest, n, "%sbuilt", base_dir);
+#else
+    const char *d = getenv("XDG_DATA_HOME"), *h = getenv("HOME");
+    if (d && *d)
+        snprintf(dest, n, "%s/stuntracefx-reboot", d);
+    else
+        snprintf(dest, n, "%s/.local/share/stuntracefx-reboot", h ? h : ".");
+#endif
+}
+
 /* the game built from the ROM by the bundled builder, when it is not yet,
    or the ROM or the bundled game changed */
 static int game_ready(char *game, size_t n)
 {
     char dest[1200], stamp_path[1300], want[1400], have[1400] = "", builder[1200];
+    const char *args[7];
     FILE *f;
-    pid_t pid;
-    int st = 0;
-    const char *d = getenv("XDG_DATA_HOME"), *h = getenv("HOME");
-    if (d && *d)
-        snprintf(dest, sizeof dest, "%s/stuntracefx-reboot", d);
-    else
-        snprintf(dest, sizeof dest, "%s/.local/share/stuntracefx-reboot", h ? h : ".");
+    int code;
+    built_dir(dest, sizeof dest);
     mkdirs(dest);
-    snprintf(game, n, "%s/Stunt Race FX/Stunt Race FX", dest);
+    snprintf(game, n, "%s/Stunt Race FX/Stunt Race FX%s", dest, EXE);
     snprintf(stamp_path, sizeof stamp_path, "%s/stamp", dest);
     stamp_of(want, sizeof want);
     if ((f = fopen(stamp_path, "r"))) {
@@ -371,25 +418,17 @@ static int game_ready(char *game, size_t n)
     set_status("PREPARING THE GAME FROM YOUR ROM...", 255, 214, 0);
     draw(bg_now);
     SDL_RenderPresent(ren);
-    snprintf(builder, sizeof builder, "%sStuntRaceFXBuilder", base_dir);
-    pid = fork();
-    if (pid == 0) {
-        int nul = open("/dev/null", O_RDONLY);
-        if (nul >= 0)
-            dup2(nul, 0);
-        execl(builder, builder, "--rom", rom_path, "--dest", dest, "--build", (char *)NULL);
-        _exit(127);
-    }
-    if (pid < 0) {
-        set_status("THE BUILDER COULD NOT START", 255, 96, 96);
-        return 0;
-    }
-    while (waitpid(pid, &st, WNOHANG) == 0) {
-        SDL_PumpEvents();
-        SDL_Delay(50);
-    }
-    if (!WIFEXITED(st) || WEXITSTATUS(st) != 0 || !SDL_GetPathInfo(game, NULL)) {
-        set_status(WIFEXITED(st) && WEXITSTATUS(st) == 127 ? "THE BUILDER IS MISSING" : "THE GAME COULD NOT BE BUILT", 255, 96, 96);
+    snprintf(builder, sizeof builder, "%sStuntRaceFXBuilder%s", base_dir, EXE);
+    args[0] = builder;
+    args[1] = "--rom";
+    args[2] = rom_path;
+    args[3] = "--dest";
+    args[4] = dest;
+    args[5] = "--build";
+    args[6] = NULL;
+    code = run_wait(args, NULL);
+    if (code != 0 || !SDL_GetPathInfo(game, NULL)) {
+        set_status(code == -1 ? "THE BUILDER IS MISSING" : "THE GAME COULD NOT BE BUILT", 255, 96, 96);
         return 0;
     }
     if ((f = fopen(stamp_path, "w"))) {
@@ -402,42 +441,30 @@ static int game_ready(char *game, size_t n)
 static int run_game(SDL_Window *win)
 {
     char game[1200], dir[1200];
-    pid_t pid;
-    int st = 0;
+    const char *args[2];
+    SDL_Environment *env = SDL_GetEnvironment();
+    int code;
     char *slash;
     if (!game_ready(game, sizeof game))
         return 0;
     snprintf(dir, sizeof dir, "%s", game);
     if ((slash = strrchr(dir, '/')))
         *slash = 0;
-    pid = fork();
-    if (pid == 0) {
-        if (chdir(dir) != 0) {
-            /* (the game finds its data beside itself; only a nicety) */
-        }
-        setenv("PORT_FULLSCREEN", opt[O_DISPLAY].value ? "1" : "0", 1);
-        setenv("SRFX_ORIGINAL_CARS", opt[O_CARS].value ? "1" : "0", 1);
-        setenv("SRFX_ASPECT", opt[O_ASPECT].value ? "4:3" : "wide", 1);
-        setenv("SRFX_FPS", opt[O_FPS].value ? "1" : "0", 1);
-        setenv("SRFX_SPLIT", opt[O_SPLIT].value ? "stacked" : "side", 1);
-        execl(game, game, (char *)NULL);
-        fprintf(stderr, "launcher: cannot start %s: %s\n", game, strerror(errno));
-        _exit(127);
-    }
-    if (pid < 0) {
-        set_status("THE GAME COULD NOT START", 255, 96, 96);
-        return 0;
-    }
+    /* the options, to the game through its environment (inherited) */
+    SDL_SetEnvironmentVariable(env, "PORT_FULLSCREEN", opt[O_DISPLAY].value ? "1" : "0", true);
+    SDL_SetEnvironmentVariable(env, "SRFX_ORIGINAL_CARS", opt[O_CARS].value ? "1" : "0", true);
+    SDL_SetEnvironmentVariable(env, "SRFX_ASPECT", opt[O_ASPECT].value ? "4:3" : "wide", true);
+    SDL_SetEnvironmentVariable(env, "SRFX_FPS", opt[O_FPS].value ? "1" : "0", true);
+    SDL_SetEnvironmentVariable(env, "SRFX_SPLIT", opt[O_SPLIT].value ? "stacked" : "side", true);
+    args[0] = game;
+    args[1] = NULL;
     SDL_HideWindow(win);
-    while (waitpid(pid, &st, WNOHANG) == 0) {
-        SDL_PumpEvents();
-        SDL_Delay(50);
-    }
+    code = run_wait(args, dir);
     SDL_ShowWindow(win);
     SDL_RaiseWindow(win);
-    if (WIFEXITED(st) && WEXITSTATUS(st) == 127)
-        set_status("THE GAME IS MISSING", 255, 96, 96);
-    else if (WIFSIGNALED(st) || (WIFEXITED(st) && WEXITSTATUS(st) != 0))
+    if (code == -1)
+        set_status("THE GAME COULD NOT START", 255, 96, 96);
+    else if (code != 0)
         set_status("THE GAME STOPPED WITH AN ERROR", 255, 96, 96);
     else
         set_status("", 255, 255, 255);
@@ -618,8 +645,10 @@ int main(int argc, char **argv)
     SDL_Texture *bg = NULL;
     const char *bp;
     int running = 1;
-    (void)argc;
-    (void)argv;
+    if (argc > 1 && !strcmp(argv[1], "--version")) {
+        printf("Stunt Race FX - DECOMP %s launcher\n", LAUNCHER_VERSION);
+        return 0;
+    }
     SDL_SetHint(SDL_HINT_APP_ID, "stuntracefx");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         fprintf(stderr, "launcher: SDL could not start: %s\n", SDL_GetError());

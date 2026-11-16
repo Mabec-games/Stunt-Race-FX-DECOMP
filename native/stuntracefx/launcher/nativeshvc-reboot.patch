@@ -1,0 +1,32 @@
+From 866c1ef41d9d0942af5fe32bcd5ef4fd2898e342 Mon Sep 17 00:00:00 2001
+From: Mabec-games <mabec@github.noreply.com>
+Date: Mon, 16 Nov 2026 07:37:50 +0100
+Subject: [PATCH] Linux host: PORT_FULLSCREEN=1 opens the window fullscreen
+ (_NET_WM_STATE)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/host/linux/host_linux.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/host/linux/host_linux.c b/src/host/linux/host_linux.c
+index 0d1327d..2f85d58 100644
+--- a/src/host/linux/host_linux.c
++++ b/src/host/linux/host_linux.c
+@@ -186,6 +186,13 @@ int host_window_open(int width, int height, const char *title)
+     wm_delete = pXInternAtom(dpy, "WM_DELETE_WINDOW", 0);
+     pXSetWMProtocols(dpy, win, &wm_delete, 1);
+     window_icon();
++    if (pXChangeProperty && getenv("PORT_FULLSCREEN") && getenv("PORT_FULLSCREEN")[0] == '1') {
++        /* the whole screen (a launcher's choice): the window manager's
++           fullscreen state asked for before the window is shown (EWMH) */
++        Atom full = pXInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", 0);
++        pXChangeProperty(dpy, win, pXInternAtom(dpy, "_NET_WM_STATE", 0), 4 /* XA_ATOM */, 32, 0 /* replace */,
++                         (const unsigned char *)&full, 1);
++    }
+     pXMapWindow(dpy, win);
+     pXFlush(dpy);
+     return 1;
+-- 
+2.56.0
+

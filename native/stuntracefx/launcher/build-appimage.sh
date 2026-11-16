@@ -12,14 +12,14 @@
 # ../nativeshvc) and VK_INCLUDE (a folder holding vulkan/ and vk_video/).
 # Out: ../dist/StuntRaceFX-DECOMP-$VERSION-x86_64.AppImage.
 set -e
-ART=${1:-../img/mbc_presents.png}
+ART=${1:-docs/media/banner.png}
 VERSION=${VERSION:-1.0-Rebooted}
 NSHVC_ROOT=${NSHVC_ROOT:-$(cd .. && pwd)/nativeshvc}
 VK_INCLUDE=${VK_INCLUDE:-/usr/include}
 G=native/stuntracefx
 B=build/reboot-appimage
 APPDIR=$B/AppDir
-DIST=../dist
+DIST=${DIST:-../dist}
 CC=${CC:-cc}
 
 # spirv-cross only writes the Metal and HLSL shaders: a stand-in where it is missing

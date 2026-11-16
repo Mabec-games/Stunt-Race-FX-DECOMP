@@ -4,6 +4,8 @@
 
 # Stunt Race FX - DECOMP · Version 1.0 Rebooted
 
+[![build](https://github.com/Mabec-games/Stunt-Race-FX-DECOMP/actions/workflows/build.yml/badge.svg)](https://github.com/Mabec-games/Stunt-Race-FX-DECOMP/actions/workflows/build.yml)
+
 > [!IMPORTANT]
 > **The beta 0.2 line has ended.** Development of the 0.x port (beta 0.1 and
 > beta 0.2) has stopped. This project now continues as **1.0 Rebooted**,
@@ -21,7 +23,7 @@ This is a **fork** of the decompilation and native game by Jeffrey Wilbur /
 Strut B, LLC: **[jeff-strutb/stuntracefx](https://github.com/jeff-strutb/stuntracefx)**.
 Jeffrey did the decompilation, the native game and its engine
 ([nativeshvc](https://github.com/jeff-strutb/nativeshvc)). 1.0 Rebooted adds
-a launcher, a Linux AppImage, desktop controls and fixes on top of that
+a launcher, Linux and Windows releases, desktop controls and fixes on top of that
 work. Jeffrey's README is kept in [docs/UPSTREAM-README.md](docs/UPSTREAM-README.md).
 
 <p align="center">
@@ -103,7 +105,7 @@ On top of the upstream native game:
 | Area | What it does |
 |---|---|
 | **Launcher** | SDL3 launcher (keyboard, controller or mouse). You pick your ROM, and the launcher checks it and builds the game from it once with the bundled builder. Options: window or fullscreen, aspect ratio (including the original 4:3), 3D or original sprite vehicles, 2-player split (side by side or top and bottom), FPS counter. It also has controls and credits pages. |
-| **Linux AppImage** | One file. Nothing from the ROM is packed into it. |
+| **Linux and Windows releases** | A single-file Linux AppImage and a portable Windows zip. Nothing from the ROM is packed into either. |
 | **Desktop controls** | Keyboard and controllers. The first two connected controllers become players 1 and 2, whatever their slots. No touch-style overlay buttons or Escape menu on the desktop. **V** toggles the view from above, and races always start behind the car. |
 | **Tunnel openings** | Tunnel mouths are real openings: you can see inside from a distance (Sunset Valley, Aqua Tunnel, Night Cruise). From inside, the exit shows the sky and the course beyond, without leaking through the walls. |
 | **Aqua Tunnel** | Underwater, far objects are drawn only along the course ahead, not the other sections of the lap across the water. |
@@ -116,8 +118,13 @@ On top of the upstream native game:
 ## Status
 
 - ✅ Linux x86_64 AppImage with the launcher.
-- ⬜ Windows: the upstream game builds for Windows, but the 1.0 Rebooted
-  launcher is Linux only for now.
+- ✅ Windows x86_64 portable zip with the same launcher. It's tested under
+  Wine and smoke tested on Windows by CI; reports from real Windows PCs are
+  welcome.
+- ✅ Every push is built and smoke tested on GitHub Actions (Linux and
+  Windows): the launcher starts and draws its menu, the builder refuses a
+  wrong ROM, the game starts, and the shipped game holds none of the ROM's
+  data.
 - 🟡 This is a new base. Please report anything that looks or plays wrong:
   name the course, and include a screenshot or video if you can.
 - For upstream's own list of what isn't done yet, see
@@ -125,8 +132,14 @@ On top of the upstream native game:
 
 ## Running
 
-Download `StuntRaceFX-DECOMP-1.0-Rebooted-x86_64.AppImage` from Releases,
-make it executable and run it:
+Download the release for your system from
+[Releases](https://github.com/Mabec-games/Stunt-Race-FX-DECOMP/releases).
+Both need a Vulkan graphics driver.
+
+### Linux
+
+Make `StuntRaceFX-DECOMP-1.0-Rebooted-x86_64.AppImage` executable and run
+it:
 
 ```sh
 chmod +x StuntRaceFX-DECOMP-1.0-Rebooted-x86_64.AppImage
@@ -136,22 +149,41 @@ chmod +x StuntRaceFX-DECOMP-1.0-Rebooted-x86_64.AppImage
 Choose your ROM in the launcher. The first start builds the game into
 `~/.local/share/stuntracefx-reboot`, and it is rebuilt only when the ROM or
 the bundled game changes. Settings are saved in
-`~/.config/stuntracefx/launcher-reboot.cfg`. You need X11 or XWayland and a
-Vulkan driver.
+`~/.config/stuntracefx/launcher-reboot.cfg`. You need X11 or XWayland.
 
-### Building from source (Linux)
+### Windows
 
-You need cmake, ninja, gcc or clang, SDL3, glslangValidator, python3,
-ffmpeg and linuxdeploy. You also need a checkout of
-[nativeshvc](https://github.com/jeff-strutb/nativeshvc) next to this
-repository (or set `NSHVC_ROOT`), and Vulkan headers (`VK_INCLUDE`, default
-`/usr/include`). From the repository's top:
+Unzip `StuntRaceFX-DECOMP-1.0-Rebooted-windows-x86_64.zip` anywhere and
+start `Stunt Race FX - DECOMP.exe`. It's portable: the first start builds the
+game into the `built` folder beside it, and the settings are saved in
+`launcher-reboot.cfg` in the same folder.
+
+### Building from source
+
+Both builds run on Linux. You need:
+- cmake, ninja, gcc or clang, glslangValidator, python3 and ffmpeg.
+- [nativeshvc](https://github.com/jeff-strutb/nativeshvc) next to this
+  repository (or set `NSHVC_ROOT`), at commit `3c563b3c` with
+  `native/stuntracefx/launcher/nativeshvc-reboot.patch` applied.
+- Vulkan headers ([Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers)'
+  `include` folder, set as `VK_INCLUDE`).
+
+Linux AppImage (also needs SDL3 and linuxdeploy):
 
 ```sh
 sh native/stuntracefx/launcher/build-appimage.sh
 ```
 
-The output is `../dist/StuntRaceFX-DECOMP-1.0-Rebooted-x86_64.AppImage`.
+Windows zip, cross-built with MinGW-w64 (also needs SDL3's MinGW
+development package; set `SDL3_MINGW` to its `x86_64-w64-mingw32` folder):
+
+```sh
+sh native/stuntracefx/launcher/build-windows.sh
+```
+
+The outputs go to `../dist` (or `DIST`). The workflow in
+[.github/workflows/build.yml](.github/workflows/build.yml) does all of this
+from a clean checkout.
 
 ### Controls (keyboard)
 
@@ -175,10 +207,12 @@ A controller works like the SNES pad.
     [jeff-strutb/stuntracefx](https://github.com/jeff-strutb/stuntracefx),
     whose own work is **CC0 1.0** (see [LICENSE](LICENSE)).
   - Engine: [jeff-strutb/nativeshvc](https://github.com/jeff-strutb/nativeshvc),
-    licensed under **AGPL-3.0**. The game built and shipped in the AppImage
-    uses this engine, so the engine's source and its terms apply to those
-    builds.
-- **1.0 Rebooted** (launcher, AppImage, desktop controls and the fixes
+    licensed under **AGPL-3.0**. The game shipped in the releases is built
+    on this engine, so the engine's source and its terms apply to those
+    builds. The releases use upstream commit `3c563b3c` plus one change
+    (opening the window fullscreen on Linux), published here as
+    [nativeshvc-reboot.patch](native/stuntracefx/launcher/nativeshvc-reboot.patch).
+- **1.0 Rebooted** (launcher, Linux and Windows releases, desktop controls and the fixes
   listed above) and the earlier beta 0.1 and 0.2 port: Mabec Games. Offered
   under the same CC0 terms.
 - Stunt Race FX is © Nintendo / Argonaut. This project contains no game

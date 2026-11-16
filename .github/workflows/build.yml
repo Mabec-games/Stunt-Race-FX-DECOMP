@@ -1,0 +1,171 @@
+# Build and smoke test: Stunt Race FX - DECOMP, Version 1.0 Rebooted.
+#
+# Builds the Linux AppImage and the Windows zip from a clean checkout (no ROM:
+# nothing of the game's data is in the repository or the builds), then checks
+# that the launcher, the builder and the game start on Linux and on a real
+# Windows machine. The game itself needs the player's ROM, so the smoke tests
+# stop at the launcher drawing its menu and the builder refusing a ROM that
+# is not Stunt Race FX.
+name: build
+
+on:
+  push:
+    branches: [main, reboot]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # nativeshvc (Jeffrey Wilbur, AGPL-3.0): the upstream commit this release is
+  # built on, plus this project's change to it (launcher/nativeshvc-reboot.patch)
+  NSHVC_REPO: https://github.com/jeff-strutb/nativeshvc.git
+  NSHVC_COMMIT: 3c563b3c6f3d3a20886ae4fa43583f849e4644e0
+  SDL_VERSION: 3.4.18
+  VK_HEADERS: v1.4.309
+  VERSION: 1.0-Rebooted
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build glslang-tools python3 ffmpeg file \
+            gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev \
+            libxfixes-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols \
+            libegl1-mesa-dev libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libdbus-1-dev
+
+      - name: nativeshvc (pinned, with this project's patch)
+        run: |
+          git clone -q $NSHVC_REPO ../nativeshvc
+          git -C ../nativeshvc checkout -q $NSHVC_COMMIT
+          git -C ../nativeshvc apply --verbose "$GITHUB_WORKSPACE/native/stuntracefx/launcher/nativeshvc-reboot.patch"
+
+      - name: Vulkan headers
+        run: |
+          mkdir -p ../deps
+          curl -sSfL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/$VK_HEADERS.tar.gz | tar xz -C ../deps
+          echo "VK_INCLUDE=$(cd ../deps && pwd)/Vulkan-Headers-${VK_HEADERS#v}/include" >> $GITHUB_ENV
+
+      - name: SDL3 (Linux, from source; Windows, the MinGW package)
+        run: |
+          cd ../deps
+          curl -sSfL https://github.com/libsdl-org/SDL/releases/download/release-$SDL_VERSION/SDL3-$SDL_VERSION.tar.gz | tar xz
+          cmake -S SDL3-$SDL_VERSION -B sdl-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+          cmake --build sdl-build
+          sudo cmake --install sdl-build
+          sudo ldconfig
+          mkdir -p sdl-mingw
+          curl -sSfL https://github.com/libsdl-org/SDL/releases/download/release-$SDL_VERSION/SDL3-devel-$SDL_VERSION-mingw.tar.gz | tar xz -C sdl-mingw
+          echo "SDL3_MINGW=$(pwd)/sdl-mingw/SDL3-$SDL_VERSION/x86_64-w64-mingw32" >> $GITHUB_ENV
+
+      - name: linuxdeploy
+        run: |
+          curl -sSfL -o /usr/local/bin/linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x /usr/local/bin/linuxdeploy-x86_64.AppImage
+          printf '#!/bin/sh\nAPPIMAGE_EXTRACT_AND_RUN=1 exec /usr/local/bin/linuxdeploy-x86_64.AppImage "$@"\n' | sudo tee /usr/local/bin/linuxdeploy >/dev/null
+          sudo chmod +x /usr/local/bin/linuxdeploy
+
+      - name: Build the Linux AppImage
+        run: DIST=dist sh native/stuntracefx/launcher/build-appimage.sh
+
+      - name: Build the Windows zip
+        run: DIST=dist sh native/stuntracefx/launcher/build-windows.sh
+
+      - name: Smoke test (Linux)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+          SDL_VIDEO_DRIVER: offscreen
+          SDL_RENDER_DRIVER: software
+        run: |
+          set -e
+          A=dist/StuntRaceFX-DECOMP-$VERSION-x86_64.AppImage
+          ./$A --version | tee version.txt
+          grep -q "1.0 Rebooted" version.txt
+          # the launcher draws its menu (one picture saved, then it quits)
+          LAUNCHER_SHOT=$PWD/menu.bmp ./$A
+          test -s menu.bmp
+          LAUNCHER_SHOT=$PWD/credits.bmp LAUNCHER_PAGE=credits ./$A
+          test -s credits.bmp
+          # the builder starts and refuses a file that is not the ROM
+          ./$A --appimage-extract >/dev/null
+          head -c 1048576 /dev/zero > not-a-rom.sfc
+          if squashfs-root/usr/bin/StuntRaceFXBuilder --rom not-a-rom.sfc --dest out --build; then
+            echo "the builder accepted a wrong ROM" >&2; exit 1
+          fi
+          # the game starts and stops cleanly without its data (no cart.dat)
+          mkdir -p nodata && cp squashfs-root/usr/bin/game/stuntracefx nodata/
+          (cd nodata && timeout 20 ./stuntracefx; echo "game exit: $?") | tee game.txt
+          ! grep -q "game exit: 124" game.txt
+          ! grep -q "game exit: 139" game.txt
+          # nothing of the ROM's text in the shipped game
+          ! strings squashfs-root/usr/bin/game/stuntracefx | grep -q "STUNT RACE FX"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: dist/StuntRaceFX-DECOMP-${{ env.VERSION }}-x86_64.AppImage
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: dist/StuntRaceFX-DECOMP-${{ env.VERSION }}-windows-x86_64.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher-screens-linux
+          path: '*.bmp'
+
+  smoke-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-zip
+
+      - name: Smoke test (Windows)
+        shell: pwsh
+        env:
+          SDL_VIDEO_DRIVER: offscreen
+          SDL_RENDER_DRIVER: software
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Expand-Archive -Path StuntRaceFX-DECOMP-*-windows-x86_64.zip -DestinationPath .
+          $dir = 'Stunt Race FX - DECOMP'
+          foreach ($f in 'Stunt Race FX - DECOMP.exe', 'StuntRaceFXBuilder.exe', 'SDL3.dll', 'launcher-bg.bmp', 'README.md', 'game\stuntracefx.exe') {
+            if (-not (Test-Path "$dir\$f")) { throw "missing $f" }
+          }
+          # the launcher starts (SDL3.dll found) and reports its version
+          $p = Start-Process -FilePath "$dir\Stunt Race FX - DECOMP.exe" -ArgumentList '--version' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "launcher --version exit $($p.ExitCode)" }
+          # the launcher draws its menu (one picture saved, then it quits)
+          $env:LAUNCHER_SHOT = "$PWD\menu-windows.bmp"
+          $p = Start-Process -FilePath "$dir\Stunt Race FX - DECOMP.exe" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "launcher exit $($p.ExitCode)" }
+          if (-not (Test-Path menu-windows.bmp) -or (Get-Item menu-windows.bmp).Length -eq 0) { throw "no launcher picture" }
+          Remove-Item Env:LAUNCHER_SHOT
+          # the builder starts and refuses a file that is not the ROM
+          [IO.File]::WriteAllBytes("$PWD\not-a-rom.sfc", (New-Object byte[] 1048576))
+          $p = Start-Process -FilePath "$dir\StuntRaceFXBuilder.exe" -ArgumentList '--rom', "`"$PWD\not-a-rom.sfc`"", '--dest', "`"$PWD\out`"", '--build' -Wait -PassThru
+          $r = Get-Content "$dir\builder-result.txt" -Raw
+          Write-Host "builder: exit $($p.ExitCode): $r"
+          if ($p.ExitCode -eq 0 -or $r -notmatch '^failed') { throw "the builder accepted a wrong ROM" }
+          # the game starts without its data and stops (no crash, no hang)
+          $g = Start-Process -FilePath "$dir\game\stuntracefx.exe" -PassThru
+          if (-not $g.WaitForExit(20000)) { $g.Kill(); throw "the game hung without its data" }
+          Write-Host "game exit: $($g.ExitCode)"
+          if ($g.ExitCode -eq -1073741819 -or $g.ExitCode -eq -1073741515) { throw "the game crashed or a DLL is missing ($($g.ExitCode))" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher-screens-windows
+          path: '*.bmp'
