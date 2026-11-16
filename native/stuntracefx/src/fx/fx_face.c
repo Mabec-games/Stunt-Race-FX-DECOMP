@@ -1704,18 +1704,6 @@ static void commit(const FxMaterial *m)
 
     if (!face.whole || face.n < 2 || nshapes == SHAPES)
         return;
-    if ((shape_now == 0xA5D4 || shape_now == 0xA660 || shape_now == 0xA67C || shape_now == 0xA6D0) && object_now.known
-        && !survey_face && !survey_sink && !getenv("SRFX_GOAL_FULL")) {
-        /* the GOAL letters flown at the eye past the line: at half their
-           size about their own place, so they no longer reach down through
-           the road the original painted them over (Martin, 2026-11-15) */
-        int k;
-        for (k = 0; k < face.n; k++) {
-            face.c[k].x = object_now.place[0] + 0.5 * (face.c[k].x - object_now.place[0]);
-            face.c[k].y = object_now.place[1] + 0.5 * (face.c[k].y - object_now.place[1]);
-            face.c[k].z = object_now.place[2] + 0.5 * (face.c[k].z - object_now.place[2]);
-        }
-    }
     if (survey_face && face.n >= 3) {
         double c[MOST][3];
         int i;
@@ -1739,6 +1727,9 @@ static void commit(const FxMaterial *m)
         lay_on_ground();
     s->back = (uint8_t)face.back;
     s->opening = (uint8_t)commit_opening;
+    /* the GOAL letters flown at the eye past the line: the original paints
+       them after the course, whole over the road (fx_draw.c) */
+    s->over = shape_now == 0xA5D4 || shape_now == 0xA660 || shape_now == 0xA67C || shape_now == 0xA6D0;
     s->ncorner3 = 0;
     if (face.n <= 8) {                  /* its corners at full size, for its layer (fx_draw.c) */
         int k;

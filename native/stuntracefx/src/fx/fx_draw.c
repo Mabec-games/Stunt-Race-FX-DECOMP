@@ -575,9 +575,13 @@ float fx_draw_z(double iz)
 /* The depth of a vertex of the 3D's world emitted with none of its own (a
    sprite, the chip's rows; docs/stuntracefx/native/DEPTH.md, 2): its
    object's (fx_face_object_depth), else the nearest. */
+static float sprite_lift;        /* nearer by this for the object drawn now (fx_draw_sprite_lift) */
+
+void fx_draw_sprite_lift(float units) { sprite_lift = units; }
+
 static float depth_default(void)
 {
-    double d = fx_face_object_depth();
+    double d = fx_face_object_depth() - sprite_lift;
 
     return d >= DEPTH_NEAR ? (float)(DEPTH_NEAR / d) : 1.0f;
 }
@@ -2855,6 +2859,8 @@ static void shape_draw_body(const FxShape *sh)
             v[i].u = (float)(c[done + i].u + u_off);
             v[i].v = (float)(c[done + i].v + v_off);
             v[i].z = fx_draw_z(c[done + i].iz);
+            if (sh->over)               /* the nearest tenth of the depth, in its own order */
+                v[i].z = 0.9f + 0.1f * (v[i].z < 1.0f ? v[i].z : 1.0f);
             v[i].colour = tinted;
             if (verge) {
                 double inv = (sh->plane[0] * (v[i].x - vcx) / 128.0 + sh->plane[1] * (v[i].y - vcy) / 128.0 + sh->plane[2])

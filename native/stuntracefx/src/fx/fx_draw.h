@@ -92,6 +92,10 @@ void fx_tween_draw(float between);
    whether a solid is drawn in the place of the sprite being drawn. */
 #include "fx/fx_face.h"
 void fx_draw_flat(const FxCorner *c, uint32_t n, uint8_t colour);
+/* the sprites of the object drawn now nearer by `units` (the original
+   vehicles' tyres and eyes as sprites, fx_solid.c: over the road under
+   them, as the original painted them); 0 none */
+void fx_draw_sprite_lift(float units);
 void fx_draw_flat_entry(const FxCorner *c, uint32_t n, uint8_t entry);
 int fx_draw_full_colour(void);
 /* Whether the picture is two players' Enhanced one: 4 bits a pixel, each

@@ -119,7 +119,13 @@ static void switch_load(void)
         return;
     view_switch.loaded = 1;
     s = getenv("SRFX_CAMERA");
+    /* every race starts behind the car on the desktop: V switches for the
+       race only (SRFX reboot); the saved choice on Apple's devices */
+#if defined(__APPLE__)
     view_switch.overhead = (s && !strcmp(s, "overhead")) || option_overhead();
+#else
+    view_switch.overhead = s && !strcmp(s, "overhead");
+#endif
 }
 
 /* the view now: 0 the game's, 1 from above, between while switching */

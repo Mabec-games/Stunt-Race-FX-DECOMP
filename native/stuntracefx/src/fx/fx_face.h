@@ -50,6 +50,8 @@ typedef struct {
     /* a tunnel's exit seen from inside (fx_face.c's mouths): drawn as its
        opening, the sky outside at the farthest depth */
     uint8_t opening;
+    /* drawn over the rest of the 3D in its own order (the GOAL letters) */
+    uint8_t over;
     /* its corners in view space, whole and exact (at most 8; 0: not kept,
        a solid's or the land's), for the layers of faces on one plane
        (fx_draw.c) */

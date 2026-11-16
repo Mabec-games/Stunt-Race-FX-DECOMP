@@ -205,6 +205,18 @@ void fx_solid_object(uint16_t shape, uint16_t record)
     far_slot = record;
     record = fx_far_original(record);   /* in a far or parked pass, the near record the slot holds */
     record_index = !record || (uint16_t)(record - 0x0AAA) % 30u ? -1 : (int)((uint16_t)(record - 0x0AAA) / 30u);
+    {
+        /* the vehicles as the original drew them (a launcher's choice,
+           SRFX_ORIGINAL_CARS=1): their tyres, wheels and eyes stay sprites */
+        static int original = -1;
+        if (original < 0)
+            original = getenv("SRFX_ORIGINAL_CARS") && getenv("SRFX_ORIGINAL_CARS")[0] == '1';
+        fx_draw_sprite_lift(0);
+        if (original && (shape == 0xA1C8 || shape == 0xA1E4 || shape == 0xA190)) {
+            fx_draw_sprite_lift(80.0f);  /* (two tyres' radii: clear of the road, short of a car's length) */
+            return;
+        }
+    }
     for (i = 0; i < N(solids); i++)
         if (solids[i].shape == shape)
             object = &solids[i];

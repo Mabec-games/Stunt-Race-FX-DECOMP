@@ -67,7 +67,9 @@
 /* The pause button in the window's top left corner, for a pointer or a
    touch (the engine's input of 4.5); not on iOS, whose touch controls give
    Select and Start, as before. */
-#if KEY_EVENTS && !(defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
+/* Not on Linux or Windows either (SRFX reboot, Martin 2026-11-15: no buttons
+   over the picture on the desktop): Escape pauses, V switches the view. */
+#if KEY_EVENTS && defined(__APPLE__) && !(defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
 #define CORNER_BUTTON 1
 #else
 #define CORNER_BUTTON 0
@@ -78,6 +80,7 @@
 
 #define VK_TAB 0x09
 #define VK_ESCAPE 0x1B
+#define VK_V 0x56                       /* the race's view switched (race/overhead.c) with no button over the picture */
 #define VK_F11 0x7A                     /* the engine's own: the whole screen (Windows) */
 #define VK_F12 0x7B                     /* the engine's own: what the game feeds it (--inspect) */
 
@@ -172,7 +175,7 @@ static struct {
 
 static int key_reserved(int vk)
 {
-    return vk < 0x08 || vk > 0xFE || vk == VK_ESCAPE || vk == VK_TAB || vk == VK_F11 || vk == VK_F12;
+    return vk < 0x08 || vk > 0xFE || vk == VK_ESCAPE || vk == VK_TAB || vk == VK_F11 || vk == VK_F12 || (!CORNER_BUTTON && vk == VK_V);
 }
 
 static int keys_valid(const uint8_t *keys)
@@ -1069,6 +1072,10 @@ static int pause_step(const nshvc_input *in, uint16_t pad[2])
         toggle = 1;
     if (corner_pressed(in))
         toggle = 1;
+    if (!CORNER_BUTTON && !p.open && key_pressed(in, VK_V))
+        race_view_toggle();             /* (it checks the race can switch: one player, the full window) */
+    if (!CORNER_BUTTON && !p.open)
+        toggle = 0;                     /* no pause screen on the desktop (SRFX reboot): the game's own Start pause only */
 
     if (MENU_MODE)
         menu_touch(in);
